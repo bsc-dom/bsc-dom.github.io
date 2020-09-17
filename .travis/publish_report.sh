@@ -14,6 +14,7 @@ cp -R allure-report/history ~/$TRAVIS_BUILD_NUMBER/allure-results/history
 git rm -rf allure-report/*
 
 # generate report 
+ls -la ~/$TRAVIS_BUILD_NUMBER/allure-results/
 allure generate ~/$TRAVIS_BUILD_NUMBER/allure-results -o allure-report --clean
 
 # remove temp files
