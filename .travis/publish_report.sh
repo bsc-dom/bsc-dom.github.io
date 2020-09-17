@@ -6,14 +6,17 @@ bash .travis/set_ssh_report.sh
 git remote set-url origin git@github.com:bsc-dom/bsc-dom.github.io.git
 last_tests=$(ssh dataclay@mn1.bsc.es "ls -td testing/results/* | head -1")
 
+# get test results
+scp -r dataclay@mn1.bsc.es:~/$last_tests/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
+cp -R allure-report/history ~/$TRAVIS_BUILD_NUMBER/allure-results/history
+
 # remove previous report 
 git rm -rf allure-report/*
 
 # generate report 
-scp -r dataclay@mn1.bsc.es:~/$last_tests/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
-ls -la
-cp -R allure-report/history ~/$TRAVIS_BUILD_NUMBER/allure-results/history
 allure generate ~/$TRAVIS_BUILD_NUMBER/allure-results -o allure-report --clean
+
+# remove temp files
 rm -rf ~/$TRAVIS_BUILD_NUMBER
 
 # publish 
