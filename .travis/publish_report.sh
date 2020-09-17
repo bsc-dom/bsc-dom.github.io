@@ -10,9 +10,8 @@ last_tests=$(ssh dataclay@mn1.bsc.es "ls -td testing/results/* | head -1")
 git rm -rf allure-report/*
 
 # generate report 
-mkdir ~/$TRAVIS_BUILD_NUMBER/allure-results/
 scp -r dataclay@mn1.bsc.es:~/$last_tests/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
-ls -la ~/$TRAVIS_BUILD_NUMBER/allure-results
+ls -la
 cp -R allure-report/history ~/$TRAVIS_BUILD_NUMBER/allure-results/history
 allure generate ~/$TRAVIS_BUILD_NUMBER/allure-results -o allure-report --clean
 rm -rf ~/$TRAVIS_BUILD_NUMBER
