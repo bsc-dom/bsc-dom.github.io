@@ -15,7 +15,8 @@ BUILD_NUMBER=$(ls -td -- * | head -1)
 popd
 
 # for each copied directory move it to allure-results 
-for TESTING_JOB_DIR in ~/$TRAVIS_BUILD_NUMBER/tmp/ ; do
+ls ~/$TRAVIS_BUILD_NUMBER/tmp/
+for TESTING_JOB_DIR in `find  ~/$TRAVIS_BUILD_NUMBER/tmp/ -type d` ; do
 	echo "Copying files from $TESTING_JOB_DIR/ to ~/$TRAVIS_BUILD_NUMBER/allure-results/"
     cp -r $TESTING_JOB_DIR/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
 done
