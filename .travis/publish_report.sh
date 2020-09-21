@@ -10,17 +10,17 @@ echo " ** Getting results ** "
 mkdir -p ~/$TRAVIS_BUILD_NUMBER/allure-results
 mkdir -p ~/$TRAVIS_BUILD_NUMBER/tmp
 scp -r dataclay@mn1.bsc.es:~/testing/results/* ~/$TRAVIS_BUILD_NUMBER/tmp/
-ls  ~/$TRAVIS_BUILD_NUMBER/tmp/
-pushd ~/testing/results/ 
+pushd ~/$TRAVIS_BUILD_NUMBER/tmp/
 BUILD_NUMBER=$(ls -td -- * | head -1) 
 popd
-echo " ** Obtained results ** "
 
 # for each copied directory move it to allure-results 
 for TESTING_JOB_DIR in ~/$TRAVIS_BUILD_NUMBER/tmp/ ; do
 	echo "Copying files from $TESTING_JOB_DIR/ to ~/$TRAVIS_BUILD_NUMBER/allure-results/"
     cp -r $TESTING_JOB_DIR/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
 done
+ls  ~/$TRAVIS_BUILD_NUMBER/allure-results/
+echo " ** Obtained results ** "
 
 if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then 
 	echo " ** Getting history ** "
