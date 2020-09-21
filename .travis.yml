@@ -1,15 +1,5 @@
 language: generic
 if: type = cron OR type = api
-env:
-  global:
-  - PATH=$HOME/.local/bin:$PATH
-before_install:
-- mkdir -p $HOME/.local/bin
-- mkdir -p ~/$TRAVIS_BUILD_NUMBER/allure-results
-- curl -o ~/$TRAVIS_BUILD_NUMBER/allure-2.6.0.tgz -Ls https://dl.bintray.com/qameta/generic/io/qameta/allure/allure/2.6.0/allure-2.6.0.tgz   
-- tar -zxvf ~/$TRAVIS_BUILD_NUMBER/allure-2.6.0.tgz -C /opt/   
-- ln -s /opt/allure-2.6.0/bin/allure $HOME/.local/bin/allure  
-- allure --version   
 script: ".travis/publish_report.sh"
 # notifications:
 #   email:
