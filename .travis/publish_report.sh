@@ -50,7 +50,7 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	
 	# remove previous report 
 	echo " ** Removing previous report ** "
-	git rm -rf allure-report/*
+	git rm -rf testing-report/*
 	echo " ** Removed previous report ** "
 	
 	# generate report 
