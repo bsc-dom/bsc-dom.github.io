@@ -8,17 +8,20 @@ git remote set-url origin git@github.com:bsc-dom/bsc-dom.github.io.git
 # get test results
 echo " ** Getting results ** "
 mkdir -p ~/$TRAVIS_BUILD_NUMBER/allure-results
-mkdir /tmp/allure-results/
-scp -r dataclay@mn1.bsc.es:~/testing/results/* /tmp/allure-results/
-BUILD_NUMBER=$(ssh dataclay@mn1.bsc.es "cd ~/testing/results/ && ls -td -- * | head -1")
+mkdir -p ~/$TRAVIS_BUILD_NUMBER/tmp
+scp -r dataclay@mn1.bsc.es:~/testing/results/* ~/$TRAVIS_BUILD_NUMBER/tmp/
+ls  ~/$TRAVIS_BUILD_NUMBER/tmp/
+pushd ~/testing/results/ 
+BUILD_NUMBER=$(ls -td -- * | head -1) 
+popd
 echo " ** Obtained results ** "
-ls /tmp/allure-results
 
 # for each copied directory move it to allure-results 
-for TESTING_JOB_DIR in /tmp/allure-results/ ; do
+for TESTING_JOB_DIR in ~/$TRAVIS_BUILD_NUMBER/tmp/ ; do
 	echo "Copying files from $TESTING_JOB_DIR/ to ~/$TRAVIS_BUILD_NUMBER/allure-results/"
     cp -r $TESTING_JOB_DIR/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
 done
+rm -rf ~/$TRAVIS_BUILD_NUMBER/tmp/
 
 if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then 
 	echo " ** Getting history ** "
