@@ -21,7 +21,6 @@ for TESTING_JOB_DIR in ~/$TRAVIS_BUILD_NUMBER/tmp/ ; do
 	echo "Copying files from $TESTING_JOB_DIR/ to ~/$TRAVIS_BUILD_NUMBER/allure-results/"
     cp -r $TESTING_JOB_DIR/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
 done
-rm -rf ~/$TRAVIS_BUILD_NUMBER/tmp/
 
 if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then 
 	echo " ** Getting history ** "
