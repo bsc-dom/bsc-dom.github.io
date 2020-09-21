@@ -41,13 +41,13 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	git rm -rf allure-report/*
 	
 	# generate report 
-	~/allure/bin/allure generate ~/$TRAVIS_BUILD_NUMBER/allure-results -o allure-report --clean
+	~/allure/bin/allure generate ~/$TRAVIS_BUILD_NUMBER/allure-results -o testing-report --clean
 	
 	# remove temp files
 	rm -rf ~/$TRAVIS_BUILD_NUMBER
 	
 	# publish 
-	sed -i -e "s~base href=\"/\"~base href=\"/allure-report/\"~g" allure-report/index.html
+	sed -i -e "s~base href=\"/\"~base href=\"/testing-report/\"~g" testing-report/index.html
 	git add -A
 	git commit -m "Updating test report from Travis build $TRAVIS_BUILD_NUMBER"
 	git push origin HEAD:master
