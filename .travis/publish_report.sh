@@ -51,10 +51,10 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 		 	"type":"travis",
 			"url": "https://travis-ci.com/",
 			"buildOrder":'"$TRAVIS_JOB_ID"',
-			"buildName":"Travis results",
+			"buildName":"Report build #'"$TRAVIS_JOB_ID"',
 			"buildUrl": "https://travis-ci.com"
 			}'
-	echo $EXECUTOR > allure-results/executor.json
+	echo $EXECUTOR > ~/$TRAVIS_BUILD_NUMBER/allure-results/executor.json
 	
 	# remove previous report 
 	echo " ** Removing previous report ** "
