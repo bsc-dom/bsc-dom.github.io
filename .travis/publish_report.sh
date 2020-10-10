@@ -1,8 +1,7 @@
 #!/bin/bash
 ###### SET SSH
+echo " ** Setting MN ssh configuration ** "
 bash .travis/set_ssh_mn.sh
-bash .travis/set_ssh_report.sh
-
 git remote set-url origin git@github.com:bsc-dom/bsc-dom.github.io.git
 
 # get test results
@@ -71,7 +70,8 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	# remove temp files
 	rm -rf ~/$TRAVIS_BUILD_NUMBER
 	
-	# publish 
+	# publish
+	bash .travis/set_ssh_report.sh
 	echo " ** Publishing ** "
 	sed -i -e "s~base href=\"/\"~base href=\"/testing-report/\"~g" testing-report/index.html
 	git add -A
