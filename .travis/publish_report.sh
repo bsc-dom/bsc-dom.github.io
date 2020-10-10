@@ -1,7 +1,8 @@
 #!/bin/bash
 ###### SET SSH
-echo " ** Setting MN ssh configuration ** "
+echo " ** Setting ssh configuration ** "
 bash .travis/set_ssh_mn.sh
+	bash .travis/set_ssh_report.sh
 git remote set-url origin git@github.com:bsc-dom/bsc-dom.github.io.git
 
 # get test results
@@ -45,16 +46,15 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	echo " ** Obtained allure ** "
 	
 	# generate executor 
-#	 TRAVIS_JOB_ID
-#	EXECUTOR='{
-#			"name":"Travis",
-#		 	"name":"travis",
-#			"url": "https://travis-ci.com/github/bsc-dom/pyclay-testing",
-#			"buildOrder":'"$TRAVIS_BUILD_NUMBER"',
-#			"buildName":"Travis build #'"$TRAVIS_BUILD_NUMBER"'",
-#			"buildUrl": "https://travis-ci.com/github/bsc-dom/pyclay-testing"
-#			}'
-#	echo $EXECUTOR > allure-results/executor.json
+	EXECUTOR='{
+			"name":"Travis",
+		 	"type":"travis",
+			"url": "https://travis-ci.com/",
+			"buildOrder":'"$TRAVIS_JOB_ID"',
+			"buildName":"Travis results",
+			"buildUrl": "https://travis-ci.com"
+			}'
+	echo $EXECUTOR > allure-results/executor.json
 	
 	# remove previous report 
 	echo " ** Removing previous report ** "
@@ -71,7 +71,6 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	rm -rf ~/$TRAVIS_BUILD_NUMBER
 	
 	# publish
-	bash .travis/set_ssh_report.sh
 	echo " ** Publishing ** "
 	sed -i -e "s~base href=\"/\"~base href=\"/testing-report/\"~g" testing-report/index.html
 	git add -A

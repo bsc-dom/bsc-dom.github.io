@@ -4,8 +4,8 @@ declare -r SSH_FILE="$(mktemp -u $HOME/.ssh/XXXXX)"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Decrypt the file containing the private key
 openssl aes-256-cbc \
-	-K $encrypted_12a78a482e9b_key -iv $encrypted_12a78a482e9b_iv \
-	-in .travis/marenostrum_deploy_key.enc \
+	-K $encrypted_498525dd6ee2_key -iv $encrypted_498525dd6ee2_iv \
+	-in .travis/mn_deploy_key.enc \
 	-out "$SSH_FILE" -d
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
