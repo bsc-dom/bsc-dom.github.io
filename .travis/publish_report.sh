@@ -8,15 +8,25 @@ git remote set-url origin git@github.com:bsc-dom/bsc-dom.github.io.git
 # get test results
 echo " ** Getting results ** "
 mkdir -p ~/$TRAVIS_BUILD_NUMBER/allure-results
-mkdir -p ~/$TRAVIS_BUILD_NUMBER/tmp
-scp -r dataclay@mn1.bsc.es:~/testing/results/* ~/$TRAVIS_BUILD_NUMBER/tmp/
-pushd ~/$TRAVIS_BUILD_NUMBER/tmp/
-BUILD_NUMBER=$(ls -td -- * | head -1) 
+mkdir -p ~/$TRAVIS_BUILD_NUMBER/pyclay/tmp
+mkdir -p ~/$TRAVIS_BUILD_NUMBER/javaclay/tmp
+
+scp -r dataclay@mn1.bsc.es:~/travis/testing-results/pyclay/* ~/$TRAVIS_BUILD_NUMBER/pyclay/tmp
+scp -r dataclay@mn1.bsc.es:~/travis/testing-results/javaclay/* ~/$TRAVIS_BUILD_NUMBER/javaclay/tmp
+
+pushd ~/$TRAVIS_BUILD_NUMBER/pyclay/tmp || exit 1
+PYCLAY_BUILD_NUMBER=$(ls -td -- * | head -1) 
+popd
+pushd ~/$TRAVIS_BUILD_NUMBER/javaclay/tmp || exit 1
+JAVACLAY_BUILD_NUMBER=$(ls -td -- * | head -1) 
 popd
 
 # for each copied directory move it to allure-results 
-ls ~/$TRAVIS_BUILD_NUMBER/tmp/
-for TESTING_JOB_DIR in `find  ~/$TRAVIS_BUILD_NUMBER/tmp/ -type d` ; do
+for TESTING_JOB_DIR in `find  ~/$TRAVIS_BUILD_NUMBER/pyclay/tmp/ -type d` ; do
+	echo "Copying files from $TESTING_JOB_DIR/ to ~/$TRAVIS_BUILD_NUMBER/allure-results/"
+    cp -r $TESTING_JOB_DIR/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
+done
+for TESTING_JOB_DIR in `find  ~/$TRAVIS_BUILD_NUMBER/javaclay/tmp/ -type d` ; do
 	echo "Copying files from $TESTING_JOB_DIR/ to ~/$TRAVIS_BUILD_NUMBER/allure-results/"
     cp -r $TESTING_JOB_DIR/* ~/$TRAVIS_BUILD_NUMBER/allure-results/
 done
@@ -32,21 +42,20 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	echo " ** Obtained history ** "
 	echo " ** Getting allure ** "
 	# get modified allure version
-	scp -r dataclay@mn1.bsc.es:~/testing/allure ~/allure
+	scp -r dataclay@mn1.bsc.es:~/travis/allure ~/allure
 	echo " ** Obtained allure ** "
-	echo " ** Creating executor.json ** "
 	
 	# generate executor 
-	EXECUTOR='{
-		"name":"Travis",
-	 	"name":"travis",
-		"url": "https://travis-ci.com/github/bsc-dom/dataclay-testing",
-		"buildOrder":'"$BUILD_NUMBER"', 
-		"buildName":"Travis build #'"$BUILD_NUMBER"'",
-		"buildUrl": "https://travis-ci.com/github/bsc-dom/dataclay-testing"
-		}'
-	echo $EXECUTOR > ~/$TRAVIS_BUILD_NUMBER/allure-results/executor.json
-	echo " ** Created executor.json ** "
+#	 TRAVIS_JOB_ID
+#	EXECUTOR='{
+#			"name":"Travis",
+#		 	"name":"travis",
+#			"url": "https://travis-ci.com/github/bsc-dom/pyclay-testing",
+#			"buildOrder":'"$TRAVIS_BUILD_NUMBER"',
+#			"buildName":"Travis build #'"$TRAVIS_BUILD_NUMBER"'",
+#			"buildUrl": "https://travis-ci.com/github/bsc-dom/pyclay-testing"
+#			}'
+#	echo $EXECUTOR > allure-results/executor.json
 	
 	# remove previous report 
 	echo " ** Removing previous report ** "
@@ -71,6 +80,6 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	echo " ** Published ** "
 	# remove last test results
 	echo " ** Removing results ** "
-	ssh dataclay@mn1.bsc.es "rm -rf testing/results/*"
+	ssh dataclay@mn1.bsc.es "rm -rf travis/testing-results/*"
 	echo " ** Removed results ** "
 fi
