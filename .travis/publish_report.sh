@@ -44,7 +44,7 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 	# get modified allure version
 	scp -r dataclay@mn1.bsc.es:~/travis/allure ~/allure
 	echo " ** Obtained allure ** "
-	
+	echo " ** Generating executor ** "
 	# generate executor 
 	EXECUTOR='{
 			"name":"Travis",
@@ -54,8 +54,8 @@ if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then
 			"buildName":"Report build #'"$TRAVIS_JOB_ID"',
 			"buildUrl": "https://travis-ci.com"
 			}'
-	echo $EXECUTOR > ~/$TRAVIS_BUILD_NUMBER/allure-results/executor.json
-	
+	echo "$EXECUTOR" > ~/$TRAVIS_BUILD_NUMBER/allure-results/executor.json
+	echo " ** Generated executor ** "
 	# remove previous report 
 	echo " ** Removing previous report ** "
 	git rm -rf testing-report/*
