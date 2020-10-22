@@ -35,7 +35,7 @@ echo " ** Obtained results ** "
 
 if [ "$(ls -A ~/$TRAVIS_BUILD_NUMBER/allure-results/)" ]; then 
 	echo " ** Getting history ** "
-	HISTORY_DIR="allure-report/history"
+	HISTORY_DIR="testing-report/history"
 	if [ -d "$HISTORY_DIR" ]; then
 		cp -R $HISTORY_DIR ~/$TRAVIS_BUILD_NUMBER/allure-results/history
 	fi
