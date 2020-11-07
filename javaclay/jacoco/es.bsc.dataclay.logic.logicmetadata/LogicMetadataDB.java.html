@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogicMetadataDB.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.logicmetadata</a> &gt; <span class="el_source">LogicMetadataDB.java</span></div><h1>LogicMetadataDB.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.logicmetadata;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.UUID;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectAlreadyExistException;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+
+/**
+ * Data base connection.
+ */
+public final class LogicMetadataDB {
+
+	/** DataSource. */
+	private final BasicDataSource dataSource;
+
+	/**
+	 * LogicMetadataDB constructor.
+	 * 
+	 * @param managerName
+	 *            Name of the LM service managing.
+	 */
+<span class="nc" id="L32">	public LogicMetadataDB(final BasicDataSource dataSource) {</span>
+<span class="nc" id="L33">		this.dataSource = dataSource;</span>
+<span class="nc" id="L34">		createTables();</span>
+<span class="nc" id="L35">	}</span>
+
+	/**
+	 * Create tables of LogicMetadata.
+	 */
+	public void createTables() {
+
+<span class="nc" id="L42">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L44">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L45">			final PreparedStatement createStatement = conn.prepareStatement(LogicMetadataSQLStatements.SqlStatements.CREATE_TABLE_LOGICMODULE.getSqlStatement());</span>
+<span class="nc" id="L46">			createStatement.execute();</span>
+<span class="nc" id="L47">		} catch (final SQLException e) {</span>
+			// ignore if type already exists
+		} finally {
+			try {
+<span class="nc bnc" id="L51" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L52">					conn.close();</span>
+				}
+<span class="nc" id="L54">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L55">				ex1.printStackTrace();</span>
+<span class="nc" id="L56">			}</span>
+		}
+<span class="nc" id="L58">	}</span>
+
+	/**
+	 * Delete the tables. Just the other way around of createTables --much simpler.
+	 */
+	public void dropTables() {
+
+<span class="nc" id="L65">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L67">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L68">			final PreparedStatement dropStatement = conn.prepareStatement(LogicMetadataSQLStatements.SqlStatements.DROP_TABLE_LOGICMODULE.getSqlStatement());</span>
+<span class="nc" id="L69">			dropStatement.execute();</span>
+<span class="nc" id="L70">		} catch (final SQLException e) {</span>
+			// ignore if type does not exists
+		} finally {
+			try {
+<span class="nc bnc" id="L74" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L75">					conn.close();</span>
+				}
+<span class="nc" id="L77">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L78">				ex1.printStackTrace();</span>
+<span class="nc" id="L79">			}</span>
+		}
+
+<span class="nc" id="L82">	}</span>
+
+	/**
+	 * Store into database
+	 * @param logicmoduleIDs
+	 *            logic module ids
+	 */
+	public void store(final LogicMetadataIDs logicmoduleIDs) {
+<span class="nc" id="L90">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L92">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L93">			final PreparedStatement insertStatement = conn.prepareStatement(LogicMetadataSQLStatements.SqlStatements.INSERT_LOGICMODULE.getSqlStatement());</span>
+<span class="nc" id="L94">			insertStatement.setObject(1, logicmoduleIDs.dcID.getId());</span>
+<span class="nc" id="L95">			insertStatement.setObject(2, logicmoduleIDs.dcAdminID.getId());</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">			if (logicmoduleIDs.dcRegistratorID == null) {</span>
+<span class="nc" id="L97">				insertStatement.setObject(3, null);</span>
+			} else {
+<span class="nc" id="L99">				insertStatement.setObject(3, logicmoduleIDs.dcRegistratorID.getId());</span>
+			}
+<span class="nc bnc" id="L101" title="All 2 branches missed.">			if (logicmoduleIDs.dcPublicNamespaceID == null) {</span>
+<span class="nc" id="L102">				insertStatement.setObject(4, null);</span>
+			} else {
+<span class="nc" id="L104">				insertStatement.setObject(4, logicmoduleIDs.dcPublicNamespaceID.getId());</span>
+			}
+<span class="nc bnc" id="L106" title="All 2 branches missed.">			if (logicmoduleIDs.dcPublicContractID == null) {</span>
+<span class="nc" id="L107">				insertStatement.setObject(5, null);</span>
+			} else {
+<span class="nc" id="L109">				insertStatement.setObject(5, logicmoduleIDs.dcPublicContractID.getId());</span>
+			}
+<span class="nc" id="L111">			insertStatement.executeUpdate();</span>
+
+<span class="nc" id="L113">		} catch (final Exception e) {</span>
+<span class="nc" id="L114">			e.printStackTrace();</span>
+<span class="nc" id="L115">			throw new DbObjectAlreadyExistException(logicmoduleIDs.dcID);</span>
+		} finally {
+			try {
+<span class="nc bnc" id="L118" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L119">					conn.close();</span>
+				}
+<span class="nc" id="L121">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L122">				ex1.printStackTrace();</span>
+<span class="nc" id="L123">			}</span>
+		}
+
+<span class="nc" id="L126">	}</span>
+
+	/**
+	 * Deserialize LogicMetadataIDs
+	 * @param rs
+	 *            Result set
+	 * @return LogicMetadataIDs
+	 */
+	private LogicMetadataIDs deserializeLogicMetadataIDs(
+			final ResultSet rs) {
+<span class="nc" id="L136">		LogicMetadataIDs ids = null;</span>
+		try {
+			// CHECKSTYLE:OFF
+<span class="nc" id="L139">			ids = new LogicMetadataIDs();</span>
+<span class="nc" id="L140">			ids.dcID = new DataClayInstanceID((UUID)rs.getObject(&quot;dataclayinstanceid&quot;));</span>
+<span class="nc" id="L141">			ids.dcAdminID = new AccountID((UUID)rs.getObject(&quot;adminid&quot;));</span>
+<span class="nc" id="L142">			UUID curUUID = (UUID)rs.getObject(&quot;registratorid&quot;);</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">			if (curUUID != null) {</span>
+<span class="nc" id="L144">				ids.dcRegistratorID = new AccountID(curUUID);</span>
+			}
+<span class="nc" id="L146">			curUUID = (UUID)rs.getObject(&quot;publicnamespaceid&quot;);</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">			if (curUUID != null) {</span>
+<span class="nc" id="L148">				ids.dcPublicNamespaceID = new NamespaceID(curUUID);</span>
+			}
+<span class="nc" id="L150">			curUUID = (UUID)rs.getObject(&quot;publiccontractid&quot;);</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">			if (curUUID != null) {</span>
+<span class="nc" id="L152">				ids.dcPublicContractID = new ContractID(curUUID);</span>
+			}
+
+<span class="nc" id="L155">		} catch (final SQLException e) {</span>
+<span class="nc" id="L156">			e.printStackTrace();</span>
+<span class="nc" id="L157">		}</span>
+<span class="nc" id="L158">		return ids;</span>
+	}
+
+	/**
+	 * Get LogicModule metadata by ID
+	 * @return The LogicModule metadata
+	 */
+	public LogicMetadataIDs getLogicMetadata() {
+<span class="nc" id="L166">		ResultSet rs = null;</span>
+<span class="nc" id="L167">		LogicMetadataIDs ids = null;</span>
+<span class="nc" id="L168">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L170">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L171">			final PreparedStatement selectStatement = conn.prepareStatement(LogicMetadataSQLStatements.SqlStatements.SELECT_LOGICMODULE.getSqlStatement());</span>
+<span class="nc" id="L172">			rs = selectStatement.executeQuery();</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">			if (rs.next()) {</span>
+<span class="nc" id="L174">				ids = this.deserializeLogicMetadataIDs(rs);</span>
+
+			}
+<span class="nc" id="L177">		} catch (final SQLException e) {</span>
+<span class="nc" id="L178">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="nc bnc" id="L181" title="All 2 branches missed.">				if (rs != null) {</span>
+<span class="nc" id="L182">					rs.close();</span>
+				}
+<span class="nc bnc" id="L184" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L185">					conn.close();</span>
+				}
+<span class="nc" id="L187">			} catch (final SQLException e) {</span>
+<span class="nc" id="L188">				e.printStackTrace();</span>
+<span class="nc" id="L189">			}</span>
+		}
+
+<span class="nc" id="L192">		return ids;</span>
+	}
+
+	/**
+	 * Check if there is a LogicModule
+	 * @return TRUE if exists. FALSE otherwise
+	 */
+	public boolean existsMetaData() {
+
+<span class="nc" id="L201">		ResultSet rs = null;</span>
+<span class="nc" id="L202">		boolean exists = false;</span>
+<span class="nc" id="L203">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L205">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L206">			final PreparedStatement existsStatement = conn.prepareStatement(LogicMetadataSQLStatements.SqlStatements.EXISTS_LOGICMODULE_BY_ID.getSqlStatement());</span>
+<span class="nc" id="L207">			rs = existsStatement.executeQuery();</span>
+<span class="nc" id="L208">			rs.next();</span>
+<span class="nc" id="L209">			exists = rs.getBoolean(1);</span>
+
+<span class="nc" id="L211">		} catch (final Exception e) {</span>
+<span class="nc" id="L212">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="nc" id="L215">				rs.close();</span>
+<span class="nc bnc" id="L216" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L217">					conn.close();</span>
+				}
+<span class="nc" id="L219">			} catch (final SQLException e) {</span>
+<span class="nc" id="L220">				e.printStackTrace();</span>
+<span class="nc" id="L221">			}</span>
+		}
+
+<span class="nc" id="L224">		return exists;</span>
+	}
+
+	/**
+	 * Close DB.
+	 */
+	public void close() {
+		try {
+<span class="nc" id="L232">			dataSource.close();</span>
+<span class="nc" id="L233">		}catch(Exception e) {</span>
+			// TODO
+<span class="nc" id="L235">			e.printStackTrace();</span>
+<span class="nc" id="L236">		}</span>
+<span class="nc" id="L237">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

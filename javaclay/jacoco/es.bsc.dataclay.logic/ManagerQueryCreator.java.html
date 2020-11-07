@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ManagerQueryCreator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic</a> &gt; <span class="el_source">ManagerQueryCreator.java</span></div><h1>ManagerQueryCreator.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import javax.annotation.Nonnull;
+import javax.persistence.Id;
+
+import es.bsc.dataclay.util.ids.ID;
+import es.bsc.dataclay.util.management.accountmgr.Account;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.datasetmgr.DataSet;
+
+/**
+ * @pierlauro this class is temporary and it's the base for the future automatic managers db/query generator, please don't
+ *            delete it
+ */
+
+<span class="nc" id="L25">public class ManagerQueryCreator {</span>
+<span class="nc" id="L26">	final static private List&lt;Class&lt;?&gt;&gt; classes = // new ArrayList&lt;&gt;(</span>
+<span class="nc" id="L27">			Arrays.asList(new Class[] {</span>
+					Account.class,
+					DataSet.class,
+					PasswordCredential.class
+			});
+
+<span class="nc" id="L33">	final static private Map&lt;Class&lt;?&gt;, String&gt; types = new HashMap&lt;&gt;();</span>
+
+	static {
+<span class="nc" id="L36">		types.put(String.class, &quot;varchar&quot;);</span>
+<span class="nc" id="L37">		types.put(String[].class, &quot;varchar[]&quot;);</span>
+<span class="nc" id="L38">		types.put(int.class, &quot;integer&quot;);</span>
+<span class="nc" id="L39">		types.put(Integer.class, &quot;integer&quot;);</span>
+<span class="nc" id="L40">		types.put(long.class, &quot;integer&quot;);</span>
+<span class="nc" id="L41">		types.put(Long.class, &quot;integer&quot;);</span>
+<span class="nc" id="L42">		types.put(boolean.class, &quot;bool&quot;);</span>
+<span class="nc" id="L43">		types.put(Boolean.class, &quot;bool&quot;);</span>
+<span class="nc" id="L44">		types.put(UUID.class, &quot;uuid&quot;); // Maybe better 2 integers?</span>
+<span class="nc" id="L45">		types.put(ID.class, &quot;uuid&quot;);</span>
+<span class="nc" id="L46">		types.put(UUID[].class, &quot;uuid[]&quot;);</span>
+<span class="nc" id="L47">	}</span>
+
+	public static void generateManagerTables(final Class&lt;?&gt; c) {
+<span class="nc" id="L50">		final StringBuffer sb = new StringBuffer();</span>
+<span class="nc" id="L51">		sb.append(&quot;CREATE TABLE IF NOT EXISTS &quot; + getClassName(c) + &quot;(\n&quot;);</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">		for (final Field f : getAllFields(c)) {</span>
+<span class="nc" id="L53">			final Class&lt;?&gt; fieldType = f.getType();</span>
+<span class="nc" id="L54">			final String name = f.getName();</span>
+			final String type;// = types.containsKey(f.getType()) ? types.get(f.getType()): f.getType().getName();
+
+<span class="nc bnc" id="L57" title="All 2 branches missed.">			if (types.containsKey(fieldType)) {</span>
+<span class="nc" id="L58">				type = types.get(fieldType);</span>
+<span class="nc" id="L59">				sb.append('\t' + name + &quot; &quot; + type);</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">				if (isPrimaryKey(f)) {</span>
+<span class="nc" id="L61">					sb.append(&quot; PRIMARY KEY&quot;);</span>
+				}
+<span class="nc bnc" id="L63" title="All 2 branches missed.">				if (notNull(f)) {</span>
+<span class="nc" id="L64">					sb.append(&quot; NOT NULL&quot;);</span>
+				}
+<span class="nc" id="L66">				sb.append(&quot;,\n&quot;);</span>
+<span class="nc" id="L67">				continue;</span>
+			}
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if (fieldType.isEnum()) {</span>
+<span class="nc" id="L71">				final StringBuffer constants = new StringBuffer(&quot;(&quot;);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">				for (final Object o : fieldType.getEnumConstants()) {</span>
+<span class="nc" id="L73">					constants.append(&quot;'&quot; + o.toString() + &quot;', &quot;);</span>
+				}
+<span class="nc" id="L75">				constants.replace(constants.lastIndexOf(&quot;,&quot;), constants.lastIndexOf(&quot;,&quot;) + 2, &quot;)&quot;);</span>
+
+<span class="nc" id="L77">				sb.append('\t' + name + &quot; varchar NOT NULL CHECK (&quot; + name + &quot; IN &quot; + constants + &quot;),\n&quot;);</span>
+<span class="nc" id="L78">				continue;</span>
+			}
+
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			if (classes.contains(fieldType)) {</span>
+<span class="nc" id="L82">				generateManagerTables(fieldType);</span>
+			}
+
+<span class="nc bnc" id="L85" title="All 2 branches missed.">			for (final Field field : getAllFields(fieldType)) {</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">				if (isPrimaryKey(field)) {</span>
+<span class="nc" id="L87">					final String fieldName = f.getName() + &quot;_fk&quot;;</span>
+<span class="nc" id="L88">					sb.append('\t' + fieldName + &quot; &quot; + types.get(field.getType()));</span>
+<span class="nc" id="L89">					sb.append(&quot; REFERENCES &quot; + getClassName(fieldType) + &quot;(&quot; + field.getName() + &quot;)&quot; + &quot;,\n&quot;);</span>
+<span class="nc" id="L90">					break;</span>
+				}
+<span class="nc" id="L92">			}</span>
+<span class="nc" id="L93">		}</span>
+
+<span class="nc" id="L95">		sb.replace(sb.lastIndexOf(&quot;,&quot;), sb.lastIndexOf(&quot;,&quot;) + 1, &quot; \n);&quot;);</span>
+<span class="nc" id="L96">		classes.remove(c);</span>
+<span class="nc" id="L97">	}</span>
+
+	protected static String getClassName(final Class&lt;?&gt; c) {
+<span class="nc" id="L100">		return c.getName().replace('.', '_');</span>
+	}
+
+	protected static List&lt;Field&gt; getAllFields(Class&lt;?&gt; type) {
+<span class="nc" id="L104">		final ArrayList&lt;Field&gt; fields = new ArrayList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		while (type != null) {</span>
+<span class="nc" id="L107">			fields.addAll(0, Arrays.asList(type.getDeclaredFields()));</span>
+<span class="nc" id="L108">			type = type.getSuperclass();</span>
+		}
+
+<span class="nc" id="L111">		return fields;</span>
+	}
+
+	protected static boolean isPrimaryKey(final Field field) {
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		return field.getAnnotationsByType(Id.class).length &gt; 0;</span>
+	}
+
+	protected static boolean notNull(final Field field) {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">		return field.getAnnotationsByType(Nonnull.class).length &gt; 0;</span>
+	}
+
+	public static void main(final String[] args) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		while (classes.size() &gt; 0) {</span>
+<span class="nc" id="L124">			generateManagerTables(classes.get(0));</span>
+		}
+<span class="nc" id="L126">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

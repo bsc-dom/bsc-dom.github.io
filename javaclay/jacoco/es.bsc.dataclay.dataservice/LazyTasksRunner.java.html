@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LazyTasksRunner.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dataservice</a> &gt; <span class="el_source">LazyTasksRunner.java</span></div><h1>LazyTasksRunner.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.dataservice;
+
+import java.util.Map;
+import java.util.Stack;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.ids.SessionID;
+
+/**
+ * Run lazy tasks in DataService.
+ */
+public final class LazyTasksRunner extends TimerTask {
+
+	/** Pending tasks to run. */
+<span class="nc" id="L20">	private final Map&lt;ObjectID, Stack&lt;LazyTask&gt;&gt; pendingTasks = new ConcurrentHashMap&lt;&gt;();</span>
+
+	/** DataService in which to run tasks. */
+	private final DataService dataService;
+
+	/**
+	 * Constructor
+	 * @param theDataService
+	 *            DataService.
+	 */
+<span class="nc" id="L30">	public LazyTasksRunner(final DataService theDataService) {</span>
+<span class="nc" id="L31">		this.dataService = theDataService;</span>
+		
+<span class="nc" id="L33">	}</span>
+
+	@Override
+	public void run() {
+		try {
+<span class="nc bnc" id="L38" title="All 2 branches missed.">			for (final Stack&lt;LazyTask&gt; lazyTasksPerObject : pendingTasks.values()) {</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">				while (!lazyTasksPerObject.isEmpty()) {</span>
+<span class="nc" id="L40">					final LazyTask lazyTask = lazyTasksPerObject.pop();</span>
+<span class="nc" id="L41">					final ObjectID objectID = lazyTask.getObjectID();</span>
+<span class="nc" id="L42">					final ImplementationID implID = lazyTask.getImplementationID();</span>
+<span class="nc" id="L43">					final SessionID sessionID = lazyTask.getSessionID();</span>
+<span class="nc" id="L44">					final MetaClassID classID = lazyTask.getClassID();</span>
+<span class="nc" id="L45">					dataService.executeLazyTask(implID, objectID, sessionID, classID);</span>
+<span class="nc" id="L46">				}</span>
+<span class="nc" id="L47">			}</span>
+<span class="nc" id="L48">		} catch (final Exception e) {</span>
+<span class="nc" id="L49">			e.printStackTrace();</span>
+			// do nothing, the receiver will debug accordingly if needed
+<span class="nc" id="L51">		}</span>
+<span class="nc" id="L52">	}</span>
+
+	/**
+	 * Add lazy task
+	 * @param objectID
+	 *            ID of the object
+	 * @param lazyTask
+	 *            Lazy task
+	 */
+	public void addLazyTask(final ObjectID objectID, final LazyTask lazyTask) {
+<span class="nc" id="L62">		Stack&lt;LazyTask&gt; lazyTasks = null;</span>
+<span class="nc" id="L63">		synchronized (pendingTasks) {</span>
+<span class="nc" id="L64">			lazyTasks = this.pendingTasks.get(objectID);</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">			if (lazyTasks == null) {</span>
+<span class="nc" id="L66">				lazyTasks = new Stack&lt;&gt;();</span>
+<span class="nc" id="L67">				this.pendingTasks.put(objectID, lazyTasks);</span>
+			}
+<span class="nc" id="L69">		}</span>
+<span class="nc" id="L70">		lazyTasks.add(lazyTask);</span>
+<span class="nc" id="L71">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

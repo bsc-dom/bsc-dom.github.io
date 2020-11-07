@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HeapManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.heap</a> &gt; <span class="el_source">HeapManager.java</span></div><h1>HeapManager.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.heap;
+
+import java.lang.ref.Reference;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.commonruntime.RuntimeUtils;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * Heap manager for dataClay runtimes.
+ *
+ *         This class is intended to manage all dataClay objects in runtime's memory.
+ *
+ */
+public abstract class HeapManager extends TimerTask {
+<span class="fc" id="L27">	protected static final Logger logger = LogManager.getLogger(&quot;heap.HeapManager&quot;);</span>
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L30">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Runtime being monitorized. */
+	protected final DataClayRuntime runtime;
+
+	// DESIGN NOTE: Actually, we need a WeakHashMap but since hashCode function can be defined by users (DataClayObject hashCode can
+	// be overrided, we use ObjectID as a key and we check if the GC removed the reference every time we want to get (see
+	// getObject).
+	/** Map of objects in memory. */
+	protected final Map&lt;ObjectID, Reference&lt;DataClayObject&gt;&gt; inmemoryObjects;
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param theruntime
+	 *            Runtime to manage.
+	 */
+<span class="fc" id="L47">	public HeapManager(final DataClayRuntime theruntime) {</span>
+<span class="fc" id="L48">		runtime = theruntime;</span>
+<span class="fc" id="L49">		inmemoryObjects = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L50">	}</span>
+
+	/**
+	 * Clean references in Heap pointing to null (weak references) and Lockers not being used.
+	 */
+	public void cleanReferencesAndLockers() {
+<span class="nc" id="L56">		int cleanedObjects = 0;</span>
+<span class="nc" id="L57">		final Iterator&lt;Entry&lt;ObjectID, Reference&lt;DataClayObject&gt;&gt;&gt; it = inmemoryObjects.entrySet().iterator();</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		while (it.hasNext()) {</span>
+<span class="nc" id="L59">			final Entry&lt;ObjectID, Reference&lt;DataClayObject&gt;&gt; entryRef = it.next();</span>
+<span class="nc" id="L60">			final Reference&lt;DataClayObject&gt; ref = entryRef.getValue();</span>
+<span class="nc bnc" id="L61" title="All 4 branches missed.">			if (ref == null || ref.get() == null) {</span>
+<span class="nc" id="L62">				it.remove(); // Remove element</span>
+<span class="nc" id="L63">				cleanedObjects++;</span>
+			}
+<span class="nc" id="L65">		}</span>
+
+<span class="nc" id="L67">		runtime.cleanLockers();</span>
+
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">			if (cleanedObjects &gt; 0) {</span>
+<span class="nc" id="L71">				logger.debug(&quot;[==Heap==] Cleaned &quot; + cleanedObjects + &quot; weak references&quot;);</span>
+<span class="nc" id="L72">				cleanedObjects = 0;</span>
+			}
+		}
+<span class="nc" id="L75">	}</span>
+
+	/**
+	 * Get object from Heap
+	 * @param objectID
+	 *            ID of object
+	 * @return DataClayObject or NULL if not found.
+	 */
+	public DataClayObject getObject(final ObjectID objectID) {
+<span class="nc" id="L84">		DataClayObject obj = null;</span>
+<span class="nc" id="L85">		Reference&lt;DataClayObject&gt; ref = null;</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L87">			logger.debug(&quot;[==Heap==] Checking if object is in cache &quot; + objectID);</span>
+		}
+<span class="nc" id="L89">		ref = this.inmemoryObjects.get(objectID);</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">		if (ref == null) {</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L92">				logger.debug(&quot;[==Heap==] MISS in Heap with oid &quot; + objectID);</span>
+			}
+<span class="nc bnc" id="L94" title="All 2 branches missed.">		} else if (ref.get() != null) {</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L96">				logger.debug(&quot;[==Heap==] HIT in Heap with ID &quot; + objectID + &quot; system.id= &quot; + System.identityHashCode(obj));</span>
+			}
+<span class="nc" id="L98">			obj = ref.get();</span>
+		} else {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L101">				logger.debug(&quot;[==Heap==] MISS Found weak reference pointing to null (currently being GC) for &quot; + objectID);</span>
+			}
+		}
+<span class="nc" id="L104">		return obj;</span>
+	}
+
+	/**
+	 * Create a weak reference of the object provided and add it into the heap.
+	 * @param dcObject
+	 *            Object to add.
+	 */
+	protected void addToHeapMap(final DataClayObject dcObject) {
+<span class="nc" id="L113">		final Reference&lt;DataClayObject&gt; newRef = RuntimeUtils.newReference(</span>
+				dcObject);
+<span class="nc" id="L115">		this.inmemoryObjects.put(dcObject.getObjectID(), newRef);</span>
+<span class="nc" id="L116">	}</span>
+
+	/**
+	 * Add object into Heap. This function can be different in EE or client. Therefore, it is abstract.
+	 * @param dcObject
+	 *            the object to add
+	 */
+	public abstract void addToHeap(final DataClayObject dcObject);
+
+	/**
+	 * Remove reference from Heap. Even if we remove it from the heap, the object won't be Garbage collected by JavaGC till
+	 *        HeapManager flushes the object and releases it.
+	 * @param objectID
+	 *            ID of the object
+	 */
+	public final void removeFromHeap(final ObjectID objectID) {
+<span class="nc" id="L132">		this.inmemoryObjects.remove(objectID);</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L134">			logger.debug(&quot;[==Heap==] Removed from Heap &quot; + objectID);</span>
+		}
+<span class="nc" id="L136">	}</span>
+
+	/**
+	 * Check if there is an object with ID provided.
+	 * @param objectID
+	 *            ID of the object.
+	 * @return TRUE if exists in memory. FALSE otherwise.
+	 */
+	public final boolean existsObject(final ObjectID objectID) {
+<span class="nc" id="L145">		return this.inmemoryObjects.containsKey(objectID);</span>
+	}
+
+	/**
+	 * Get number of objects in memory.
+	 * @return Number of objects in memory.
+	 */
+	public final int heapSize() {
+<span class="nc" id="L153">		return this.inmemoryObjects.size();</span>
+	}
+
+	/**
+	 * Flush all objects in Heap.
+	 */
+	public abstract void flushAll();
+
+	/**
+	 * Update an objectID.
+	 * 
+	 * @param oldObjectID
+	 *            ID of the object to be updated.
+	 * @param newObjectID
+	 *            new ID of the object.
+	 */
+	public void updateObjectID(final ObjectID oldObjectID, final ObjectID newObjectID) {
+<span class="nc" id="L170">		inmemoryObjects.put(newObjectID, inmemoryObjects.remove(oldObjectID));</span>
+<span class="nc" id="L171">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

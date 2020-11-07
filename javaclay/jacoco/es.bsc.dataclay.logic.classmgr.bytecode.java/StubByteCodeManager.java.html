@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StubByteCodeManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java</a> &gt; <span class="el_source">StubByteCodeManager.java</span></div><h1>StubByteCodeManager.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.java;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassWriter;
+
+import es.bsc.dataclay.logic.classmgr.ClassManager;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.headers.ClassHeaderTransformer;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.writer.DataClayClassWriter;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Property;
+import es.bsc.dataclay.util.management.classmgr.UserType;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.reflection.Reflector;
+import javassist.Modifier;
+
+/**
+ * This class is responsible to manage bytecode of stubs (create stubs).
+ * 
+ */
+public final class StubByteCodeManager {
+
+	/** Tab. */
+	private static final String TAB = &quot;    &quot;;
+
+	/** Line separator. */
+<span class="nc" id="L31">	private static final String LINE_SEP = System.getProperty(&quot;line.separator&quot;);</span>
+
+	/**
+	 * Default constructor for this Utility Class.
+	 */
+	private StubByteCodeManager() {
+
+	}
+
+	/**
+	 * Generates a Java bytecode stub corresponding to the MetaClass provided using the Stub info specified.
+	 * @param metaclass
+	 *            MetaClass from which to generate the stub
+	 * @param mClassStubInfo
+	 *            Information the stub must have
+	 * @param classMgrRef
+	 *            Reference to class manager
+	 * @param accessedClasses Accessed classes of the class
+	 * @return An array of bytes representing the stub of the MetaClass provided.
+	 */
+	public static synchronized byte[] generateJavaStub(final MetaClass metaclass, 
+			final StubInfo mClassStubInfo, 
+			final List&lt;MetaClass&gt; accessedClasses, 
+			final ClassManager classMgrRef) {
+
+		// Prepare a map of includes for the writer just in case 
+<span class="nc" id="L57">		final Map&lt;String, MetaClass&gt; allIncludes = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">		for (final MetaClass accClass : accessedClasses) { </span>
+<span class="nc" id="L59">			allIncludes.put(accClass.getName(), accClass);</span>
+<span class="nc" id="L60">		}</span>
+<span class="nc bnc" id="L61" title="All 2 branches missed.">		final boolean parentIsObject = metaclass.getParentType() == null;</span>
+<span class="nc" id="L62">		final String classDesc = Reflector.getDescriptorFromTypeName(metaclass.getName());</span>
+		
+		// Write new bytecode of stub 
+<span class="nc" id="L65">		final DataClayClassWriter classWriter = new DataClayClassWriter(ClassWriter.COMPUTE_FRAMES, </span>
+				classMgrRef, allIncludes, false);
+		
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (Modifier.isInterface(metaclass.getJavaClassInfo().getModifier())) { </span>
+<span class="nc" id="L69">			final ClassReader classReader = new ClassReader(metaclass.getJavaClassInfo().getClassByteCode());</span>
+<span class="nc" id="L70">			classReader.accept(classWriter, ClassReader.EXPAND_FRAMES);		</span>
+<span class="nc" id="L71">		} else {</span>
+<span class="nc" id="L72">			final DataClayClassTransformer stubClassVisitor = new DataClayClassTransformer(classWriter,</span>
+					metaclass, mClassStubInfo, false);
+<span class="nc" id="L74">			final ClassHeaderTransformer headerTransformer = new ClassHeaderTransformer(stubClassVisitor, </span>
+					classDesc, false, parentIsObject, new HashMap&lt;String, String&gt;());
+<span class="nc" id="L76">			final ClassReader classReader = new ClassReader(metaclass.getJavaClassInfo().getClassByteCode());</span>
+<span class="nc" id="L77">			classReader.accept(headerTransformer, ClassReader.EXPAND_FRAMES);		</span>
+		}
+<span class="nc" id="L79">		final byte[] newByteCode = classWriter.toByteArray();		</span>
+		
+<span class="nc" id="L81">		return newByteCode;</span>
+	}
+
+	/**
+	 * Given a DataClay Type this function returns the namespace containing the type.
+	 * If the type is a user type then NAMESPACE and a final &quot;.&quot; is returned, an empty string otherwise.
+	 * @param t		The DataClay Type
+	 * @return	An string containing the type's namespace and a final dot, or an empty string otherwise.
+	 */
+	private static String getNamespaceFromType(final es.bsc.dataclay.util.management.classmgr.Type t) {
+<span class="nc" id="L91">		String typename = &quot;&quot;;</span>
+<span class="nc" id="L92">		final String desc = t.getDescriptor();</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">		if (desc.startsWith(&quot;[&quot;)) {</span>
+			// Array, get component type 
+<span class="nc" id="L95">			final es.bsc.dataclay.util.management.classmgr.Type compType = t.getIncludes().iterator().next();</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">			if (compType instanceof UserType) {</span>
+<span class="nc" id="L97">				final UserType utype = (UserType) compType;</span>
+<span class="nc" id="L98">				final String propNamespace = utype.getNamespace();</span>
+<span class="nc" id="L99">				typename = propNamespace + &quot;.&quot;;</span>
+			}
+<span class="nc" id="L101">		} else {</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">			if (t instanceof UserType) {</span>
+<span class="nc" id="L103">				final UserType utype = (UserType) t;</span>
+<span class="nc" id="L104">				final String propNamespace = utype.getNamespace();</span>
+<span class="nc" id="L105">				typename = propNamespace + &quot;.&quot;;</span>
+			}
+		}
+<span class="nc" id="L108">		return typename;</span>
+	}
+
+	/**
+	 * Generate stub aspect
+	 * @param metaclass
+	 *            Class of the stub
+	 * @param forExec
+	 *            Indicates if aspects are for execution environment
+	 * @param classMgrRef
+	 *            Reference to class Manager.
+	 * @return Serialized string representing the aspect
+	 */
+	public static synchronized byte[] generateStubAspect(final MetaClass metaclass,
+			final boolean forExec, final ClassManager classMgrRef) {
+<span class="nc" id="L123">		final StringBuilder strBuffer = new StringBuilder();</span>
+<span class="nc" id="L124">		String className = metaclass.getName();</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		if (forExec) {</span>
+<span class="nc" id="L126">			className = metaclass.getNamespace() + &quot;.&quot; + metaclass.getName();</span>
+		}
+<span class="nc" id="L128">		final String[] classPackages = className.split(&quot;\\.&quot;);</span>
+<span class="nc" id="L129">		String classPckage = null;</span>
+<span class="nc" id="L130">		String actualClassName = className;</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (classPackages.length &gt; 1) {</span>
+<span class="nc" id="L132">			classPckage = classPackages[0];</span>
+<span class="nc" id="L133">			actualClassName = classPackages[classPackages.length - 1];</span>
+		}
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		for (int i = 1; i &lt; classPackages.length - 1; ++i) {</span>
+<span class="nc" id="L136">			classPckage = classPckage + &quot;.&quot; + classPackages[i];</span>
+		}
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		if (classPckage != null) {</span>
+<span class="nc" id="L139">			strBuffer.append(&quot;package &quot; + classPckage + &quot;;&quot; + LINE_SEP);</span>
+		}
+
+<span class="nc" id="L142">		strBuffer.append(&quot;public aspect &quot; + actualClassName + &quot;Aspect {&quot; + LINE_SEP);</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		for (final Property prop : metaclass.getProperties()) {</span>
+<span class="nc" id="L144">			String typename = </span>
+<span class="nc" id="L145">					Reflector.getTypeNameFromSignatureOrDescriptor(prop.getType().getDescriptor()).replace(&quot;$&quot;, &quot;.&quot;);</span>
+<span class="nc" id="L146">			final String javaDesc = prop.getType().getDescriptor();</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">			if (forExec) { </span>
+<span class="nc" id="L148">				typename = getNamespaceFromType(prop.getType()) + typename;</span>
+			}
+
+<span class="nc" id="L151">			final String fieldName = prop.getName();</span>
+<span class="nc" id="L152">			final String fullFieldName = className + &quot;.&quot; + fieldName;</span>
+
+<span class="nc" id="L154">			final String setField = &quot;.$$set&quot; + fieldName;</span>
+<span class="nc" id="L155">			final String getField = &quot;.$$get&quot; + fieldName;</span>
+
+<span class="nc" id="L157">			final String withinGetter = &quot;!withincode(* &quot; + className + getField + &quot;()) &quot;;</span>
+<span class="nc" id="L158">			final String withinSetter = &quot;!withincode(void &quot; + className + setField + &quot;(..)) &quot;;</span>
+
+			// Before set
+<span class="nc" id="L161">			strBuffer.append(TAB + &quot;pointcut &quot; + fieldName + &quot;SetPC(): &quot; + withinSetter + &quot; &amp;&amp; !withincode(void &quot; + className</span>
+					+ &quot;.serialize*(..))&quot; + &quot; &amp;&amp; !withincode(void &quot; + className + &quot;.deserialize*(..))&quot; + &quot; &amp;&amp; set(* &quot;
+					+ &quot; &quot; + fullFieldName + &quot;);&quot; + LINE_SEP);
+<span class="nc" id="L164">			strBuffer.append(TAB + &quot;void around(&quot; + className + &quot; instance, &quot; + typename + &quot; newval): &quot;</span>
+					+ fieldName + &quot;SetPC() &quot;
+					+ &quot;&amp;&amp; args(newval)  &amp;&amp; target(instance) { &quot;);
+<span class="nc" id="L167">			strBuffer.append(&quot;instance&quot; + setField + &quot;(newval);&quot; + LINE_SEP);</span>
+
+<span class="nc bnc" id="L169" title="All 4 branches missed.">			if (forExec &amp;&amp; !Reflector.isJavaPrimitiveOrArraySignature(javaDesc)</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">					&amp;&amp; !javaDesc.contains(&quot;[&quot;)) {</span>
+<span class="nc" id="L171">				strBuffer.append(&quot;instance.checkVolatile(newval);&quot;);</span>
+			}
+<span class="nc" id="L173">			strBuffer.append(&quot;}&quot; + LINE_SEP);</span>
+
+			// Before get
+<span class="nc" id="L176">			strBuffer.append(TAB + &quot;pointcut &quot; + fieldName + &quot;GetPC(): &quot; + withinGetter + &quot; &amp;&amp; !withincode(void &quot; + className</span>
+					+ &quot;.serialize*(..))&quot; + &quot; &amp;&amp; !withincode(void &quot; + className + &quot;.deserialize*(..))&quot; + &quot; &amp;&amp; get(* &quot;
+					+ &quot; &quot; + fullFieldName + &quot;);&quot; + LINE_SEP);
+
+<span class="nc" id="L180">			strBuffer.append(TAB);</span>
+<span class="nc" id="L181">			strBuffer.append(typename + &quot; around(&quot; + className + &quot; instance): &quot;</span>
+					+ fieldName + &quot;GetPC() &quot; + &quot; &amp;&amp; target(instance) { &quot;);
+<span class="nc" id="L183">			strBuffer.append(typename + &quot; val = instance&quot; + getField + &quot;(); &quot;);</span>
+<span class="nc" id="L184">			strBuffer.append(&quot;return val; &quot;);</span>
+<span class="nc" id="L185">			strBuffer.append(&quot;}&quot; + LINE_SEP);</span>
+
+<span class="nc" id="L187">		}</span>
+<span class="nc" id="L188">		strBuffer.append(&quot;}&quot; + LINE_SEP);</span>
+<span class="nc" id="L189">		final String aspect = strBuffer.toString();</span>
+<span class="nc" id="L190">		final byte[] aspectBytes = aspect.getBytes();</span>
+<span class="nc" id="L191">		return aspectBytes;</span>
+
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

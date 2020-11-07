@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NewAccount.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">NewAccount.java</span></div><h1>NewAccount.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.tool.Util.ERRCODE;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.management.accountmgr.Account;
+import es.bsc.dataclay.util.management.accountmgr.AccountRole;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+
+<span class="nc" id="L11">public class NewAccount {</span>
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L13" title="All 2 branches missed.">		if (args.length != 2) {</span>
+<span class="nc" id="L14">			Util.finishErr(&quot;Bad arguments. Usage: \n\n &quot; + NewAccount.class.getSimpleName()</span>
+					+ &quot; &lt;newaccount_name&gt; &lt;newaccount_pass&gt; \n&quot;, ERRCODE.ERROR);
+<span class="nc" id="L16">			return;</span>
+		}
+		try {
+<span class="nc" id="L19">			Util.init();</span>
+
+<span class="nc" id="L21">			final String newAccName = args[0];</span>
+<span class="nc" id="L22">			final String newAccPass = args[1];</span>
+
+			// Get accounts info
+<span class="nc" id="L25">			final PasswordCredential newAccPassCred = new PasswordCredential(newAccPass);</span>
+<span class="nc" id="L26">			final Account newAccount = new Account(newAccName, AccountRole.NORMAL_ROLE, newAccPassCred);</span>
+<span class="nc" id="L27">			final AccountID newAccID = ClientManagementLib.newAccount(newAccount);</span>
+
+<span class="nc bnc" id="L29" title="All 2 branches missed.">			if (newAccID != null) {</span>
+<span class="nc" id="L30">				Util.finishOut(&quot;Account created for user &quot; + newAccName);</span>
+			} else {
+<span class="nc" id="L32">				Util.finishErr(&quot;Account &quot; + newAccName + &quot; already exists.&quot;, ERRCODE.WARNING);</span>
+			}
+<span class="nc" id="L34">		} catch (final Exception ex) {</span>
+<span class="nc" id="L35">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L36">		}</span>
+<span class="nc" id="L37">		System.exit(0); // Call this to finish logging threads</span>
+<span class="nc" id="L38">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

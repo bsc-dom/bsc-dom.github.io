@@ -1,0 +1,492 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JavaByteBuffer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.buffer</a> &gt; <span class="el_source">JavaByteBuffer.java</span></div><h1>JavaByteBuffer.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.buffer;
+
+
+import java.nio.BufferOverflowException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+
+import io.grpc.netty.shaded.io.netty.buffer.ByteBuf;
+
+
+/**
+ * Java byte buffer to be used while no communication is nedded.
+ */
+public final class JavaByteBuffer implements DataClayByteBuffer {
+
+	/** Java byte buffer. */
+	private ByteBuffer javaByteBuffer;
+
+	/** Initial capacity. */
+	private static final int INITIAL_CAPACITY = 4096;
+
+	/** Increase capacity. */
+	private static final int INCREASE_CAPACITY = 4096;
+
+	/**
+	 * Constructor used for decodification
+	 * @param newBuffer The byte array to deserialize
+	 */
+<span class="nc" id="L30">	public JavaByteBuffer(final byte[] newBuffer) {</span>
+<span class="nc" id="L31">		wrapBytes(newBuffer);</span>
+<span class="nc" id="L32">	}</span>
+
+	/**
+	 * Constructor used for codification
+	 */
+<span class="fc" id="L37">	public JavaByteBuffer() {</span>
+<span class="fc" id="L38">		javaByteBuffer = ByteBuffer.allocate(INITIAL_CAPACITY);</span>
+<span class="fc" id="L39">	}</span>
+	
+	@Override
+	public void rewind() { 
+<span class="fc" id="L43">		this.javaByteBuffer.rewind();</span>
+<span class="fc" id="L44">	}</span>
+
+	@Override
+	public void wrapBytes(final byte[] newBuffer) {
+<span class="nc" id="L48">		javaByteBuffer = ByteBuffer.wrap(newBuffer);</span>
+<span class="nc" id="L49">	}</span>
+	
+	@Override
+	public boolean isReadable() {
+<span class="nc bnc" id="L53" title="All 2 branches missed.">		return javaByteBuffer.remaining() &gt; 0;</span>
+	}
+
+	@Override
+	public int readableBytes() {
+<span class="nc" id="L58">		return javaByteBuffer.remaining();</span>
+	}
+
+	@Override
+	public int readerIndex() {
+<span class="nc" id="L63">		return javaByteBuffer.position();</span>
+	}
+
+	@Override
+	public int writerIndex() {
+<span class="nc" id="L68">		return javaByteBuffer.position();</span>
+	}
+
+	@Override
+	public void clear() {
+<span class="nc" id="L73">		javaByteBuffer.clear();</span>
+<span class="nc" id="L74">	}</span>
+	
+	@Override
+	public void setReaderIndex(final int index) {
+<span class="nc" id="L78">		javaByteBuffer.position(index);</span>
+<span class="nc" id="L79">	}</span>
+
+	@Override
+	public void setWriterIndex(final int index) {
+<span class="nc" id="L83">		javaByteBuffer.position(index);</span>
+<span class="nc" id="L84">	}</span>
+
+	@Override
+	public int maxCapacity() {
+<span class="nc" id="L88">		return javaByteBuffer.capacity();</span>
+	}
+
+	@Override
+	public void release() {
+
+<span class="nc" id="L94">	}</span>
+
+	@Override
+	public void increaseBufferSize(final int newBufferSize) {
+<span class="nc" id="L98">		final byte[] oldBytes = new byte[javaByteBuffer.position()];</span>
+<span class="nc" id="L99">		javaByteBuffer.rewind();</span>
+<span class="nc" id="L100">		javaByteBuffer.get(oldBytes);</span>
+<span class="nc" id="L101">		javaByteBuffer = ByteBuffer.allocate(javaByteBuffer.capacity() + newBufferSize);</span>
+<span class="nc" id="L102">		javaByteBuffer.put(oldBytes);</span>
+<span class="nc" id="L103">	}</span>
+
+	@Override
+	public void discardSomeReadBytes() {
+
+<span class="nc" id="L108">	}</span>
+
+	@Override
+	public ByteBuf getBuffer() {
+<span class="nc" id="L112">		throw new UnsupportedOperationException();</span>
+	}
+
+	@Override
+	public void setBuffer(final ByteBuf byteBuf) {
+<span class="nc" id="L117">		throw new UnsupportedOperationException();</span>
+	}
+
+
+	// ===== INTEGER ===== //
+
+	@Override
+	public byte[] getArray() {
+<span class="nc" id="L125">		final byte[] curBytes = new byte[javaByteBuffer.position()];</span>
+<span class="nc" id="L126">		javaByteBuffer.rewind();</span>
+<span class="nc" id="L127">		javaByteBuffer.get(curBytes);</span>
+<span class="nc" id="L128">		return curBytes;</span>
+	}
+
+	@Override
+	public void writeInt(final int value) {
+		try {
+<span class="fc" id="L134">			javaByteBuffer.putInt(value);</span>
+<span class="nc" id="L135">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L136">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L137">			javaByteBuffer.putInt(value);</span>
+<span class="fc" id="L138">		}</span>
+<span class="fc" id="L139">	}</span>
+
+	@Override
+	public int readInt() {
+<span class="fc" id="L143">		return javaByteBuffer.getInt();</span>
+	}
+	
+	@Override
+	public void writeVLQInt(final int value) {
+		try {
+<span class="nc" id="L149">			javaByteBuffer.putInt(value);</span>
+<span class="nc" id="L150">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L151">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L152">			javaByteBuffer.putInt(value);</span>
+<span class="nc" id="L153">		}</span>
+<span class="nc" id="L154">	}</span>
+	
+	@Override
+	public int readVLQInt() {
+<span class="nc" id="L158">		return javaByteBuffer.getInt();</span>
+	}
+
+
+	// ==== BYTE ==== //
+
+	@Override
+	public void writeInts(final int[] values) {
+<span class="fc bfc" id="L166" title="All 2 branches covered.">		for (final int value : values) {</span>
+<span class="fc" id="L167">			writeInt(value);</span>
+		}
+<span class="fc" id="L169">	}</span>
+
+	@Override
+	public int[] readInts(final int size) {
+<span class="fc" id="L173">		final int[] result = new int[size];</span>
+<span class="fc bfc" id="L174" title="All 2 branches covered.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="fc" id="L175">			result[i] = readInt();</span>
+		}
+<span class="fc" id="L177">		return result;</span>
+	}
+
+	@Override
+	public void writeByte(final byte value) {
+		try {
+<span class="fc" id="L183">			javaByteBuffer.put(value);</span>
+<span class="nc" id="L184">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L185">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L186">			javaByteBuffer.put(value);</span>
+<span class="fc" id="L187">		}</span>
+
+<span class="fc" id="L189">	}</span>
+
+	@Override
+	public byte readByte() {
+<span class="fc" id="L193">		return javaByteBuffer.get();</span>
+	}
+
+	@Override
+	public void writeBytes(final byte[] values) {
+		
+		try {
+<span class="fc" id="L200">			javaByteBuffer.put(values);</span>
+<span class="nc" id="L201">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L202">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L203">			javaByteBuffer.put(values);</span>
+<span class="fc" id="L204">		}</span>
+<span class="fc" id="L205">	}</span>
+
+	@Override
+	public void writeBytes(final DataClayByteBuffer binBuffer) {
+<span class="nc" id="L209">		throw new UnsupportedOperationException();</span>
+	}
+
+	@Override
+	public void readBytes(final byte[] values) {
+<span class="fc" id="L214">		javaByteBuffer.get(values);</span>
+<span class="fc" id="L215">	}</span>
+
+	// ===== LONG ===== //
+
+	@Override
+	public void writeLong(final long value) {
+		try {
+<span class="fc" id="L222">			javaByteBuffer.putLong(value);</span>
+<span class="nc" id="L223">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L224">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L225">			javaByteBuffer.putLong(value);</span>
+<span class="fc" id="L226">		}</span>
+<span class="fc" id="L227">	}</span>
+
+	@Override
+	public long readLong() {
+<span class="fc" id="L231">		return javaByteBuffer.getLong();</span>
+	}
+
+	@Override
+	public void writeLongs(final long[] values) {
+<span class="fc bfc" id="L236" title="All 2 branches covered.">		for (final long value : values) {</span>
+<span class="fc" id="L237">			writeLong(value);</span>
+		}
+
+<span class="fc" id="L240">	}</span>
+
+	@Override
+	public long[] readLongs(final int size) {
+<span class="fc" id="L244">		final long[] result = new long[size];</span>
+<span class="fc bfc" id="L245" title="All 2 branches covered.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="fc" id="L246">			result[i] = readLong();</span>
+		}
+<span class="fc" id="L248">		return result;</span>
+	}
+
+	@Override
+	public byte[] readBytes(final int size) {
+<span class="fc" id="L253">		final byte[] result = new byte[size];</span>
+<span class="fc" id="L254">		javaByteBuffer.get(result);</span>
+<span class="fc" id="L255">		return result;</span>
+	}
+
+	@Override
+	public void writeFloat(final float value) {
+		try {
+<span class="fc" id="L261">			javaByteBuffer.putFloat(value);</span>
+<span class="nc" id="L262">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L263">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L264">			javaByteBuffer.putFloat(value);</span>
+<span class="fc" id="L265">		}</span>
+<span class="fc" id="L266">	}</span>
+
+	@Override
+	public float readFloat() {
+<span class="fc" id="L270">		return javaByteBuffer.getFloat();</span>
+	}
+
+	@Override
+	public void writeFloats(final float[] values) {
+
+<span class="fc bfc" id="L276" title="All 2 branches covered.">		for (final float value : values) {</span>
+<span class="fc" id="L277">			writeFloat(value);</span>
+		}
+<span class="fc" id="L279">	}</span>
+
+	@Override
+	public float[] readFloats(final int size) {
+<span class="fc" id="L283">		final float[] result = new float[size];</span>
+<span class="fc bfc" id="L284" title="All 2 branches covered.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="fc" id="L285">			result[i] = readFloat();</span>
+		}
+<span class="fc" id="L287">		return result;</span>
+	}
+
+	@Override
+	public void writeDouble(final double value) {
+		try {
+<span class="fc" id="L293">			javaByteBuffer.putDouble(value);</span>
+<span class="nc" id="L294">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L295">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L296">			javaByteBuffer.putDouble(value);</span>
+<span class="fc" id="L297">		}</span>
+
+<span class="fc" id="L299">	}</span>
+
+	@Override
+	public double readDouble() {
+<span class="fc" id="L303">		return javaByteBuffer.getDouble();</span>
+	}
+
+	@Override
+	public void writeDoubles(final double[] values) {
+
+<span class="nc bnc" id="L309" title="All 2 branches missed.">		for (final double value : values) {</span>
+<span class="nc" id="L310">			writeDouble(value);</span>
+		}
+<span class="nc" id="L312">	}</span>
+
+	@Override
+	public double[] readDoubles(final int size) {
+<span class="nc" id="L316">		final double[] result = new double[size];</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="nc" id="L318">			result[i] = readDouble();</span>
+		}
+<span class="nc" id="L320">		return result;</span>
+	}
+
+	@Override
+	public void writeBoolean(final boolean value) {		
+<span class="fc" id="L325">		byte boolToByte = 0;</span>
+<span class="pc bpc" id="L326" title="1 of 2 branches missed.">		if (value) {</span>
+<span class="nc" id="L327">			boolToByte = 1;</span>
+		}
+<span class="fc" id="L329">		writeByte(boolToByte);</span>
+
+<span class="fc" id="L331">	}</span>
+
+	@Override
+	public boolean readBoolean() {
+<span class="fc" id="L335">		final byte result = readByte();</span>
+<span class="pc bpc" id="L336" title="1 of 2 branches missed.">		return result == 1;</span>
+	}
+
+	@Override
+	public void writeBooleans(final boolean[] values) {
+
+<span class="fc" id="L342">		final byte[] boolsToByte = new byte[values.length];</span>
+<span class="fc bfc" id="L343" title="All 2 branches covered.">		for (int i = 0; i &lt; values.length; ++i) {</span>
+<span class="fc bfc" id="L344" title="All 2 branches covered.">			if (values[i]) {</span>
+<span class="fc" id="L345">				boolsToByte[i] = 1;</span>
+			} else {
+<span class="fc" id="L347">				boolsToByte[i] = 0;</span>
+			}
+		}
+<span class="fc" id="L350">		writeBytes(boolsToByte);</span>
+<span class="fc" id="L351">	}</span>
+
+	@Override
+	public boolean[] readBooleans(final int size) {
+<span class="fc" id="L355">		final byte[] readBytes = readBytes(size);</span>
+<span class="fc" id="L356">		final boolean[] result = new boolean[size];</span>
+<span class="fc bfc" id="L357" title="All 2 branches covered.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="fc bfc" id="L358" title="All 2 branches covered.">			if (readBytes[i] == 0) {</span>
+<span class="fc" id="L359">				result[i] = false;</span>
+			} else {
+<span class="fc" id="L361">				result[i] = true;</span>
+			}
+		}
+<span class="fc" id="L364">		return result;</span>
+	}
+
+	@Override
+	public void writeChar(final char value) {
+		try {
+<span class="fc" id="L370">			javaByteBuffer.putChar(value);</span>
+<span class="nc" id="L371">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L372">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L373">			javaByteBuffer.putChar(value);</span>
+<span class="fc" id="L374">		}</span>
+
+<span class="fc" id="L376">	}</span>
+
+	@Override
+	public char readChar() {
+<span class="fc" id="L380">		return javaByteBuffer.getChar();</span>
+	}
+
+	@Override
+	public void writeChars(final char[] values) {
+
+<span class="fc bfc" id="L386" title="All 2 branches covered.">		for (final char value : values) {</span>
+<span class="fc" id="L387">			writeChar(value);</span>
+		}
+<span class="fc" id="L389">	}</span>
+
+	@Override
+	public char[] readChars(final int size) {
+<span class="fc" id="L393">		final char[] result = new char[size];</span>
+<span class="fc bfc" id="L394" title="All 2 branches covered.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="fc" id="L395">			result[i] = readChar();</span>
+		}
+<span class="fc" id="L397">		return result;</span>
+	}
+
+	@Override
+	public void writeShort(final short value) {
+		try {
+<span class="fc" id="L403">			javaByteBuffer.putShort(value);</span>
+<span class="nc" id="L404">		} catch (final BufferOverflowException e) { </span>
+<span class="nc" id="L405">			this.increaseBufferSize(INCREASE_CAPACITY);</span>
+<span class="nc" id="L406">			javaByteBuffer.putShort(value);</span>
+<span class="fc" id="L407">		}</span>
+
+<span class="fc" id="L409">	}</span>
+
+	@Override
+	public short readShort() {
+<span class="fc" id="L413">		return javaByteBuffer.getShort();</span>
+	}
+
+	@Override
+	public void writeShorts(final short[] values) {
+
+<span class="fc bfc" id="L419" title="All 2 branches covered.">		for (final short value : values) {</span>
+<span class="fc" id="L420">			writeShort(value);</span>
+		}
+
+<span class="fc" id="L423">	}</span>
+
+	@Override
+	public short[] readShorts(final int size) {
+<span class="fc" id="L427">		final short[] result = new short[size];</span>
+<span class="fc bfc" id="L428" title="All 2 branches covered.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="fc" id="L429">			result[i] = readShort();</span>
+		}
+<span class="fc" id="L431">		return result;</span>
+	}
+
+	@Override
+	public void writeString(final String value) {
+<span class="fc" id="L436">		writeInt(value.getBytes(StandardCharsets.UTF_16BE).length);</span>
+<span class="fc" id="L437">		writeBytes(value.getBytes(StandardCharsets.UTF_16BE));</span>
+<span class="fc" id="L438">	}</span>
+
+	@Override
+	public String readString() {
+<span class="fc" id="L442">		final int length = readInt();</span>
+<span class="fc" id="L443">		final byte[] bytes = readBytes(length);</span>
+<span class="fc" id="L444">		return new String(bytes, StandardCharsets.UTF_16BE);</span>
+	}
+
+	@Override
+	public void writeStrings(final String[] values) {
+
+<span class="fc bfc" id="L450" title="All 2 branches covered.">		for (final String value : values) {</span>
+<span class="fc" id="L451">			writeString(value);</span>
+		}
+<span class="fc" id="L453">	}</span>
+
+	@Override
+	public String[] readStrings(final int size) {
+<span class="fc" id="L457">		final String[] result = new String[size];</span>
+<span class="fc bfc" id="L458" title="All 2 branches covered.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="fc" id="L459">			result[i] = readString();</span>
+		}
+<span class="fc" id="L461">		return result;</span>
+	}
+
+	@Override
+	public void writeByteArray(final byte[] value) {
+<span class="nc" id="L466">		writeInt(value.length);</span>
+<span class="nc" id="L467">		writeBytes(value);</span>
+<span class="nc" id="L468">	}</span>
+
+	@Override
+	public byte[] readByteArray() {
+<span class="nc" id="L472">		final int length = readInt();</span>
+<span class="nc" id="L473">		return readBytes(length);</span>
+	}
+
+	@Override
+	public void writeByteArrays(final byte[][] values) {
+<span class="nc bnc" id="L478" title="All 2 branches missed.">		for (final byte[] value : values) {</span>
+<span class="nc" id="L479">			writeByteArray(value);</span>
+		}
+<span class="nc" id="L481">	}</span>
+
+	@Override
+	public byte[][] readByteArrays(final int size) {
+<span class="nc" id="L485">		final byte[][] result = new byte[size][];</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="nc" id="L487">			result[i] = readByteArray();</span>
+		}
+<span class="nc" id="L489">		return result;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

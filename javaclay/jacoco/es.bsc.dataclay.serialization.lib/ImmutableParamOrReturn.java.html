@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableParamOrReturn.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.lib</a> &gt; <span class="el_source">ImmutableParamOrReturn.java</span></div><h1>ImmutableParamOrReturn.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.lib;
+
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.serialization.DataClaySerializable;
+import es.bsc.dataclay.serialization.buffer.DataClayByteArray;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.java.DataClayJavaWrapper;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.ids.MetaClassID;
+
+/**
+ * Language-dependant params or returns.
+ */
+public final class ImmutableParamOrReturn implements DataClaySerializable {
+
+	// CHECKSTYLE:OFF
+
+	/** Wrapper including Java object. */
+	protected DataClayJavaWrapper wrapper;
+
+	/** Array of serialized bytes of object. */
+	protected DataClayByteArray serializedBytes;
+
+	// CHECKSTYLE:ON
+
+	/**
+	 * For yaml serialization.
+	 */
+<span class="nc" id="L35">	public ImmutableParamOrReturn() {</span>
+
+<span class="nc" id="L37">	}</span>
+
+	/**
+	 * Constructor
+	 * @param thewrapper
+	 *            Wrapper containing Java object.
+	 */
+<span class="nc" id="L44">	public ImmutableParamOrReturn(final DataClayJavaWrapper thewrapper) {</span>
+<span class="nc" id="L45">		wrapper = thewrapper;</span>
+<span class="nc" id="L46">	}</span>
+
+	/**
+	 * Constructor
+	 * @param thebytes
+	 *            Bytes of language object
+	 */
+<span class="nc" id="L53">	public ImmutableParamOrReturn(final DataClayByteArray thebytes) {</span>
+<span class="nc" id="L54">		this.serializedBytes = thebytes;</span>
+<span class="nc" id="L55">	}</span>
+
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+		// FORMAT: [ DATA ]
+<span class="nc" id="L62">		wrapper.serialize(dcBuffer, false, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L63">	}</span>
+
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata, final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+		// FORMAT: [ DATA ]
+<span class="nc" id="L69">		wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L70">	}</span>
+
+	/**
+	 * @param byteArray
+	 *            Serialized bytes
+	 */
+	public void setSerializedBytes(final DataClayByteArray byteArray) {
+<span class="nc" id="L77">		this.serializedBytes = byteArray;</span>
+<span class="nc" id="L78">	}</span>
+
+	/**
+	 * @return Serialized bytes
+	 */
+	public DataClayByteArray getSerializedBytes() {
+<span class="nc" id="L84">		return this.serializedBytes;</span>
+	}
+
+	/**
+	 * @return Wrapper
+	 */
+	public DataClayJavaWrapper getWrapper() {
+<span class="nc" id="L91">		return wrapper;</span>
+	}
+
+	/**
+	 * @param thewrapper
+	 *            the wrapper to set
+	 */
+	public void setWrapper(final DataClayJavaWrapper thewrapper) {
+<span class="nc" id="L99">		this.wrapper = thewrapper;</span>
+<span class="nc" id="L100">	}</span>
+	
+	public String toString() { 
+<span class="nc" id="L103">		StringBuilder strb = new StringBuilder();</span>
+<span class="nc" id="L104">		strb.append(&quot;DATA = &quot; + serializedBytes + &quot;\n&quot;);</span>
+<span class="nc" id="L105">		return strb.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Util.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">Util.java</span></div><h1>Util.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+
+/**
+ * Class with util methods for Tool operations
+ */
+<span class="nc" id="L13">public class Util {</span>
+		
+
+	public static final String ANSI_RESET = &quot;\u001B[0m&quot;;
+	public static final String ANSI_BLACK = &quot;\u001B[30m&quot;;
+	public static final String ANSI_RED = &quot;\u001B[31m&quot;;
+	public static final String ANSI_GREEN = &quot;\u001B[32m&quot;;
+	public static final String ANSI_YELLOW = &quot;\u001B[33m&quot;;
+	public static final String ANSI_BLUE = &quot;\u001B[34m&quot;;
+	public static final String ANSI_PURPLE = &quot;\u001B[35m&quot;;
+	public static final String ANSI_CYAN = &quot;\u001B[36m&quot;;
+	public static final String ANSI_WHITE = &quot;\u001B[37m&quot;;
+	public static final String ANSI_BOLD = &quot;\u001B[1m&quot;;
+
+	/**
+	 * Types of datasets
+	 */
+<span class="nc" id="L30">	public enum DATASETTYPES {</span>
+<span class="nc" id="L31">		PUBLIC(&quot;public&quot;), PRIVATE(&quot;private&quot;);</span>
+
+		String type;
+
+		/**
+		 * Constructor
+		 * 
+		 * @param dsType
+		 *            current dataset type
+		 */
+<span class="nc" id="L41">		DATASETTYPES(final String dsType) {</span>
+<span class="nc" id="L42">			type = dsType;</span>
+<span class="nc" id="L43">		}</span>
+
+		/**
+		 * Get supported types of datasets.
+		 * 
+		 * @return a set of types of datasets
+		 */
+		static Set&lt;String&gt; getDatasetTypes() {
+<span class="nc" id="L51">			final Set&lt;String&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">			for (final DATASETTYPES dt : DATASETTYPES.values()) {</span>
+<span class="nc" id="L53">				result.add(dt.type);</span>
+			}
+<span class="nc" id="L55">			return result;</span>
+		}
+
+		/**
+		 * Get type of dataset from String
+		 * 
+		 * @param dsType
+		 *            type of dataset in String format
+		 * @return type of dataset in Enum format
+		 */
+		static DATASETTYPES getType(final String dsType) {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">			if (dsType.equalsIgnoreCase(PUBLIC.type)) {</span>
+<span class="nc" id="L67">				return PUBLIC;</span>
+			}
+<span class="nc bnc" id="L69" title="All 2 branches missed.">			if (dsType.equalsIgnoreCase(PRIVATE.type)) {</span>
+<span class="nc" id="L70">				return PRIVATE;</span>
+			}
+<span class="nc" id="L72">			return null;</span>
+		}
+	}
+
+	/**
+	 * Enum of supported Languages
+	 */
+<span class="nc" id="L79">	public enum LANGS {</span>
+<span class="nc" id="L80">		JAVA(&quot;java&quot;), PYTHON(&quot;python&quot;);</span>
+
+		String base;
+
+		/**
+		 * Base code name of the language
+		 * 
+		 * @param basename
+		 *            code name of the language
+		 */
+<span class="nc" id="L90">		LANGS(final String basename) {</span>
+<span class="nc" id="L91">			base = basename;</span>
+<span class="nc" id="L92">		}</span>
+
+		/**
+		 * Get language from its String code name representation
+		 * 
+		 * @param lang
+		 *            language code name
+		 * @return enum language type
+		 */
+		static Langs getLang(final String lang) {
+<span class="nc bnc" id="L102" title="All 2 branches missed.">			if (lang.equalsIgnoreCase(JAVA.base)) {</span>
+<span class="nc" id="L103">				return Langs.LANG_JAVA;</span>
+			}
+<span class="nc bnc" id="L105" title="All 2 branches missed.">			if (lang.equalsIgnoreCase(PYTHON.base)) {</span>
+<span class="nc" id="L106">				return Langs.LANG_PYTHON;</span>
+			}
+<span class="nc" id="L108">			return null;</span>
+		}
+
+		/**
+		 * Get base code name from enum language
+		 * 
+		 * @param lang
+		 *            enum language
+		 * @return string code name of the language
+		 */
+		static LANGS getBase(final Langs lang) {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">			if (lang.equals(Langs.LANG_JAVA)) {</span>
+<span class="nc" id="L120">				return JAVA;</span>
+			}
+<span class="nc bnc" id="L122" title="All 2 branches missed.">			if (lang.equals(Langs.LANG_PYTHON)) {</span>
+<span class="nc" id="L123">				return PYTHON;</span>
+			}
+<span class="nc" id="L125">			return null;</span>
+		}
+
+		/**
+		 * Get all supported languages
+		 * 
+		 * @return the set of supported languages (string code names)
+		 */
+		static Set&lt;String&gt; getSupported() {
+<span class="nc" id="L134">			final Set&lt;String&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			for (final LANGS l : LANGS.values()) {</span>
+<span class="nc" id="L136">				result.add(l.base);</span>
+			}
+<span class="nc" id="L138">			return result;</span>
+		}
+	}
+
+	/**
+	 * Error types
+	 */
+<span class="nc" id="L145">	public enum ERRCODE {</span>
+<span class="nc" id="L146">		NOERROR(0, &quot;&quot;), WARNING(1, &quot; *WARNING* &quot;), ERROR(-1, &quot; *ERROR* &quot;);</span>
+
+		public String prio;
+		public int code;
+
+		/**
+		 * Constructor
+		 * 
+		 * @param newcode
+		 *            error code
+		 * @param newpref
+		 *            error priority
+		 */
+<span class="nc" id="L159">		ERRCODE(final int newcode, final String newpref) {</span>
+<span class="nc" id="L160">			code = newcode;</span>
+<span class="nc" id="L161">			prio = newpref;</span>
+<span class="nc" id="L162">		}</span>
+	}
+
+<span class="nc" id="L165">	public static boolean initialized = false;</span>
+
+	/**
+	 * Init dataClay connection
+	 * 
+	 * @throws Exception
+	 *             if an unexpected error occurs
+	 */
+	public static void init() throws Exception {
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		if (!ClientManagementLib.initializeCMLib(null)) {</span>
+<span class="nc" id="L175">			finishErr(&quot;Unable to connect with dataClay&quot;, ERRCODE.ERROR);</span>
+		}
+<span class="nc" id="L177">		initialized = true;</span>
+<span class="nc" id="L178">	}</span>
+
+	/**
+	 * Finalize dataClay connection and prints message
+	 * 
+	 * @param msg
+	 *            message to be printed
+	 * @throws Exception
+	 *             if an unexpected error occurs
+	 */
+	public static void finishOut(final String msg) throws Exception {
+<span class="nc bnc" id="L189" title="All 2 branches missed.">		if (initialized) {</span>
+<span class="nc" id="L190">			ClientManagementLib.finishConnections();</span>
+<span class="nc" id="L191">			initialized = false;</span>
+		}
+<span class="nc" id="L193">		System.out.println(ANSI_BOLD + &quot; &quot; + ANSI_BLUE + &quot;[dataClay] &quot; + msg + ANSI_RESET);</span>
+<span class="nc" id="L194">	}</span>
+
+	/**
+	 * Finalize dataClay connection and prints error message
+	 * 
+	 * @param msg
+	 *            error message
+	 * @param exitcode
+	 *            error code
+	 * @throws Exception
+	 *             if an unexpected error occurs
+	 */
+	public static void finishErr(final String msg, final ERRCODE exitcode) throws Exception {
+<span class="nc bnc" id="L207" title="All 2 branches missed.">		if (initialized) {</span>
+<span class="nc" id="L208">			ClientManagementLib.finishConnections();</span>
+<span class="nc" id="L209">			initialized = false;</span>
+		}
+<span class="nc" id="L211">		System.err.println(ANSI_BOLD + &quot; &quot; + ANSI_RED + &quot;[dataClay] &quot; + exitcode.prio + msg + ANSI_RESET);</span>
+<span class="nc" id="L212">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

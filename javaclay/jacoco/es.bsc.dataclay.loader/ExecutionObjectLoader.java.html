@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExecutionObjectLoader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.loader</a> &gt; <span class="el_source">ExecutionObjectLoader.java</span></div><h1>ExecutionObjectLoader.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.loader;
+
+import java.util.Map;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.api.BackendID;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.commonruntime.DataServiceRuntime;
+import es.bsc.dataclay.communication.grpc.Utils;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages;
+import es.bsc.dataclay.serialization.lib.DataClayDeserializationLib;
+import es.bsc.dataclay.serialization.lib.ObjectWithDataParamOrReturn;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.classloaders.DataClayClassLoaderSrv;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * This class is responsable to create DataClayObjects and load them with data
+ * coming from different resources. All possible constructions of DataClayObject
+ * should be included here. All possible &quot;filling instance&quot; use-cases should be
+ * managed here.
+ * 
+ *
+ */
+public class ExecutionObjectLoader extends DataClayObjectLoader {
+
+	/** Runtime being managed. **/
+	private final DataServiceRuntime runtime;
+
+	/**
+	 * Constructor
+	 * 
+	 * @param theruntime
+	 *            Runtime being managed
+	 */
+<span class="nc" id="L39">	public ExecutionObjectLoader(final DataServiceRuntime theruntime) {</span>
+<span class="nc" id="L40">		this.runtime = theruntime;</span>
+<span class="nc" id="L41">	}</span>
+
+	@Override
+	protected DataClayRuntime getRuntime() {
+<span class="nc" id="L45">		return runtime;</span>
+	}
+
+	@Override
+	public DataClayExecutionObject newInstance(final MetaClassID classID, final ObjectID objectID) {
+<span class="nc" id="L50">		logger.debug(&quot;New instance {}&quot;, objectID);</span>
+<span class="nc" id="L51">		return (DataClayExecutionObject) DataClayClassLoaderSrv.newInstance(classID, objectID);</span>
+	}
+
+	/**
+	 * Check if instance exists in objects map or create a new PERSISTENT instance
+	 * if needed
+	 * 
+	 * @param classID
+	 *            ID of the class in case it is needed (not need to query) if null,
+	 *            look for class id in metadata.
+	 * @param objectID
+	 *            ID of object
+	 * @param hint
+	 *            Can be null. Hint in case object is a volatile in another DS and
+	 *            we need information.
+	 * @return Instance
+	 */
+	@Override
+	public DataClayExecutionObject getOrNewPersistentInstance(final MetaClassID classID, final ObjectID objectID,
+			final BackendID hint) {
+<span class="nc" id="L71">		return (DataClayExecutionObject) super.getOrNewPersistentInstance(classID, objectID, hint);</span>
+	}
+
+	/**
+	 * Deserialize data into instance.
+	 * 
+	 * @param instance
+	 *            Instance to be filled.
+	 * @param data
+	 *            Data
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps
+	 */
+	public void deserializeDataIntoInstance(final DataClayObject instance, final ObjectWithDataParamOrReturn data,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps) {
+<span class="nc" id="L86">		DataClayDeserializationLib.deserializeObjectWithData(data, (DataClayExecutionObject) instance, ifaceBitMaps,</span>
+<span class="nc" id="L87">				runtime, runtime.getSessionID(), true);</span>
+<span class="nc" id="L88">	}</span>
+
+	/**
+	 * Get from DB and deserialize into instance
+	 * 
+	 * @param objectToFill
+	 *            Instance
+	 */
+	private void getFromDBAndFill(final DataClayExecutionObject objectToFill) {
+<span class="nc" id="L97">		final ObjectID objectID = objectToFill.getObjectID();</span>
+<span class="nc" id="L98">		final byte[] objectBytes = runtime.dsRef.getLocal(objectID);</span>
+<span class="nc" id="L99">		DataClayDeserializationLib.deserializeObjectFromDBBytes(objectToFill, objectBytes, runtime);</span>
+<span class="nc" id="L100">		objectToFill.setHint(runtime.getHint());</span>
+<span class="nc" id="L101">	}</span>
+
+	/**
+	 * Get object from memory or database and WAIT in case we are still waiting for
+	 * it to be persisted.
+	 * 
+	 * @param objectID
+	 *            ID of the object to get
+	 * @param retry
+	 *            Indicates if we should retry and wait.
+	 * @return The the object.
+	 */
+	public DataClayExecutionObject getOrNewPersistentInstanceFromDB(final ObjectID objectID, final boolean retry) {
+
+		// Retry while object is not 'registered' (not talking about 'stored'!)
+		// IMPORTANT: This is different than waiting for an object to be stored
+		// If the object is not registered we still do not know the class id of the
+		// instance
+		// in which to load the bytes.
+		// Due to concurrency we should read bytes and deserialize and unlock.
+		// Therefore there is Two waiting loops. (can we do it better?, more locking?)
+<span class="nc" id="L122">		boolean obtained = false;</span>
+<span class="nc" id="L123">		long curTimeWait = 0;</span>
+<span class="nc" id="L124">		DataClayExecutionObject instance = null;</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">		while (!obtained) {</span>
+<span class="nc" id="L126">			runtime.lock(objectID);</span>
+			try {
+<span class="nc" id="L128">				logger.debug(&quot;[==GetInstance==] Going to check or create new instance {}&quot;, objectID);</span>
+<span class="nc" id="L129">				instance = runtime.getFromHeap(objectID);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">				if (instance == null) {</span>
+
+<span class="nc" id="L132">					final byte[] objectBytes = runtime.dsRef.getLocal(objectID);</span>
+<span class="nc" id="L133">					final CommonMessages.PersistentObjectInDB persObjInDB = DataClayDeserializationLib</span>
+<span class="nc" id="L134">							.deserializeMessageFromDB(objectBytes);</span>
+<span class="nc" id="L135">					final DataClayObjectMetaData metadata = Utils.getMetaData(persObjInDB.getMetadata());</span>
+
+<span class="nc" id="L137">					final MetaClassID instanceClassID = metadata.getMetaClassID(0);</span>
+<span class="nc" id="L138">					instance = newInstance(instanceClassID, objectID);</span>
+
+<span class="nc" id="L140">					instance.initializeObjectAsPersistent();</span>
+
+					// use special function to avoid deserializing twice
+<span class="nc" id="L143">					DataClayDeserializationLib.deserializeObjectFromDBBytesAux(instance, metadata,</span>
+<span class="nc" id="L144">							persObjInDB.getData(), runtime);</span>
+
+					// == set flags == //
+<span class="nc" id="L147">					instance.setHint(runtime.getHint());</span>
+				}
+
+<span class="nc bnc" id="L150" title="All 2 branches missed.">				if (!instance.isLoaded()) {</span>
+<span class="nc" id="L151">					logger.debug(&quot;[==GetInstance==] Getting from db and filling instance {}&quot;, objectID);</span>
+<span class="nc" id="L152">					getFromDBAndFill(instance);</span>
+				}
+<span class="nc" id="L154">				obtained = true;</span>
+
+<span class="nc" id="L156">			} catch (final Exception e) {</span>
+<span class="nc bnc" id="L157" title="All 4 branches missed.">				if (!retry || curTimeWait &gt;= Configuration.Flags.TIMEOUT_WAIT_REGISTERED.getLongValue()) {</span>
+<span class="nc" id="L158">					logger.debug(&quot;[==GetInstance==] Object {} not registered. Throwing error&quot;, objectID, e);</span>
+<span class="nc" id="L159">					throw e;</span>
+				}
+<span class="nc" id="L161">				curTimeWait += Configuration.Flags.SLEEP_WAIT_REGISTERED.getLongValue();</span>
+				try {
+<span class="nc" id="L163">					Thread.sleep(Configuration.Flags.SLEEP_WAIT_REGISTERED.getLongValue());</span>
+<span class="nc" id="L164">				} catch (final InterruptedException ie) {</span>
+<span class="nc" id="L165">					logger.debug(&quot;Interrupted while sleeping. Aborting&quot;, e);</span>
+<span class="nc" id="L166">				}</span>
+			} finally {
+<span class="nc" id="L168">				runtime.unlock(objectID);</span>
+<span class="nc" id="L169">			}</span>
+		}
+<span class="nc" id="L171">		return instance;</span>
+	}
+
+	/**
+	 * Load DataClayObject from Database
+	 * 
+	 * @param objectToFill
+	 *            DataClayObject instance to fill
+	 * @param retry
+	 *            Indicates retry loading in case it is not in db.
+	 */
+	public void loadDataClayObjectFromDb(final DataClayExecutionObject objectToFill, final boolean retry) {
+
+<span class="nc" id="L184">		final ObjectID objectID = objectToFill.getObjectID();</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L186">			logger.debug(</span>
+<span class="nc" id="L187">					&quot;[==DB==] Loading object from Db: &quot; + objectID + &quot; of class &quot; + objectToFill.getClass().getName());</span>
+		}
+<span class="nc" id="L189">		boolean obtained = false;</span>
+<span class="nc" id="L190">		long curTimeWait = 0;</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">		while (!obtained) {</span>
+<span class="nc" id="L192">			runtime.lock(objectID);</span>
+			try {
+<span class="nc bnc" id="L194" title="All 2 branches missed.">				if (!objectToFill.isLoaded()) { // If is here to avoid concurrency gaps</span>
+<span class="nc" id="L195">					getFromDBAndFill(objectToFill);</span>
+				}
+<span class="nc" id="L197">				obtained = true;</span>
+<span class="nc" id="L198">			} catch (final Exception dbe) {</span>
+<span class="nc bnc" id="L199" title="All 4 branches missed.">				if (!retry || curTimeWait &gt;= Configuration.Flags.TIMEOUT_WAIT_REGISTERED.getLongValue()) {</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L201">						logger.debug(</span>
+								&quot;[==DB==] Object &quot; + objectID + &quot; not found in DB. Throwing error (not to retry). &quot;);
+					}
+<span class="nc" id="L204">					throw dbe;</span>
+				}
+<span class="nc bnc" id="L206" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L207">					logger.debug(&quot;[==DB==] Object &quot; + objectID + &quot; not found in DB. Retrying...&quot;);</span>
+				}
+<span class="nc" id="L209">				curTimeWait += Configuration.Flags.SLEEP_WAIT_REGISTERED.getLongValue();</span>
+				try {
+<span class="nc" id="L211">					Thread.sleep(Configuration.Flags.SLEEP_WAIT_REGISTERED.getLongValue());</span>
+<span class="nc" id="L212">				} catch (final InterruptedException ex) {</span>
+<span class="nc" id="L213">					logger.debug(&quot;loadDataClayObjectFromDb interrupted while sleeping&quot;, ex);</span>
+<span class="nc" id="L214">				}</span>
+			} finally {
+<span class="nc" id="L216">				runtime.unlock(objectID);</span>
+<span class="nc" id="L217">			}</span>
+		}
+
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L221">			logger.debug(&quot;[==DB==] Object successfully loaded from Db: {}&quot;, objectID);</span>
+		}
+<span class="nc" id="L223">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

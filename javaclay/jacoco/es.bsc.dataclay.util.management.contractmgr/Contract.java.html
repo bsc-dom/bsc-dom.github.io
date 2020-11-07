@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Contract.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.contractmgr</a> &gt; <span class="el_source">Contract.java</span></div><h1>Contract.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.contractmgr;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents a system contract.
+ */
+public final class Contract extends MgrObject&lt;ContractID&gt; {
+
+	// ==== YAML SPECIFICATIONS ==== //
+	/** Namespace providing contract. */
+	// TODO MGR-REFACTORING: delete
+	private String namespace;
+	/** Name of the user provider. */
+	//private String providerAccountName;
+	/** Date when contract begins. */
+	private Calendar beginDate;
+	/** Date when contract expires. */
+	private Calendar endDate;
+	/** Whether the contract is private or public. */
+	private boolean publicAvailable;
+	
+	/** Set of interfaces associated to this contract. */
+<span class="fc" id="L39">	private List&lt;InterfaceInContract&gt; interfacesInContractSpecs </span>
+		= new ArrayList&lt;&gt;();
+
+	// ==== DYNAMIC FIELDS ==== //
+	/** ID of the provider account. */
+	private AccountID providerAccountID;
+	/** The namespace that provides the contract. */
+	private NamespaceID namespaceID;
+	/** The ids of the accounts of the applicants to this contract. */
+	private Set&lt;AccountID&gt; applicantsAccountsIDs;
+	/** The interfaces in contract. see @link{src.contractmgr.InterfaceInContract}. */
+	private Map&lt;InterfaceID, InterfaceInContract&gt; interfacesInContract;
+
+	/**
+	 * Basic constructor
+	 */
+<span class="fc" id="L55">	public Contract() {</span>
+
+<span class="fc" id="L57">	}</span>
+
+	/**
+	 * Builds a new contract
+	 * @param namespaceOfProvider
+	 *            the namespace of the provider of the contract
+	 * @param accountOfProvider Account name of provider
+	 * @param newapplicantsNames
+	 *            the applicants account names
+	 * @param newInterfacesInContract
+	 *            the interfaces this contract can access and accessible method implementations
+	 * @param beginDateOfContract
+	 *            the date this contract is valid from
+	 * @param endDateOfContract
+	 *            the date this contract expires
+	 */
+	public Contract(final String namespaceOfProvider, 
+			final AccountID providerID, final Set&lt;AccountID&gt; newapplicantsIDs, 
+			final List&lt;InterfaceInContract&gt; newInterfacesInContract,
+			final Calendar beginDateOfContract, 
+<span class="fc" id="L77">			final Calendar endDateOfContract) {		</span>
+		// set the applicant account id
+<span class="fc" id="L79">		this.setProviderAccountID(providerID);</span>
+<span class="fc" id="L80">		this.setApplicantsAccountsIDs(newapplicantsIDs);</span>
+<span class="fc" id="L81">		this.setNamespace(namespaceOfProvider);</span>
+<span class="fc" id="L82">		this.setInterfacesInContractSpecs(newInterfacesInContract);</span>
+<span class="fc" id="L83">		this.setInterfacesInContract(new HashMap&lt;InterfaceID, InterfaceInContract&gt;());</span>
+<span class="fc" id="L84">		this.setBeginDate(beginDateOfContract);</span>
+<span class="fc" id="L85">		this.setEndDate(endDateOfContract);</span>
+<span class="fc" id="L86">		this.setPublicAvailable(false);</span>
+
+<span class="fc" id="L88">	}</span>
+
+	/**
+	 * Builds a new public contract
+	 * @param namespaceOfProvider
+	 *            the namespace of the provider of the contract
+	 * @param accountOfProvider Account name of provider
+	 * @param newInterfacesInContract
+	 *            the interfaces this contract can access and accessible method implementations
+	 * @param beginDateOfContract
+	 *            the date this contract is valid from
+	 * @param endDateOfContract
+	 *            the date this contract expires
+	 */
+	public Contract(final String namespaceOfProvider, final String accountOfProvider, 
+			final List&lt;InterfaceInContract&gt; newInterfacesInContract, 
+			final Calendar beginDateOfContract,
+<span class="fc" id="L105">			final Calendar endDateOfContract) {</span>
+		// set the applicant account id
+<span class="fc" id="L107">		this.setNamespace(namespaceOfProvider);</span>
+<span class="fc" id="L108">		this.setApplicantsAccountsIDs(new HashSet&lt;AccountID&gt;());</span>
+<span class="fc" id="L109">		this.setInterfacesInContractSpecs(newInterfacesInContract);</span>
+<span class="fc" id="L110">		this.setInterfacesInContract(new HashMap&lt;InterfaceID, InterfaceInContract&gt;());</span>
+<span class="fc" id="L111">		this.setBeginDate(beginDateOfContract);</span>
+<span class="fc" id="L112">		this.setEndDate(endDateOfContract);</span>
+<span class="fc" id="L113">		this.setPublicAvailable(true);</span>
+
+<span class="fc" id="L115">	}</span>
+
+//	/**
+//	 * Get the Contract::provider
+//	 * @return the provider
+//	 */
+//	public String getProviderAccountName() {
+//		return this.providerAccountName;
+//	}
+//
+//	/**
+//	 * Set the Contract::provider
+//	 * @param newprovider the provider to set
+//	 */
+//	public void setProviderAccountName(final String newprovider) {
+//		this.providerAccountName = newprovider;
+//	}
+
+	/**
+	 * Get the Contract::namespace
+	 * @return the namespace
+	 */
+	public String getNamespace() {
+<span class="fc" id="L138">		return this.namespace;</span>
+	}
+
+	/**
+	 * Set the Contract::namespace
+	 * @param newnamespace the namespace to set
+	 */
+	public void setNamespace(final String newnamespace) {
+<span class="fc" id="L146">		this.namespace = newnamespace;</span>
+<span class="fc" id="L147">	}</span>
+
+	/**
+	 * @return the applicantsAccountsID
+	 */
+	public Set&lt;AccountID&gt; getApplicantsAccountsIDs() {
+<span class="fc" id="L153">		return applicantsAccountsIDs;</span>
+	}
+
+	/**
+	 * @param accountsIDsofTheApplicants
+	 *            the applicantAccountID to set
+	 */
+	public void setApplicantsAccountsIDs(final Set&lt;AccountID&gt; accountsIDsofTheApplicants) {
+<span class="fc" id="L161">		this.applicantsAccountsIDs = accountsIDsofTheApplicants;</span>
+<span class="fc" id="L162">	}</span>
+
+	//CHECKSTYLE:ON
+	// ==== DYNAMIC FIELDS ==== //
+	
+	/**
+	 * Get the Contract::interfacesInContractSpecs
+	 * @return the interfacesInContractSpecs
+	 */
+	public List&lt;InterfaceInContract&gt; getInterfacesInContractSpecs() {
+<span class="nc" id="L172">		return this.interfacesInContractSpecs;</span>
+	}
+
+	/**
+	 * Set the Contract::interfacesInContractSpecs
+	 * @param newinterfacesInContractSpecs the interfacesInContractSpecs to set
+	 */
+	public void setInterfacesInContractSpecs(final List&lt;InterfaceInContract&gt; newinterfacesInContractSpecs) {
+<span class="fc" id="L180">		this.interfacesInContractSpecs = newinterfacesInContractSpecs;</span>
+<span class="fc" id="L181">	}</span>
+
+	/**
+	 * @return the interfacesInContract
+	 */
+	public Map&lt;InterfaceID, InterfaceInContract&gt; getInterfacesInContract() {
+<span class="fc" id="L187">		return interfacesInContract;</span>
+	}
+
+	/**
+	 * @param newInterfacesInContract
+	 *            the interfacesInContract to set
+	 */
+	public void setInterfacesInContract(final Map&lt;InterfaceID, InterfaceInContract&gt; newInterfacesInContract) {
+<span class="fc" id="L195">		this.interfacesInContract = newInterfacesInContract;</span>
+<span class="fc" id="L196">	}</span>
+
+	/**
+	 * Get the Contract::providerAccount
+	 * @return the providerAccount
+	 */
+	public AccountID getProviderAccountID() {
+<span class="fc" id="L203">		return this.providerAccountID;</span>
+	}
+
+	/**
+	 * Set the Contract::providerAccount
+	 * @param newproviderAccount the providerAccount to set
+	 */
+	public void setProviderAccountID(final AccountID newproviderAccount) {
+<span class="fc" id="L211">		this.providerAccountID = newproviderAccount;</span>
+<span class="fc" id="L212">	}</span>
+
+	/**
+	 * @return the beginDate
+	 */
+	public Calendar getBeginDate() {
+<span class="fc" id="L218">		return beginDate;</span>
+	}
+
+	/**
+	 * @param beginDateOfContract
+	 *            the beginDate to set
+	 */
+	public void setBeginDate(final Calendar beginDateOfContract) {
+<span class="fc" id="L226">		this.beginDate = beginDateOfContract;</span>
+		// When calling getTimeInMillis, the current calendar sets the field time needed
+		// to be stored and compared afterwards
+<span class="fc" id="L229">		this.beginDate.getTimeInMillis();</span>
+<span class="fc" id="L230">	}</span>
+
+	/**
+	 * @return the endDate
+	 */
+	public Calendar getEndDate() {
+<span class="fc" id="L236">		return endDate;</span>
+	}
+
+	/**
+	 * @param endDateOfContract
+	 *            the endDate to set
+	 */
+	public void setEndDate(final Calendar endDateOfContract) {
+<span class="fc" id="L244">		this.endDate = endDateOfContract;</span>
+
+		// When calling getTimeInMillis, the current calendar sets the field time needed
+		// to be stored and compared afterwards
+<span class="fc" id="L248">		this.endDate.getTimeInMillis();</span>
+<span class="fc" id="L249">	}</span>
+
+	/**
+	 * @return the isPublic
+	 */
+	public boolean isPublicAvailable() {
+<span class="fc" id="L255">		return publicAvailable;</span>
+	}
+
+	/**
+	 * @param isContractPublic
+	 *            whether the contract must be set as public or not
+	 */
+	public void setPublicAvailable(final boolean isContractPublic) {
+<span class="fc" id="L263">		this.publicAvailable = isContractPublic;</span>
+<span class="fc" id="L264">	}</span>
+
+	/**
+	 * @return the isActive
+	 */
+	public boolean isActive() {
+<span class="fc" id="L270">		final Calendar now = Calendar.getInstance();</span>
+<span class="pc bpc" id="L271" title="1 of 4 branches missed.">		return beginDate.compareTo(now) &lt;= 0 &amp;&amp; endDate.compareTo(now) &gt; 0;</span>
+	}
+
+	/**
+	 * Get the Contract::namespaceID
+	 * @return the namespaceID
+	 */
+	public NamespaceID getNamespaceID() {
+<span class="fc" id="L279">		return namespaceID;</span>
+	}
+
+	/**
+	 * Set the Contract::namespaceID
+	 * @param newnamespaceID the namespaceID to set
+	 */
+	public void setNamespaceID(final NamespaceID newnamespaceID) {
+<span class="fc" id="L287">		this.namespaceID = newnamespaceID;</span>
+<span class="fc" id="L288">	}</span>
+	
+	@Override
+	public String toString() { 
+<span class="nc" id="L292">		return CommonYAML.getYamlObject().dump(this);</span>
+	}
+	
+	@Override
+	public int hashCode() { 
+//		return Objects.hash(this.providerAccountName, this.namespace, this.applicantsNames, this.publicAvailable);
+<span class="nc" id="L298">		return Objects.hash(this.namespace, this.applicantsAccountsIDs, this.publicAvailable);</span>
+	}
+	
+	@Override
+	public boolean equals(final Object other) { 
+<span class="nc bnc" id="L303" title="All 2 branches missed.">		if (other instanceof Contract) { </span>
+<span class="nc" id="L304">			final Contract otherContract = (Contract) other;</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">			if (this.isPublicAvailable()) { </span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">				if (!otherContract.isPublicAvailable()) { </span>
+<span class="nc" id="L307">					return false;</span>
+				} else { 
+<span class="nc bnc" id="L309" title="All 2 branches missed.">					return this.providerAccountID.equals(otherContract.getProviderAccountID())</span>
+<span class="nc bnc" id="L310" title="All 2 branches missed.">							&amp;&amp; this.namespace.equals(otherContract.getNamespace())</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">							&amp;&amp; this.applicantsAccountsIDs.equals(otherContract.getApplicantsAccountsIDs());</span>
+				}
+			} else { 
+<span class="nc bnc" id="L314" title="All 2 branches missed.">				if (otherContract.isPublicAvailable()) { </span>
+<span class="nc" id="L315">					return false;</span>
+				} else { 
+<span class="nc bnc" id="L317" title="All 2 branches missed.">					return this.providerAccountID.equals(otherContract.getProviderAccountID())</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">							&amp;&amp; this.namespace.equals(otherContract.getNamespace());</span>
+				}
+			}	
+		} 
+<span class="nc" id="L322">		return false;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

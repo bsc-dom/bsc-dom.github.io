@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SessionManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.sessionmgr</a> &gt; <span class="el_source">SessionManager.java</span></div><h1>SessionManager.java</h1><pre class="source lang-java linenums">
+/**
+ * @file SessionManager.java
+ * @date May 31, 2013
+ */
+package es.bsc.dataclay.logic.sessionmgr;
+
+import java.util.Calendar;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.exceptions.logicmodule.sessionmgr.SessionExternalIsNotActiveException;
+import es.bsc.dataclay.exceptions.logicmodule.sessionmgr.SessionExternalNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.sessionmgr.SessionIsNotActiveException;
+import es.bsc.dataclay.exceptions.logicmodule.sessionmgr.SessionNotExistException;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.SessionID;
+import es.bsc.dataclay.util.management.AbstractManager;
+import es.bsc.dataclay.util.management.sessionmgr.SessionContract;
+import es.bsc.dataclay.util.management.sessionmgr.SessionDataContract;
+import es.bsc.dataclay.util.management.sessionmgr.SessionInfo;
+import es.bsc.dataclay.util.structs.LruCacheByDate;
+import es.bsc.dataclay.util.structs.Tuple;
+
+/**
+ * This class is responsible to manage information related to sessions.
+ */
+public final class SessionManager extends AbstractManager {
+
+	/** Logger. */
+	private Logger logger;
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L44">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** DbHandler for the management of Sessions. */
+	private final SessionManagerDB sessionDB;
+
+	/** Cache for sessions. */
+	private final LruCacheByDate&lt;SessionID, Tuple&lt;Session, Calendar&gt;&gt; sessionCache;
+
+	/** Cache for ext sessions. */
+	private final LruCacheByDate&lt;DataClayInstanceID, Tuple&lt;Session, Calendar&gt;&gt; extSessionCache;
+
+	/**
+	 * Instantiates an SessionManager that uses the Backend configuration provided.
+	 * 
+	 * @param managerName
+	 *            Manager/service name.
+	 * @post Creates an Class manager and hash initializes the backend.
+	 */
+	public SessionManager(final BasicDataSource dataSource) {
+<span class="fc" id="L63">		super(dataSource);</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L65">			logger = LogManager.getLogger(&quot;LogicModule&quot;);</span>
+		}
+<span class="fc" id="L67">		this.sessionDB = new SessionManagerDB(dataSource);</span>
+<span class="fc" id="L68">		this.sessionDB.createTables();</span>
+
+		// Init caches
+<span class="fc" id="L71">		this.sessionCache = new LruCacheByDate&lt;&gt;(</span>
+<span class="fc" id="L72">				Configuration.Flags.MAX_ENTRIES_SESSION_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L73">		this.extSessionCache = new LruCacheByDate&lt;&gt;(</span>
+<span class="fc" id="L74">				Configuration.Flags.MAX_ENTRIES_SESSION_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L75">	}</span>
+
+	/**
+	 * Registers a new Session for the Account with ID provided and the information about the contracts (and interfaces,...) in
+	 * the session.
+	 * 
+	 * @param newaccountID
+	 *            ID of the account of the session
+	 * @param newSessionContracts
+	 *            Contracts (and interfaces) of the session
+	 * @param newSessionDataContracts
+	 *            Data contracts of the session
+	 * @param dataContractIDofStore
+	 *            ID of the data contract for store
+	 * @param endDate
+	 *            the end date of the session
+	 * @param languageForSession
+	 *            language for the session
+	 * @param ifaceBitmaps
+	 *            interface bitmaps for the session.
+	 * @return Information new session created
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public SessionInfo newSession(final AccountID newaccountID,
+			final Map&lt;ContractID, SessionContract&gt; newSessionContracts,
+			final Map&lt;DataContractID, SessionDataContract&gt; newSessionDataContracts,
+			final DataContractID dataContractIDofStore, final Calendar endDate, final Langs languageForSession,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitmaps) {
+
+		// TODO: Can we have more than one session with same AccountID and same contracts?
+
+<span class="fc" id="L107">		final Session session = new Session(newaccountID, newSessionContracts, newSessionDataContracts, dataContractIDofStore,</span>
+				endDate, languageForSession, ifaceBitmaps);
+<span class="fc" id="L109">		session.setDataClayID(new SessionID());</span>
+<span class="fc" id="L110">		this.sessionDB.store(session);</span>
+
+		// Update cache
+<span class="fc" id="L113">		sessionCache.put(session.getDataClayID(),</span>
+<span class="fc" id="L114">				new Tuple&lt;&gt;(session, session.getEndDate()));</span>
+<span class="fc" id="L115">		return new SessionInfo(session.getDataClayID(),</span>
+<span class="fc" id="L116">				session.getAccountID(), session.getPropertiesOfClasses(), session.getSessionContracts(),</span>
+<span class="fc" id="L117">				session.getSessionDataContracts(), session.getDataContractIDofStore(), session.getLanguage(),</span>
+<span class="fc" id="L118">				session.getIfaceBitmaps(), session.getEndDate());</span>
+	}
+
+	/**
+	 * Registers a new Session for the external dataClay instance only valid for shared objects
+	 * 
+	 * @param extDataClayID
+	 *            id of the external dataClay instance
+	 * @return Information new session created
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public SessionInfo newExtSession(final DataClayInstanceID extDataClayID, final AccountID accountID, final Langs language, final Calendar endDate) {
+<span class="nc" id="L131">		final Session session = new Session(extDataClayID, accountID, language, endDate);</span>
+<span class="nc" id="L132">		session.setDataClayID(new SessionID());</span>
+
+		// Update db
+		try {
+<span class="nc" id="L136">			this.sessionDB.storeExt(session);</span>
+<span class="nc" id="L137">		} catch (final Exception ex) {</span>
+			// retry in case it already exists an expired session
+<span class="nc" id="L139">			this.sessionDB.deleteExtSession(extDataClayID);</span>
+<span class="nc" id="L140">			this.sessionDB.storeExt(session);</span>
+<span class="nc" id="L141">		}</span>
+
+		// Update cache
+<span class="nc" id="L144">		extSessionCache.put(extDataClayID,</span>
+<span class="nc" id="L145">				new Tuple&lt;&gt;(session, session.getEndDate()));</span>
+
+<span class="nc" id="L147">		return new SessionInfo(session.getDataClayID(), session.getExtDataClayID(), session.getAccountID(), session.getLanguage(), session.getEndDate());</span>
+	}
+
+	/**
+	 * Close session
+	 * 
+	 * @param sessionID
+	 *            ID of the session to close
+	 */
+	public void closeSession(final SessionID sessionID) {
+		// === design note == //
+		// sessions are not actually removed from DB. Using the timestamp a &quot;LM collector&quot; should
+		// be able to clean them from DB. Also, any ongoing event (execution, makepers...) that
+		// entered using a session that actually expired should finish before so we must implement
+		// some mechanism for that.
+
+		// TODO: set expiration date of session to &quot;now&quot; and update expiration date in cache
+
+		// sessionDB.deleteSession(sessionID);
+		// sessionCache.remove(sessionID);
+<span class="nc" id="L167">	}</span>
+
+	/**
+	 * Close external session
+	 * 
+	 * @param extDataClayID
+	 *            ID of the external dataClay instance
+	 */
+	public void closeExtSession(final DataClayInstanceID extDataClayID) {
+<span class="nc" id="L176">		sessionDB.deleteExtSession(extDataClayID);</span>
+<span class="nc" id="L177">		extSessionCache.remove(extDataClayID);</span>
+<span class="nc" id="L178">	}</span>
+
+	/**
+	 * Retrieves the info of a session
+	 * 
+	 * @param sessionID
+	 *            ID of the session
+	 * @return the info of the session
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             SessionIsNotActive if the session is not active. SessionNotExistException if the session does not exist.
+	 */
+	public SessionInfo getSessionInfo(final SessionID sessionID) {
+
+		// Try in cache
+		final Session session;
+<span class="fc" id="L194">		final Tuple&lt;Session, Calendar&gt; cacheEntry = sessionCache.get(sessionID);</span>
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">		if (cacheEntry == null) { // Not in cache</span>
+<span class="pc bpc" id="L196" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L197">				logger.debug(&quot;Querying session in DB with ID &quot; + sessionID);</span>
+			}
+<span class="fc" id="L199">			session = sessionDB.getSessionByID(sessionID);</span>
+<span class="fc bfc" id="L200" title="All 2 branches covered.">			if (session == null) {</span>
+<span class="fc" id="L201">				throw new SessionNotExistException(sessionID);</span>
+			}
+		} else {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L205">				logger.debug(&quot;Session found in cache: &quot; + sessionID);</span>
+			}
+<span class="nc" id="L207">			session = cacheEntry.getFirst();</span>
+		}
+
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">		if (!session.isActive()) {</span>
+<span class="nc" id="L211">			throw new SessionIsNotActiveException(sessionID);</span>
+		}
+<span class="pc bpc" id="L213" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L214">			logger.debug(&quot;Creating new session info: &quot; + sessionID);</span>
+		}
+<span class="fc" id="L216">		return new SessionInfo(sessionID,</span>
+<span class="fc" id="L217">				session.getAccountID(), session.getPropertiesOfClasses(), session.getSessionContracts(),</span>
+<span class="fc" id="L218">				session.getSessionDataContracts(), session.getDataContractIDofStore(), session.getLanguage(),</span>
+<span class="fc" id="L219">				session.getIfaceBitmaps(), session.getEndDate());</span>
+	}
+
+	public SessionInfo getExtSessionInfo(final DataClayInstanceID extDataClayID) {
+		final Session session;
+<span class="nc" id="L224">		final Tuple&lt;Session, Calendar&gt; cacheEntry = extSessionCache.get(extDataClayID);</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">		if (cacheEntry == null) {</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L227">				logger.debug(&quot;Querying external session in DB for dataClay: &quot; + extDataClayID);</span>
+			}
+<span class="nc" id="L229">			session = sessionDB.getExtSession(extDataClayID);</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">			if (session == null) {</span>
+<span class="nc" id="L231">				throw new SessionExternalNotExistException(extDataClayID);</span>
+			}
+		} else {
+<span class="nc bnc" id="L234" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L235">				logger.debug(&quot;External session found in cache for dataClay: &quot; + extDataClayID);</span>
+			}
+<span class="nc" id="L237">			session = cacheEntry.getFirst();</span>
+		}
+<span class="nc bnc" id="L239" title="All 2 branches missed.">		if (!session.isActive()) {</span>
+<span class="nc" id="L240">			throw new SessionExternalIsNotActiveException(extDataClayID);</span>
+		}
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L243">			logger.debug(&quot;Creating new session info for external dataClay: &quot; + extDataClayID);</span>
+		}
+
+<span class="nc" id="L246">		return new SessionInfo(session.getDataClayID(), extDataClayID, session.getAccountID(), session.getLanguage(), session.getEndDate());</span>
+	}
+
+	/**
+	 * Get all active sessions of the account provided
+	 * 
+	 * @param accountID
+	 *            ID of the account
+	 * @return all existing active sessions.
+	 */
+	public List&lt;Session&gt; getAllActiveSessionsOfAccount(final AccountID accountID) {
+<span class="nc" id="L257">		return sessionDB.getSessionsOfAccount(accountID);</span>
+	}
+
+	// ======== OTHER ======= //
+
+	/**
+	 * Method used for unit testing.
+	 * 
+	 * @return The db handler reference of this manager.
+	 */
+	public SessionManagerDB getDbHandler() {
+<span class="fc" id="L268">		return sessionDB;</span>
+	}
+
+	@Override
+	public void cleanCaches() {
+<span class="nc" id="L273">		sessionCache.clear();</span>
+<span class="nc" id="L274">	}</span>
+	/**
+	 * Finish cache threads.
+	 * 
+	 * @if some exception occurs
+	 */
+	public void finishCacheThreads() {
+		try {
+<span class="nc" id="L282">			this.sessionCache.finishCacheThreads();</span>
+<span class="nc" id="L283">		} catch (final InterruptedException e) {</span>
+<span class="nc" id="L284">			e.printStackTrace();</span>
+<span class="nc" id="L285">		}</span>
+<span class="nc" id="L286">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

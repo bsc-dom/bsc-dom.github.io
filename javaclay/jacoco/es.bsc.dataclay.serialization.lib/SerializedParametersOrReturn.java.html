@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SerializedParametersOrReturn.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.lib</a> &gt; <span class="el_source">SerializedParametersOrReturn.java</span></div><h1>SerializedParametersOrReturn.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.lib;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * Serialized parameters or returns.
+ */
+public final class SerializedParametersOrReturn {
+
+	/** Number of 'actual' parameters. */
+	private int numParams;
+
+	/** Immutable parameters or returns. */
+	private Map&lt;Integer, ImmutableParamOrReturn&gt; immObjs;
+
+	/**
+	 * Language parameters or returns. Important: only parameters or returns, not
+	 * language objects inside volatiles.
+	 */
+	private Map&lt;Integer, LanguageParamOrReturn&gt; langObjs;
+
+	/** Volatile parameters or returns. */
+	private Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volatileObjs;
+
+	/** Persistent parameters or returns. */
+	private Map&lt;Integer, PersistentParamOrReturn&gt; persistentRefs;
+
+	/**
+	 * Empty constructor for YAML.
+	 */
+<span class="nc" id="L35">	public SerializedParametersOrReturn() {</span>
+
+<span class="nc" id="L37">	}</span>
+
+	/**
+	 * Constructor
+	 * 
+	 * @param theNumParams
+	 *            Number of declared parameters of the method.
+	 * @param theimmObjs
+	 *            Immutable parameters or return
+	 * @param thelangObjs
+	 *            Language parameters or reutrn
+	 * @param thevolatileObjs
+	 *            Volatile parameters or return
+	 * @param thepersistentRefs
+	 *            Persistent params or return Mandatory for: Returns to client and
+	 *            Volatile parameters (execute or mkPersistent)
+	 */
+	public SerializedParametersOrReturn(final int theNumParams, final Map&lt;Integer, ImmutableParamOrReturn&gt; theimmObjs,
+			final Map&lt;Integer, LanguageParamOrReturn&gt; thelangObjs,
+			final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; thevolatileObjs,
+<span class="nc" id="L57">			final Map&lt;Integer, PersistentParamOrReturn&gt; thepersistentRefs) {</span>
+<span class="nc" id="L58">		this.numParams = theNumParams;</span>
+<span class="nc" id="L59">		this.immObjs = theimmObjs;</span>
+<span class="nc" id="L60">		this.langObjs = thelangObjs;</span>
+<span class="nc" id="L61">		this.volatileObjs = thevolatileObjs;</span>
+<span class="nc" id="L62">		this.persistentRefs = thepersistentRefs;</span>
+<span class="nc" id="L63">	}</span>
+
+	/**
+	 * Constructor for volatiles
+	 * 
+	 * @param thevolatileObjs
+	 *            Volatile parameters or return
+	 */
+<span class="nc" id="L71">	public SerializedParametersOrReturn(final List&lt;ObjectWithDataParamOrReturn&gt; thevolatileObjs) {</span>
+<span class="nc" id="L72">		this.numParams = thevolatileObjs.size();</span>
+<span class="nc" id="L73">		this.immObjs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L74">		this.langObjs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L75">		this.volatileObjs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L76">		this.persistentRefs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L77">		int i = 0;</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		for (ObjectWithDataParamOrReturn obj : thevolatileObjs) {</span>
+<span class="nc" id="L79">			volatileObjs.put(i, obj);</span>
+<span class="nc" id="L80">			i++;</span>
+<span class="nc" id="L81">		}</span>
+<span class="nc" id="L82">	}</span>
+
+	/**
+	 * @return the langObjs
+	 */
+	public Map&lt;Integer, LanguageParamOrReturn&gt; getLangObjs() {
+<span class="nc" id="L88">		return langObjs;</span>
+	}
+
+	/**
+	 * @return the volatileObjs
+	 */
+	public Map&lt;Integer, ObjectWithDataParamOrReturn&gt; getVolatileObjs() {
+<span class="nc" id="L95">		return volatileObjs;</span>
+	}
+
+	/**
+	 * @return the persistentRefs
+	 */
+	public Map&lt;Integer, PersistentParamOrReturn&gt; getPersistentRefs() {
+<span class="nc" id="L102">		return persistentRefs;</span>
+	}
+
+	/**
+	 * @return the numParams
+	 */
+	public int getNumParams() {
+<span class="nc" id="L109">		return numParams;</span>
+	}
+
+	/**
+	 * @return the immObjs
+	 */
+	public Map&lt;Integer, ImmutableParamOrReturn&gt; getImmObjs() {
+<span class="nc" id="L116">		return immObjs;</span>
+	}
+
+	/**
+	 * Remove DataClayObjects for yaml serialization
+	 */
+	public void removeReferencesForYaml() {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		for (final ObjectWithDataParamOrReturn volatil : this.volatileObjs.values()) {</span>
+<span class="nc" id="L124">			volatil.setDataClayObject(null);</span>
+<span class="nc" id="L125">		}</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">		for (final LanguageParamOrReturn lang : this.langObjs.values()) {</span>
+<span class="nc" id="L127">			lang.setWrapper(null);</span>
+<span class="nc" id="L128">		}</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">		for (final ImmutableParamOrReturn imm : this.immObjs.values()) {</span>
+<span class="nc" id="L130">			imm.setWrapper(null);</span>
+<span class="nc" id="L131">		}</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		for (final PersistentParamOrReturn pers : this.persistentRefs.values()) {</span>
+<span class="nc" id="L133">			pers.setDcObject(null);</span>
+<span class="nc" id="L134">		}</span>
+<span class="nc" id="L135">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L139">		return Objects.hash(numParams, immObjs, langObjs, volatileObjs, persistentRefs);</span>
+	}
+
+	/**
+	 * Set numParams
+	 * 
+	 * @param newnumParams
+	 *            the numParams to set
+	 */
+	public void setNumParams(final int newnumParams) {
+<span class="nc" id="L149">		this.numParams = newnumParams;</span>
+<span class="nc" id="L150">	}</span>
+
+	/**
+	 * Set immObjs
+	 * 
+	 * @param newimmObjs
+	 *            the immObjs to set
+	 */
+	public void setImmObjs(final Map&lt;Integer, ImmutableParamOrReturn&gt; newimmObjs) {
+<span class="nc" id="L159">		this.immObjs = newimmObjs;</span>
+<span class="nc" id="L160">	}</span>
+
+	/**
+	 * Set langObjs
+	 * 
+	 * @param newlangObjs
+	 *            the langObjs to set
+	 */
+	public void setLangObjs(final Map&lt;Integer, LanguageParamOrReturn&gt; newlangObjs) {
+<span class="nc" id="L169">		this.langObjs = newlangObjs;</span>
+<span class="nc" id="L170">	}</span>
+
+	/**
+	 * Set volatileObjs
+	 * 
+	 * @param newvolatileObjs
+	 *            the volatileObjs to set
+	 */
+	public void setVolatileObjs(final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; newvolatileObjs) {
+<span class="nc" id="L179">		this.volatileObjs = newvolatileObjs;</span>
+<span class="nc" id="L180">	}</span>
+
+	/**
+	 * Set persistentRefs
+	 * 
+	 * @param newpersistentRefs
+	 *            the persistentRefs to set
+	 */
+	public void setPersistentRefs(final Map&lt;Integer, PersistentParamOrReturn&gt; newpersistentRefs) {
+<span class="nc" id="L189">		this.persistentRefs = newpersistentRefs;</span>
+<span class="nc" id="L190">	}</span>
+
+	/**
+	 * Indicates if serialized parameters need wrappers for language/immutable
+	 * objects.
+	 * 
+	 * @return TRUE if serialized parameters need wrappers for language/immutable
+	 *         objects.
+	 */
+	public boolean needWrappers() {
+<span class="nc bnc" id="L200" title="All 4 branches missed.">		return this.immObjs.size() &gt; 0 || this.langObjs.size() &gt; 0;</span>
+	}
+	
+	@Override
+	public String toString() { 
+<span class="nc" id="L205">		StringBuilder strb = new StringBuilder();</span>
+<span class="nc" id="L206">		strb.append(&quot;{\n&quot;);</span>
+<span class="nc" id="L207">		strb.append(&quot;Num params = &quot; + this.numParams + &quot;\n&quot;);</span>
+<span class="nc" id="L208">		strb.append(&quot;-- immutable params = &quot; + this.immObjs.values() + &quot;\n&quot;);</span>
+<span class="nc" id="L209">		strb.append(&quot;-- language params = &quot; + this.langObjs.values() + &quot;\n&quot;);</span>
+<span class="nc" id="L210">		strb.append(&quot;-- volatile params = &quot; + this.volatileObjs.values() + &quot;\n&quot;);</span>
+<span class="nc" id="L211">		strb.append(&quot;-- persistent params = &quot; + this.persistentRefs.values() + &quot;\n&quot;);</span>
+<span class="nc" id="L212">		strb.append(&quot;{\n&quot;);</span>
+
+<span class="nc" id="L214">		return strb.toString();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

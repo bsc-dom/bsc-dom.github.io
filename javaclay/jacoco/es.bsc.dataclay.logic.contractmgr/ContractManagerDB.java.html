@@ -1,0 +1,1013 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ContractManagerDB.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.contractmgr</a> &gt; <span class="el_source">ContractManagerDB.java</span></div><h1>ContractManagerDB.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.contractmgr;
+
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.UUID;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectAlreadyExistException;
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectNotExistException;
+import es.bsc.dataclay.logic.interfacemgr.InterfaceManagerDB;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.management.contractmgr.Contract;
+import es.bsc.dataclay.util.management.contractmgr.InterfaceInContract;
+import es.bsc.dataclay.util.management.contractmgr.OpImplementations;
+import es.bsc.dataclay.util.management.interfacemgr.Interface;
+
+/**
+ * Data base connection.
+ */
+public final class ContractManagerDB {
+
+	/** Logger. */
+	private Logger logger;
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L47">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** SingleConnection. */
+	private final BasicDataSource dataSource;
+
+	/** Interface Manager DB needed for InterfaceInContract. TODO: this should be not together. */
+	private final InterfaceManagerDB ifaceManagerDB;
+
+	/**
+	 * MetaDataServiceDB constructor.
+	 * 
+	 * @param managerName
+	 *            Name of the LM service managing.
+	 */
+<span class="fc" id="L61">	public ContractManagerDB(final BasicDataSource dataSource) {</span>
+<span class="fc" id="L62">		this.dataSource = dataSource;</span>
+<span class="fc" id="L63">		ifaceManagerDB = new InterfaceManagerDB(dataSource);</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L65">			logger = LogManager.getLogger(&quot;LMDB&quot;);</span>
+		}
+<span class="fc" id="L67">	}</span>
+
+	/**
+	 * Create tables of MDS.
+	 */
+	public void createTables() {
+
+<span class="fc" id="L74">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L76">			conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L77" title="All 2 branches covered.">			for (final ContractManagerSQLStatements.SqlStatements stmt : ContractManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
+<span class="fc" id="L79">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L80">					updateStatement.execute();</span>
+				}
+			}
+<span class="nc" id="L83">		} catch (final SQLException e) {</span>
+<span class="nc" id="L84">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L88">					conn.close();</span>
+				}
+<span class="nc" id="L90">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L91">				ex1.printStackTrace();</span>
+<span class="fc" id="L92">			}</span>
+		}
+<span class="fc" id="L94">	}</span>
+
+	/**
+	 * Delete the tables of MDS. Just the other way around of createTables --much simpler.
+	 */
+	public void dropTables() {
+
+<span class="fc" id="L101">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L103">			conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L104" title="All 2 branches covered.">			for (final ContractManagerSQLStatements.SqlStatements stmt : ContractManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
+<span class="fc" id="L106">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L107">					updateStatement.execute();</span>
+				}
+			}
+<span class="nc" id="L110">		} catch (final SQLException e) {</span>
+<span class="nc" id="L111">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L115">					conn.close();</span>
+				}
+<span class="nc" id="L117">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L118">				ex1.printStackTrace();</span>
+<span class="fc" id="L119">			}</span>
+		}
+<span class="fc" id="L121">	}</span>
+
+	/**
+	 * Store opImplementations into database
+	 * @param opImplementations
+	 *            opImplementations
+	 * @return uuid of stored object
+	 */
+	public UUID store(final OpImplementations opImplementations) {
+<span class="fc" id="L130">		Connection conn = null;</span>
+<span class="fc" id="L131">		final UUID uuid = UUID.randomUUID();</span>
+<span class="fc" id="L132">		opImplementations.setId(uuid);</span>
+		try {
+<span class="fc" id="L134">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L135">			final PreparedStatement insertStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.INSERT_OPIMPLEMENTATIONS.getSqlStatement());</span>
+<span class="fc" id="L136">			insertStatement.setObject(1, uuid);</span>
+			// CHECKSTYLE:OFF
+<span class="fc" id="L138">			insertStatement.setString(2, opImplementations.getOperationSignature());</span>
+<span class="fc" id="L139">			insertStatement.setInt(3, opImplementations.getNumLocalImpl());</span>
+<span class="fc" id="L140">			insertStatement.setInt(4, opImplementations.getNumRemoteImpl());</span>
+<span class="fc" id="L141">			insertStatement.setObject(5, opImplementations.getLocalImplementationID().getId());</span>
+<span class="fc" id="L142">			insertStatement.setObject(6, opImplementations.getRemoteImplementationID().getId());</span>
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L144">				logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
+			}
+			// CHECKSTYLE:ON
+<span class="fc" id="L147">			insertStatement.executeUpdate();</span>
+
+<span class="nc" id="L149">		} catch (final Exception e) {</span>
+<span class="nc" id="L150">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L154">					conn.close();</span>
+				}
+<span class="nc" id="L156">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L157">				ex1.printStackTrace();</span>
+<span class="fc" id="L158">			}</span>
+		}
+<span class="fc" id="L160">		return uuid;</span>
+
+	}
+
+	/**
+	 * Store ifaceInContract into database
+	 * @param ifaceInContract
+	 *            ifaceInContract
+	 * @return uuid of stored object
+	 */
+	public UUID store(final InterfaceInContract ifaceInContract) {
+
+<span class="fc" id="L172">		final UUID uuid = UUID.randomUUID();</span>
+<span class="fc" id="L173">		ifaceInContract.setId(uuid);</span>
+
+<span class="fc" id="L175">		UUID[] implsSpecs = null;</span>
+<span class="fc bfc" id="L176" title="All 2 branches covered.">		if (ifaceInContract.getImplementationsSpecPerOperation() != null) {</span>
+<span class="fc" id="L177">			implsSpecs = new UUID[ifaceInContract.getImplementationsSpecPerOperation().size()];</span>
+<span class="fc" id="L178">			int i = 0;</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">			for (final OpImplementations opImpls : ifaceInContract.getImplementationsSpecPerOperation()) {</span>
+<span class="fc" id="L180">				implsSpecs[i] = this.store(opImpls);</span>
+<span class="fc" id="L181">				i++;</span>
+<span class="fc" id="L182">			}</span>
+		}
+
+<span class="fc" id="L185">		UUID[] accessibleImplementationsUUIDsKeys = null;</span>
+<span class="fc" id="L186">		UUID[] accessibleImplementationsUUIDsValues = null;</span>
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">		if (ifaceInContract.getAccessibleImplementations() != null) {</span>
+<span class="fc" id="L188">			accessibleImplementationsUUIDsKeys = new UUID[ifaceInContract.getAccessibleImplementations().size()];</span>
+<span class="fc" id="L189">			accessibleImplementationsUUIDsValues = new UUID[ifaceInContract.getAccessibleImplementations().size()];</span>
+<span class="fc" id="L190">			int i = 0;</span>
+<span class="fc bfc" id="L191" title="All 2 branches covered.">			for (final Entry&lt;OperationID, OpImplementations&gt; entry : ifaceInContract.getAccessibleImplementations().entrySet()) {</span>
+<span class="fc" id="L192">				accessibleImplementationsUUIDsKeys[i] = entry.getKey().getId();</span>
+<span class="fc" id="L193">				accessibleImplementationsUUIDsValues[i] = this.store(entry.getValue());</span>
+<span class="fc" id="L194">				i++;</span>
+<span class="fc" id="L195">			}</span>
+		}
+
+<span class="fc" id="L198">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L200">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L201">			final PreparedStatement insertStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.INSERT_IFACEINCONTRACT.getSqlStatement());</span>
+<span class="fc" id="L202">			insertStatement.setObject(1, uuid);</span>
+			// CHECKSTYLE:OFF
+<span class="fc" id="L204">			insertStatement.setObject(2, ifaceInContract.getInterfaceID().getId());</span>
+
+<span class="fc bfc" id="L206" title="All 2 branches covered.">			if (implsSpecs != null) {</span>
+<span class="fc" id="L207">				final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, implsSpecs);</span>
+<span class="fc" id="L208">				insertStatement.setArray(3, tArray);</span>
+<span class="fc" id="L209">			} else {</span>
+<span class="fc" id="L210">				insertStatement.setArray(3, null);</span>
+			}
+
+<span class="pc bpc" id="L213" title="1 of 2 branches missed.">			if (accessibleImplementationsUUIDsKeys != null) {</span>
+<span class="fc" id="L214">				final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, accessibleImplementationsUUIDsKeys);</span>
+<span class="fc" id="L215">				insertStatement.setArray(4, tArray);</span>
+<span class="fc" id="L216">			} else {</span>
+<span class="nc" id="L217">				insertStatement.setArray(4, null);</span>
+			}
+
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">			if (accessibleImplementationsUUIDsValues != null) {</span>
+<span class="fc" id="L221">				final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, accessibleImplementationsUUIDsValues);</span>
+<span class="fc" id="L222">				insertStatement.setArray(5, tArray);</span>
+<span class="fc" id="L223">			} else {</span>
+<span class="nc" id="L224">				insertStatement.setArray(5, null);</span>
+			}
+
+			// CHECKSTYLE:ON
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L229">				logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
+			}
+<span class="fc" id="L231">			insertStatement.executeUpdate();</span>
+
+<span class="nc" id="L233">		} catch (final Exception e) {</span>
+<span class="nc" id="L234">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L237" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L238">					conn.close();</span>
+				}
+<span class="nc" id="L240">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L241">				ex1.printStackTrace();</span>
+<span class="fc" id="L242">			}</span>
+		}
+<span class="fc" id="L244">		return uuid;</span>
+
+	}
+
+	/**
+	 * Store contract into database
+	 * @param contract
+	 *            contract
+	 */
+	public void store(final Contract contract) {
+
+<span class="fc" id="L255">		UUID[] ifaces = null;</span>
+<span class="fc" id="L256">		UUID[] ifacesKeys = null;</span>
+<span class="pc bpc" id="L257" title="1 of 2 branches missed.">		if (contract.getInterfacesInContract() != null) {</span>
+<span class="fc" id="L258">			ifaces = new UUID[contract.getInterfacesInContract().size()];</span>
+<span class="fc" id="L259">			ifacesKeys = new UUID[contract.getInterfacesInContract().size()];</span>
+<span class="fc" id="L260">			int i = 0;</span>
+<span class="fc bfc" id="L261" title="All 2 branches covered.">			for (final InterfaceInContract ifaceInContract : contract.getInterfacesInContract().values()) {</span>
+<span class="fc" id="L262">				ifaces[i] = this.store(ifaceInContract);</span>
+<span class="fc" id="L263">				ifacesKeys[i] = ifaceInContract.getIface().getDataClayID().getId();</span>
+<span class="fc" id="L264">				i++;</span>
+<span class="fc" id="L265">			}</span>
+		}
+
+<span class="fc" id="L268">		UUID[] accountsUUIDs = null;</span>
+<span class="pc bpc" id="L269" title="1 of 2 branches missed.">		if (contract.getApplicantsAccountsIDs() != null) {</span>
+<span class="fc" id="L270">			accountsUUIDs = new UUID[contract.getApplicantsAccountsIDs().size()];</span>
+<span class="fc" id="L271">			int i = 0;</span>
+<span class="fc bfc" id="L272" title="All 2 branches covered.">			for (final AccountID accountID : contract.getApplicantsAccountsIDs()) {</span>
+<span class="fc" id="L273">				accountsUUIDs[i] = accountID.getId();</span>
+<span class="fc" id="L274">				i++;</span>
+<span class="fc" id="L275">			}</span>
+		}
+
+<span class="fc" id="L278">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L280">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L281">			final PreparedStatement insertStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.INSERT_CONTRACT.getSqlStatement());</span>
+<span class="fc" id="L282">			insertStatement.setObject(1, contract.getDataClayID().getId());</span>
+			// CHECKSTYLE:OFF
+<span class="fc" id="L284">			insertStatement.setString(2, contract.getNamespace());</span>
+
+<span class="fc" id="L286">			insertStatement.setTimestamp(3, new java.sql.Timestamp(contract.getBeginDate().getTimeInMillis()));</span>
+<span class="fc" id="L287">			insertStatement.setTimestamp(4, new java.sql.Timestamp(contract.getEndDate().getTimeInMillis()));</span>
+<span class="fc" id="L288">			insertStatement.setBoolean(5, contract.isPublicAvailable());</span>
+<span class="fc" id="L289">			insertStatement.setObject(6, contract.getProviderAccountID().getId());</span>
+<span class="fc" id="L290">			insertStatement.setObject(7, contract.getNamespaceID().getId());</span>
+
+<span class="pc bpc" id="L292" title="1 of 2 branches missed.">			if (accountsUUIDs != null) {</span>
+<span class="fc" id="L293">				final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, accountsUUIDs);</span>
+<span class="fc" id="L294">				insertStatement.setArray(8, tArray);</span>
+<span class="fc" id="L295">			} else {</span>
+<span class="nc" id="L296">				insertStatement.setArray(8, null);</span>
+			}
+
+<span class="pc bpc" id="L299" title="1 of 2 branches missed.">			if (ifacesKeys != null) {</span>
+<span class="fc" id="L300">				final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, ifacesKeys);</span>
+<span class="fc" id="L301">				insertStatement.setArray(9, tArray);</span>
+<span class="fc" id="L302">			} else {</span>
+<span class="nc" id="L303">				insertStatement.setArray(9, null);</span>
+			}
+
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">			if (ifaces != null) {</span>
+<span class="fc" id="L307">				final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, ifaces);</span>
+<span class="fc" id="L308">				insertStatement.setArray(10, tArray);</span>
+<span class="fc" id="L309">			} else {</span>
+<span class="nc" id="L310">				insertStatement.setArray(10, null);</span>
+			}
+
+			// CHECKSTYLE:ON
+<span class="pc bpc" id="L314" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L315">				logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
+			}
+<span class="fc" id="L317">			insertStatement.executeUpdate();</span>
+
+<span class="nc" id="L319">		} catch (final Exception e) {</span>
+<span class="nc" id="L320">			e.printStackTrace();</span>
+<span class="nc" id="L321">			throw new DbObjectAlreadyExistException(contract.getDataClayID());</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L324" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L325">					conn.close();</span>
+				}
+<span class="nc" id="L327">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L328">				ex1.printStackTrace();</span>
+<span class="fc" id="L329">			}</span>
+		}
+<span class="fc" id="L331">	}</span>
+
+	/**
+	 * Deserialize
+	 * @param rs
+	 *            Result set
+	 * @return OpImplementations
+	 */
+	private OpImplementations deserializeOpImplementations(
+			final ResultSet rs) {
+<span class="fc" id="L341">		OpImplementations result = null;</span>
+		try {
+			// CHECKSTYLE:OFF
+<span class="fc" id="L344">			final UUID id = (UUID)rs.getObject(&quot;id&quot;);</span>
+<span class="fc" id="L345">			final String operationSignature = rs.getString(&quot;operationSignature&quot;);</span>
+<span class="fc" id="L346">			final int numLocalImpl = rs.getInt(&quot;numLocalImpl&quot;);</span>
+<span class="fc" id="L347">			final int numRemoteImpl = rs.getInt(&quot;numRemoteImpl&quot;);</span>
+
+<span class="fc" id="L349">			final ImplementationID localImplementationID = new ImplementationID((UUID)rs.getObject(&quot;localImplementationID&quot;));</span>
+<span class="fc" id="L350">			final ImplementationID remoteImplementationID = new ImplementationID((UUID)rs.getObject(&quot;remoteImplementationID&quot;));</span>
+
+<span class="fc" id="L352">			result = new OpImplementations();</span>
+<span class="fc" id="L353">			result.setId(id);</span>
+<span class="fc" id="L354">			result.setLocalImplementationID(localImplementationID);</span>
+<span class="fc" id="L355">			result.setNumLocalImpl(numLocalImpl);</span>
+<span class="fc" id="L356">			result.setNumRemoteImpl(numRemoteImpl);</span>
+<span class="fc" id="L357">			result.setOperationSignature(operationSignature);</span>
+<span class="fc" id="L358">			result.setRemoteImplementationID(remoteImplementationID);</span>
+
+<span class="nc" id="L360">		} catch (final SQLException e) {</span>
+<span class="nc" id="L361">			e.printStackTrace();</span>
+<span class="fc" id="L362">		}</span>
+<span class="fc" id="L363">		return result;</span>
+	}
+
+	/**
+	 * Deserialize
+	 * @param rs
+	 *            Result set
+	 * @return InterfaceInContract
+	 */
+	private InterfaceInContract deserializeInterfaceInContract(
+			final ResultSet rs) {
+<span class="fc" id="L374">		InterfaceInContract result = null;</span>
+		try {
+			// CHECKSTYLE:OFF
+<span class="fc" id="L377">			final UUID id = (UUID)rs.getObject(&quot;id&quot;);</span>
+<span class="fc" id="L378">			final UUID interfaceUUID = (UUID)rs.getObject(&quot;interface&quot;);</span>
+<span class="fc" id="L379">			final InterfaceID interfaceID = new InterfaceID(interfaceUUID);</span>
+<span class="fc" id="L380">			final Interface iface = ifaceManagerDB.getInterfaceByID(interfaceID);</span>
+
+<span class="fc" id="L382">			final Array array = rs.getArray(&quot;implementationsSpecPerOperation&quot;);</span>
+<span class="fc" id="L383">			UUID[] implementationsSpecPerOperationUUIDs = null;</span>
+<span class="fc" id="L384">			final Set&lt;OpImplementations&gt; implementationsSpecPerOperation = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L385" title="All 2 branches covered.">			if (array != null) {</span>
+<span class="fc" id="L386">				implementationsSpecPerOperationUUIDs = (UUID[]) array.getArray();</span>
+<span class="fc bfc" id="L387" title="All 2 branches covered.">				for (final UUID implSpecUUID : implementationsSpecPerOperationUUIDs) {</span>
+<span class="fc" id="L388">					implementationsSpecPerOperation.add(this.getOpImplementationsByID(implSpecUUID));</span>
+				}
+			}
+
+<span class="fc" id="L392">			final Array array1 = rs.getArray(&quot;accessibleImplementationsKeys&quot;);</span>
+<span class="fc" id="L393">			final Array array2 = rs.getArray(&quot;accessibleImplementationsValues&quot;);</span>
+<span class="fc" id="L394">			UUID[] accessibleImplementationsKeysUUIDs = null;</span>
+<span class="fc" id="L395">			UUID[] accessibleImplementationsValuesUUIDs = null;</span>
+<span class="fc" id="L396">			final Map&lt;OperationID, OpImplementations&gt; accessibleImplementations = new HashMap&lt;&gt;();</span>
+<span class="pc bpc" id="L397" title="1 of 2 branches missed.">			if (array1 != null) {</span>
+<span class="fc" id="L398">				accessibleImplementationsKeysUUIDs = (UUID[]) array1.getArray();</span>
+<span class="fc" id="L399">				accessibleImplementationsValuesUUIDs = (UUID[]) array2.getArray();</span>
+<span class="fc bfc" id="L400" title="All 2 branches covered.">				for (int i = 0; i &lt; accessibleImplementationsKeysUUIDs.length; ++i) {</span>
+<span class="fc" id="L401">					final OperationID opID = new OperationID(accessibleImplementationsKeysUUIDs[i]);</span>
+<span class="fc" id="L402">					final OpImplementations opImpl = this.getOpImplementationsByID(accessibleImplementationsValuesUUIDs[i]);</span>
+<span class="fc" id="L403">					accessibleImplementations.put(opID, opImpl);</span>
+				}
+			}
+
+<span class="fc" id="L407">			result = new InterfaceInContract();</span>
+<span class="fc" id="L408">			result.setAccessibleImplementations(accessibleImplementations);</span>
+<span class="fc" id="L409">			result.setId(id);</span>
+<span class="fc" id="L410">			result.setIface(iface);</span>
+<span class="fc" id="L411">			result.setImplementationsSpecPerOperation(implementationsSpecPerOperation);</span>
+<span class="fc" id="L412">			result.setInterfaceID(interfaceID);</span>
+
+<span class="nc" id="L414">		} catch (final SQLException e) {</span>
+<span class="nc" id="L415">			e.printStackTrace();</span>
+<span class="fc" id="L416">		}</span>
+<span class="fc" id="L417">		return result;</span>
+	}
+
+	/**
+	 * Deserialize
+	 * @param rs
+	 *            Result set
+	 * @return Contract
+	 */
+	private Contract deserializeContract(
+			final ResultSet rs) {
+<span class="fc" id="L428">		Contract result = null;</span>
+		try {
+			// CHECKSTYLE:OFF
+<span class="fc" id="L431">			final ContractID contractID = new ContractID((UUID)rs.getObject(&quot;id&quot;));</span>
+<span class="fc" id="L432">			final String namespace = rs.getString(&quot;namespace&quot;);</span>
+<span class="fc" id="L433">			final Calendar beginDate = Calendar.getInstance();</span>
+<span class="fc" id="L434">			beginDate.setTimeInMillis(rs.getTimestamp(&quot;beginDate&quot;).getTime());</span>
+<span class="fc" id="L435">			final Calendar endDate = Calendar.getInstance();</span>
+<span class="fc" id="L436">			endDate.setTimeInMillis(rs.getTimestamp(&quot;endDate&quot;).getTime());</span>
+<span class="fc" id="L437">			final boolean publicAvailable = rs.getBoolean(&quot;publicAvailable&quot;);</span>
+<span class="fc" id="L438">			final AccountID providerAccountID = new AccountID((UUID)rs.getObject(&quot;providerAccountID&quot;));</span>
+<span class="fc" id="L439">			final NamespaceID namespaceID = new NamespaceID((UUID)rs.getObject(&quot;namespaceID&quot;));</span>
+
+<span class="fc" id="L441">			final UUID[] applicantsAccountsUUIDs = (UUID[]) rs.getArray(&quot;applicantsAccountsIDs&quot;).getArray();</span>
+<span class="fc" id="L442">			final Set&lt;AccountID&gt; applicantsAccountsIDs = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L443" title="All 2 branches covered.">			for (final UUID uuid : applicantsAccountsUUIDs) {</span>
+<span class="fc" id="L444">				applicantsAccountsIDs.add(new AccountID(uuid));</span>
+			}
+
+<span class="fc" id="L447">			final Map&lt;InterfaceID, InterfaceInContract&gt; interfacesInContract = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L448">			final List&lt;InterfaceInContract&gt; interfacesInContractSpecs = new ArrayList&lt;&gt;();</span>
+
+<span class="fc" id="L450">			final UUID[] interfacesInContractUUIDs = (UUID[]) rs.getArray(&quot;interfacesInContractValues&quot;).getArray();</span>
+<span class="fc bfc" id="L451" title="All 2 branches covered.">			for (final UUID uuid : interfacesInContractUUIDs) {</span>
+<span class="fc" id="L452">				final InterfaceInContract ifaceInContract = this.getInterfaceInContractByID(uuid);</span>
+<span class="fc" id="L453">				interfacesInContractSpecs.add(ifaceInContract);</span>
+<span class="fc" id="L454">				interfacesInContract.put(ifaceInContract.getInterfaceID(), ifaceInContract);</span>
+			}
+
+<span class="fc" id="L457">			result = new Contract();</span>
+<span class="fc" id="L458">			result.setApplicantsAccountsIDs(applicantsAccountsIDs);</span>
+<span class="fc" id="L459">			result.setBeginDate(beginDate);</span>
+<span class="fc" id="L460">			result.setDataClayID(contractID);</span>
+<span class="fc" id="L461">			result.setEndDate(endDate);</span>
+<span class="fc" id="L462">			result.setInterfacesInContract(interfacesInContract);</span>
+<span class="fc" id="L463">			result.setInterfacesInContractSpecs(interfacesInContractSpecs);</span>
+<span class="fc" id="L464">			result.setNamespace(namespace);</span>
+<span class="fc" id="L465">			result.setNamespaceID(namespaceID);</span>
+<span class="fc" id="L466">			result.setProviderAccountID(providerAccountID);</span>
+<span class="fc" id="L467">			result.setPublicAvailable(publicAvailable);</span>
+
+<span class="nc" id="L469">		} catch (final SQLException e) {</span>
+<span class="nc" id="L470">			e.printStackTrace();</span>
+<span class="fc" id="L471">		}</span>
+<span class="fc" id="L472">		return result;</span>
+	}
+
+	/**
+	 * Get by ID
+	 * @param uuid
+	 *            UUID of object
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	private OpImplementations getOpImplementationsByID(final UUID uuid) throws SQLException {
+<span class="fc" id="L484">		ResultSet rs = null;</span>
+<span class="fc" id="L485">		OpImplementations result = null;</span>
+<span class="fc" id="L486">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L488">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L489">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_OPIMPLEMENTATIONS.getSqlStatement());</span>
+
+<span class="fc" id="L491">			selectStatement.setObject(1, uuid);</span>
+<span class="pc bpc" id="L492" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L493">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L495">			rs = selectStatement.executeQuery();</span>
+<span class="pc bpc" id="L496" title="1 of 2 branches missed.">			if (rs.next()) {</span>
+<span class="fc" id="L497">				result = deserializeOpImplementations(rs);</span>
+
+			}
+<span class="nc" id="L500">		} catch (final SQLException e) {</span>
+<span class="nc" id="L501">			throw e;</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L504" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L505">					rs.close();</span>
+				}
+<span class="pc bpc" id="L507" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L508">					conn.close();</span>
+				}
+<span class="nc" id="L510">			} catch (final SQLException e) {</span>
+<span class="nc" id="L511">				e.printStackTrace();</span>
+<span class="fc" id="L512">			}</span>
+		}
+
+<span class="fc" id="L515">		return result;</span>
+	}
+
+	/**
+	 * Get by ID
+	 * @param uuid
+	 *            UUID of object
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	private InterfaceInContract getInterfaceInContractByID(final UUID uuid) throws SQLException {
+<span class="fc" id="L527">		ResultSet rs = null;</span>
+<span class="fc" id="L528">		InterfaceInContract result = null;</span>
+<span class="fc" id="L529">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L531">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L532">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_IFACEINCONTRACT.getSqlStatement());</span>
+
+<span class="fc" id="L534">			selectStatement.setObject(1, uuid);</span>
+<span class="pc bpc" id="L535" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L536">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L538">			rs = selectStatement.executeQuery();</span>
+<span class="pc bpc" id="L539" title="1 of 2 branches missed.">			if (rs.next()) {</span>
+<span class="fc" id="L540">				result = deserializeInterfaceInContract(rs);</span>
+
+			}
+<span class="nc" id="L543">		} catch (final SQLException e) {</span>
+<span class="nc" id="L544">			throw e;</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L547" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L548">					rs.close();</span>
+				}
+<span class="pc bpc" id="L550" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L551">					conn.close();</span>
+				}
+<span class="nc" id="L553">			} catch (final SQLException e) {</span>
+<span class="nc" id="L554">				e.printStackTrace();</span>
+<span class="fc" id="L555">			}</span>
+		}
+
+<span class="fc" id="L558">		return result;</span>
+	}
+
+	/**
+	 * Get by ID
+	 * @param contractID
+	 *            ID of object
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	public Contract getContractByID(final ContractID contractID) {
+<span class="fc" id="L570">		ResultSet rs = null;</span>
+<span class="fc" id="L571">		Contract result = null;</span>
+<span class="fc" id="L572">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L574">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L575">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_CONTRACT.getSqlStatement());</span>
+
+<span class="fc" id="L577">			selectStatement.setObject(1, contractID.getId());</span>
+<span class="pc bpc" id="L578" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L579">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L581">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L582" title="All 2 branches covered.">			if (rs.next()) {</span>
+<span class="fc" id="L583">				result = deserializeContract(rs);</span>
+
+			}
+<span class="nc" id="L586">		} catch (final SQLException e) {</span>
+<span class="nc" id="L587">			throw new DbObjectNotExistException(contractID);</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L590" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L591">					rs.close();</span>
+				}
+<span class="pc bpc" id="L593" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L594">					conn.close();</span>
+				}
+<span class="nc" id="L596">			} catch (final SQLException e) {</span>
+<span class="nc" id="L597">				e.printStackTrace();</span>
+<span class="fc" id="L598">			}</span>
+		}
+
+<span class="fc" id="L601">		return result;</span>
+	}
+
+	/**
+	 * Delete by ID
+	 * @param uuid
+	 *            UUID of object
+	 * 
+	 */
+	private void deleteOpImplementationsByID(final UUID uuid) {
+<span class="nc" id="L611">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L613">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L614">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.DELETE_OPIMPLEMENTATIONS.getSqlStatement());</span>
+
+<span class="nc" id="L616">			selectStatement.setObject(1, uuid);</span>
+<span class="nc bnc" id="L617" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L618">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="nc" id="L620">			selectStatement.executeUpdate();</span>
+
+<span class="nc" id="L622">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="nc bnc" id="L627" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L628">					conn.close();</span>
+				}
+<span class="nc" id="L630">			} catch (final SQLException e) {</span>
+<span class="nc" id="L631">				e.printStackTrace();</span>
+<span class="nc" id="L632">			}</span>
+		}
+
+<span class="nc" id="L635">	}</span>
+
+	/**
+	 * Delete by ID
+	 * @param uuid
+	 *            UUID of object
+	 */
+	private void deleteInterfaceInContractByID(final UUID uuid) {
+
+		final InterfaceInContract ifaceInContract;
+		try {
+<span class="nc" id="L646">			ifaceInContract = this.getInterfaceInContractByID(uuid);</span>
+<span class="nc bnc" id="L647" title="All 2 branches missed.">			for (final OpImplementations opImpl : ifaceInContract.getAccessibleImplementations().values()) {</span>
+<span class="nc" id="L648">				this.deleteOpImplementationsByID(opImpl.getId());</span>
+<span class="nc" id="L649">			}</span>
+<span class="nc bnc" id="L650" title="All 2 branches missed.">			for (final OpImplementations opImpl : ifaceInContract.getImplementationsSpecPerOperation()) {</span>
+<span class="nc" id="L651">				this.deleteOpImplementationsByID(opImpl.getId());</span>
+<span class="nc" id="L652">			}</span>
+
+<span class="nc" id="L654">		} catch (final SQLException e1) {</span>
+<span class="nc" id="L655">			e1.printStackTrace();</span>
+<span class="nc" id="L656">		}</span>
+
+<span class="nc" id="L658">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L660">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L661">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.DELETE_IFACEINCONTRACT.getSqlStatement());</span>
+
+<span class="nc" id="L663">			selectStatement.setObject(1, uuid);</span>
+<span class="nc bnc" id="L664" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L665">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="nc" id="L667">			selectStatement.executeUpdate();</span>
+
+<span class="nc" id="L669">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="nc bnc" id="L674" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L675">					conn.close();</span>
+				}
+<span class="nc" id="L677">			} catch (final SQLException e) {</span>
+<span class="nc" id="L678">				e.printStackTrace();</span>
+<span class="nc" id="L679">			}</span>
+		}
+
+<span class="nc" id="L682">	}</span>
+
+	/**
+	 * Delete by ID
+	 * @param contractID
+	 *            ID of object
+	 */
+	public void deleteContractByID(final ContractID contractID) {
+
+<span class="nc" id="L691">		final Contract contract = this.getContractByID(contractID);</span>
+<span class="nc bnc" id="L692" title="All 2 branches missed.">		for (final InterfaceInContract ifaceInContract : contract.getInterfacesInContractSpecs()) {</span>
+<span class="nc" id="L693">			this.deleteInterfaceInContractByID(ifaceInContract.getId());</span>
+<span class="nc" id="L694">		}</span>
+
+<span class="nc" id="L696">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L698">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L699">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.DELETE_CONTRACT.getSqlStatement());</span>
+
+<span class="nc" id="L701">			selectStatement.setObject(1, contractID.getId());</span>
+<span class="nc bnc" id="L702" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L703">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="nc" id="L705">			selectStatement.executeUpdate();</span>
+
+<span class="nc" id="L707">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="nc bnc" id="L712" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L713">					conn.close();</span>
+				}
+<span class="nc" id="L715">			} catch (final SQLException e) {</span>
+<span class="nc" id="L716">				e.printStackTrace();</span>
+<span class="nc" id="L717">			}</span>
+		}
+
+<span class="nc" id="L720">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param contractID
+	 *            ID of object
+	 */
+	public void updateContractsAddApplicant(final ContractID contractID, final AccountID applicantAccountID) {
+
+<span class="fc" id="L729">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L731">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L732">			final PreparedStatement stmt = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.UPDATE_CONTRACT_ADD_APPLICANT.getSqlStatement());</span>
+<span class="fc" id="L733">			stmt.setObject(1, applicantAccountID.getId());</span>
+<span class="fc" id="L734">			stmt.setObject(2, contractID.getId());</span>
+<span class="pc bpc" id="L735" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L736">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L738">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L740">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L745" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L746">					conn.close();</span>
+				}
+<span class="nc" id="L748">			} catch (final SQLException e) {</span>
+<span class="nc" id="L749">				e.printStackTrace();</span>
+<span class="fc" id="L750">			}</span>
+		}
+
+<span class="fc" id="L753">	}</span>
+
+	/**
+	 * Get contracts of namespace
+	 * @param namespaceID
+	 *            contracts ID
+	 * @return The Contracts
+	 */
+	public List&lt;Contract&gt; getContractsOfNamespace(final NamespaceID namespaceID) {
+<span class="fc" id="L762">		ResultSet rs = null;</span>
+<span class="fc" id="L763">		final List&lt;Contract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L764">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L766">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L767">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_ALL_CONTRACTS_OF_NAMESPACE.getSqlStatement());</span>
+<span class="fc" id="L768">			selectStatement.setObject(1, namespaceID.getId());</span>
+<span class="pc bpc" id="L769" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L770">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L772">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L773" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L774">				result.add(deserializeContract(rs));</span>
+			}
+<span class="nc" id="L776">		} catch (final SQLException e) {</span>
+<span class="nc" id="L777">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L780" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L781">					rs.close();</span>
+				}
+<span class="pc bpc" id="L783" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L784">					conn.close();</span>
+				}
+<span class="nc" id="L786">			} catch (final SQLException e) {</span>
+<span class="nc" id="L787">				e.printStackTrace();</span>
+<span class="fc" id="L788">			}</span>
+		}
+
+<span class="fc" id="L791">		return result;</span>
+	}
+
+	/**
+	 * Get contracts containing interface
+	 * @param interfaceID
+	 *            interface ID
+	 * @return The Contracts
+	 */
+	public List&lt;Contract&gt; getContractsContainingInterface(final InterfaceID interfaceID) {
+<span class="fc" id="L801">		ResultSet rs = null;</span>
+<span class="fc" id="L802">		final List&lt;Contract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L803">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L805">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L806">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_ALL_CONTRACTS_WITH_INTERFACE.getSqlStatement());</span>
+
+<span class="fc" id="L808">			final Array tArray = selectStatement.getConnection().createArrayOf(&quot;uuid&quot;, new UUID[] { interfaceID.getId() });</span>
+<span class="fc" id="L809">			selectStatement.setArray(1, tArray);</span>
+
+<span class="pc bpc" id="L811" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L812">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L814">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L815" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L816">				result.add(deserializeContract(rs));</span>
+			}
+<span class="nc" id="L818">		} catch (final SQLException e) {</span>
+<span class="nc" id="L819">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L822" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L823">					rs.close();</span>
+				}
+<span class="pc bpc" id="L825" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L826">					conn.close();</span>
+				}
+<span class="nc" id="L828">			} catch (final SQLException e) {</span>
+<span class="nc" id="L829">				e.printStackTrace();</span>
+<span class="fc" id="L830">			}</span>
+		}
+
+<span class="fc" id="L833">		return result;</span>
+	}
+
+	/**
+	 * Get contracts containing applicant
+	 * @param applicantAccountID
+	 *            Account ID
+	 * @return The Contracts
+	 */
+	public List&lt;Contract&gt; getContractsWithApplicant(final AccountID applicantAccountID) {
+<span class="fc" id="L843">		ResultSet rs = null;</span>
+<span class="fc" id="L844">		final List&lt;Contract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L845">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L847">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L848">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_ALL_CONTRACTS_WITH_APPLICANT.getSqlStatement());</span>
+<span class="fc" id="L849">			final Array tArray = selectStatement.getConnection().createArrayOf(&quot;uuid&quot;, new UUID[] { applicantAccountID.getId() });</span>
+<span class="fc" id="L850">			selectStatement.setArray(1, tArray);</span>
+
+<span class="pc bpc" id="L852" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L853">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L855">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L856" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L857">				result.add(deserializeContract(rs));</span>
+			}
+<span class="nc" id="L859">		} catch (final SQLException e) {</span>
+<span class="nc" id="L860">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L863" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L864">					rs.close();</span>
+				}
+<span class="pc bpc" id="L866" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L867">					conn.close();</span>
+				}
+<span class="nc" id="L869">			} catch (final SQLException e) {</span>
+<span class="nc" id="L870">				e.printStackTrace();</span>
+<span class="fc" id="L871">			}</span>
+		}
+
+<span class="fc" id="L874">		return result;</span>
+	}
+
+	/**
+	 * Get contracts containing provider
+	 * @param providerAccountID
+	 *            Account ID
+	 * @return The Contracts
+	 */
+	public List&lt;Contract&gt; getContractsWithProvider(final AccountID providerAccountID) {
+<span class="nc" id="L884">		ResultSet rs = null;</span>
+<span class="nc" id="L885">		final List&lt;Contract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L886">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L888">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L889">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_ALL_CONTRACTS_WITH_PROVIDER.getSqlStatement());</span>
+<span class="nc" id="L890">			selectStatement.setObject(1, providerAccountID.getId());</span>
+<span class="nc bnc" id="L891" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L892">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="nc" id="L894">			rs = selectStatement.executeQuery();</span>
+<span class="nc bnc" id="L895" title="All 2 branches missed.">			while (rs.next()) {</span>
+<span class="nc" id="L896">				result.add(deserializeContract(rs));</span>
+			}
+<span class="nc" id="L898">		} catch (final SQLException e) {</span>
+<span class="nc" id="L899">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="nc bnc" id="L902" title="All 2 branches missed.">				if (rs != null) {</span>
+<span class="nc" id="L903">					rs.close();</span>
+				}
+<span class="nc bnc" id="L905" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L906">					conn.close();</span>
+				}
+<span class="nc" id="L908">			} catch (final SQLException e) {</span>
+<span class="nc" id="L909">				e.printStackTrace();</span>
+<span class="nc" id="L910">			}</span>
+		}
+
+<span class="nc" id="L913">		return result;</span>
+	}
+
+	/**
+	 * Get OpImplementations with implementation id
+	 * @param implementationID
+	 *            ID of implementation
+	 * @return The OpImplementations
+	 */
+	public List&lt;OpImplementations&gt; getOpImplementationsWithImpl(final ImplementationID implementationID) {
+<span class="fc" id="L923">		ResultSet rs = null;</span>
+<span class="fc" id="L924">		final List&lt;OpImplementations&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L925">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L927">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L928">			final PreparedStatement selectStatement = conn.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_ALL_OPIMPLS_WITH_IMPL.getSqlStatement());</span>
+<span class="fc" id="L929">			selectStatement.setObject(1, implementationID.getId());</span>
+<span class="fc" id="L930">			selectStatement.setObject(2, implementationID.getId());</span>
+<span class="pc bpc" id="L931" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L932">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L934">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L935" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L936">				result.add(deserializeOpImplementations(rs));</span>
+			}
+<span class="nc" id="L938">		} catch (final SQLException e) {</span>
+<span class="nc" id="L939">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L942" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L943">					rs.close();</span>
+				}
+<span class="pc bpc" id="L945" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L946">					conn.close();</span>
+				}
+<span class="nc" id="L948">			} catch (final SQLException e) {</span>
+<span class="nc" id="L949">				e.printStackTrace();</span>
+<span class="fc" id="L950">			}</span>
+		}
+
+<span class="fc" id="L953">		return result;</span>
+	}
+
+	/**
+	 * Get contracts containing applicant and namespace
+	 * @param applicantAccountID
+	 *            Account ID
+	 * @param namespaceID
+	 *            ID of namespace
+	 * @return The Contracts
+	 */
+	public List&lt;Contract&gt; getContractsWithApplicantAndNamespace(final AccountID applicantAccountID,
+			final NamespaceID namespaceID) {
+<span class="fc" id="L966">		ResultSet rs = null;</span>
+<span class="fc" id="L967">		final List&lt;Contract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L968">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L970">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L971">			final PreparedStatement selectStatement = conn</span>
+<span class="fc" id="L972">					.prepareStatement(ContractManagerSQLStatements.SqlStatements.SELECT_ALL_CONTRACTS_WITH_APPLICANT_AND_NAMESPACE.getSqlStatement());</span>
+<span class="fc" id="L973">			final Array tArray = selectStatement.getConnection().createArrayOf(&quot;uuid&quot;, new UUID[] { applicantAccountID.getId() });</span>
+<span class="fc" id="L974">			selectStatement.setArray(1, tArray);</span>
+<span class="fc" id="L975">			selectStatement.setObject(2, namespaceID.getId());</span>
+<span class="pc bpc" id="L976" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L977">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L979">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L980" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L981">				result.add(deserializeContract(rs));</span>
+			}
+<span class="nc" id="L983">		} catch (final SQLException e) {</span>
+<span class="nc" id="L984">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L987" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L988">					rs.close();</span>
+				}
+<span class="pc bpc" id="L990" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L991">					conn.close();</span>
+				}
+<span class="nc" id="L993">			} catch (final SQLException e) {</span>
+<span class="nc" id="L994">				e.printStackTrace();</span>
+<span class="fc" id="L995">			}</span>
+		}
+
+<span class="fc" id="L998">		return result;</span>
+	}
+
+	/**
+	 * Close DB.
+	 */
+	public void close() {
+		try {
+<span class="fc" id="L1006">			dataSource.close();</span>
+<span class="nc" id="L1007">		}catch(Exception e) {</span>
+			// TODO
+<span class="nc" id="L1009">			e.printStackTrace();</span>
+<span class="fc" id="L1010">		}</span>
+<span class="fc" id="L1011">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

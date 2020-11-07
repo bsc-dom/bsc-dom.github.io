@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExecutionEnvironmentHeapManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.heap</a> &gt; <span class="el_source">ExecutionEnvironmentHeapManager.java</span></div><h1>ExecutionEnvironmentHeapManager.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.heap;
+
+import java.lang.ref.Reference;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayMockObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.commonruntime.DataServiceRuntime;
+import es.bsc.dataclay.dataservice.DataService;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.reflection.Reflector;
+
+/**
+ * This class is responsible to manage objects in EE memory and update or store
+ * them in disk.
+ */
+public class ExecutionEnvironmentHeapManager extends HeapManager {
+
+	/** Memory percentage to consider that there is pressure */
+<span class="nc" id="L28">	private static final float GC_MEMORY_PRESSURE_PERCENT = Configuration.Flags.MEMMGMT_PRESSURE_FRACTION</span>
+<span class="nc" id="L29">			.getFloatValue();</span>
+
+	/** Minimum time to be collected. */
+<span class="nc" id="L32">	private static final long GC_MIN_TIME = Configuration.Flags.MEMMGMT_MIN_OBJECT_TIME.getLongValue();</span>
+
+	/** Indicates if a flushAll is being processed. */
+<span class="nc" id="L35">	private boolean isFlushingAll = false;</span>
+
+	/** Indicates GC is being processed. */
+<span class="nc" id="L38">	private boolean isProcessingGC = false;</span>
+
+	/** EE being monitorized. */
+	private final DataService dataService;
+
+	/** Total number of objects cleaned. */
+<span class="nc" id="L44">	private static final AtomicInteger NUM_OBJS_CLEANED = new AtomicInteger(0);</span>
+
+	/** List to retain objects. */
+	/**
+	 * It is very important to be a sorted list, so first elements to arrive are
+	 * cleaned before, in any deserialization from DB or parameter, objects
+	 * deserialized first are referrers to objects deserialized later. Second ones
+	 * cannot be GC if first ones are not cleaned. During GC,we should know that
+	 * somehow. It's a hint but improves GC a lot. List must be thread-safe!! NOTE:
+	 * Java concurrent hash map is more efficient than list. However, no insertion
+	 * order is mantained. ConcurrentHashMap gain in performance is more than being
+	 * unable to clean some objecs since it is in Critical Path (creation of
+	 * objects).
+	 **/
+	protected final Map&lt;ObjectID, DataClayObject&gt; retainedObjects;
+
+	/**
+	 * Contructor.
+	 * 
+	 * @param DataServiceRuntime
+	 *            The DataServiceRuntime.
+	 */
+	public ExecutionEnvironmentHeapManager(final DataServiceRuntime theruntime) {
+<span class="nc" id="L67">		super(theruntime);</span>
+<span class="nc" id="L68">		dataService = theruntime.getDataService();</span>
+<span class="nc" id="L69">		retainedObjects = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L70">	}</span>
+
+	/**
+	 * Get object ids retained
+	 * 
+	 * @return object ids retained
+	 */
+	public final Set&lt;ObjectID&gt; getObjectIDsRetained() {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L79">			logger.trace(&quot;[==GC==] Retained refs: &quot; + this.retainedObjects.size());</span>
+<span class="nc" id="L80">			logger.trace(&quot;[==GC==] Inmemory refs: &quot; + this.inmemoryObjects.size());</span>
+		}
+<span class="nc" id="L82">		return this.inmemoryObjects.keySet();</span>
+	}
+
+	/**
+	 * Check if memory is under pressure
+	 * 
+	 * @return Memory used percent
+	 */
+	private float getMemoryUsed() {
+		// Check memory
+		// Getting the runtime reference from system
+<span class="nc" id="L93">		final Runtime runtime = Runtime.getRuntime();</span>
+<span class="nc" id="L94">		final long usedMemory = runtime.totalMemory() - runtime.freeMemory();</span>
+<span class="nc" id="L95">		final float usedMemoryPercent = (float) usedMemory / (float) runtime.totalMemory();</span>
+<span class="nc" id="L96">		return usedMemoryPercent;</span>
+	}
+
+	/**
+	 * This function nullifies an object in order to allow Java GC to work.
+	 * 
+	 * @param object
+	 *            Object to nullify
+	 */
+	private void nullifyObject(final DataClayExecutionObject object) {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L107">			logger.trace(&quot;[==GC==] Nullify all fields of &quot; + object.getObjectID() + &quot; of class &quot;</span>
+<span class="nc" id="L108">					+ object.getClass().getName());</span>
+		}
+<span class="nc" id="L110">		Reflector.nullifyAllFields(object);</span>
+<span class="nc" id="L111">	}</span>
+
+	@Override
+	public DataClayExecutionObject getObject(final ObjectID objectID) {
+<span class="nc" id="L115">		return (DataClayExecutionObject) super.getObject(objectID);</span>
+	}
+
+	@Override
+	public void addToHeap(final DataClayObject dcObject) {
+<span class="nc" id="L120">		super.addToHeapMap(dcObject);</span>
+		// Retain object in heap
+<span class="nc" id="L122">		this.retainInHeap(dcObject);</span>
+
+<span class="nc" id="L124">	}</span>
+
+	/**
+	 * Add a new Hard reference to the object provided. All code in stubs/exec
+	 * classes using objects in dataClayheap are using weak references. In order to
+	 * avoid objects to be GC without a flush in DB, HeapManager has hard-references
+	 * to them and is the only one able to release them. This function creates the
+	 * hard-reference.
+	 * 
+	 * @param object
+	 *            Object to add
+	 */
+	public void retainInHeap(final DataClayObject object) {
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L138">			logger.debug(</span>
+<span class="nc" id="L139">					&quot;[==Heap==] Adding Hard Reference from HeapManager for object with ID &quot; + object.getObjectID());</span>
+		}
+<span class="nc" id="L141">		this.retainedObjects.put(object.getObjectID(), object);</span>
+<span class="nc" id="L142">	}</span>
+
+	/**
+	 * Release hard reference to object with ID provided. Without hard reference,
+	 * the object can be Garbage collected by Java GC.
+	 * 
+	 * @param objectID
+	 *            ID of the object
+	 */
+	public final void releaseFromHeap(final ObjectID objectID) {
+<span class="nc bnc" id="L152" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L153">			logger.debug(&quot;[==Heap==] Releasing Hard Reference from HeapManager for object with ID &quot; + objectID);</span>
+		}
+<span class="nc" id="L155">		this.retainedObjects.remove(objectID);</span>
+<span class="nc" id="L156">	}</span>
+
+	/**
+	 * Update all objects in memory (or store them if new). Function called at
+	 * shutdown.
+	 */
+	@Override
+	public void flushAll() {
+
+		// If there is another 'flush', return.
+<span class="nc bnc" id="L166" title="All 2 branches missed.">		if (this.isFlushingAll) {</span>
+<span class="nc" id="L167">			return;</span>
+		}
+
+<span class="nc" id="L170">		this.isFlushingAll = true;</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L172">			logger.debug(&quot;[==Shutdown==] Wait GC in progress (it can take a while)... &quot;);</span>
+		}
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		while (this.isProcessingGC) {</span>
+			try {
+<span class="nc" id="L176">				Thread.sleep(Configuration.Flags.MEMMGMT_WAIT_TO_SHUTDOWN.getLongValue());</span>
+<span class="nc" id="L177">			} catch (final InterruptedException ex) {</span>
+<span class="nc" id="L178">				logger.debug(&quot;flushAll interrupted while sleeping&quot;, ex);</span>
+<span class="nc" id="L179">			}</span>
+		}
+		// While map is not empty (objects can be added during and update)
+<span class="nc" id="L182">		final Set&lt;ObjectID&gt; updatedOids = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L183">		final Map&lt;ObjectID, DataClayObject&gt; objectsToUpdate = this.retainedObjects;</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L185">			logger.debug(&quot;[==Shutdown==] Remaining in Heap &quot; + heapSize());</span>
+<span class="nc" id="L186">			logger.debug(&quot;[==Shutdown==] Updating all objects  (Found &quot; + objectsToUpdate.size() + &quot;) ... &quot;);</span>
+		}
+<span class="nc bnc" id="L188" title="All 2 branches missed.">		for (final DataClayObject curObj : objectsToUpdate.values()) {</span>
+<span class="nc" id="L189">			final DataClayExecutionObject obj = (DataClayExecutionObject) curObj;</span>
+<span class="nc bnc" id="L190" title="All 6 branches missed.">			if (obj.isLoaded() &amp;&amp; obj.getObjectID() != null &amp;&amp; obj.isPersistent()) {</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L192">					logger.debug(&quot;[==Shutdown==] Updating object. OID = &quot; + obj.getObjectID() + &quot; Loaded = &quot;</span>
+<span class="nc" id="L193">							+ obj.isLoaded() + &quot; isPersistent = &quot; + obj.isPersistent());</span>
+				}
+<span class="nc" id="L195">				dataService.gcCollectObjectInternal(obj);</span>
+			}
+<span class="nc" id="L197">		}</span>
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L200">			logger.debug(&quot;[==Shutdown==] Updated &quot; + updatedOids.size());</span>
+
+			// Clean all objects
+<span class="nc bnc" id="L203" title="All 2 branches missed.">			for (final ObjectID oid : updatedOids) {</span>
+<span class="nc" id="L204">				runtime.removeFromHeap(oid);</span>
+<span class="nc" id="L205">			}</span>
+
+<span class="nc" id="L207">			int remainingRefs = 0;</span>
+<span class="nc" id="L208">			int remainingUnloadedObjs = 0;</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, Reference&lt;DataClayObject&gt;&gt; entry : this.inmemoryObjects.entrySet()) {</span>
+<span class="nc" id="L210">				final Reference&lt;DataClayObject&gt; ref = entry.getValue();</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">				if (ref != null) {</span>
+<span class="nc" id="L212">					final DataClayExecutionObject obj = (DataClayExecutionObject) ref.get();</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">					if (obj == null) {</span>
+<span class="nc" id="L214">						remainingRefs++;</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">					} else if (!obj.isLoaded()) {</span>
+<span class="nc" id="L216">						remainingUnloadedObjs++;</span>
+					}
+				}
+<span class="nc" id="L219">			}</span>
+
+<span class="nc" id="L221">			logger.debug(&quot;[==Shutdown==] All objects updated.&quot;);</span>
+<span class="nc" id="L222">			logger.debug(&quot;[==Shutdown==] Heap Remaining objects : &quot; + runtime.heapSize());</span>
+<span class="nc" id="L223">			logger.debug(&quot;[==Shutdown==] Heap Remaining unloaded objects : &quot; + remainingUnloadedObjs);</span>
+<span class="nc" id="L224">			logger.debug(&quot;[==Shutdown==] Heap Remaining weak references pointing to null : &quot; + remainingRefs);</span>
+<span class="nc" id="L225">			logger.debug(&quot;[==Shutdown==] Number of lockers : &quot; + runtime.numLockers());</span>
+<span class="nc" id="L226">			logger.debug(&quot;[==Shutdown==] Done!&quot;);</span>
+
+		}
+<span class="nc" id="L229">	}</span>
+
+	/**
+	 * Clean object (except if not loaded or being used)
+	 * 
+	 * @param object
+	 *            Object to clean
+	 */
+	private void cleanObject(final DataClayExecutionObject object) {
+
+		// Lock object (not locking executions!)
+		// Lock is needed in case object is being nullified and some threads requires to
+		// load it from disk.
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L243">			logger.debug(&quot;[==GC==] Cleaning object &quot; + object.getObjectID());</span>
+		}
+<span class="nc" id="L245">		runtime.lock(object.getObjectID());</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L247">			logger.debug(&quot;[==GC==] Start Collection of &quot; + object.getObjectID() + &quot; of class &quot;</span>
+<span class="nc" id="L248">					+ object.getClass().getName() + &quot;: locking.&quot;);</span>
+		}
+		try {
+
+			// Is object loaded? (always yes, sanity check)
+<span class="nc bnc" id="L253" title="All 2 branches missed.">			if (!object.isLoaded()) {</span>
+				// not collecting but remove it from retained references.
+<span class="nc bnc" id="L255" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L256">					logger.debug(&quot;[==GC==] Not Collecting &quot; + object.getObjectID() + &quot; of class &quot;</span>
+<span class="nc" id="L257">							+ object.getClass().getName() + &quot;: is not loaded.&quot;);</span>
+<span class="nc" id="L258">					logger.debug(</span>
+<span class="nc" id="L259">							&quot;[==GC==] Removing &quot; + object.getObjectID() + &quot; of class &quot; + object.getClass().getName()</span>
+<span class="nc" id="L260">									+ &quot; from Retained references. Currently retained: &quot; + retainedObjects.size());</span>
+				}
+<span class="nc" id="L262">				retainedObjects.remove(object.getObjectID());</span>
+<span class="nc" id="L263">				return;</span>
+			}
+
+			// RACE CONDITION 1
+			// Only remove from retained if object is dirty. Updating the object or using it
+			// is possible even if we are in
+			// this &quot;locked&quot; block since there is no lock in setters, ... During the
+			// cleaning process it is possible that we
+			// have a thread running a method on it. Since we set loaded to False, any new
+			// &quot;get&quot; or &quot;set&quot; in the state of the
+			// object will cause a loadFromDB. LoadFromDB is a function that has a lock also
+			// and during this cleaning it will be
+			// waiting. In the end, the worst case will be that the HeapManager decided to
+			// clean an object and the object is
+			// going to be used during or just after the cleaning. As explained, this race
+			// condition is controlled using lock +
+			// isLoaded
+			// flag.
+<span class="nc" id="L281">			object.setLoaded(false);</span>
+
+			// Is object dirty? Only collect if dirty or pending to register!
+			// Collect it
+<span class="nc bnc" id="L285" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L286">				logger.debug(</span>
+<span class="nc" id="L287">						&quot;[==GC==] ** Collecting &quot; + object.getObjectID() + &quot; of class &quot; + object.getClass().getName());</span>
+			}
+
+			// This function is flushing all changes into disk, and storing and registering
+			// if volatile
+<span class="nc" id="L292">			dataService.gcCollectObjectInternal(object);</span>
+
+			// Set unloaded and nullify all fields
+<span class="nc" id="L295">			this.nullifyObject(object);</span>
+<span class="nc" id="L296">			object.setDirty(false); // after nullify - it is not dirty</span>
+<span class="nc" id="L297">			final int numObjsCleaned = NUM_OBJS_CLEANED.incrementAndGet();</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">			if (numObjsCleaned % 100 == 0) {</span>
+<span class="nc" id="L299">				logger.info(&quot;[==GC==] Number of objects cleaned by GC: &quot; + numObjsCleaned);</span>
+			}
+
+			// RACE CONDITION 2
+			// If some object was cleaned and removed from GC retained refs, it does NOT
+			// mean it was removed
+			// from Weak references map (Heap) because we will ONLY remove an entry in Heap
+			// if it is
+			// pointing to NULL, i.e. the Java GC removed it.
+			// So, if some execution is requested after we remove an entry from retained
+			// refs (we cleaned and send
+			// the object to disk), we check if the
+			// object is in Heap (see executeImplementation in DS) and therefore, we created
+			// a new reference
+			// making impossible for Java GC to clean the reference. We will add the object
+			// to retained references
+			// again once it is deserialized from DB.
+			// No lock-race condition can happen here, loadDataClayObjectFromDb function is
+			// locked, so it is not possible
+			// to remove a retained reference after &quot;retaining it&quot; from deserialize from DB.
+			// Remove it from Retained refs to allow Java GC action.
+<span class="nc bnc" id="L320" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L321">				logger.debug(&quot;[==GC==] Removing &quot; + object.getObjectID() + &quot; of class &quot; + object.getClass().getName()</span>
+<span class="nc" id="L322">						+ &quot; from Retained references. Currently retained: &quot; + retainedObjects.size());</span>
+			}
+<span class="nc" id="L324">			releaseFromHeap(object.getObjectID());</span>
+
+<span class="nc" id="L326">		} catch (Exception | Error ex) {</span>
+<span class="nc" id="L327">			logger.debug(&quot;cleanObject error&quot;, ex);</span>
+		} finally {
+<span class="nc bnc" id="L329" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L330">				logger.debug(&quot;[==GC==] Collecting &quot; + object.getObjectID() + &quot; of class &quot; + object.getClass().getName()</span>
+						+ &quot;: unlocking.&quot;);
+			}
+			// Unlock it
+<span class="nc" id="L334">			runtime.unlock(object.getObjectID());</span>
+		}
+<span class="nc" id="L336">	}</span>
+
+	@Override
+	public final void run() {
+<span class="nc" id="L340">		this.isProcessingGC = true;</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">		if (isFlushingAll) {</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L343">				logger.debug(&quot;[==GC==] Not collecting due to shutdown or other GC.&quot;);</span>
+			}
+<span class="nc" id="L345">			return;</span>
+		}
+		try {
+<span class="nc" id="L348">			float usedMemoryPercent = this.getMemoryUsed();</span>
+<span class="nc bnc" id="L349" title="All 2 branches missed.">			if (usedMemoryPercent &gt; GC_MEMORY_PRESSURE_PERCENT) {</span>
+
+<span class="nc bnc" id="L351" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L352">					logger.debug(&quot;[==GC==] Memory GC started. Retained objects: &quot; + retainedObjects.size());</span>
+				}
+<span class="nc" id="L354">				final long threadID = Thread.currentThread().getId();</span>
+<span class="nc bnc" id="L355" title="All 2 branches missed.">				if (Configuration.mockTesting) {</span>
+<span class="nc" id="L356">					DataClayMockObject.setCurrentThreadLib(this.runtime);</span>
+				}
+<span class="nc" id="L358">				final long timestamp = System.currentTimeMillis();</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">				for (final DataClayObject curObject : retainedObjects.values()) {</span>
+
+<span class="nc" id="L361">					final DataClayExecutionObject object = (DataClayExecutionObject) curObject;</span>
+
+<span class="nc" id="L363">					usedMemoryPercent = this.getMemoryUsed();</span>
+<span class="nc bnc" id="L364" title="All 4 branches missed.">					if (DEBUG_ENABLED &amp;&amp; logger.isTraceEnabled()) {</span>
+<span class="nc" id="L365">						final Runtime runtime = Runtime.getRuntime();</span>
+<span class="nc" id="L366">						final long usedMemory = runtime.totalMemory() - runtime.freeMemory();</span>
+<span class="nc" id="L367">						final int mb = 1024 * 1024;</span>
+<span class="nc" id="L368">						final StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L369">						sb.append(&quot;[==GC==] Checking memory pressure: &quot;);</span>
+<span class="nc" id="L370">						sb.append(&quot; Used Memory (MB):&quot; + usedMemory / mb);</span>
+<span class="nc" id="L371">						sb.append(&quot;, Free Memory (MB):&quot; + runtime.freeMemory() / mb);</span>
+<span class="nc" id="L372">						sb.append(&quot;, Total Memory (MB):&quot; + runtime.totalMemory() / mb);</span>
+<span class="nc bnc" id="L373" title="All 2 branches missed.">						if (runtime.maxMemory() == Long.MAX_VALUE) {</span>
+<span class="nc" id="L374">							sb.append(&quot;, Max Memory: Unlimited&quot;);</span>
+						} else {
+<span class="nc" id="L376">							sb.append(&quot;,Max Memory (MB):&quot; + runtime.maxMemory() / mb);</span>
+						}
+<span class="nc" id="L378">						logger.trace(sb.toString());</span>
+
+<span class="nc bnc" id="L380" title="All 2 branches missed.">						if (this.retainedObjects.size() &gt; 0) {</span>
+<span class="nc" id="L381">							logger.trace(&quot;[==GC==] Number of objects retained in memory : &quot; + retainedObjects.size()</span>
+<span class="nc" id="L382">									+ &quot;. Number of weak refs in memory : &quot; + this.inmemoryObjects.size());</span>
+
+<span class="nc" id="L384">							final Map&lt;String, Integer&gt; countByClass = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">							for (final DataClayObject obj : retainedObjects.values()) {</span>
+<span class="nc" id="L386">								final String className = obj.getClass().getName();</span>
+<span class="nc" id="L387">								final Integer count = countByClass.get(className);</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">								if (count == null) {</span>
+<span class="nc" id="L389">									countByClass.put(className, 1);</span>
+								} else {
+<span class="nc" id="L391">									countByClass.put(className, count + 1);</span>
+								}
+<span class="nc" id="L393">							}</span>
+
+<span class="nc" id="L395">							logger.trace(&quot;[==GC==] Objects in memory : &quot; + countByClass);</span>
+<span class="nc" id="L396">						} else {</span>
+<span class="nc" id="L397">							logger.trace(&quot;[==GC==] No objects to collect.&quot;);</span>
+						}
+<span class="nc" id="L399">						logger.trace(&quot;[==GC==] ++++ CURRENT MEMORY PRESSURE: &quot; + (usedMemoryPercent * 100) + &quot; %&quot;);</span>
+					}
+
+					// Check memory
+<span class="nc bnc" id="L403" title="All 2 branches missed.">					if (this.getMemoryUsed() &lt; GC_MEMORY_PRESSURE_PERCENT) {</span>
+<span class="nc bnc" id="L404" title="All 4 branches missed.">						if (DEBUG_ENABLED &amp;&amp; logger.isTraceEnabled()) {</span>
+<span class="nc" id="L405">							logger.trace(&quot;[==GC==] Not collecting more since there is enough memory&quot;);</span>
+						}
+						break;
+					}
+
+					// 1 - Is object too young?
+<span class="nc bnc" id="L411" title="All 2 branches missed.">					if ((timestamp - object.getCreationTimeStamp()) &lt; GC_MIN_TIME) {</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L413">							logger.debug(&quot;[==GC==] Not collecting &quot; + object.getObjectID() + &quot; of class &quot;</span>
+<span class="nc" id="L414">									+ object.getClass().getName() + &quot; because it is too young.&quot;);</span>
+						}
+						continue;
+					}
+
+					// 2 - Is object loaded or being used by any thread? (check inside clean
+					// function)
+<span class="nc" id="L421">					cleanObject(object);</span>
+
+<span class="nc bnc" id="L423" title="All 2 branches missed.">					if (this.isFlushingAll) {</span>
+<span class="nc" id="L424">						break;</span>
+					}
+
+<span class="nc" id="L427">				}</span>
+
+<span class="nc" id="L429">				this.cleanReferencesAndLockers();</span>
+
+<span class="nc bnc" id="L431" title="All 2 branches missed.">				if (Configuration.mockTesting) {</span>
+<span class="nc" id="L432">					DataClayMockObject.removeCurrentThreadLib();</span>
+				}
+<span class="nc bnc" id="L434" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L435">					logger.debug(&quot;[==GC==] Memory GC finished.&quot;);</span>
+				}
+
+				// Notify JVM to clean weak references as soon as possible.
+<span class="nc" id="L439">				System.gc();</span>
+			}
+<span class="nc" id="L441">		} catch (Exception | Error ex) {</span>
+<span class="nc" id="L442">			ex.printStackTrace();</span>
+<span class="nc" id="L443">			logger.debug(&quot;run error&quot;, ex);</span>
+		} finally {
+<span class="nc" id="L445">			this.isProcessingGC = false;</span>
+		}
+<span class="nc" id="L447">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

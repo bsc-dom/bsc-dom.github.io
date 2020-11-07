@@ -1,0 +1,719 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayIDFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.heap</a> &gt; <span class="el_source">DataClayIDFactory.java</span></div><h1>DataClayIDFactory.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.heap;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.CredentialID;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.ids.DataSetID;
+import es.bsc.dataclay.util.ids.ECAID;
+import es.bsc.dataclay.util.ids.EventMessageID;
+import es.bsc.dataclay.util.ids.EventObjsMeetConditionID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.ids.ResourceID;
+import es.bsc.dataclay.util.ids.SessionID;
+import es.bsc.dataclay.util.ids.StorageLocationID;
+
+/**
+ * This class create and manages all IDs in dataClay. It is necessary to avoid having thousands of IDs occupying the
+ *        Heap.
+ *
+ */
+<span class="nc" id="L34">public class DataClayIDFactory {</span>
+
+	/** This is map of Immutable representation of an ObjectID --&gt; DataClayID. */
+<span class="nc" id="L37">	private static final Map&lt;String, ID&gt; dataClayIDs = new ConcurrentHashMap&lt;&gt;();</span>
+
+	/**
+	 * Create a new account ID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return AccountID.
+	 */
+	public static AccountID newAccountID(final String uuidStr) {
+<span class="nc" id="L46">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L49">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L50">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L52">					id = new AccountID(uuidStr);</span>
+<span class="nc" id="L53">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L55">			}</span>
+		}
+<span class="nc" id="L57">		return (AccountID) id;</span>
+	}
+
+	/**
+	 * Create a new contract ID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return ContractID.
+	 */
+	public static ContractID newContractID(final String uuidStr) {
+<span class="nc" id="L67">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L70">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L71">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L73">					id = new ContractID(uuidStr);</span>
+<span class="nc" id="L74">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L76">			}</span>
+		}
+<span class="nc" id="L78">		return (ContractID) id;</span>
+	}
+
+	/**
+	 * Create a new credential ID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return CredentialID.
+	 */
+	public static CredentialID newCredentialID(final String uuidStr) {
+<span class="nc" id="L88">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L91">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L92">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L94">					id = new CredentialID(uuidStr);</span>
+<span class="nc" id="L95">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L97">			}</span>
+		}
+<span class="nc" id="L99">		return (CredentialID) id;</span>
+	}
+
+	/**
+	 * Create a new DataClayInstanceID ID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return DataClayInstanceID.
+	 */
+	public static DataClayInstanceID newDataClayInstanceID(final String uuidStr) {
+<span class="nc" id="L109">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L112">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L113">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L115">					id = new DataClayInstanceID(uuidStr);</span>
+<span class="nc" id="L116">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L118">			}</span>
+		}
+<span class="nc" id="L120">		return (DataClayInstanceID) id;</span>
+	}
+
+	/**
+	 * Create a new DataContractID ID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return DataContractID.
+	 */
+	public static DataContractID newDataContractID(final String uuidStr) {
+<span class="nc" id="L130">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L133">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L134">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L136">					id = new DataContractID(uuidStr);</span>
+<span class="nc" id="L137">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L139">			}</span>
+		}
+<span class="nc" id="L141">		return (DataContractID) id;</span>
+	}
+
+	/**
+	 * Create a new DataSetID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return DataSetID.
+	 */
+	public static DataSetID newDataSetID(final String uuidStr) {
+<span class="nc" id="L151">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L154">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L155">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L157">					id = new DataSetID(uuidStr);</span>
+<span class="nc" id="L158">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L160">			}</span>
+		}
+<span class="nc" id="L162">		return (DataSetID) id;</span>
+	}
+
+	/**
+	 * Create a new ECAID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return ECAID.
+	 */
+	public static ECAID newECAID(final String uuidStr) {
+<span class="nc" id="L172">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L175">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L176">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L178">					id = new ECAID(uuidStr);</span>
+<span class="nc" id="L179">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L181">			}</span>
+		}
+<span class="nc" id="L183">		return (ECAID) id;</span>
+	}
+
+	/**
+	 * Create a new EventMessageID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return EventMessageID.
+	 */
+	public static EventMessageID newEventMessageID(final String uuidStr) {
+<span class="nc" id="L193">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L196">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L197">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L199">					id = new EventMessageID(uuidStr);</span>
+<span class="nc" id="L200">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L202">			}</span>
+		}
+<span class="nc" id="L204">		return (EventMessageID) id;</span>
+	}
+
+	/**
+	 * Create a new EventObjsMeetConditionID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return EventObjsMeetConditionID.
+	 */
+	public static EventObjsMeetConditionID newEventObjsMeetConditionID(final String uuidStr) {
+<span class="nc" id="L214">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L217">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L218">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L220">					id = new EventObjsMeetConditionID(uuidStr);</span>
+<span class="nc" id="L221">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L223">			}</span>
+		}
+<span class="nc" id="L225">		return (EventObjsMeetConditionID) id;</span>
+	}
+
+	/**
+	 * Create a new ExecutionEnvironmentID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return ExecutionEnvironmentID.
+	 */
+	public static ExecutionEnvironmentID newExecutionEnvironmentID(final String uuidStr) {
+<span class="nc" id="L235">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L238">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L239">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L241">					id = new ExecutionEnvironmentID(uuidStr);</span>
+<span class="nc" id="L242">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L244">			}</span>
+		}
+<span class="nc" id="L246">		return (ExecutionEnvironmentID) id;</span>
+	}
+
+	/**
+	 * Create a new ImplementationID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return ImplementationID.
+	 */
+	public static ImplementationID newImplementationID(final String uuidStr) {
+<span class="nc" id="L256">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L259">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L260">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L262">					id = new ImplementationID(uuidStr);</span>
+<span class="nc" id="L263">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L265">			}</span>
+		}
+<span class="nc" id="L267">		return (ImplementationID) id;</span>
+	}
+
+	/**
+	 * Create a new InterfaceID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return InterfaceID.
+	 */
+	public static InterfaceID newInterfaceID(final String uuidStr) {
+<span class="nc" id="L277">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L280">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L281">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L283">					id = new InterfaceID(uuidStr);</span>
+<span class="nc" id="L284">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L286">			}</span>
+		}
+<span class="nc" id="L288">		return (InterfaceID) id;</span>
+	}
+
+	/**
+	 * Create a new MetaClassID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return MetaClassID.
+	 */
+	public static MetaClassID newMetaClassID(final String uuidStr) {
+<span class="nc" id="L298">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L301">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L302">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L304">					id = new MetaClassID(uuidStr);</span>
+<span class="nc" id="L305">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L307">			}</span>
+		}
+<span class="nc" id="L309">		return (MetaClassID) id;</span>
+	}
+
+	/**
+	 * Create a new NamespaceID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return NamespaceID.
+	 */
+	public static NamespaceID newNamespaceID(final String uuidStr) {
+<span class="nc" id="L319">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L322">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L323">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L325">					id = new NamespaceID(uuidStr);</span>
+<span class="nc" id="L326">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L328">			}</span>
+		}
+<span class="nc" id="L330">		return (NamespaceID) id;</span>
+	}
+
+	/**
+	 * Create a new ObjectID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return ObjectID.
+	 */
+	public static ObjectID newObjectID(final String uuidStr) {
+<span class="nc" id="L340">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L343">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L344">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L346">					id = new ObjectID(uuidStr);</span>
+<span class="nc" id="L347">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L349">			}</span>
+		}
+<span class="nc" id="L351">		return (ObjectID) id;</span>
+	}
+
+	/**
+	 * Create a new OperationID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return OperationID.
+	 */
+	public static OperationID newOperationID(final String uuidStr) {
+<span class="nc" id="L361">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L364">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L365">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L366" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L367">					id = new OperationID(uuidStr);</span>
+<span class="nc" id="L368">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L370">			}</span>
+		}
+<span class="nc" id="L372">		return (OperationID) id;</span>
+	}
+
+	/**
+	 * Create a new PropertyID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return PropertyID.
+	 */
+	public static PropertyID newPropertyID(final String uuidStr) {
+<span class="nc" id="L382">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L385">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L386">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L387" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L388">					id = new PropertyID(uuidStr);</span>
+<span class="nc" id="L389">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L391">			}</span>
+		}
+<span class="nc" id="L393">		return (PropertyID) id;</span>
+	}
+
+	/**
+	 * Create a new ResourceID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return ResourceID.
+	 */
+	public static ResourceID newResourceID(final String uuidStr) {
+<span class="nc" id="L403">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L406">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L407">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L409">					id = new ResourceID(uuidStr);</span>
+<span class="nc" id="L410">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L412">			}</span>
+		}
+<span class="nc" id="L414">		return (ResourceID) id;</span>
+	}
+
+	/**
+	 * Create a new SessionID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return SessionID.
+	 */
+	public static SessionID newSessionID(final String uuidStr) {
+<span class="nc" id="L424">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L427">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L428">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L429" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L430">					id = new SessionID(uuidStr);</span>
+<span class="nc" id="L431">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L433">			}</span>
+		}
+<span class="nc" id="L435">		return (SessionID) id;</span>
+	}
+
+	/**
+	 * Create a new StorageLocationID.
+	 * @param uuidStr
+	 *            UUID string representation.
+	 * @return StorageLocationID.
+	 */
+	public static StorageLocationID newStorageLocationID(final String uuidStr) {
+<span class="nc" id="L445">		ID id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L446" title="All 2 branches missed.">		if (id == null) {</span>
+			// For more information about locking design, see Pool
+<span class="nc" id="L448">			synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L449">				id = dataClayIDs.get(uuidStr);</span>
+<span class="nc bnc" id="L450" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L451">					id = new StorageLocationID(uuidStr);</span>
+<span class="nc" id="L452">					dataClayIDs.put(uuidStr, id);</span>
+				}
+<span class="nc" id="L454">			}</span>
+		}
+<span class="nc" id="L456">		return (StorageLocationID) id;</span>
+	}
+
+	/**
+	 * Create a new account ID.
+	 * @return AccountID.
+	 */
+	public static AccountID newAccountID() {
+<span class="nc" id="L464">		ID id = null;</span>
+<span class="nc" id="L465">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L466">			id = new AccountID();</span>
+<span class="nc" id="L467">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L468">		}</span>
+<span class="nc" id="L469">		return (AccountID) id;</span>
+	}
+
+	/**
+	 * Create a new contract ID.
+	 * @return ContractID.
+	 */
+	public static ContractID newContractID() {
+<span class="nc" id="L477">		ID id = null;</span>
+<span class="nc" id="L478">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L479">			id = new ContractID();</span>
+<span class="nc" id="L480">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L481">		}</span>
+<span class="nc" id="L482">		return (ContractID) id;</span>
+	}
+
+	/**
+	 * Create a new credential ID.
+	 * @return CredentialID.
+	 */
+	public static CredentialID newCredentialID() {
+<span class="nc" id="L490">		ID id = null;</span>
+<span class="nc" id="L491">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L492">			id = new CredentialID();</span>
+<span class="nc" id="L493">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L494">		}</span>
+<span class="nc" id="L495">		return (CredentialID) id;</span>
+	}
+
+	/**
+	 * Create a new DataClayInstanceID ID.
+	 * @return DataClayInstanceID.
+	 */
+	public static DataClayInstanceID newDataClayInstanceID() {
+<span class="nc" id="L503">		ID id = null;</span>
+<span class="nc" id="L504">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L505">			id = new DataClayInstanceID();</span>
+<span class="nc" id="L506">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L507">		}</span>
+<span class="nc" id="L508">		return (DataClayInstanceID) id;</span>
+	}
+
+	/**
+	 * Create a new DataContractID ID.
+	 * @return DataContractID.
+	 */
+	public static DataContractID newDataContractID() {
+<span class="nc" id="L516">		ID id = null;</span>
+<span class="nc" id="L517">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L518">			id = new DataContractID();</span>
+<span class="nc" id="L519">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L520">		}</span>
+<span class="nc" id="L521">		return (DataContractID) id;</span>
+	}
+
+	/**
+	 * Create a new DataSetID.
+	 * @return DataSetID.
+	 */
+	public static DataSetID newDataSetID() {
+<span class="nc" id="L529">		ID id = null;</span>
+<span class="nc" id="L530">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L531">			id = new DataSetID();</span>
+<span class="nc" id="L532">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L533">		}</span>
+<span class="nc" id="L534">		return (DataSetID) id;</span>
+	}
+
+	/**
+	 * Create a new ECAID.
+	 * @return ECAID.
+	 */
+	public static ECAID newECAID() {
+<span class="nc" id="L542">		ID id = null;</span>
+<span class="nc" id="L543">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L544">			id = new ECAID();</span>
+<span class="nc" id="L545">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L546">		}</span>
+<span class="nc" id="L547">		return (ECAID) id;</span>
+	}
+
+	/**
+	 * Create a new EventMessageID.
+	 * @return EventMessageID.
+	 */
+	public static EventMessageID newEventMessageID() {
+<span class="nc" id="L555">		ID id = null;</span>
+<span class="nc" id="L556">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L557">			id = new EventMessageID();</span>
+<span class="nc" id="L558">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L559">		}</span>
+<span class="nc" id="L560">		return (EventMessageID) id;</span>
+	}
+
+	/**
+	 * Create a new EventObjsMeetConditionID.
+	 * @return EventObjsMeetConditionID.
+	 */
+	public static EventObjsMeetConditionID newEventObjsMeetConditionID() {
+<span class="nc" id="L568">		ID id = null;</span>
+<span class="nc" id="L569">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L570">			id = new EventObjsMeetConditionID();</span>
+<span class="nc" id="L571">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L572">		}</span>
+<span class="nc" id="L573">		return (EventObjsMeetConditionID) id;</span>
+	}
+
+	/**
+	 * Create a new ExecutionEnvironmentID.
+	 * @return ExecutionEnvironmentID.
+	 */
+	public static ExecutionEnvironmentID newExecutionEnvironmentID() {
+<span class="nc" id="L581">		ID id = null;</span>
+<span class="nc" id="L582">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L583">			id = new ExecutionEnvironmentID();</span>
+<span class="nc" id="L584">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L585">		}</span>
+<span class="nc" id="L586">		return (ExecutionEnvironmentID) id;</span>
+	}
+
+	/**
+	 * Create a new ImplementationID.
+	 * @return ImplementationID.
+	 */
+	public static ImplementationID newImplementationID() {
+<span class="nc" id="L594">		ID id = null;</span>
+<span class="nc" id="L595">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L596">			id = new ImplementationID();</span>
+<span class="nc" id="L597">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L598">		}</span>
+<span class="nc" id="L599">		return (ImplementationID) id;</span>
+	}
+
+	/**
+	 * Create a new InterfaceID.
+	 * @return InterfaceID.
+	 */
+	public static InterfaceID newInterfaceID() {
+<span class="nc" id="L607">		ID id = null;</span>
+<span class="nc" id="L608">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L609">			id = new InterfaceID();</span>
+<span class="nc" id="L610">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L611">		}</span>
+<span class="nc" id="L612">		return (InterfaceID) id;</span>
+	}
+
+	/**
+	 * Create a new MetaClassID.
+	 * @return MetaClassID.
+	 */
+	public static MetaClassID newMetaClassID() {
+<span class="nc" id="L620">		ID id = null;</span>
+<span class="nc" id="L621">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L622">			id = new MetaClassID();</span>
+<span class="nc" id="L623">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L624">		}</span>
+<span class="nc" id="L625">		return (MetaClassID) id;</span>
+	}
+
+	/**
+	 * Create a new NamespaceID.
+	 * @return NamespaceID.
+	 */
+	public static NamespaceID newNamespaceID() {
+<span class="nc" id="L633">		ID id = null;</span>
+<span class="nc" id="L634">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L635">			id = new NamespaceID();</span>
+<span class="nc" id="L636">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L637">		}</span>
+<span class="nc" id="L638">		return (NamespaceID) id;</span>
+	}
+
+	/**
+	 * Create a new ObjectID.
+	 * @return ObjectID.
+	 */
+	public static ObjectID newObjectID() {
+<span class="nc" id="L646">		ID id = null;</span>
+<span class="nc" id="L647">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L648">			id = new ObjectID();</span>
+<span class="nc" id="L649">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L650">		}</span>
+<span class="nc" id="L651">		return (ObjectID) id;</span>
+	}
+
+	/**
+	 * Create a new OperationID.
+	 * @return OperationID.
+	 */
+	public static OperationID newOperationID() {
+<span class="nc" id="L659">		ID id = null;</span>
+<span class="nc" id="L660">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L661">			id = new OperationID();</span>
+<span class="nc" id="L662">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L663">		}</span>
+<span class="nc" id="L664">		return (OperationID) id;</span>
+	}
+
+	/**
+	 * Create a new PropertyID.
+	 * @return PropertyID.
+	 */
+	public static PropertyID newPropertyID() {
+<span class="nc" id="L672">		ID id = null;</span>
+<span class="nc" id="L673">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L674">			id = new PropertyID();</span>
+<span class="nc" id="L675">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L676">		}</span>
+<span class="nc" id="L677">		return (PropertyID) id;</span>
+	}
+
+	/**
+	 * Create a new ResourceID.
+	 * @return ResourceID.
+	 */
+	public static ResourceID newResourceID() {
+<span class="nc" id="L685">		ID id = null;</span>
+<span class="nc" id="L686">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L687">			id = new ResourceID();</span>
+<span class="nc" id="L688">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L689">		}</span>
+<span class="nc" id="L690">		return (ResourceID) id;</span>
+	}
+
+	/**
+	 * Create a new SessionID.
+	 * @return SessionID.
+	 */
+	public static SessionID newSessionID() {
+<span class="nc" id="L698">		ID id = null;</span>
+<span class="nc" id="L699">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L700">			id = new SessionID();</span>
+<span class="nc" id="L701">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L702">		}</span>
+<span class="nc" id="L703">		return (SessionID) id;</span>
+	}
+
+	/**
+	 * Create a new StorageLocationID.
+	 * @return StorageLocationID.
+	 */
+	public static StorageLocationID newStorageLocationID() {
+<span class="nc" id="L711">		ID id = null;</span>
+<span class="nc" id="L712">		synchronized (dataClayIDs) { // ensure only one is created per object</span>
+<span class="nc" id="L713">			id = new StorageLocationID();</span>
+<span class="nc" id="L714">			dataClayIDs.put(id.getId().toString(), id);</span>
+<span class="nc" id="L715">		}</span>
+<span class="nc" id="L716">		return (StorageLocationID) id;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccountManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.accountmgr</a> &gt; <span class="el_source">AccountManager.java</span></div><h1>AccountManager.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.accountmgr;
+
+import java.rmi.RemoteException;
+import java.util.HashSet;
+import java.util.List;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.exceptions.logicmodule.accountmgr.AccountAlreadyExistException;
+import es.bsc.dataclay.exceptions.logicmodule.accountmgr.AccountNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.accountmgr.InvalidCredentialsException;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.CredentialID;
+import es.bsc.dataclay.util.management.AbstractManager;
+import es.bsc.dataclay.util.management.accountmgr.Account;
+import es.bsc.dataclay.util.management.accountmgr.AccountRole;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.structs.LruCache;
+
+/**
+ * This class is responsible to manage system accounts: add, remove and modify.
+ */
+public final class AccountManager extends AbstractManager {
+
+	/** Logger. */
+<span class="fc" id="L30">	private static final Logger logger = LogManager.getLogger(&quot;managers.AccountManager&quot;);</span>
+
+	/** Db of Accounts. */
+	private final AccountManagerDB accountDB;
+
+	/** Account cache. */
+<span class="fc" id="L36">	private final LruCache&lt;AccountID, Account&gt; accountCache = new LruCache&lt;&gt;(</span>
+<span class="fc" id="L37">			Configuration.Flags.MAX_ENTRIES_ACCOUNT_MANAGER_CACHE.getIntValue());</span>
+
+	/**
+	 * Instantiates an Account Manager that uses the Backend configuration provided. (which backend to use, how to use it).
+	 * @param managerName
+	 *            Manager/service name.
+	 * @post Creates an Account manager and initializes the accountDB.
+	 */
+	public AccountManager(final BasicDataSource dataSource) {
+<span class="fc" id="L46">		super(dataSource);</span>
+<span class="fc" id="L47">		this.accountDB = new AccountManagerDB(dataSource);</span>
+<span class="fc" id="L48">		accountDB.createTables();</span>
+<span class="fc" id="L49">	}</span>
+
+	/**
+	 * Method that registers a new account
+	 * @param adminAccountID
+	 *            an admin account
+	 * @param adminCredential
+	 *            the credentials of the admin account
+	 * @param newaccount
+	 *            the info of the new account
+	 * @return New account ID
+	 */
+	public AccountID newAccount(final AccountID adminAccountID, final PasswordCredential adminCredential,
+			final Account newaccount) {
+
+		// Validate admin account
+<span class="fc bfc" id="L65" title="All 2 branches covered.">		if (!validateAccount(adminAccountID, adminCredential, AccountRole.ADMIN_ROLE)) {</span>
+<span class="fc" id="L66">			throw new InvalidCredentialsException(&quot;Invalid admin credentials&quot;);</span>
+		}
+
+<span class="fc bfc" id="L69" title="All 2 branches covered.">		if (accountDB.existsAccountByName(newaccount.getUsername())) {</span>
+<span class="fc" id="L70">			throw new AccountAlreadyExistException(newaccount.getUsername());</span>
+		}
+
+		// Create new account, if ID is not set (Admin case or others has static ID) create it.
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">		if (newaccount.getDataClayID() == null) {</span>
+<span class="nc" id="L75">			newaccount.setDataClayID(new AccountID());</span>
+		}
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">		if (newaccount.getCredential().getDataClayID() == null) {</span>
+<span class="nc" id="L78">			newaccount.getCredential().setDataClayID(new CredentialID());</span>
+		}
+<span class="fc" id="L80">		accountDB.store(newaccount);</span>
+
+<span class="fc" id="L82">		accountCache.put(newaccount.getDataClayID(), newaccount);</span>
+<span class="fc" id="L83">		logger.info(&quot;Created Account {} with ID {} and password {}&quot;,</span>
+<span class="fc" id="L84">				newaccount.getUsername(), newaccount.getDataClayID(), adminCredential);</span>
+<span class="fc" id="L85">		return newaccount.getDataClayID();</span>
+
+	}
+
+	/**
+	 * Retrieves the list of users registered in the system
+	 * @param adminAccountID
+	 *            an admin account
+	 * @param adminCredential
+	 *            the credentials of the admin account
+	 * @return The IDs of the users registered in the system
+	 */
+	public HashSet&lt;AccountID&gt; getAccountList(final AccountID adminAccountID, final PasswordCredential adminCredential) {
+		// Validate admin account
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">		if (!validateAccount(adminAccountID, adminCredential, AccountRole.ADMIN_ROLE)) {</span>
+<span class="nc" id="L100">			throw new InvalidCredentialsException(&quot;Invalid admin credentials&quot;);</span>
+		}
+
+		// Verify if there is no other account with same name
+<span class="fc" id="L104">		final List&lt;Account&gt; res = accountDB.getAllNormalAccounts();</span>
+
+<span class="fc" id="L106">		final HashSet&lt;AccountID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">		if (result != null) {</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">			for (final Account curAccount : res) {</span>
+<span class="fc" id="L109">				result.add(curAccount.getDataClayID());</span>
+<span class="fc" id="L110">			}</span>
+		}
+<span class="fc" id="L112">		return result;</span>
+	}
+
+	/**
+	 * Method that validates the provided account with the given credentials and considering also its role
+	 * @param accountID
+	 *            the account id to be validated
+	 * @param credential
+	 *            the credential of the account
+	 * @param role
+	 *            the role this account has
+	 * @return true if the account exists and has the provided credentials and role, false otherwise.
+	 */
+	public boolean validateAccount(final AccountID accountID, final PasswordCredential credential, final AccountRole role) {
+
+<span class="fc" id="L127">		Account result = accountCache.get(accountID);</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">		if (result == null) {</span>
+<span class="fc" id="L129">			result = accountDB.getByID(accountID);</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">			if (result == null) {</span>
+<span class="fc" id="L131">				throw new AccountNotExistException(accountID);</span>
+			}
+<span class="fc" id="L133">			accountCache.put(accountID, result);</span>
+		}
+<span class="fc bfc" id="L135" title="All 2 branches covered.">		if (result.getRole() != role) {</span>
+<span class="fc" id="L136">			throw new AccountNotExistException(accountID);</span>
+		}
+
+		// Now we look for the Credential associated to the account
+		// identified by the CredentialID in the account.
+<span class="fc" id="L141">		final PasswordCredential accountCredential = result.getCredential();</span>
+
+		// If the credentials are equal, return true.
+<span class="fc" id="L144">		final boolean boolResult = credential.equals(accountCredential);</span>
+<span class="fc" id="L145">		return boolResult;</span>
+	}
+
+	/**
+	 * Method that validates the provided account with the given credentials
+	 * @param accountID
+	 *            the account id to be validated
+	 * @param credential
+	 *            the credential of the account
+	 * @return true if the account exists and has the provided credentials, false otherwise.
+	 */
+	public boolean validateAccount(final AccountID accountID, final PasswordCredential credential) {
+
+		// Retrieve the account
+<span class="fc" id="L159">		Account result = accountCache.get(accountID);</span>
+<span class="pc bpc" id="L160" title="1 of 2 branches missed.">		if (result == null) {</span>
+<span class="fc" id="L161">			result = accountDB.getByID(accountID);</span>
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">			if (result == null) {</span>
+<span class="nc" id="L163">				throw new AccountNotExistException(accountID);</span>
+			}
+<span class="fc" id="L165">			accountCache.put(accountID, result);</span>
+		}
+
+		// Now we look for the Credential associated to the account
+		// identified by the CredentialID in the account.
+<span class="fc" id="L170">		final PasswordCredential accountCredential = result.getCredential();</span>
+
+		// If the credentials are equal, return true.
+<span class="fc" id="L173">		return credential.equals(accountCredential);</span>
+	}
+
+	/**
+	 * Get the ID of the account with the name provided.
+	 * @param name
+	 *            Name of the account
+	 * @return The ID of the account with the name provided
+	 * @throws RemoteException
+	 *             if the Account does not exist
+	 */
+	public AccountID getAccountID(final String name) {
+<span class="fc" id="L185">		final Account res = accountDB.getByName(name);</span>
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">		if (res == null) {</span>
+<span class="nc" id="L187">			throw new AccountNotExistException(name);</span>
+		}
+<span class="fc" id="L189">		return res.getDataClayID();</span>
+	}
+
+	/**
+	 * Get the the account with the id provided.
+	 * @param id
+	 *            ID of the account
+	 * @return The Account specification
+	 */
+	public Account getAccount(final AccountID id) {
+<span class="nc" id="L199">		return accountDB.getByID(id);</span>
+	}
+
+	/**
+	 * Method that checeks whether an account exists or not
+	 * @param accountID
+	 *            the account id to be checked
+	 * @return true if the provided account eixsts, false otherwise
+	 */
+	public boolean existsAccount(final AccountID accountID) {
+
+<span class="pc bpc" id="L210" title="1 of 2 branches missed.">		if (accountCache.containsKey(accountID)) {</span>
+<span class="nc" id="L211">			return true;</span>
+		}
+<span class="fc" id="L213">		final boolean exists = accountDB.existsAccountByID(accountID);</span>
+<span class="fc" id="L214">		return exists;</span>
+	}
+
+	/**
+	 * Method used for unit testing.
+	 * @return The db handler reference of this manager.
+	 */
+	public AccountManagerDB getDbHandler() {
+<span class="fc" id="L222">		return accountDB;</span>
+	}
+
+	@Override
+	public void cleanCaches() {
+<span class="nc" id="L227">		this.accountCache.clear();</span>
+<span class="nc" id="L228">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

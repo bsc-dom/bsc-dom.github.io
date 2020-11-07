@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InterfaceInContract.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.contractmgr</a> &gt; <span class="el_source">InterfaceInContract.java</span></div><h1>InterfaceInContract.java</h1><pre class="source lang-java linenums">
+/**
+ * @file InterfaceInContract.java
+ * @date Oct 1, 2012
+ */
+
+package es.bsc.dataclay.util.management.contractmgr;
+
+import java.util.Map;
+import java.util.Map.Entry;
+
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.management.interfacemgr.Interface;
+
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * This class represents the association between a specific Interface and a certain contract.
+ * 
+ */
+public final class InterfaceInContract {
+
+	/** ID. */
+	private UUID id;
+	// === YAML SPECIFICATION === //
+	// Properties must be public for YAML parsing.
+	// CHECKSTYLE:OFF
+	/** Interface added to this contract. */
+	private Interface iface;
+	/**
+	 * Number of implementations (local and remote) for each operation in contract. If no implementation is specified, we get
+	 * the first one for the operation.
+	 */
+	private Set&lt;OpImplementations&gt; implementationsSpecPerOperation;
+
+	// ==== DYNAMIC FIELDS ==== //
+	/** The id of the interface this interface in contract refers to. */
+	public InterfaceID interfaceID;
+	/** The accessible implementations of every operation of this interface in the contract. */
+	public Map&lt;OperationID, OpImplementations&gt; accessibleImplementations;
+	// CHECKSTYLE:ON
+
+	/**
+	 * Basic constructor for testing purposes
+	 */
+<span class="fc" id="L49">	public InterfaceInContract() {</span>
+
+<span class="fc" id="L51">	}</span>
+
+	/**
+	 * Constructor to set the accessible methods.
+	 * @param newiface
+	 *            the interface in contract
+	 * @param newimplementationsSpecPerOperation
+	 *            Specifications of implementations
+	 */
+	public InterfaceInContract(final Interface newiface,
+<span class="fc" id="L61">			final Set&lt;OpImplementations&gt; newimplementationsSpecPerOperation) {</span>
+<span class="fc" id="L62">		this.setIface(newiface);</span>
+<span class="fc" id="L63">		this.setInterfaceID(newiface.getDataClayID());</span>
+<span class="fc" id="L64">		this.setImplementationsSpecPerOperation(newimplementationsSpecPerOperation);</span>
+<span class="fc" id="L65">	}</span>
+
+	/**
+	 * @return the interfaceID
+	 */
+	public InterfaceID getInterfaceID() {
+<span class="fc" id="L71">		return interfaceID;</span>
+	}
+
+	/**
+	 * @param idOfTheInterface
+	 *            the interfaceID to set
+	 */
+	public void setInterfaceID(final InterfaceID idOfTheInterface) {
+<span class="fc" id="L79">		this.interfaceID = idOfTheInterface;</span>
+<span class="fc" id="L80">	}</span>
+
+	/**
+	 * @return the accessibleImplementations
+	 */
+	public Map&lt;OperationID, OpImplementations&gt; getAccessibleImplementations() {
+<span class="fc" id="L86">		return accessibleImplementations;</span>
+	}
+
+	/**
+	 * @param accessibleImplementationsFromThisInterrfaceInContract
+	 *            the accessibleImplementations to set
+	 */
+	public void setAccessibleImplementations(
+			final Map&lt;OperationID, OpImplementations&gt; accessibleImplementationsFromThisInterrfaceInContract) {
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">		if (accessibleImplementationsFromThisInterrfaceInContract != null) { // Yaml safety</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">			for (final Entry&lt;OperationID, OpImplementations&gt; curEntry : accessibleImplementationsFromThisInterrfaceInContract.entrySet()) {</span>
+<span class="fc" id="L97">				final OperationID opID = curEntry.getKey();</span>
+<span class="fc" id="L98">				final OpImplementations curImpls = curEntry.getValue();</span>
+<span class="pc bpc" id="L99" title="1 of 2 branches missed.">				if (curImpls == null) {</span>
+<span class="nc" id="L100">					throw new IllegalArgumentException(&quot;No implementations provided for the op: &quot; + opID);</span>
+				}
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">				if (curImpls.getLocalImplementationID() == null) {</span>
+<span class="nc" id="L103">					throw new IllegalArgumentException(&quot;Missing local implementation for the op: &quot; + opID);</span>
+				}
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">				if (curImpls.getRemoteImplementationID() == null) {</span>
+<span class="nc" id="L106">					throw new IllegalArgumentException(&quot;Missing remote implementation for the op: &quot; + opID);</span>
+				}
+<span class="fc" id="L108">			}</span>
+		}
+<span class="fc" id="L110">		this.accessibleImplementations = accessibleImplementationsFromThisInterrfaceInContract;</span>
+<span class="fc" id="L111">	}</span>
+
+	// CHECKSTYLE:ON
+	// === DYNAMIC FIELDS === //
+
+	/**
+	 * Get the InterfaceInContract::implementationsSpecPerOperation
+	 * @return the implementationsSpecPerOperation
+	 */
+	public Set&lt;OpImplementations&gt; getImplementationsSpecPerOperation() {
+<span class="fc" id="L121">		return this.implementationsSpecPerOperation;</span>
+	}
+
+	/**
+	 * Set the InterfaceInContract::implementationsSpecPerOperation
+	 * @param newimplementationsSpecPerOperation
+	 *            the implementationsSpecPerOperation to set
+	 */
+	public void setImplementationsSpecPerOperation(final Set&lt;OpImplementations&gt; newimplementationsSpecPerOperation) {
+<span class="fc" id="L130">		this.implementationsSpecPerOperation = newimplementationsSpecPerOperation;</span>
+<span class="fc" id="L131">	}</span>
+
+	/**
+	 * Get iface
+	 * @return the iface
+	 */
+	public Interface getIface() {
+<span class="fc" id="L138">		return iface;</span>
+	}
+
+	/**
+	 * Set iface
+	 * @param newiface
+	 *            the iface to set
+	 */
+	public void setIface(final Interface newiface) {
+<span class="fc" id="L147">		this.iface = newiface;</span>
+<span class="fc" id="L148">	}</span>
+
+	@Override
+	public boolean equals(final Object ifaceInContract) {
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">		if (ifaceInContract instanceof InterfaceInContract) {</span>
+<span class="fc" id="L153">			final InterfaceInContract otherIface = (InterfaceInContract) ifaceInContract;</span>
+<span class="pc bpc" id="L154" title="1 of 2 branches missed.">			return this.iface.equals(otherIface.iface)</span>
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">					&amp;&amp; this.accessibleImplementations.equals(otherIface.accessibleImplementations);</span>
+		}
+<span class="nc" id="L157">		return false;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L162">		return Objects.hash(this.iface, this.accessibleImplementations);</span>
+	}
+
+	/**
+	 * get id
+	 * @return id
+	 */
+	public UUID getId() {
+<span class="nc" id="L170">		return id;</span>
+	}
+
+	/**
+	 * Set id
+	 * @param newid
+	 *            the id
+	 */
+	public void setId(final UUID newid) {
+<span class="fc" id="L179">		this.id = newid;</span>
+<span class="fc" id="L180">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

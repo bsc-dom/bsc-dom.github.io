@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ObjectMetaData.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.metadataservice</a> &gt; <span class="el_source">ObjectMetaData.java</span></div><h1>ObjectMetaData.java</h1><pre class="source lang-java linenums">
+/**
+ * @file ObjectMetaData.java
+ * @date May 21, 2013
+ */
+package es.bsc.dataclay.metadataservice;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.DataSetID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * This class is represents the metadata of an object.
+ */
+public final class ObjectMetaData extends MgrObject&lt;ObjectID&gt; {
+
+	/** ID of the metaclass of the object. */
+	private MetaClassID metaClassID;
+	/** ID of the dataset. */
+	private DataSetID datasetID;
+	/** IDs of the locations where the object is replicated. */
+	private Set&lt;ExecutionEnvironmentID&gt; execEnvIDs;
+	/** Indicates if the object is read only. */
+	private boolean isReadOnly;
+	/** User Aliases for the object. */
+	private String alias;
+	/** Language of the object (important prior to starting an execution). */
+	private Langs lang;
+	/** Owner account ID. */
+	private AccountID ownerID;
+
+	/**
+	 * ObjectMetaData constructor
+	 * @param newobjectID
+	 *            ID of the object
+	 * @param newmetaClassID
+	 *            ID of the metaclass
+	 * @param newdatasetID
+	 *            ID of the dataset
+	 * @param newLocIDs
+	 *            IDs of the locations in which the object is stored
+	 * @param newisReadOnly
+	 *            Indicates if the object is read only
+	 * @param newaliases
+	 *            Aliases for the object
+	 * @param newLang
+	 *            Object language
+	 * @param newownerID
+	 *            New owner account ID
+	 */
+	public ObjectMetaData(final ObjectID newobjectID, final MetaClassID newmetaClassID,
+			final DataSetID newdatasetID, final Set&lt;ExecutionEnvironmentID&gt; newLocIDs,
+			final boolean newisReadOnly, final String newAlias, final Langs newLang,
+<span class="fc" id="L61">			final AccountID newownerID) {</span>
+<span class="fc" id="L62">		this.setDataClayID(newobjectID);</span>
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">		if (newdatasetID == null) {</span>
+<span class="nc" id="L64">			throw new IllegalArgumentException(&quot;Bad object metadata, store dataset is null&quot;);</span>
+		}
+<span class="fc" id="L66">		this.setMetaClassID(newmetaClassID);</span>
+<span class="fc" id="L67">		this.setDataSetID(newdatasetID);</span>
+<span class="fc" id="L68">		this.setExecutionEnvironmentIDs(new HashSet&lt;&gt;(newLocIDs));</span>
+<span class="fc" id="L69">		this.setReadOnly(newisReadOnly);</span>
+<span class="fc" id="L70">		this.setLang(newLang);</span>
+<span class="fc" id="L71">		this.setAlias(newAlias);</span>
+<span class="fc" id="L72">		this.setOwnerID(newownerID);</span>
+<span class="fc" id="L73">	}</span>
+
+	/**
+	 * Get the ObjectMetaData::metaClassID
+	 * @return the metaClassID
+	 */
+
+	public MetaClassID getMetaClassID() {
+<span class="fc" id="L81">		return this.metaClassID;</span>
+	}
+
+	/**
+	 * Set the ObjectMetaData::metaClassID
+	 * @param newmetaClassID
+	 *            the metaClassID to set
+	 */
+	public void setMetaClassID(final MetaClassID newmetaClassID) {
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">		if (newmetaClassID == null) {</span>
+<span class="nc" id="L91">			throw new IllegalArgumentException(&quot;MetaClass ID cannot be null&quot;);</span>
+		}
+<span class="fc" id="L93">		this.metaClassID = newmetaClassID;</span>
+<span class="fc" id="L94">	}</span>
+
+	/**
+	 * Get the ObjectMetaData::execEnvIDs
+	 * @return the Execution Environment IDs
+	 */
+
+	public Set&lt;ExecutionEnvironmentID&gt; getExecutionEnvironmentIDs() {
+<span class="fc" id="L102">		return this.execEnvIDs;</span>
+	}
+
+	/**
+	 * Set the ObjectMetaData::execEnvIDs
+	 * @param newExecEnvsIDs
+	 *            the Execution Environment IDs to set
+	 */
+	public void setExecutionEnvironmentIDs(final Set&lt;ExecutionEnvironmentID&gt; newExecEnvsIDs) {
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">		if (newExecEnvsIDs == null) {</span>
+<span class="nc" id="L112">			throw new IllegalArgumentException(&quot;ExecutionEnvironment IDs cannot be null&quot;);</span>
+		}
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">		if (newExecEnvsIDs.isEmpty()) {</span>
+<span class="nc" id="L115">			throw new IllegalArgumentException(&quot;ExecutionEnvironment IDs cannot be empty&quot;);</span>
+		}
+<span class="fc" id="L117">		this.execEnvIDs = newExecEnvsIDs;</span>
+<span class="fc" id="L118">	}</span>
+
+	/**
+	 * Get the ObjectMetaData::datasetID
+	 * @return the datasetID
+	 */
+
+	public DataSetID getDataSetID() {
+<span class="fc" id="L126">		return this.datasetID;</span>
+	}
+
+	/**
+	 * Set the ObjectMetaData::datasetID
+	 * @param newdatasetID
+	 *            the datasetID to set
+	 */
+	public void setDataSetID(final DataSetID newdatasetID) {
+<span class="pc bpc" id="L135" title="1 of 2 branches missed.">		if (newdatasetID == null) {</span>
+<span class="nc" id="L136">			throw new IllegalArgumentException(&quot;DataSet ID cannot be null&quot;);</span>
+		}
+<span class="fc" id="L138">		this.datasetID = newdatasetID;</span>
+<span class="fc" id="L139">	}</span>
+
+	/**
+	 * Get the ObjectMetaData::isReadOnly
+	 * @return the isReadOnly
+	 */
+
+	public boolean isReadOnly() {
+<span class="fc" id="L147">		return this.isReadOnly;</span>
+	}
+
+	/**
+	 * Set the ObjectMetaData::isReadOnly
+	 * @param newisReadOnly
+	 *            the isReadOnly to set
+	 */
+	public void setReadOnly(final boolean newisReadOnly) {
+<span class="fc" id="L156">		this.isReadOnly = newisReadOnly;</span>
+<span class="fc" id="L157">	}</span>
+
+	/**
+	 * Get the ObjectMetaData::aliases
+	 * @return the aliases
+	 */
+	public String getAlias() {
+<span class="fc" id="L164">		return alias;</span>
+	}
+
+	/**
+	 * Set the ObjectMetaData::aliases
+	 * @param newaliases
+	 *            the aliases to set
+	 */
+	public void setAlias(final String newAlias) {
+<span class="fc" id="L173">		this.alias = newAlias;</span>
+<span class="fc" id="L174">	}</span>
+
+	/**
+	 * @return the ownerID
+	 */
+	public AccountID getOwnerID() {
+<span class="fc" id="L180">		return ownerID;</span>
+	}
+
+	/**
+	 * @param theOwnerID
+	 *            the ownerID to set
+	 */
+	public void setOwnerID(final AccountID theOwnerID) {
+<span class="fc" id="L188">		this.ownerID = theOwnerID;</span>
+<span class="fc" id="L189">	}</span>
+
+	/**
+	 * Get the ObjectMetaData::lang
+	 * @return the lang property
+	 */
+	public Langs getLang() {
+<span class="fc" id="L196">		return lang;</span>
+	}
+
+	/**
+	 * Set the ObjectMetaData::lang
+	 * @param newlang
+	 *            the lang to set
+	 */
+	public void setLang(final Langs newlang) {
+<span class="fc" id="L205">		this.lang = newlang;</span>
+<span class="fc" id="L206">	}</span>
+
+
+	@Override
+	public boolean equals(final Object t) {
+<span class="pc bpc" id="L211" title="1 of 2 branches missed.">		if (t instanceof ObjectMetaData) {</span>
+<span class="fc" id="L212">			final ObjectMetaData other = (ObjectMetaData) t;</span>
+<span class="fc" id="L213">			return other.getDataClayID().getId().equals(this.getDataClayID().getId());</span>
+		}
+<span class="nc" id="L215">		return false;</span>
+	}
+
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L221">		return this.getDataClayID().hashCode();</span>
+	}
+	
+	@Override
+	public String toString() { 
+<span class="nc" id="L226">		return &quot;[objectID = &quot; + this.getDataClayID() + &quot;, classID = &quot; + this.getMetaClassID() </span>
+<span class="nc" id="L227">			+ &quot;, dataSetID = &quot; + this.getDataSetID() + &quot;, locations = &quot; + this.getExecutionEnvironmentIDs().toString()</span>
+<span class="nc" id="L228">			+ &quot;, isReadOnly = &quot; + this.isReadOnly() + &quot;, aliases = &quot; + this.getAlias() </span>
+<span class="nc" id="L229">			+ &quot;, language = &quot; + this.getLang() + &quot;, owner = &quot; + this.getOwnerID() + &quot;]&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

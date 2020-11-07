@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataSetManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.datasetmgr</a> &gt; <span class="el_source">DataSetManager.java</span></div><h1>DataSetManager.java</h1><pre class="source lang-java linenums">
+/**
+ * @file DataSetManager.java
+ * @date Mar 3, 2014
+ */
+
+package es.bsc.dataclay.logic.datasetmgr;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+
+import es.bsc.dataclay.exceptions.logicmodule.datasetmgr.DataSetDoesNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.datasetmgr.DataSetExistsException;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.DataSetID;
+import es.bsc.dataclay.util.management.AbstractManager;
+import es.bsc.dataclay.util.management.datasetmgr.DataSet;
+
+/**
+ * This class is responsible for managing datasets (add and remove).
+ * 
+ */
+public final class DataSetManager extends AbstractManager {
+
+	/** DbHandler for the management of Database. */
+	private final DataSetManagerDB datasetDB;
+
+	/**
+	 * Instantiates a DataSet Manager that uses the DataSet DB in the provided path.
+	 * 
+	 * @param managerName
+	 *            Manager/service name.
+	 * @post Creates a DataSet manager and initializes the datasetDB in the path
+	 *       provided.
+	 */
+	public DataSetManager(final BasicDataSource dataSource) {
+<span class="fc" id="L41">		super(dataSource);</span>
+<span class="fc" id="L42">		this.datasetDB = new DataSetManagerDB(dataSource);</span>
+<span class="fc" id="L43">		this.datasetDB.createTables();</span>
+<span class="fc" id="L44">	}</span>
+
+	/**
+	 * This operation creates a new dataset.
+	 * 
+	 * @param newDataSet
+	 *            Information of the dataset to create
+	 * @post A dataset with the provided name and responsible is created
+	 * @return datasetID of the new dataset if the it was successfully created.
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             DataSetExistsException if the dataset already exists
+	 */
+	public DataSetID newDataSet(final DataSet newDataSet) {
+		// Check that it does not already exist
+		// (there is not another dataset with the same name, according
+		// to the use case specification).
+<span class="fc" id="L61">		final DataSet prototype = new DataSet();</span>
+<span class="fc" id="L62">		prototype.setName(newDataSet.getName());</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">		if (datasetDB.getDataSetByName(newDataSet.getName()) != null) {</span>
+<span class="fc" id="L64">			throw new DataSetExistsException(newDataSet.getName());</span>
+		}
+
+<span class="fc" id="L67">		datasetDB.store(newDataSet);</span>
+
+		// Prepare result
+<span class="fc" id="L70">		final DataSetID result = newDataSet.getDataClayID();</span>
+
+<span class="fc" id="L72">		return result;</span>
+	}
+
+	/**
+	 * Get all DataSets of account
+	 * 
+	 * @param accountID
+	 *            ID of account
+	 * @return DataSets of the account.
+	 */
+	public List&lt;DataSet&gt; getAllDataSetsOfAccount(final AccountID accountID) {
+<span class="nc" id="L83">		final List&lt;DataSet&gt; allDataSets = datasetDB.getDataSetsWithProvider(accountID);</span>
+<span class="nc" id="L84">		return allDataSets;</span>
+	}
+
+	/**
+	 * Returns the datasetID of the specified dataset name
+	 * 
+	 * @param datasetName
+	 *            the name of the dataset
+	 * @return the datasetID of the dataset
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             DataSetDoesNotExistException: if the dataset does not exist
+	 */
+	public DataSetID getDataSetID(final String datasetName) {
+<span class="fc" id="L98">		DataSetID datasetID = null;</span>
+<span class="fc" id="L99">		final DataSet curDataSet = datasetDB.getDataSetByName(datasetName);</span>
+<span class="pc bpc" id="L100" title="1 of 2 branches missed.">		if (curDataSet == null) {</span>
+<span class="nc" id="L101">			throw new DataSetDoesNotExistException(datasetName);</span>
+		}
+		// Prepare result
+<span class="fc" id="L104">		datasetID = curDataSet.getDataClayID();</span>
+
+<span class="fc" id="L106">		return datasetID;</span>
+	}
+
+	/**
+	 * Returns the datasetIDs of the specified datasets names
+	 * 
+	 * @param datasetsNames
+	 *            the names of the datasets
+	 * @return the info related with the given datasets
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             DataSetDoesNotExistException: if a dataset does not exist
+	 */
+	public Map&lt;String, DataSet&gt; getDataSetsInfo(final Set&lt;DataSetID&gt; datasetIDs) {
+<span class="nc" id="L120">		final HashMap&lt;String, DataSet&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		for (final DataSetID dataSetID : datasetIDs) {</span>
+<span class="nc" id="L122">			final DataSet curDataSet = getDataSetInfo(dataSetID);</span>
+<span class="nc" id="L123">			result.put(curDataSet.getName(), curDataSet);</span>
+<span class="nc" id="L124">		}</span>
+<span class="nc" id="L125">		return result;</span>
+	}
+
+	public DataSet getDataSetInfo(final DataSetID dataSetID) {
+		// Try in cache
+<span class="nc" id="L130">		DataSet curDataSet = null;</span>
+		// Query in db
+<span class="nc" id="L132">		curDataSet = datasetDB.getDataSetByID(dataSetID);</span>
+
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		if (curDataSet == null) {</span>
+<span class="nc" id="L135">			throw new DataSetDoesNotExistException(dataSetID);</span>
+		}
+
+<span class="nc" id="L138">		return curDataSet;</span>
+	}
+
+	public DataSet getDataSetInfo(final String datasetName) {
+<span class="fc" id="L142">		return datasetDB.getDataSetByName(datasetName);</span>
+	}
+
+	/**
+	 * This operation removes the indicated dataset
+	 * 
+	 * @param datasetID
+	 *            DataSetID of the dataset to be removed
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             DataSetDoesNotExistException: if the dataset does not exist
+	 * 
+	 */
+	public void removeDataSet(final DataSetID datasetID) {
+<span class="fc" id="L156">		final DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
+<span class="fc bfc" id="L157" title="All 2 branches covered.">		if (dataset == null) {</span>
+<span class="fc" id="L158">			throw new DataSetDoesNotExistException(datasetID);</span>
+		}
+<span class="fc" id="L160">		dataset.setProviderAccountID(null); // Set the responsible to null in order to avoid removing it</span>
+<span class="fc" id="L161">		datasetDB.deleteDataSetByID(dataset.getDataClayID());</span>
+
+<span class="fc" id="L163">	}</span>
+
+	/**
+	 * This operation checks whether an account is responsible for a dataset
+	 * 
+	 * @param responsible
+	 *            AccountID of the responsible to be checked
+	 * @param datasetID
+	 *            ID of the dataset to be checked
+	 * @return true if accountID is responsible for datasetID, false if not. &lt;br&gt;
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             DataSetDoesNotExistException: if the dataset does not exist
+	 */
+	public boolean checkDataSetResponsible(final DataSetID datasetID, final AccountID responsible) {
+<span class="fc" id="L178">		DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">		if (dataset == null) {</span>
+<span class="fc" id="L180">			throw new DataSetDoesNotExistException(datasetID);</span>
+		}
+<span class="fc" id="L182">		return dataset.getProviderAccountID().equals(responsible);</span>
+	}
+
+	/**
+	 * This operation checks whether a dataset is p ublic or not
+	 * 
+	 * @param datasetID
+	 *            ID of the dataset to be checked
+	 * @return true if the dataset is public, false otherwise. &lt;br&gt;
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             DataSetDoesNotExistException: if the dataset does not exist
+	 */
+	public boolean checkDataSetIsPublic(final DataSetID datasetID) {
+<span class="fc" id="L196">		DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">		if (dataset == null) {</span>
+<span class="nc" id="L198">			throw new DataSetDoesNotExistException(datasetID);</span>
+		}
+
+<span class="fc" id="L201">		return dataset.getIsPublic();</span>
+	}
+
+	/**
+	 * This operation retrieves all public datasets
+	 * 
+	 * @return set of dataset names that are public
+	 */
+	public Set&lt;DataSet&gt; getPublicDataSets() {
+<span class="fc" id="L210">		return datasetDB.getPublicDataSets();</span>
+	}
+
+	// ========= OTHER ========= //
+
+	/**
+	 * Method used for unit testing.
+	 * 
+	 * @return The db handler reference of this manager.
+	 */
+	public DataSetManagerDB getDbHandler() {
+<span class="fc" id="L221">		return datasetDB;</span>
+	}
+
+	@Override
+	public void cleanCaches() {
+
+<span class="nc" id="L227">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

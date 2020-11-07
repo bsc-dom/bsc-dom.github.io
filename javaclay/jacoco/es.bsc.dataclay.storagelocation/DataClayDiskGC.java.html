@@ -1,0 +1,957 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayDiskGC.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.storagelocation</a> &gt; <span class="el_source">DataClayDiskGC.java</span></div><h1>DataClayDiskGC.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.storagelocation;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TimerTask;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.api.BackendID;
+import es.bsc.dataclay.commonruntime.DataServiceRuntime;
+import es.bsc.dataclay.dataservice.api.DataServiceAPI;
+import es.bsc.dataclay.serialization.lib.DataClayDeserializationLib;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
+
+/**
+ * This class is responsible to collect objects in disk.
+ */
+public final class DataClayDiskGC {
+
+	/** Logger. */
+<span class="nc" id="L47">	private static final Logger LOGGER = LogManager.getLogger(&quot;GlobalGC&quot;);</span>
+
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L50">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** BackendID representing unknown location. */
+<span class="nc" id="L53">	private static final BackendID UNKNOW_LOCATION_UUID = new ExecutionEnvironmentID(new UUID(0L, 0L));</span>
+
+	/** Storage Location. */
+	private final StorageLocationService storageLocation;
+
+	/** Runtime used to connect to other EE, SL or LM. */
+	private final DataServiceRuntime runtime;
+
+	/** Path in which to store caches in case of restart or shutdown (in GlobalGC, where countings are stored). */
+	private final String cachePath;
+
+	/**
+	 * Reference counting to add/subtract for each object. Resource note: maximum size of this map is maximum number of objects
+	 * and associations in a EE.
+	 */
+<span class="nc" id="L68">	private Map&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; countersPerNode = new ConcurrentHashMap&lt;&gt;();</span>
+
+	/**
+	 * Objects in quarantine. Resource note: maximum size of this map is maximum number of objects in SL. Linked queue
+	 * guarantees FIFO.
+	 */
+<span class="nc" id="L74">	private Map&lt;ObjectID, Long&gt; quarantine = new ConcurrentHashMap&lt;&gt;();</span>
+
+	/**
+	 * Candidates list of objects to be removed. Resource note: maximum size of this map is maximum number of objects in SL.
+	 * Linked queue guarantees FIFO.
+	 */
+<span class="nc" id="L80">	private Queue&lt;ObjectID&gt; candidates = new ConcurrentLinkedQueue&lt;&gt;();</span>
+
+	/**
+	 * Pending reference countings to process. Resource note: this is not infinite since there is max requests
+	 * (get/store/update) possible. Linked queue guarantees that updates of references are always executed after get.
+	 */
+<span class="nc" id="L86">	private final Queue&lt;SerializedReferenceCounting&gt; refCounting = new ConcurrentLinkedQueue&lt;&gt;();</span>
+
+	/**
+	 * Objects that might be unaccessible. This set is needed for cleaning 'cyclic' references, objects that are retaining other
+	 * objects and cannot be accessed. An object is an unaccessible candidate if has no alias, but it is actually unaccessible
+	 * if no alias + no retained ref in EE (no session, no execution using it...).
+	 */
+<span class="nc" id="L93">	private final Set&lt;ObjectID&gt; unaccessibleCandidates = new HashSet&lt;&gt;();</span>
+
+	/** Pool for tasks. */
+<span class="nc" id="L96">	protected final ScheduledExecutorService threadPool = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {</span>
+		@Override
+		public Thread newThread(final Runnable r) {
+<span class="nc" id="L99">			final Thread t = Executors.defaultThreadFactory().newThread(r);</span>
+<span class="nc" id="L100">			t.setName(runtime.getDataService().dsName + &quot;-GlobalGC&quot;);</span>
+<span class="nc" id="L101">			t.setDaemon(true);</span>
+<span class="nc" id="L102">			return t;</span>
+		}
+	});
+
+	/** Serialized reference counting to add into the pending queue. */
+<span class="nc" id="L107">	private class SerializedReferenceCounting {</span>
+		/** ID of the EE of the object. */
+		ExecutionEnvironmentID eeID;
+		/** ID of the object. */
+		ObjectID objectID;
+		/** Bytes to be deserialized. We do not have it already deserialized to avoid a penalty during get/store/update. */
+		byte[] bytes;
+		/**
+		 * Indicates if reference counting arrived during a GET operation. If False, we understand it is a wRITE (update/store)
+		 * operation.
+		 */
+		boolean isGet;
+
+	}
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param thestorageLocationService
+	 *            Storage location service.
+	 * @param theruntime
+	 *            The runtime to use for communications and others.
+	 * @param theassociatedEE
+	 *            Associated execution environment ID.
+	 */
+	public DataClayDiskGC(final StorageLocationService thestorageLocationService, final DataServiceRuntime theruntime,
+<span class="nc" id="L133">			final ExecutionEnvironmentID theassociatedEE) {</span>
+<span class="nc" id="L134">		this.storageLocation = thestorageLocationService;</span>
+<span class="nc" id="L135">		this.runtime = theruntime;</span>
+<span class="nc" id="L136">		this.cachePath = Configuration.Flags.DEFAULT_GLOBALGC_CACHE_PATH.getStringValue()</span>
+<span class="nc" id="L137">				+ &quot;globalgc&quot; + runtime.getDataService().dsName + &quot;.cache&quot;;</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L139">			LOGGER.debug(&quot;Starting DiskGC&quot;);</span>
+		}
+
+<span class="nc" id="L142">		initCachesFromPersistent();</span>
+
+		
+<span class="nc" id="L145">		long initalDelay = 0;</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">		if (Configuration.Flags.GLOBALGC_COLLECTOR_INITIAL_DELAY_HOURS.getLongValue() != 0) {</span>
+			// === prepare delay === //
+<span class="nc" id="L148">			final LocalDateTime now = LocalDateTime.now();</span>
+<span class="nc" id="L149">			final LocalDateTime startTime = now.plusHours(Configuration.Flags.GLOBALGC_COLLECTOR_INITIAL_DELAY_HOURS.getLongValue());</span>
+<span class="nc" id="L150">			final Duration duration = Duration.between(LocalDateTime.now(), startTime);</span>
+<span class="nc bnc" id="L151" title="All 2 branches missed.">			if (!Configuration.mockTesting) { // GC testing does not add initial delay (too many hours!)</span>
+<span class="nc" id="L152">				initalDelay = duration.toMillis();</span>
+			}
+		}
+
+<span class="nc" id="L156">		final TimerTask collectorTask = new CollectorTask();</span>
+<span class="nc" id="L157">		final TimerTask refCountingQueueProcessor = new ReferenceCountingQueueProcessor();</span>
+<span class="nc" id="L158">		final TimerTask remoteCountingNotifier = new RemoteReferenceCountingNotifier();</span>
+<span class="nc" id="L159">		threadPool.scheduleAtFixedRate(remoteCountingNotifier, Configuration.Flags.GLOBALGC_CHECK_REMOTE_PENDING.getLongValue(),</span>
+<span class="nc" id="L160">				Configuration.Flags.GLOBALGC_CHECK_REMOTE_PENDING.getLongValue(), TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L161">		threadPool.scheduleAtFixedRate(refCountingQueueProcessor, Configuration.Flags.GLOBALGC_CHECK_REMOTE_PENDING.getLongValue(),</span>
+<span class="nc" id="L162">				Configuration.Flags.GLOBALGC_PROCESS_COUNTINGS_INTERVAL.getLongValue(), TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L163">		threadPool.scheduleAtFixedRate(collectorTask, initalDelay,</span>
+<span class="nc" id="L164">				Configuration.Flags.GLOBALGC_CHECK_TIME_INTERVAL.getLongValue(), TimeUnit.MILLISECONDS);</span>
+
+<span class="nc" id="L166">	}</span>
+
+	/**
+	 * Serialize caches into files. Used for restart or shutdown.
+	 */
+	private void serializeCachesIntoFiles() {
+		// Store cache in file
+		try {
+<span class="nc" id="L174">			LOGGER.debug(&quot;Storing in &quot; + this.cachePath);</span>
+<span class="nc bnc" id="L175" title="All 2 branches missed.">			for (final Entry&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; curCounter : countersPerNode.entrySet()) {</span>
+<span class="nc" id="L176">				LOGGER.debug(&quot;Serializing -&gt; Counters of node {}: {} &quot;, curCounter.getKey(), curCounter.getValue());</span>
+<span class="nc" id="L177">			}</span>
+<span class="nc" id="L178">			LOGGER.debug(&quot;Serializing -&gt; Num Candidates: &quot; + candidates.toString());</span>
+<span class="nc" id="L179">			LOGGER.debug(&quot;Serializing -&gt; Num quarantine: &quot; + quarantine.toString());</span>
+<span class="nc" id="L180">			final FileOutputStream fos = new FileOutputStream(this.cachePath);</span>
+<span class="nc" id="L181">			final ObjectOutputStream oos = new ObjectOutputStream(fos);</span>
+<span class="nc" id="L182">			oos.writeObject(new PersistentReferenceCounters(this.countersPerNode, this.quarantine, this.candidates));</span>
+<span class="nc" id="L183">			oos.close();</span>
+<span class="nc" id="L184">			fos.close();</span>
+<span class="nc" id="L185">		} catch (final IOException ioe) {</span>
+<span class="nc" id="L186">			LOGGER.debug(&quot;serializeCachesIntoFiles got an I/O exception&quot;, ioe);</span>
+<span class="nc" id="L187">		}</span>
+<span class="nc" id="L188">	}</span>
+
+	/**
+	 * Initialize caches from persistent files
+	 * 
+	 * @param cachesPath
+	 *            Path of cache
+	 */
+	private void initCachesFromPersistent() {
+		// Deserialize metadata cache if present
+		try {
+<span class="nc" id="L199">			LOGGER.debug(&quot;Recovering countings from &quot; + this.cachePath);</span>
+<span class="nc" id="L200">			final FileInputStream fis = new FileInputStream(this.cachePath);</span>
+<span class="nc" id="L201">			final ObjectInputStream ois = new ObjectInputStream(fis);</span>
+<span class="nc" id="L202">			final PersistentReferenceCounters persistentCaches = (PersistentReferenceCounters) ois.readObject();</span>
+<span class="nc" id="L203">			this.countersPerNode = persistentCaches.getCountersPerNode();</span>
+<span class="nc" id="L204">			this.candidates = persistentCaches.getCandidates();</span>
+<span class="nc" id="L205">			this.quarantine = persistentCaches.getQuarantine();</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">			for (final Entry&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; curCounter : countersPerNode.entrySet()) {</span>
+<span class="nc" id="L207">				LOGGER.debug(&quot;Recovering -&gt; Counters of node {}: {} &quot;, curCounter.getKey(), curCounter.getValue());</span>
+<span class="nc" id="L208">			}</span>
+<span class="nc" id="L209">			LOGGER.debug(&quot;Recovering Candidates: &quot; + candidates);</span>
+<span class="nc" id="L210">			LOGGER.debug(&quot;Recovering quarantine: &quot; + quarantine);</span>
+
+<span class="nc" id="L212">			ois.close();</span>
+<span class="nc" id="L213">			fis.close();</span>
+<span class="nc" id="L214">		} catch (final IOException ioe) {</span>
+			// do nothing, object not exist
+<span class="nc" id="L216">		} catch (final ClassNotFoundException c) {</span>
+<span class="nc" id="L217">			LOGGER.debug(&quot;initCachesFromPersistent error&quot;, c);</span>
+			// do nothing
+<span class="nc" id="L219">		}</span>
+<span class="nc" id="L220">	}</span>
+
+	/**
+	 * Add reference counting of an object (&quot;counter of referenced objects FROM the object serialized provided&quot;) into queue so
+	 * DiskGC can process it. Parameter contains all bytes of the object. We extract the bytes representing the reference
+	 * counting in order to avoid 'retaining' bytes in memory (resource leak). This function is called during a get from DB, an
+	 * update or a store. We add the bytes representing the reference counting without deserializing it in order to let thread
+	 * continue work and wait for GC to deserialize and process it.
+	 * 
+	 * @param theEEID
+	 *            ID of the execution environment ID of the object.
+	 * @param theobjectID
+	 *            ID of the object
+	 * @param serializedObject
+	 *            Serialized object.
+	 * @param theisGet
+	 *            Indicates if reference counting arrived during a GET operation. If False, we understand it is a wRITE
+	 *            (update/store) operation.
+	 * @param dirty
+	 *            dirty Indicates object has been modified. If false, it means that bytes only contains reference counting
+	 *            information. DESIGN NOTE: in order to be able to find out which references where removed in complex objects
+	 *            (arrays, collections) GlobalGc decreases all pointed references in a Get procedure and increase them again
+	 *            (except removed ones) during update. While in EE, objects have memory references so they cannot be removed
+	 *            neither.
+	 */
+	public void addToQueueReferenceCounting(final ExecutionEnvironmentID theEEID,
+			final ObjectID theobjectID, final byte[] serializedObject, final boolean theisGet,
+			final boolean dirty) {
+<span class="nc" id="L248">		final SerializedReferenceCounting serializedReferenceCounting = new SerializedReferenceCounting();</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">		if (theisGet) {</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L251">				LOGGER.debug(&quot;[GET] Adding to queue the reference counting for object &quot; + theobjectID);</span>
+			}
+<span class="nc" id="L253">			serializedReferenceCounting.bytes = DataClayDeserializationLib.extractReferenceCounting(serializedObject);</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">		} else if (dirty) {</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L256">				LOGGER.debug(&quot;[UPDATE/STORE] Adding to queue the reference counting for object &quot; + theobjectID);</span>
+			}
+<span class="nc" id="L258">			serializedReferenceCounting.bytes = DataClayDeserializationLib.extractReferenceCounting(serializedObject);</span>
+		} else {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L261">				LOGGER.debug(&quot;[UPDATE] Added not dirty pending ref. counting for object &quot; + theobjectID);</span>
+			}
+<span class="nc" id="L263">			serializedReferenceCounting.bytes = serializedObject;</span>
+		}
+<span class="nc" id="L265">		serializedReferenceCounting.isGet = theisGet;</span>
+<span class="nc" id="L266">		serializedReferenceCounting.objectID = theobjectID;</span>
+<span class="nc" id="L267">		serializedReferenceCounting.eeID = theEEID;</span>
+<span class="nc" id="L268">		this.refCounting.add(serializedReferenceCounting);</span>
+<span class="nc" id="L269">	}</span>
+
+	/**
+	 * Add delta number of references to object.
+	 * 
+	 * @param objectID
+	 *            ID of the object
+	 * @param theownerID
+	 *            ID of the node owning the object
+	 * @param delta
+	 * @param initializingCounter
+	 *            Indicates we are adding the counting because it might be the first time we see the reference
+	 */
+	private void addRefs(final ObjectID objectID, final BackendID theownerID, final int delta, final boolean initializingCounter) {
+
+<span class="nc" id="L284">		BackendID ownerID = UNKNOW_LOCATION_UUID;</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">		if (theownerID != null) {</span>
+<span class="nc" id="L286">			ownerID = theownerID;</span>
+		}
+
+<span class="nc" id="L289">		Map&lt;ObjectID, AtomicInteger&gt; counters = countersPerNode.get(ownerID);</span>
+<span class="nc bnc" id="L290" title="All 2 branches missed.">		if (counters == null) {</span>
+			// do not create two maps - race condition
+<span class="nc" id="L292">			synchronized (countersPerNode) {</span>
+<span class="nc" id="L293">				counters = countersPerNode.get(ownerID);</span>
+<span class="nc bnc" id="L294" title="All 2 branches missed.">				if (counters == null) {</span>
+<span class="nc" id="L295">					counters = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L296">					countersPerNode.put(ownerID, counters);</span>
+				}
+<span class="nc" id="L298">			}</span>
+		}
+<span class="nc" id="L300">		AtomicInteger counter = counters.get(objectID);</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">		if (counter == null) {</span>
+			// do not create two counters - race condition
+<span class="nc" id="L303">			synchronized (counters) {</span>
+<span class="nc" id="L304">				counter = counters.get(objectID);</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">				if (counter == null) {</span>
+<span class="nc" id="L306">					counter = new AtomicInteger(0);</span>
+<span class="nc" id="L307">					counters.put(objectID, counter);</span>
+				}
+<span class="nc" id="L309">			}</span>
+		}
+
+<span class="nc" id="L312">		final int numRefs = counter.addAndGet(delta);</span>
+<span class="nc bnc" id="L313" title="All 4 branches missed.">		if (DEBUG_ENABLED &amp;&amp; !initializingCounter) {</span>
+<span class="nc" id="L314">			LOGGER.debug(&quot;Num references for &quot; + objectID + &quot; : &quot; + numRefs);</span>
+		}
+		// should we do it only for updates? (also being done during get)
+		// check if object has reference counting = 0 (might have session reference, memory reference or alias reference)
+<span class="nc bnc" id="L318" title="All 4 branches missed.">		if (this.storageLocation.getAssociateExecutionEnvironments().contains(ownerID) &amp;&amp; numRefs == 0</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">				&amp;&amp; !this.candidates.contains(objectID)) {</span>
+<span class="nc bnc" id="L320" title="All 4 branches missed.">			if (DEBUG_ENABLED &amp;&amp; !initializingCounter) {</span>
+<span class="nc" id="L321">				LOGGER.debug(&quot;** Added candidate &quot; + objectID);</span>
+			}
+<span class="nc" id="L323">			this.candidates.add(objectID);</span>
+		}
+
+		// remove from unaccessible candidates if numrefs != 0 and is present
+<span class="nc" id="L327">		synchronized (unaccessibleCandidates) {</span>
+<span class="nc bnc" id="L328" title="All 4 branches missed.">			if (numRefs != 0 &amp;&amp; this.unaccessibleCandidates.contains(objectID)) {</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L330">					LOGGER.debug(&quot;** Removed from unaccessible candidate &quot; + objectID);</span>
+				}
+<span class="nc" id="L332">				this.unaccessibleCandidates.remove(objectID);</span>
+			}
+<span class="nc" id="L334">		}</span>
+
+<span class="nc" id="L336">	}</span>
+
+	/**
+	 * Update counters of references.
+	 * 
+	 * @param updateCounterRefs
+	 *            Update counter of references.
+	 */
+	public void updateRefs(final Map&lt;ObjectID, Integer&gt; updateCounterRefs) {
+<span class="nc" id="L345">		LOGGER.debug(&quot;Notified counters to update: {}&quot;, updateCounterRefs);</span>
+<span class="nc bnc" id="L346" title="All 2 branches missed.">		for (final Entry&lt;ObjectID, Integer&gt; updateCounting : updateCounterRefs.entrySet()) {</span>
+<span class="nc" id="L347">			final ObjectID oid = updateCounting.getKey();</span>
+<span class="nc" id="L348">			final Integer counting = updateCounting.getValue();</span>
+			// check if object is ACTUALLY mine, otherwise is null
+<span class="nc" id="L350">			ExecutionEnvironmentID thenode = null;</span>
+<span class="nc bnc" id="L351" title="All 2 branches missed.">			for (final ExecutionEnvironmentID nodeID : this.storageLocation.getAssociateExecutionEnvironments()) {</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">				if (this.storageLocation.exists(nodeID, oid)) { // too costly? no critical path.</span>
+<span class="nc" id="L353">					thenode = nodeID;</span>
+<span class="nc" id="L354">					break;</span>
+				}
+<span class="nc" id="L356">			}</span>
+<span class="nc" id="L357">			LOGGER.trace(&quot;Updating counting from other node, to: &quot; + oid + &quot; (&quot; + counting + &quot;)&quot;);</span>
+<span class="nc" id="L358">			this.addRefs(oid, thenode, counting, false);</span>
+<span class="nc" id="L359">		}</span>
+<span class="nc" id="L360">	}</span>
+
+	/**
+	 * Finish all threads.
+	 */
+	public void shutDown() {
+
+<span class="nc bnc" id="L367" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L368">			LOGGER.debug(&quot;[==GGC Shutdown==] Shutting down GlobalGC threads&quot;);</span>
+		}
+
+		// Shutdown and wait for threads to terminate
+<span class="nc" id="L372">		this.threadPool.shutdown();</span>
+		try {
+<span class="nc" id="L374">			this.threadPool.awaitTermination(Configuration.Flags.GLOBALGC_WAIT_TO_SHUTDOWN.getLongValue(), TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L375">		} catch (final InterruptedException ex) {</span>
+<span class="nc" id="L376">			LOGGER.debug(&quot;shutDown interrupted&quot;, ex);</span>
+<span class="nc" id="L377">		}</span>
+
+		// process pending reference counting
+<span class="nc" id="L380">		processPendingReferenceCounters();</span>
+
+		// send updates. If some node is shutdown, ignore it and store information in cache to send later.
+<span class="nc" id="L383">		notifyReferencesToNodes();</span>
+
+		// collect garbage
+<span class="nc" id="L386">		collect(true);</span>
+
+		// store caches
+<span class="nc" id="L389">		serializeCachesIntoFiles();</span>
+<span class="nc" id="L390">	}</span>
+
+	/**
+	 * This function process reference counting obtained during GET of an object. For association of the object we add '-1'
+	 * reference. This is used to detect in which cases a reference has been removed without an intervention in setter methods.
+	 * So, when an object is read from DB all its references decreases until it is written in DB again (+1) except the ones that
+	 * were removed. When the object is in memory no GC can happen so it is not a problem (and associations are all in memory)
+	 * 
+	 * @param serializedCounting
+	 *            Serialized reference counting to process.
+	 */
+	private void countAtGet(final SerializedReferenceCounting serializedCounting) {
+<span class="nc" id="L402">		final ObjectID referrerObjectID = serializedCounting.objectID;</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L404">			LOGGER.debug(&quot;[==GGC counters processor==] Processing serializedCounting at Get for &quot;</span>
+					+ referrerObjectID
+<span class="nc" id="L406">					+ &quot; ref.id = &quot; + System.identityHashCode(serializedCounting));</span>
+
+		}
+<span class="nc" id="L409">		final ReferenceCounting refCounting = new ReferenceCounting();</span>
+<span class="nc" id="L410">		refCounting.deserializeReferenceCounting(referrerObjectID, serializedCounting.bytes);</span>
+<span class="nc bnc" id="L411" title="All 2 branches missed.">		for (final Entry&lt;BackendID, Map&lt;ObjectID, Integer&gt;&gt; countingsPerHint : refCounting.getReferenceCounting().entrySet()) {</span>
+<span class="nc" id="L412">			final BackendID ownerID = countingsPerHint.getKey();</span>
+<span class="nc bnc" id="L413" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, Integer&gt; pointedRefEntry : countingsPerHint.getValue().entrySet()) {</span>
+<span class="nc" id="L414">				final Integer counting = pointedRefEntry.getValue();</span>
+<span class="nc" id="L415">				final ObjectID pointedRef = pointedRefEntry.getKey();</span>
+<span class="nc bnc" id="L416" title="All 2 branches missed.">				if (!pointedRef.equals(referrerObjectID)) {</span>
+<span class="nc" id="L417">					LOGGER.trace(&quot;Adding reference &quot; + referrerObjectID + &quot; -&gt; &quot; + pointedRef + &quot;(-&quot; + counting + &quot;)&quot;);</span>
+<span class="nc" id="L418">					addRefs(pointedRef, ownerID, -counting, false);</span>
+				}
+<span class="nc" id="L420">			}</span>
+<span class="nc" id="L421">		}</span>
+<span class="nc" id="L422">	}</span>
+
+	/**
+	 * This function process reference counting obtained during STORE/UPDATE of an object. We update references here.
+	 * 
+	 * @param serializedCounting
+	 *            Serialized reference counting to process.
+	 */
+	private void countAtUpdate(final SerializedReferenceCounting serializedCounting) {
+		try {
+<span class="nc" id="L432">			final ObjectID referrerObjectID = serializedCounting.objectID;</span>
+<span class="nc bnc" id="L433" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L434">				LOGGER.debug(&quot;[==GGC counters processor==] Processing serializedCounting at Update for &quot;</span>
+						+ referrerObjectID
+<span class="nc" id="L436">						+ &quot; ref.id = &quot; + System.identityHashCode(serializedCounting));</span>
+
+			}
+<span class="nc" id="L439">			final ReferenceCounting refCounting = new ReferenceCounting();</span>
+<span class="nc" id="L440">			refCounting.deserializeReferenceCounting(referrerObjectID, serializedCounting.bytes);</span>
+
+			// object might be unaccessible (very volatile)
+			// FIXME: do not add any object as unaccesible candidate 
+			// currently we are adding them in case of cycles, and collect thread is removing them after
+			// checking it. 
+<span class="nc bnc" id="L446" title="All 2 branches missed.">			if (this.getNumReferencesTo(referrerObjectID) == 0) {</span>
+<span class="nc" id="L447">				synchronized (unaccessibleCandidates) { //avoid concurrent modification in collector task</span>
+					// an object A -&gt; B -&gt; A arrives, A and B are marked as unaccesible but when B is processed, 
+					// A is removed from unacessible candidates, but B continue as a candidate. When collector realizes
+					// that B has != 0 references, it removes it from candidates list, and wait for B to be in unaccessible
+					// candidates list, which will happen when A is removed (and its refs are decreased). 
+					// Alias case: any object arrives A, with session and alias refs, it is marked as unaccesible 
+					// till alias arrive, then addrefs will remove it from unaccessible candidates. 
+<span class="nc" id="L454">					unaccessibleCandidates.add(referrerObjectID);</span>
+<span class="nc" id="L455">				}</span>
+<span class="nc" id="L456">				LOGGER.debug(&quot;[==GGC counters processor==] Added unaccesible candidate: &quot; + referrerObjectID);</span>
+			}
+			
+<span class="nc bnc" id="L459" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L460">				LOGGER.debug(&quot;[==GGC counters processor==] Reference counting size : &quot; + refCounting.getReferenceCounting().size());</span>
+			}
+<span class="nc bnc" id="L462" title="All 2 branches missed.">			for (final Entry&lt;BackendID, Map&lt;ObjectID, Integer&gt;&gt; countingsPerHint : refCounting.getReferenceCounting().entrySet()) {</span>
+<span class="nc" id="L463">				final BackendID ownerID = countingsPerHint.getKey();</span>
+<span class="nc bnc" id="L464" title="All 2 branches missed.">				for (final Entry&lt;ObjectID, Integer&gt; pointedRefEntry : countingsPerHint.getValue().entrySet()) {</span>
+<span class="nc" id="L465">					final Integer counting = pointedRefEntry.getValue();</span>
+<span class="nc" id="L466">					final ObjectID pointedRef = pointedRefEntry.getKey();</span>
+<span class="nc bnc" id="L467" title="All 2 branches missed.">					if (!pointedRef.equals(referrerObjectID)) {</span>
+<span class="nc bnc" id="L468" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L469">							LOGGER.debug(&quot;[==Count at update==] Adding {} to object {} &quot;, counting, pointedRef);</span>
+						}
+<span class="nc" id="L471">						addRefs(pointedRef, ownerID, counting, false);</span>
+					}
+
+<span class="nc" id="L474">				}</span>
+<span class="nc" id="L475">			}</span>
+<span class="nc" id="L476">		} catch (final Exception e) {</span>
+<span class="nc bnc" id="L477" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L478">				LOGGER.debug(e);</span>
+			}
+<span class="nc" id="L480">		}</span>
+<span class="nc" id="L481">	}</span>
+
+	/**
+	 * Provided object is unaccesible. All its references should not count as actual references to allow GC action.
+	 * 
+	 * @param unaccessibleCandidate
+	 *            OID of unaccessible object.
+	 */
+	private void markUnaccesibleObject(final ObjectID unaccessibleCandidate) {
+
+		// WARNING: THE ELAPSED TIME TO NOTIFY AN ALIAS/EXTERNAL REFERENCE ++MUST++ BE LESS THAN THE
+		// TIME TO MARK UNACCESSIBLE OBJECT --- so, when we call this function we are sure
+		// that there is no pending 'addRefs' about the object with +1 from an alias/external reference.
+
+<span class="nc bnc" id="L495" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L496">			LOGGER.debug(&quot;[==GGC collector==] Found unaccesible object: &quot; + unaccessibleCandidate);</span>
+		}
+		// the object is actually unaccessible, get reference counting and 'discount' all references.
+		// this way, we allow GC to clean cyclic retained references.
+		// get the object from any EE (any replica is ok)
+<span class="nc" id="L501">		byte[] unaccessibleBytes = null;</span>
+<span class="nc bnc" id="L502" title="All 2 branches missed.">		for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : this.storageLocation.getAssociateExecutionEnvironments()) {</span>
+<span class="nc" id="L503">			unaccessibleBytes = storageLocation.getDbHandler(associatedExecutionEnvironmentID).get(unaccessibleCandidate);</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">			if (unaccessibleBytes != null) {</span>
+<span class="nc" id="L505">				break;</span>
+			}
+<span class="nc" id="L507">		}</span>
+<span class="nc" id="L508">		final byte[] unaccesibleRefCounting = DataClayDeserializationLib.extractReferenceCounting(unaccessibleBytes);</span>
+<span class="nc" id="L509">		final ReferenceCounting refCounting = new ReferenceCounting();</span>
+<span class="nc" id="L510">		refCounting.deserializeReferenceCounting(unaccessibleCandidate, unaccesibleRefCounting);</span>
+<span class="nc bnc" id="L511" title="All 2 branches missed.">		for (final Entry&lt;BackendID, Map&lt;ObjectID, Integer&gt;&gt; countingsPerHint : refCounting.getReferenceCounting().entrySet()) {</span>
+<span class="nc" id="L512">			final BackendID ownerID = countingsPerHint.getKey();</span>
+<span class="nc bnc" id="L513" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, Integer&gt; pointedRefEntry : countingsPerHint.getValue().entrySet()) {</span>
+<span class="nc" id="L514">				final Integer counting = pointedRefEntry.getValue();</span>
+<span class="nc" id="L515">				final ObjectID pointedRef = pointedRefEntry.getKey();</span>
+<span class="nc bnc" id="L516" title="All 2 branches missed.">				if (!pointedRef.equals(unaccessibleCandidate)) {</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L518">						LOGGER.debug(&quot;[==GGC collector==] Found unaccesible reference: &quot; + unaccessibleCandidate + &quot;-&gt;&quot; + pointedRef);</span>
+					}
+<span class="nc" id="L520">					addRefs(pointedRef, ownerID, -counting, false);</span>
+				}
+<span class="nc" id="L522">			}</span>
+<span class="nc" id="L523">		}</span>
+
+<span class="nc" id="L525">	}</span>
+	
+	/**
+	 * Provided object is actually accessible
+	 * 
+	 * @param unaccessibleCandidate
+	 *            OID of unaccessible object.
+	 */
+	private void remarkAccesibleObject(final ObjectID unaccessibleCandidate) {
+<span class="nc bnc" id="L534" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L535">			LOGGER.debug(&quot;[==GGC collector==] Marking unaccesible object as accesible: &quot; + unaccessibleCandidate);</span>
+		}
+		// the object is actually unaccessible, get reference counting and 'discount' all references.
+		// this way, we allow GC to clean cyclic retained references.
+		// get the object from any EE (any replica is ok)
+<span class="nc" id="L540">		byte[] unaccessibleBytes = null;</span>
+<span class="nc bnc" id="L541" title="All 2 branches missed.">		for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : this.storageLocation.getAssociateExecutionEnvironments()) {</span>
+<span class="nc" id="L542">			unaccessibleBytes = storageLocation.getDbHandler(associatedExecutionEnvironmentID).get(unaccessibleCandidate);</span>
+<span class="nc bnc" id="L543" title="All 2 branches missed.">			if (unaccessibleBytes != null) {</span>
+<span class="nc" id="L544">				break;</span>
+			}
+<span class="nc" id="L546">		}</span>
+<span class="nc" id="L547">		final byte[] unaccesibleRefCounting = DataClayDeserializationLib.extractReferenceCounting(unaccessibleBytes);</span>
+<span class="nc" id="L548">		final ReferenceCounting refCounting = new ReferenceCounting();</span>
+<span class="nc" id="L549">		refCounting.deserializeReferenceCounting(unaccessibleCandidate, unaccesibleRefCounting);</span>
+<span class="nc bnc" id="L550" title="All 2 branches missed.">		for (final Entry&lt;BackendID, Map&lt;ObjectID, Integer&gt;&gt; countingsPerHint : refCounting.getReferenceCounting().entrySet()) {</span>
+<span class="nc" id="L551">			final BackendID ownerID = countingsPerHint.getKey();</span>
+<span class="nc bnc" id="L552" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, Integer&gt; pointedRefEntry : countingsPerHint.getValue().entrySet()) {</span>
+<span class="nc" id="L553">				final Integer counting = pointedRefEntry.getValue();</span>
+<span class="nc" id="L554">				final ObjectID pointedRef = pointedRefEntry.getKey();</span>
+<span class="nc bnc" id="L555" title="All 2 branches missed.">				if (!pointedRef.equals(unaccessibleCandidate)) {</span>
+<span class="nc bnc" id="L556" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L557">						LOGGER.debug(&quot;[==GGC collector==] Found unaccesible reference: &quot; + unaccessibleCandidate + &quot;-&gt;&quot; + pointedRef);</span>
+					}
+<span class="nc" id="L559">					addRefs(pointedRef, ownerID, counting, false);</span>
+				}
+<span class="nc" id="L561">			}</span>
+<span class="nc" id="L562">		}</span>
+
+<span class="nc" id="L564">	}</span>
+
+	/**
+	 * Process pending reference counters
+	 */
+	private void processPendingReferenceCounters() {
+<span class="nc bnc" id="L570" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L571">			LOGGER.debug(&quot;[==GGC counters processor==] Processing pending references&quot;);</span>
+		}
+<span class="nc bnc" id="L573" title="All 2 branches missed.">		while (!refCounting.isEmpty()) {</span>
+<span class="nc" id="L574">			final SerializedReferenceCounting serializedRefCounting = refCounting.poll();</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">			if (serializedRefCounting.isGet) {</span>
+<span class="nc" id="L576">				countAtGet(serializedRefCounting);</span>
+			} else {
+				// ==== design note ==== //
+				// A is persisted via make persistent, nobody except a session and EE memory is using it
+				// Since no-one is pointing to A, we do not have counter for A, so once EE releases A, we won't add it
+				// as candidate.
+				// Therefore, for each object we find here (it passes through SL) WITHOUT counter, we add a counter = 0, and
+				// add it as candidate.
+				// &quot;adding 0&quot; if it exists is not going to affect counting and we reuse the algorithm and locking system.
+<span class="nc" id="L585">				LOGGER.trace(&quot;Adding 0 just in case to: &quot; + serializedRefCounting.objectID);</span>
+<span class="nc" id="L586">				this.addRefs(serializedRefCounting.objectID, serializedRefCounting.eeID, 0, true);</span>
+
+<span class="nc" id="L588">				countAtUpdate(serializedRefCounting);</span>
+			}
+
+<span class="nc" id="L591">		}</span>
+<span class="nc bnc" id="L592" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L593">			LOGGER.debug(&quot;[==GGC counters processor==] Finished processing pending references&quot;);</span>
+		}
+<span class="nc" id="L595">	}</span>
+
+	/**
+	 * Notify reference counting to other nodes.
+	 */
+	private void notifyReferencesToNodes() {
+<span class="nc bnc" id="L601" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L602">			LOGGER.debug(&quot;[==GGC notifier==] Notifying references to other nodes&quot;);</span>
+<span class="nc" id="L603">			LOGGER.debug(&quot;[==GGC notifier==] Get locations of objects&quot;);</span>
+		}
+		// ========== process objects without location hint ==== //
+<span class="nc" id="L606">		final Map&lt;ObjectID, AtomicInteger&gt; unknownCounters = countersPerNode.get(UNKNOW_LOCATION_UUID);</span>
+<span class="nc bnc" id="L607" title="All 2 branches missed.">		if (unknownCounters != null) {</span>
+<span class="nc" id="L608">			final Iterator&lt;Entry&lt;ObjectID, AtomicInteger&gt;&gt; iterator = unknownCounters.entrySet().iterator(); // use iterator for</span>
+																												// removing
+<span class="nc bnc" id="L610" title="All 2 branches missed.">			while (iterator.hasNext()) {</span>
+				try {
+<span class="nc" id="L612">					final Entry&lt;ObjectID, AtomicInteger&gt; curCounting = iterator.next();</span>
+<span class="nc" id="L613">					final ObjectID oid = curCounting.getKey();</span>
+<span class="nc" id="L614">					final Integer counting = curCounting.getValue().get();</span>
+					// TODO: should we use a cache?
+<span class="nc bnc" id="L616" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L617">						LOGGER.debug(&quot;[==GGC notifier==] Get location of object &quot; + oid);</span>
+					}
+<span class="nc" id="L619">					final MetaDataInfo mdInfo = runtime.getLogicModuleAPI().getMetadataByOIDForDS(oid);</span>
+<span class="nc" id="L620">					final BackendID execEnvID = mdInfo.getLocations().keySet().iterator().next();</span>
+
+<span class="nc" id="L622">					LOGGER.trace(&quot;After getting location, references to &quot; + oid + &quot;(&quot; + counting + &quot;)&quot;);</span>
+<span class="nc" id="L623">					addRefs(oid, execEnvID, counting, false);</span>
+<span class="nc" id="L624">				} catch (final Exception ex) {</span>
+<span class="nc" id="L625">					LOGGER.debug(&quot;notifyReferencesToNodes error&quot;, ex);</span>
+					// object has no metadata, maybe due to a explicit remove in a consolidate/move
+<span class="nc" id="L627">				}</span>
+<span class="nc" id="L628">				iterator.remove();</span>
+			}
+		}
+
+<span class="nc bnc" id="L632" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L633">			LOGGER.debug(&quot;[==GGC notifier==] Now, notifying references&quot;);</span>
+		}
+		// ========== NOTIFY ==== //
+<span class="nc bnc" id="L636" title="All 2 branches missed.">		for (final Entry&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; countingsPerNode : countersPerNode.entrySet()) {</span>
+<span class="nc" id="L637">			final BackendID nodeID = countingsPerNode.getKey();</span>
+			// check if unknown due to concurrent conditions (added oid with unknown while processing this)
+<span class="nc bnc" id="L639" title="All 4 branches missed.">			if (!this.storageLocation.getAssociateExecutionEnvironments().contains(nodeID) &amp;&amp; !nodeID.equals(UNKNOW_LOCATION_UUID)) {</span>
+<span class="nc bnc" id="L640" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L641">					LOGGER.debug(&quot;[==GGC notifier==] Notifying references to &quot; + nodeID);</span>
+				}
+				try {
+<span class="nc" id="L644">					final DataServiceAPI dsAPI = runtime.getRemoteExecutionEnvironmentForDS((ExecutionEnvironmentID) nodeID);</span>
+<span class="nc" id="L645">					final Map&lt;ObjectID, Integer&gt; referenceCounting = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L646" title="All 2 branches missed.">					for (final Entry&lt;ObjectID, AtomicInteger&gt; curCounting : countingsPerNode.getValue().entrySet()) {</span>
+<span class="nc" id="L647">						final AtomicInteger atomicCounting = curCounting.getValue();</span>
+						// Race condition design: if some one is trying to add/remove references, we set 0.
+<span class="nc" id="L649">						final int value = atomicCounting.get(); // TODO: should we remove them? locking!</span>
+<span class="nc" id="L650">						referenceCounting.put(curCounting.getKey(), value);</span>
+<span class="nc bnc" id="L651" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L652">							LOGGER.debug(&quot;[==GGC notifier==] Notifying ref counting = &quot; + value + &quot; for object &quot; + curCounting.getKey());</span>
+						}
+<span class="nc" id="L654">					}</span>
+
+<span class="nc" id="L656">					dsAPI.updateRefs(referenceCounting);</span>
+<span class="nc" id="L657">					countersPerNode.remove(nodeID);</span>
+
+					// only set counters to 0 if communication succeeded
+<span class="nc bnc" id="L660" title="All 2 branches missed.">					for (final Entry&lt;ObjectID, AtomicInteger&gt; curCounting : countingsPerNode.getValue().entrySet()) {</span>
+<span class="nc" id="L661">						final AtomicInteger atomicCounting = curCounting.getValue();</span>
+<span class="nc bnc" id="L662" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L663">							LOGGER.debug(&quot;[==GGC notifier==] Setting ref counting = 0 for object &quot; + curCounting.getKey());</span>
+						}
+<span class="nc" id="L665">						atomicCounting.set(0);</span>
+<span class="nc" id="L666">					}</span>
+
+<span class="nc" id="L668">				} catch (final Exception ex) {</span>
+<span class="nc" id="L669">					LOGGER.debug(&quot;notifyReferencesToNodes expected error&quot;, ex);</span>
+					// node is shutdown, do not remove counting.
+<span class="nc" id="L671">				}</span>
+			}
+<span class="nc" id="L673">		}</span>
+<span class="nc" id="L674">	}</span>
+
+	/**
+	 * Collect all objects that are garbage.
+	 * 
+	 * @param isShutDown
+	 *            Indicates if it is a collection requested from shutdown process.
+	 */
+	private void collect(final boolean isShutDown) {
+<span class="nc bnc" id="L683" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L684">			LOGGER.debug(&quot;[==GGC collector==] Checking and collecting&quot;);</span>
+		}
+		try {
+			// if there is replicas, the put will replace them but counter is the same.
+<span class="nc" id="L688">			final Map&lt;ObjectID, AtomicInteger&gt; currentSLcounters = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">			for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : this.storageLocation.getAssociateExecutionEnvironments()) {</span>
+<span class="nc" id="L690">				final Map&lt;ObjectID, AtomicInteger&gt; thecounters = countersPerNode.get(associatedExecutionEnvironmentID);</span>
+<span class="nc bnc" id="L691" title="All 2 branches missed.">				if (thecounters != null) {</span>
+<span class="nc" id="L692">					currentSLcounters.putAll(thecounters);</span>
+				}
+<span class="nc" id="L694">			}</span>
+<span class="nc" id="L695">			final long currentTimeStamp = System.currentTimeMillis();</span>
+
+			// ========================= CHECK REFERENCES IN EE ======================= //
+<span class="nc" id="L698">			final Set&lt;ObjectID&gt; referencedObjectsByEE = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L699" title="All 2 branches missed.">			if (!isShutDown) { // if shutdown, memory and session references are ignored. (TODO: alias)</span>
+<span class="nc bnc" id="L700" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L701">					LOGGER.debug(&quot;[==GGC collector==] Asking for references retained in EEs &quot; + this.storageLocation.getAssociateExecutionEnvironments());</span>
+				}
+				// ==== PULL from EE: update reference counting === //
+				// get information from EE to check if candidates are in memory, used by some session or have alias
+
+<span class="nc bnc" id="L706" title="All 2 branches missed.">				for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : this.storageLocation.getAssociateExecutionEnvironments()) {</span>
+<span class="nc" id="L707">					final DataServiceAPI dsAPI = runtime.getRemoteExecutionEnvironmentForDS(associatedExecutionEnvironmentID);</span>
+<span class="nc" id="L708">					referencedObjectsByEE.addAll(dsAPI.getRetainedReferences());</span>
+<span class="nc" id="L709">				}</span>
+				// NOTE: do not add it to SL counters, just check it! EE is going to send what it has, not delta (-1 to session,
+				// ...)
+				// because actually we do not need it to know if we can remove an object or not.
+<span class="nc bnc" id="L713" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L714">					LOGGER.debug(&quot;[==GGC collector==] Retained refs in EE: &quot; + referencedObjectsByEE.size());</span>
+				}
+
+			}
+			// ========================= CHECK UNACCESSIBLE CANDIDATES ======================= //
+
+			// If an unaccessible candidate is retained in EE then it might be accessible.
+			// However, we cannot remove the candidate to be unaccessible because we do not know why it is being
+			// retained in EE (maybe last execution). For each unaccessible candidate that is not retained,
+			// we know they are actually unaccesible.
+<span class="nc" id="L724">			final Set&lt;ObjectID&gt; actualUnaccessibles = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L725">			synchronized (unaccessibleCandidates) { //Avoid concurrent modification during updates</span>
+<span class="nc bnc" id="L726" title="All 2 branches missed.">				for (final ObjectID unaccessibleCandidate : unaccessibleCandidates) {</span>
+<span class="nc bnc" id="L727" title="All 2 branches missed.">					if (!referencedObjectsByEE.contains(unaccessibleCandidate)) {</span>
+						try {
+	
+<span class="nc" id="L730">							this.markUnaccesibleObject(unaccessibleCandidate);</span>
+<span class="nc" id="L731">							actualUnaccessibles.add(unaccessibleCandidate);</span>
+							
+	
+<span class="nc" id="L734">						} catch (final Exception e) {</span>
+							// FIXME: object might be removed explicitly (dgasull 2018)
+							// (usually this happens in consolidate or moves)
+							// Currently, object is considered actually unaccessible if exception is raised.
+							// Fix this when resuming consolidates and moves.
+<span class="nc" id="L739">							LOGGER.debug(e);</span>
+<span class="nc" id="L740">						}</span>
+					}
+<span class="nc" id="L742">				}</span>
+<span class="nc" id="L743">				unaccessibleCandidates.removeAll(actualUnaccessibles);</span>
+<span class="nc" id="L744">			}</span>
+
+			// ========================= CHECK CANDIDATES ======================= //
+
+			// at this point, if some candidate is in memory, has alias or session, is not in list anymore.
+<span class="nc bnc" id="L749" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L750">				LOGGER.debug(&quot;[==GGC collector==] Number of candidates: &quot; + candidates.size());</span>
+<span class="nc" id="L751">				LOGGER.debug(&quot;[==GGC collector==] Candidates: &quot; + candidates);</span>
+			}
+
+<span class="nc" id="L754">			final int candidatesSize = candidates.size(); // get size here since loop is modifying it.</span>
+<span class="nc" id="L755">			int i = 0;</span>
+<span class="nc bnc" id="L756" title="All 4 branches missed.">			while (i &lt; candidatesSize &amp;&amp; i &lt; Configuration.Flags.GLOBALGC_MAX_OBJECTS_TO_COLLECT_PERTASK.getIntValue()) {</span>
+<span class="nc" id="L757">				final ObjectID oidCandidate = candidates.poll();</span>
+				// race condition: i added an object as a candidate but later references were added.
+				// so check num. references again.
+<span class="nc" id="L760">				final int numRefs = this.getNumReferencesTo(oidCandidate);</span>
+				// actual number of references
+<span class="nc bnc" id="L762" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L763">					LOGGER.debug(&quot;[==GGC collector==] For object &quot; + oidCandidate + &quot;, num references: &quot; + numRefs);</span>
+				}
+
+<span class="nc bnc" id="L766" title="All 2 branches missed.">				if (numRefs == 0) {</span>
+					// check if no reference in EE
+<span class="nc" id="L768">					boolean retainedByEE = false;</span>
+<span class="nc bnc" id="L769" title="All 2 branches missed.">					if (!isShutDown) {</span>
+<span class="nc" id="L770">						retainedByEE = referencedObjectsByEE.contains(oidCandidate);</span>
+<span class="nc bnc" id="L771" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L772">							LOGGER.debug(&quot;[==GGC collector==] For object &quot; + oidCandidate + &quot;, retained in EE: &quot; + retainedByEE);</span>
+						}
+					}
+					// candidates are added to quarantine.
+<span class="nc bnc" id="L776" title="All 4 branches missed.">					if (!quarantine.containsKey(oidCandidate) &amp;&amp; !retainedByEE) {</span>
+<span class="nc bnc" id="L777" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L778">							LOGGER.debug(&quot;[==GGC collector==] Adding to quarantine: &quot; + oidCandidate);</span>
+						}
+<span class="nc" id="L780">						quarantine.put(oidCandidate, System.currentTimeMillis());</span>
+					} else {
+						// add it to the tail of the queue
+<span class="nc" id="L783">						candidates.offer(oidCandidate);</span>
+					}
+<span class="nc" id="L785">				} else { </span>
+<span class="nc bnc" id="L786" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L787">						LOGGER.debug(&quot;[==GGC collector==] References to candidate object {} is not zero, probably due to a cycle, &quot;</span>
+								+ &quot;. It was polled from candidates list, will be added to unaccessible candidates when references are 0&quot;, oidCandidate);
+					}
+					
+					
+				}
+<span class="nc" id="L793">				i++;</span>
+<span class="nc" id="L794">			}</span>
+
+			// =============================== REMOVE OBJECTS IN QUARANTINE =============================== //
+<span class="nc bnc" id="L797" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L798">				LOGGER.debug(&quot;[==GGC collector==] Number of objects in quarantine: &quot; + quarantine.size());</span>
+			}
+
+<span class="nc" id="L801">			final Set&lt;ObjectID&gt; objectsToUnregister = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L802">			final Iterator&lt;Entry&lt;ObjectID, Long&gt;&gt; iterator = this.quarantine.entrySet().iterator();</span>
+<span class="nc bnc" id="L803" title="All 4 branches missed.">			while (iterator.hasNext() &amp;&amp; i &lt; Configuration.Flags.GLOBALGC_MAX_OBJECTS_TO_COLLECT_PERTASK.getIntValue()) {</span>
+<span class="nc" id="L804">				final Entry&lt;ObjectID, Long&gt; curQuarantine = iterator.next();</span>
+<span class="nc" id="L805">				final ObjectID oid = curQuarantine.getKey();</span>
+				// check no new references appeared
+<span class="nc" id="L807">				int numRefs = 0;</span>
+<span class="nc bnc" id="L808" title="All 2 branches missed.">				if (currentSLcounters != null) { // is null if no other objects point to this and nothing is registered.</span>
+					// no need to check references in EE since we make sure that time in quarantine is enough to get EE ref.
+					// counting.
+<span class="nc" id="L811">					final AtomicInteger numRefsAssociatedAtomic = currentSLcounters.get(oid);</span>
+<span class="nc bnc" id="L812" title="All 2 branches missed.">					if (numRefsAssociatedAtomic != null) {</span>
+<span class="nc" id="L813">						numRefs = numRefsAssociatedAtomic.get();</span>
+					}
+				}
+<span class="nc bnc" id="L816" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L817">					LOGGER.debug(&quot;[==GGC collector==] Num references for &quot; + oid + &quot; = &quot; + numRefs);</span>
+				}
+<span class="nc bnc" id="L819" title="All 2 branches missed.">				if (numRefs == 0) {</span>
+<span class="nc" id="L820">					final Long timestamp = curQuarantine.getValue();</span>
+<span class="nc" id="L821">					final long diff = currentTimeStamp - timestamp;</span>
+<span class="nc bnc" id="L822" title="All 2 branches missed.">					if (diff &gt; Configuration.Flags.GLOBALGC_MAX_TIME_QUARANTINE.getLongValue()) {</span>
+						// remove it from all databases
+<span class="nc bnc" id="L824" title="All 2 branches missed.">						for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : this.storageLocation.getAssociateExecutionEnvironments()) {</span>
+<span class="nc bnc" id="L825" title="All 2 branches missed.">							if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L826">								LOGGER.debug(&quot;[==GGC collector==] *** Going to remove {} from {}&quot;, oid, associatedExecutionEnvironmentID);</span>
+							}
+							try {
+<span class="nc" id="L829">								storageLocation.delete(associatedExecutionEnvironmentID, oid);</span>
+
+<span class="nc" id="L831">							} catch (final Exception e) {</span>
+								// FIXME: object might be removed explicitly (dgasull 2018)
+								// (usually this happens in consolidate or moves)
+								// Currently, if already removed, ignore it.
+								// Fix this when resuming consolidates and moves.
+<span class="nc" id="L836">								LOGGER.debug(e);</span>
+<span class="nc" id="L837">							}</span>
+<span class="nc" id="L838">						}</span>
+<span class="nc bnc" id="L839" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L840">							LOGGER.debug(&quot;[==GGC collector==] *** Object &quot; + oid + &quot; removed from DB&quot;);</span>
+						}
+<span class="nc" id="L842">						System.err.println(&quot;[==GGC collector==] *** Object &quot; + oid + &quot; removed from DB&quot;);</span>
+
+<span class="nc" id="L844">						objectsToUnregister.add(oid);</span>
+
+						// remove it from reference counting map if present
+<span class="nc bnc" id="L847" title="All 2 branches missed.">						if (currentSLcounters != null) {</span>
+<span class="nc" id="L848">							currentSLcounters.remove(oid);</span>
+						}
+						// remove it from quarantine map
+<span class="nc" id="L851">						iterator.remove();</span>
+					} else {
+<span class="nc bnc" id="L853" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L854">							LOGGER.debug(&quot;[==GGC collector==] Object &quot; + oid + &quot; must stay in quarantine. Spend time: &quot; + diff);</span>
+						}
+					}
+				} else { 
+					
+				}
+<span class="nc" id="L860">				i++;</span>
+<span class="nc" id="L861">			}</span>
+
+<span class="nc bnc" id="L863" title="All 2 branches missed.">			if (objectsToUnregister.size() &gt; 0) {</span>
+<span class="nc bnc" id="L864" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L865">					LOGGER.debug(&quot;[==GGC collector==] *** Going to unregister &quot; + objectsToUnregister);</span>
+				}
+<span class="nc" id="L867">				runtime.getLogicModuleAPI().unregisterObjects(objectsToUnregister);</span>
+			}
+<span class="nc" id="L869">		} catch (final Exception ex) {</span>
+<span class="nc" id="L870">			LOGGER.debug(&quot;collect error&quot;, ex);</span>
+<span class="nc" id="L871">		}</span>
+<span class="nc bnc" id="L872" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L873">			LOGGER.debug(&quot;[==GGC collector==] Finished collection&quot;);</span>
+		}
+<span class="nc" id="L875">	}</span>
+
+	/**
+	 * Task that collects objects in disk and send update of references.
+	 */
+<span class="nc" id="L880">	private class CollectorTask extends TimerTask {</span>
+
+		@Override
+		public final void run() {
+<span class="nc bnc" id="L884" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L885">				LOGGER.debug(&quot;[==GGC Collector==] Starting&quot;);</span>
+			}
+<span class="nc" id="L887">			collect(false);</span>
+<span class="nc" id="L888">		}</span>
+	}
+
+	/**
+	 * Task that process serialized reference countings.
+	 */
+<span class="nc" id="L894">	private class ReferenceCountingQueueProcessor extends TimerTask {</span>
+
+		@Override
+		public final void run() {
+<span class="nc bnc" id="L898" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L899">				LOGGER.debug(&quot;[==GGC counters processor==] Starting&quot;);</span>
+			}
+<span class="nc" id="L901">			processPendingReferenceCounters();</span>
+<span class="nc" id="L902">		}</span>
+	}
+
+	/**
+	 * Task that notifies other nodes about reference countings here belonging to them.
+	 */
+<span class="nc" id="L908">	private class RemoteReferenceCountingNotifier extends TimerTask {</span>
+
+		@Override
+		public final void run() {
+<span class="nc bnc" id="L912" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L913">				LOGGER.debug(&quot;[==GGC notifier==] Starting&quot;);</span>
+			}
+<span class="nc" id="L915">			notifyReferencesToNodes();</span>
+<span class="nc" id="L916">		}</span>
+
+	}
+
+	/**
+	 * Return number of references pointing to object.
+	 * 
+	 * @param objectID
+	 *            ID of object
+	 * @return Number of references pointing to object
+	 */
+	public int getNumReferencesTo(final ObjectID objectID) {
+		// Check in all EEs until we find the object, (object can be en many, but they are replicas)
+<span class="nc" id="L929">		Map&lt;ObjectID, AtomicInteger&gt; referencesInThisNode = null;</span>
+<span class="nc bnc" id="L930" title="All 2 branches missed.">		for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : this.storageLocation.getAssociateExecutionEnvironments()) {</span>
+<span class="nc" id="L931">			final Map&lt;ObjectID, AtomicInteger&gt; curReferencesInThisNode = countersPerNode.get(associatedExecutionEnvironmentID);</span>
+<span class="nc bnc" id="L932" title="All 2 branches missed.">			if (curReferencesInThisNode != null) {</span>
+<span class="nc bnc" id="L933" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L934">					LOGGER.debug(&quot;[==Getting number of references==] Found references to {} in node {}&quot;,</span>
+							objectID, associatedExecutionEnvironmentID);
+				}
+<span class="nc" id="L937">				referencesInThisNode = curReferencesInThisNode;</span>
+			}
+<span class="nc" id="L939">		}</span>
+<span class="nc bnc" id="L940" title="All 2 branches missed.">		if (referencesInThisNode == null) {</span>
+<span class="nc" id="L941">			return 0;</span>
+		}
+<span class="nc" id="L943">		final AtomicInteger refs = referencesInThisNode.get(objectID);</span>
+<span class="nc bnc" id="L944" title="All 2 branches missed.">		if (refs == null) {</span>
+<span class="nc" id="L945">			return 0;</span>
+		} else {
+<span class="nc" id="L947">			final int numRefs = refs.get();</span>
+<span class="nc bnc" id="L948" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L949">				LOGGER.debug(&quot;[==Getting number of references==] References to {} are: {}&quot;,</span>
+<span class="nc" id="L950">						objectID, numRefs);</span>
+			}
+<span class="nc" id="L952">			return numRefs;</span>
+		}
+	}
+	
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

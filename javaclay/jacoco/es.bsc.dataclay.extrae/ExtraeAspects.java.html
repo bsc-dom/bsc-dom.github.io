@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExtraeAspects.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.extrae</a> &gt; <span class="el_source">ExtraeAspects.java</span></div><h1>ExtraeAspects.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.extrae;
+
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.AfterThrowing;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
+
+@Aspect
+<span class="nc" id="L11">public class ExtraeAspects {</span>
+	
+	private static final String EXTRAE_POINTCUT = &quot;(execution(* es.bsc.dataclay.commonruntime.ClientRuntime.*(..)) &quot;
+			+ &quot;|| execution(* es.bsc.dataclay.commonruntime.DataClayRuntime.*(..)) &quot;
+			+ &quot;|| execution(* es.bsc.dataclay.commonruntime.DataServiceRuntime.*(..)) &quot; 
+			+ &quot;|| 	execution(* es.bsc.dataclay.api.DataClay.*(..)) &quot; // this class must be always intervened ?
+			+ &quot;|| 	execution(* es.bsc.dataclay.dataservice.DataService.*(..)) &quot;
+			+ &quot;|| 	execution(* es.bsc.dataclay.logic.LogicModule.*(..)) &quot;
+			+ &quot;|| 	execution(* es.bsc.dataclay.storagelocation..*(..)) &quot;
+			+ &quot;|| 	execution(* es.bsc.dataclay.logic.accountmgr..*(..)) &quot;
+			+ &quot;|| 	execution(* storage.StorageItf.*(..)) &quot; 
+			+ &quot;) &quot;
+			+ &quot;&amp;&amp; !execution(* es.bsc.dataclay.extrae..*(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.activateTracing(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.deactivateTracing(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.activateTracingInDataClayServices(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.deactivateTracingInDataClayServices(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.getTraces(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.init(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.finish(..)) &quot;
+			+ &quot;&quot; 
+			+ &quot;&amp;&amp; !execution(* es.bsc.dataclay.paraver..*(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.activateTracing(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.deactivateTracing(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.activateTracingInDataClayServices(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.deactivateTracingInDataClayServices(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.getTraces(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.init(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* *.finish(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* es.bsc.dataclay.DataClayObject.*(..)) &quot; // injection not working properly?
+			+ &quot;&amp;&amp; !execution(* es.bsc.dataclay.serialization.DataClaySerializable.*(..)) &quot; // injection not working properly?
+			+ &quot;&amp;&amp; !execution(* storage.StubItf.*(..)) &quot;
+			+ &quot;&amp;&amp; !execution(* storage.StorageObject.*(..)) &quot;;
+	
+
+    @Pointcut(EXTRAE_POINTCUT)
+<span class="nc" id="L47">	public void extraePointcut(){}</span>
+					
+	@Before(&quot;extraePointcut()&quot;)
+	public void emitExtraeEventBefore(JoinPoint thisJoinPoint) {
+<span class="nc" id="L51">		DataClayExtrae.emitEvent(true,</span>
+<span class="nc" id="L52">				thisJoinPoint.getSignature().getDeclaringTypeName() + &quot;.&quot; + thisJoinPoint.getSignature().getName());</span>
+<span class="nc" id="L53">	}</span>
+
+	@After(&quot;extraePointcut() &quot;)
+	public void emitExtraeEventAfter(JoinPoint thisJoinPoint) {
+<span class="nc" id="L57">		DataClayExtrae.emitEvent(false,</span>
+<span class="nc" id="L58">				thisJoinPoint.getSignature().getDeclaringTypeName() + &quot;.&quot; + thisJoinPoint.getSignature().getName());</span>
+<span class="nc" id="L59">	}</span>
+
+    @AfterThrowing(value = EXTRAE_POINTCUT, throwing = &quot;e&quot;)
+    public void emitExtraeException(JoinPoint thisJoinPoint, Throwable e) {
+<span class="nc" id="L63">    	DataClayExtrae.emitEvent(true, e.toString());</span>
+<span class="nc" id="L64">    	DataClayExtrae.emitEvent(false, e.toString());</span>
+<span class="nc" id="L65">	}</span>
+	
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

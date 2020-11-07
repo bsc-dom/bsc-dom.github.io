@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PersistentParamOrReturn.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.lib</a> &gt; <span class="el_source">PersistentParamOrReturn.java</span></div><h1>PersistentParamOrReturn.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.lib;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * Represents a persistent param or return.
+ */
+public final class PersistentParamOrReturn {
+
+	/** DataClay object being send. */
+	private DataClayObject dcObject;
+
+	/** DataClayObject ID. */
+	private ObjectID objectID;
+
+	/** Hint. */
+	private ExecutionEnvironmentID hint;
+
+	/** ID of class of the object. */
+	private MetaClassID classID;
+
+	/** External dataClay ID. */
+	private DataClayInstanceID extDataClayID;
+
+	/**
+	 * For yaml deserialization
+	 */
+<span class="nc" id="L33">	public PersistentParamOrReturn() {</span>
+
+<span class="nc" id="L35">	}</span>
+
+	/**
+	 * Constructor
+	 * @param thedataClayObjectID
+	 *            The Object ID
+	 */
+<span class="nc" id="L42">	public PersistentParamOrReturn(final ObjectID thedataClayObjectID) {</span>
+<span class="nc" id="L43">		this.objectID = thedataClayObjectID;</span>
+<span class="nc" id="L44">	}</span>
+
+	/**
+	 * Constructor
+	 * @param thedataClayObject
+	 *            The Object
+	 */
+<span class="nc" id="L51">	public PersistentParamOrReturn(final DataClayObject thedataClayObject) {</span>
+<span class="nc" id="L52">		this.dcObject = thedataClayObject;</span>
+<span class="nc" id="L53">		this.objectID = thedataClayObject.getObjectID();</span>
+<span class="nc" id="L54">		this.hint = (ExecutionEnvironmentID) thedataClayObject.getHint();</span>
+<span class="nc" id="L55">		this.classID = thedataClayObject.getMetaClassID();</span>
+<span class="nc" id="L56">		this.extDataClayID = thedataClayObject.getExternalDataClayID();</span>
+<span class="nc" id="L57">	}</span>
+
+	/**
+	 * Constructor
+	 * @param theObjectID
+	 *            The ObjectID
+	 * @param thehint
+	 *            Hint
+	 * @param theclassID
+	 *            The class id (FOR ''persistent volatiles'')
+	 * @param theextDataClayID
+	 *            id of the external dataClay ID where the original object resides
+	 */
+	public PersistentParamOrReturn(final ObjectID theObjectID,
+			final ExecutionEnvironmentID thehint,
+			final MetaClassID theclassID,
+<span class="nc" id="L73">			final DataClayInstanceID theextDataClayID) {</span>
+<span class="nc" id="L74">		this.objectID = theObjectID;</span>
+<span class="nc" id="L75">		this.hint = thehint;</span>
+<span class="nc" id="L76">		this.classID = theclassID;</span>
+<span class="nc" id="L77">		this.extDataClayID = theextDataClayID;</span>
+<span class="nc" id="L78">	}</span>
+
+	/**
+	 * @return the objectID
+	 */
+	public ObjectID getObjectID() {
+<span class="nc" id="L84">		return objectID;</span>
+	}
+
+	/**
+	 * @return the dcObject
+	 */
+	public DataClayObject getDcObject() {
+<span class="nc" id="L91">		return dcObject;</span>
+	}
+
+	/**
+	 * @return the hint
+	 */
+	public ExecutionEnvironmentID getHint() {
+<span class="nc" id="L98">		return hint;</span>
+	}
+
+	/**
+	 * 
+	 * @return class id
+	 */
+	public MetaClassID getClassID() {
+<span class="nc" id="L106">		return classID;</span>
+	}
+
+	/**
+	 * @return extDataClayID
+	 */
+	public DataClayInstanceID getExtDataClayID() {
+<span class="nc" id="L113">		return extDataClayID;</span>
+	}
+
+	/**
+	 * Set dcObject
+	 * @param newdcObject
+	 *            the dcObject to set
+	 */
+	public void setDcObject(final DataClayObject newdcObject) {
+<span class="nc" id="L122">		this.dcObject = newdcObject;</span>
+<span class="nc" id="L123">	}</span>
+
+	/**
+	 * Set objectID
+	 * @param newobjectID
+	 *            the objectID to set
+	 */
+	public void setObjectID(final ObjectID newobjectID) {
+<span class="nc" id="L131">		this.objectID = newobjectID;</span>
+<span class="nc" id="L132">	}</span>
+
+	/**
+	 * Set hint
+	 * @param newhint
+	 *            the hint to set
+	 */
+	public void setHint(final ExecutionEnvironmentID newhint) {
+<span class="nc" id="L140">		this.hint = newhint;</span>
+<span class="nc" id="L141">	}</span>
+
+	/**
+	 * Set classID
+	 * @param newclassID
+	 *            the classID to set
+	 */
+	public void setClassID(final MetaClassID newclassID) {
+<span class="nc" id="L149">		this.classID = newclassID;</span>
+<span class="nc" id="L150">	}</span>
+
+	/**
+	 * Set extDataClayID
+	 * @param newextDataClayID
+	 *            external dataClay ID to set
+	 */
+	public void setExtDataClayID(DataClayInstanceID newextDataClayID) {
+<span class="nc" id="L158">		this.extDataClayID = newextDataClayID;</span>
+<span class="nc" id="L159">	}</span>
+	
+	public String toString() { 
+<span class="nc" id="L162">		StringBuilder strb = new StringBuilder();</span>
+<span class="nc" id="L163">		strb.append(&quot;OBJECTID = &quot; + objectID + &quot;\n&quot;);</span>
+<span class="nc" id="L164">		strb.append(&quot;CLASSID = &quot; + classID + &quot;\n&quot;);</span>
+<span class="nc" id="L165">		strb.append(&quot;HINT = &quot; + hint + &quot;\n&quot;);</span>
+<span class="nc" id="L166">		strb.append(&quot;EXTDATACLAYID = &quot; + this.extDataClayID + &quot;\n&quot;);</span>
+<span class="nc" id="L167">		return strb.toString();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

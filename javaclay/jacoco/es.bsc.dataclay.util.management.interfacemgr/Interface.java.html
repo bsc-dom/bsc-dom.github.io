@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Interface.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.interfacemgr</a> &gt; <span class="el_source">Interface.java</span></div><h1>Interface.java</h1><pre class="source lang-java linenums">
+/**
+ * @file Interface.java
+ * @date Sep 21, 2012
+ */
+package es.bsc.dataclay.util.management.interfacemgr;
+
+import java.util.Objects;
+import java.util.Set;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents a system interface.
+ * 
+ */
+public final class Interface extends MgrObject&lt;InterfaceID&gt; {
+
+	// === YAML SPECIFICATION === //
+	// Properties must be public for YAML parsing.
+	// CHECKSTYLE:OFF
+	/** Name of the provider account. */
+	// TODO MGR-REFACTORING: delete
+	private String providerAccountName;
+	/** The namespace of the class this interface refers to. */
+	private String namespace;
+	/** Name of the namespace of the class. */
+	// TODO MGR-REFACTORING: delete
+	private String classNamespace;
+	/** The name of the class this interface refers to. */
+	// TODO MGR-REFACTORING: delete
+	private String className;
+	/** Name of properties in interface. */
+	private Set&lt;String&gt; propertiesInIface;
+	/** Signature of operations in interface. */
+	private Set&lt;String&gt; operationsSignatureInIface;
+	// === DYNAMIC FIELDS === //
+	/** ID of the account providing the interface. */
+	private AccountID providerAccountID;
+	/** The id of the namespace where the interface has been created. */
+	private NamespaceID namespaceID;
+	/** The id of the namespace where the class has been created. */
+	private NamespaceID classNamespaceID;
+	/** The id of the metaclass this interface refers to. */
+	private MetaClassID metaClassID;
+	/** The ids of the operations this interface can access. */
+	private Set&lt;OperationID&gt; operationsIDs;
+	/** The ids of the properties this interface can access. */
+	private Set&lt;PropertyID&gt; propertiesIDs;
+	// CHECKSTYLE:ON
+
+	/**
+	 * Basic constructor
+	 */
+<span class="fc" id="L64">	public Interface() {</span>
+
+<span class="fc" id="L66">	}</span>
+
+	/**
+	 * Interface common constructor
+	 * @param newproviderAccount
+	 *            Account providing interface
+	 * @param newnamespace
+	 *            the Namespace where interface is being created
+	 * @param newclassNamespace
+	 *            Namespace of the class
+	 * @param newclassName
+	 *            the name of the class this interface refers to
+	 * @param newpropertiesInIface
+	 *            the signature of operations this interface can execute
+	 * @param newoperationsSignatureInIface
+	 *            the name of properties this interface can query
+	 * @post Creates a new interface related with the corresponding metaclass of the given namespace. Configured to be able to
+	 *       execute the provided set of operations in the metaclass, and
+	 */
+	public Interface(final String newproviderAccount, final String newnamespace,
+			final String newclassNamespace, final String newclassName,
+			final Set&lt;String&gt; newpropertiesInIface,
+<span class="fc" id="L88">			final Set&lt;String&gt; newoperationsSignatureInIface) {</span>
+<span class="fc" id="L89">		this.setClassNamespace(newclassNamespace);</span>
+<span class="fc" id="L90">		this.setProviderAccountName(newproviderAccount);</span>
+<span class="fc" id="L91">		this.setNamespace(newnamespace);</span>
+<span class="fc" id="L92">		this.setClassName(newclassName);</span>
+<span class="fc" id="L93">		this.setPropertiesInIface(newpropertiesInIface);</span>
+<span class="fc" id="L94">		this.setOperationsSignatureInIface(newoperationsSignatureInIface);</span>
+<span class="fc" id="L95">	}</span>
+
+	/**
+	 * @return the metaClassID
+	 */
+	public MetaClassID getMetaClassID() {
+<span class="fc" id="L101">		return metaClassID;</span>
+	}
+
+	/**
+	 * @param newmetaClassID
+	 *            the metaClassID to set
+	 */
+	public void setMetaClassID(final MetaClassID newmetaClassID) {
+<span class="fc" id="L109">		this.metaClassID = newmetaClassID;</span>
+<span class="fc" id="L110">	}</span>
+
+	/**
+	 * @return the operationsIDs
+	 */
+	public Set&lt;OperationID&gt; getOperationsIDs() {
+<span class="fc" id="L116">		return getOperationIDs();</span>
+	}
+
+	/**
+	 * @param newoperationsIDs
+	 *            the operationsIDs to set
+	 */
+	public void setOperationsIDs(final Set&lt;OperationID&gt; newoperationsIDs) {
+<span class="fc" id="L124">		this.setOperationIDs(newoperationsIDs);</span>
+<span class="fc" id="L125">	}</span>
+
+	/**
+	 * @return the propertiesIDs
+	 */
+	public Set&lt;PropertyID&gt; getPropertiesIDs() {
+<span class="fc" id="L131">		return propertiesIDs;</span>
+	}
+
+	/**
+	 * @param newpropertiesIDs
+	 *            the propertiesIDs to set
+	 */
+	public void setPropertiesIDs(final Set&lt;PropertyID&gt; newpropertiesIDs) {
+<span class="fc" id="L139">		this.propertiesIDs = newpropertiesIDs;</span>
+<span class="fc" id="L140">	}</span>
+
+	/**
+	 * Get the Interface::className
+	 * @return the className
+	 */
+	public String getClassName() {
+<span class="fc" id="L147">		return className;</span>
+	}
+
+	/**
+	 * Set the Interface::className
+	 * @param newclassName
+	 *            the className to set
+	 */
+	public void setClassName(final String newclassName) {
+<span class="fc" id="L156">		this.className = newclassName;</span>
+<span class="fc" id="L157">	}</span>
+
+	/**
+	 * Get the Interface::operationIDs
+	 * @return the operationIDs (set of OperationID)
+	 */
+	private Set&lt;OperationID&gt; getOperationIDs() {
+<span class="fc" id="L164">		return operationsIDs;</span>
+	}
+
+	/**
+	 * Set the Interface::operationIDs
+	 * @param operationIDs
+	 *            the set of OperationID
+	 */
+	private void setOperationIDs(final Set&lt;OperationID&gt; operationIDs) {
+<span class="fc" id="L173">		this.operationsIDs = operationIDs;</span>
+<span class="fc" id="L174">	}</span>
+
+	/**
+	 * Get the Interface::namespaceID
+	 * @return the namespaceID
+	 */
+	public NamespaceID getNamespaceID() {
+<span class="fc" id="L181">		return namespaceID;</span>
+	}
+
+	/**
+	 * Set the Interface::namespaceID
+	 * @param newnamespaceID
+	 *            the namespaceID to set
+	 */
+	public void setNamespaceID(final NamespaceID newnamespaceID) {
+<span class="fc" id="L190">		this.namespaceID = newnamespaceID;</span>
+<span class="fc" id="L191">	}</span>
+
+	/**
+	 * Get the Interface::namespace
+	 * @return the namespace
+	 */
+	public String getNamespace() {
+<span class="fc" id="L198">		return this.namespace;</span>
+	}
+
+	/**
+	 * Set the Interface::namespace
+	 * @param newnamespace
+	 *            the namespace to set
+	 */
+	public void setNamespace(final String newnamespace) {
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">		if (newnamespace == null) {</span>
+<span class="nc" id="L208">			throw new IllegalArgumentException(&quot;namespace cannot be null&quot;);</span>
+		}
+<span class="fc" id="L210">		this.namespace = newnamespace;</span>
+<span class="fc" id="L211">	}</span>
+
+	/**
+	 * Get the Interface::propertiesInIface
+	 * @return the propertiesInIface
+	 */
+	public Set&lt;String&gt; getPropertiesInIface() {
+<span class="fc" id="L218">		return this.propertiesInIface;</span>
+	}
+
+	/**
+	 * Set the Interface::propertiesInIface
+	 * @param newpropertiesInIface
+	 *            the propertiesInIface to set
+	 */
+	public void setPropertiesInIface(final Set&lt;String&gt; newpropertiesInIface) {
+<span class="fc" id="L227">		this.propertiesInIface = newpropertiesInIface;</span>
+<span class="fc" id="L228">	}</span>
+
+	/**
+	 * Get the Interface::operationsSignatureInIface
+	 * @return the operationsSignatureInIface
+	 */
+	public Set&lt;String&gt; getOperationsSignatureInIface() {
+<span class="fc" id="L235">		return this.operationsSignatureInIface;</span>
+	}
+
+	/**
+	 * Set the Interface::operationsSignatureInIface
+	 * @param newoperationsSignatureInIface
+	 *            the operationsSignatureInIface to set
+	 */
+	public void setOperationsSignatureInIface(final Set&lt;String&gt; newoperationsSignatureInIface) {
+<span class="fc" id="L244">		this.operationsSignatureInIface = newoperationsSignatureInIface;</span>
+<span class="fc" id="L245">	}</span>
+
+	/**
+	 * Get providerAccount
+	 * @return the providerAccount
+	 */
+	public String getProviderAccountName() {
+<span class="fc" id="L252">		return providerAccountName;</span>
+	}
+
+	/**
+	 * Set providerAccount
+	 * @param newproviderAccount
+	 *            the providerAccount to set
+	 */
+	public void setProviderAccountName(final String newproviderAccount) {
+<span class="fc" id="L261">		this.providerAccountName = newproviderAccount;</span>
+<span class="fc" id="L262">	}</span>
+
+	/**
+	 * Get providerAccountID
+	 * @return the providerAccountID
+	 */
+	public AccountID getProviderAccountID() {
+<span class="fc" id="L269">		return providerAccountID;</span>
+	}
+
+	/**
+	 * Set providerAccountID
+	 * @param newproviderAccountID
+	 *            the providerAccountID to set
+	 */
+	public void setProviderAccountID(final AccountID newproviderAccountID) {
+<span class="fc" id="L278">		this.providerAccountID = newproviderAccountID;</span>
+<span class="fc" id="L279">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L283">		return Objects.hash(this.providerAccountName, this.namespace, this.className,</span>
+				this.classNamespace, this.propertiesInIface, this.operationsSignatureInIface);
+	}
+
+	@Override
+	public boolean equals(final Object other) {
+<span class="pc bpc" id="L289" title="1 of 2 branches missed.">		if (other instanceof Interface) {</span>
+<span class="fc" id="L290">			final Interface otherIface = (Interface) other;</span>
+<span class="pc bpc" id="L291" title="1 of 2 branches missed.">			return otherIface.providerAccountName.equals(this.providerAccountName)</span>
+<span class="pc bpc" id="L292" title="1 of 2 branches missed.">					&amp;&amp; otherIface.classNamespace.equals(this.classNamespace)</span>
+<span class="pc bpc" id="L293" title="1 of 2 branches missed.">					&amp;&amp; otherIface.namespace.equals(this.namespace)</span>
+<span class="pc bpc" id="L294" title="1 of 2 branches missed.">					&amp;&amp; otherIface.className.equals(this.className)</span>
+<span class="pc bpc" id="L295" title="1 of 2 branches missed.">					&amp;&amp; otherIface.propertiesInIface.equals(this.propertiesInIface)</span>
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">					&amp;&amp; otherIface.operationsSignatureInIface.equals(this.operationsSignatureInIface);</span>
+		}
+<span class="nc" id="L298">		return false;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L303">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L304">		return yaml.dump(this);</span>
+	}
+
+	/**
+	 * Get classNamespace
+	 * @return the classNamespace
+	 */
+	public String getClassNamespace() {
+<span class="fc" id="L312">		return classNamespace;</span>
+	}
+
+	/**
+	 * Set classNamespace
+	 * @param newclassNamespace
+	 *            the classNamespace to set
+	 */
+	public void setClassNamespace(final String newclassNamespace) {
+<span class="fc" id="L321">		this.classNamespace = newclassNamespace;</span>
+<span class="fc" id="L322">	}</span>
+
+	/**
+	 * Get classNamespaceID
+	 * @return the classNamespaceID
+	 */
+	public NamespaceID getClassNamespaceID() {
+<span class="fc" id="L329">		return classNamespaceID;</span>
+	}
+
+	/**
+	 * Set classNamespaceID
+	 * @param newclassNamespaceID
+	 *            the classNamespaceID to set
+	 */
+	public void setClassNamespaceID(final NamespaceID newclassNamespaceID) {
+<span class="fc" id="L338">		this.classNamespaceID = newclassNamespaceID;</span>
+<span class="fc" id="L339">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

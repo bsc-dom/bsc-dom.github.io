@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SerializationLibUtils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.lib</a> &gt; <span class="el_source">SerializationLibUtils.java</span></div><h1>SerializationLibUtils.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.lib;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.serialization.buffer.DataClayByteArray;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.buffer.HeapNettyBuffer;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * This class contains utility functions for serialization.
+ */
+public final class SerializationLibUtils {
+
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L34">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/**
+	 * Utility classes should have private constructor.
+	 */
+	private SerializationLibUtils() {
+
+	}
+
+	/**
+	 * Creates a new byte buffer
+	 * @return New byte buffer
+	 */
+	public static DataClayByteBuffer newByteBuffer() {
+<span class="nc" id="L48">		return new HeapNettyBuffer();</span>
+
+	}
+
+	/**
+	 * Creates a new byte buffer with bytes provided
+	 * @param byteArray
+	 *            Byte array containing bytes
+	 * @return Byte buffer to read bytes.
+	 */
+	public static DataClayByteBuffer newByteBuffer(final DataClayByteArray byteArray) {
+<span class="nc" id="L59">		return new HeapNettyBuffer(byteArray.getByteArray());</span>
+
+	}
+
+	/**
+	 * This function creates a metadata of an object
+	 * @param curSerObjs
+	 *            Currently found objects during serialization
+	 * @param hintForMissing
+	 *            Hint for associations without hint (for MakePersistent)
+	 * @param numRefsPointingToObj
+	 *            Number of references pointing to object.
+	 * @return MetaData created.
+	 */
+	public static DataClayObjectMetaData createMetaData(
+			final IdentityHashMap&lt;Object, Integer&gt; curSerObjs,
+			final ExecutionEnvironmentID hintForMissing,
+			final int numRefsPointingToObj) {
+
+		// Prepare metaData structures
+<span class="nc" id="L79">		final Map&lt;Integer, ObjectID&gt; tagsToOids = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L80">		final Map&lt;Integer, MetaClassID&gt; tagsToClassIDs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L81">		final Map&lt;Integer, ExecutionEnvironmentID&gt; tagsToHint = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L82">		final Map&lt;Integer, DataClayInstanceID&gt; tagsToDataClayIDs = new HashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		for (final Entry&lt;Object, Integer&gt; foundObj : curSerObjs.entrySet()) {</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">			if (foundObj.getKey() instanceof DataClayObject) {</span>
+<span class="nc" id="L86">				final DataClayObject obj = (DataClayObject) foundObj.getKey();</span>
+<span class="nc" id="L87">				final Integer tag = foundObj.getValue();</span>
+<span class="nc" id="L88">				final MetaClassID classID = obj.getMetaClassID();</span>
+<span class="nc" id="L89">				final ObjectID objectID = obj.getObjectID();</span>
+<span class="nc" id="L90">				final ExecutionEnvironmentID hint = (ExecutionEnvironmentID) obj.getHint();</span>
+<span class="nc" id="L91">				final DataClayInstanceID externalDataClayID = obj.getExternalDataClayID();</span>
+
+<span class="nc" id="L93">				tagsToOids.put(tag, objectID);</span>
+<span class="nc" id="L94">				tagsToClassIDs.put(tag, classID);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">				if (hint != null) {</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L97">						DataClayObject.getLib();</span>
+<span class="nc" id="L98">						DataClayRuntime.LOGGER.debug(&quot;[==Hint==] Setting hint &quot; + hint</span>
+								+ &quot; association for tag &quot; + tag);
+					}
+<span class="nc" id="L101">					tagsToHint.put(tag, hint);</span>
+				} else {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">					if (hintForMissing != null) {</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L105">							DataClayObject.getLib();</span>
+<span class="nc" id="L106">							DataClayRuntime.LOGGER.debug(&quot;[==Hint==] Setting hint &quot; + hintForMissing</span>
+									+ &quot; association for tag &quot; + tag);
+						}
+<span class="nc" id="L109">						tagsToHint.put(tag, hintForMissing);</span>
+					}
+				}
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">				if (externalDataClayID != null) {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L115">						DataClayObject.getLib();</span>
+<span class="nc" id="L116">						DataClayRuntime.LOGGER.debug(&quot;[==Ext dcID==] Setting dcID &quot; +</span>
+								externalDataClayID
+								+ &quot; association for tag &quot; + tag);
+					}
+<span class="nc" id="L120">					tagsToDataClayIDs.put(tag, externalDataClayID);</span>
+				}
+			}
+
+<span class="nc" id="L124">		}</span>
+<span class="nc" id="L125">		final DataClayObjectMetaData objData = new DataClayObjectMetaData(tagsToOids,</span>
+				tagsToClassIDs, tagsToHint, tagsToDataClayIDs, numRefsPointingToObj);
+<span class="nc" id="L127">		return objData;</span>
+	}
+
+	public static byte[] serializeBinary(Object o) throws IOException {
+		final byte[] res;
+<span class="nc" id="L132">		final ByteArrayOutputStream bos = new ByteArrayOutputStream();</span>
+
+<span class="nc" id="L134">		try (ObjectOutput out = new ObjectOutputStream(bos)) {</span>
+<span class="nc" id="L135">			out.writeObject(o);</span>
+<span class="nc" id="L136">			out.flush();</span>
+<span class="nc" id="L137">		} catch (Exception e) {</span>
+<span class="nc" id="L138">			throw e;</span>
+		} finally {
+<span class="nc" id="L140">			res = bos.toByteArray();</span>
+<span class="nc" id="L141">			bos.close();</span>
+		}
+
+<span class="nc" id="L144">		return res;</span>
+	}
+
+	/**
+	 * Reads a binary-serialized object from a byte array
+	 *
+	 * @param data
+	 *            containing the serialized object
+	 * @return the object read from the data
+	 *
+	 */
+	public static Object deserializeBinary(byte[] data) throws Exception {
+<span class="nc" id="L156">		try (ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInput in = new ObjectInputStream(bis)) {</span>
+<span class="nc" id="L157">			return in.readObject();</span>
+<span class="nc" id="L158">		} catch (Exception e) {</span>
+<span class="nc" id="L159">			throw e;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

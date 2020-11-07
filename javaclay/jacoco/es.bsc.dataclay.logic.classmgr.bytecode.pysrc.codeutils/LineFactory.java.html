@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LineFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.pysrc.codeutils</a> &gt; <span class="el_source">LineFactory.java</span></div><h1>LineFactory.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.pysrc.codeutils;
+
+import es.bsc.dataclay.util.management.classmgr.python.PythonImplementation;
+
+/**
+ * Some primitive utilities for generating Python code lines.
+ * 
+ * 
+ */
+public final class LineFactory {
+
+	/**
+	 * Default constructor for this Utility Class.
+	 */
+	private LineFactory() {
+
+	}
+
+	/**
+	 * Given a certain array of byte, extract the line-to-line python implementation.
+	 * 
+	 *        We expect a certain sequence of characters of python code. The relative indentation is assumed to be correct, and for
+	 *        compliance the initial indentation should be zero.
+	 * 
+	 * @param baseImplementation
+	 *            Contains the byte array.
+	 * @return Returns an array of Strings, with relative indentation, of the Python code for the defined function
+	 */
+	public static String[] extractPythonCodelines(final PythonImplementation baseImplementation) {
+<span class="nc" id="L31">		final String impl = baseImplementation.getCode();</span>
+<span class="nc" id="L32">		final String[] methodLines = impl.split(&quot;\n&quot;);</span>
+
+<span class="nc" id="L34">		return methodLines;</span>
+	}
+
+	/**
+	 * Returns an string with enough spaces to be considered a certain level indentation.
+	 * 
+	 *        Following Python standards, the indentation used is 4 spaces. For each level, 4 spaces are introduced.
+	 * 
+	 *        Note that parsed code has several sources, so there may be inconsistencies in the generated indentantion. However,
+	 *        Python interpreters should be capable of understanding the code.
+	 * 
+	 * @param level
+	 *            Nested number of levels. Each level is considered to be 4 spaces.
+	 * @return An string with \t characters
+	 */
+	private static String generateIndent(final int level) {
+<span class="nc" id="L50">		final StringBuffer result = new StringBuffer();</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">		for (int i = 0; i &lt; level; i++) {</span>
+			// 4 spaces
+<span class="nc" id="L53">			result.append(&quot;    &quot;);</span>
+		}
+<span class="nc" id="L55">		return result.toString();</span>
+	}
+
+	/**
+	 * Generates a class definition in Python for class
+	 * @param className
+	 *            Name of the class
+	 * @param parentName
+	 *            Name of the parent class (may be NULL)
+	 * @param level
+	 *            Indentation level to use.
+	 * @return An string defining the class using Python syntax &quot;[_indent_*level]class className(parentName):\n&quot;
+	 */
+	public static String generatePythonClass(final String className, final String parentName, final int level) {
+<span class="nc" id="L69">		final StringBuffer result = new StringBuffer();</span>
+		// prepare indentation
+<span class="nc" id="L71">		result.append(generateIndent(level));</span>
+		// prepare class
+<span class="nc" id="L73">		result.append(&quot;class &quot; + className + &quot;(&quot;);</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (parentName != null) {</span>
+<span class="nc" id="L75">			result.append(parentName);</span>
+		} else {
+<span class="nc" id="L77">			result.append(&quot;object&quot;);</span>
+		}
+<span class="nc" id="L79">		result.append(&quot;):\n&quot;);</span>
+<span class="nc" id="L80">		return result.toString();</span>
+	}
+
+	/**
+	 * Generates a method definition for a class in Python
+	 * @param methodName
+	 *            Name of the method
+	 * @param parameters
+	 *            Array of parameter names
+	 * @param level
+	 *            Indentation level to use.
+	 * @return An string defining the method using Python syntax &quot;[_indent_*level]def methodName(self, parameters[0],
+	 *         parameters[1]...):\n&quot;
+	 */
+	public static String generatePythonMethod(final String methodName, final String[] parameters, final int level) {
+<span class="nc" id="L95">		final StringBuffer result = new StringBuffer();</span>
+		// prepare indentation
+<span class="nc" id="L97">		result.append(generateIndent(level));</span>
+		// prepare method
+<span class="nc" id="L99">		result.append(&quot;def &quot; + methodName + &quot;(self&quot;);</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if (parameters != null) {</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">			for (String p : parameters) {</span>
+<span class="nc" id="L102">				result.append(&quot;, &quot; + p);</span>
+			}
+		}
+<span class="nc" id="L105">		result.append(&quot;):\n&quot;);</span>
+<span class="nc" id="L106">		return result.toString();</span>
+	}
+
+	/**
+	 * Generate a single line of Python code taking into account the indentation level.
+	 * @param line
+	 *            String with the Python line to include.
+	 * @param level
+	 *            Indentation level to use.
+	 * @return An string with the line of code. &quot;[_indent_*level]line\n&quot;
+	 */
+	public static String generatePythonCodeline(final String line, final int level) {
+<span class="nc" id="L118">		final StringBuffer result = new StringBuffer();</span>
+		// prepare indentation
+<span class="nc" id="L120">		result.append(generateIndent(level));</span>
+		// add line
+<span class="nc" id="L122">		result.append(line + &quot;\n&quot;);</span>
+<span class="nc" id="L123">		return result.toString();</span>
+	}
+
+	/**
+	 * Generate a single line comment of Python code
+	 * @param comment
+	 *            Readable comment (without # nor any prefix).
+	 * @param level
+	 *            Indentation level to use.
+	 * @return A string with the line of code. &quot;[_indent_*level]# line\n&quot;
+	 */
+	public static String generatePythonCommentLine(final String comment, final int level) {
+<span class="nc" id="L135">		final StringBuffer result = new StringBuffer();</span>
+<span class="nc" id="L136">		result.append(generateIndent(level));</span>
+<span class="nc" id="L137">		result.append(&quot;# &quot; + comment + &quot;\n&quot;);</span>
+<span class="nc" id="L138">		return result.toString();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

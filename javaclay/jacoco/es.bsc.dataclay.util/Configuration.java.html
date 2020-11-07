@@ -1,0 +1,709 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Configuration.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util</a> &gt; <span class="el_source">Configuration.java</span></div><h1>Configuration.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.dbhandler.DBHandlerFactory.DBHandlerType;
+
+/**
+ * Configurations.
+ */
+public final class Configuration {
+<span class="fc" id="L25">	private static final Logger LOGGER = LogManager.getLogger(&quot;util.Configuration&quot;);</span>
+
+	// CHECKSTYLE:OFF
+	/** Defines the file where global properties can be defined. */
+<span class="fc" id="L29">	public static final String GLOBALPROPS_PATH = System.getProperty(&quot;user.dir&quot;) + File.separatorChar + &quot;cfgfiles&quot;</span>
+			+ File.separatorChar + &quot;global.properties&quot;;
+
+	/** Environment variable where configuration file can be specified. */
+	public static final String GLOBALPROPS_ENV = &quot;DATACLAYGLOBALCONFIG&quot;;
+
+	/** Indicates if we are doing a mock test. */
+<span class="fc" id="L36">	public static boolean mockTesting = false;</span>
+
+	/** Indicates if we are doing a mock test using COMPSs. */
+<span class="fc" id="L39">	public static boolean mockTestingCompss = false;</span>
+
+	/** Format for date parsing. Can be used also in Yaml (see MockSimple). */
+	public static final String DATE_FORMAT_STR = &quot;yyyy-MM-dd'T'HH:mm:ss&quot;;
+
+	/** Format for date parsing. */
+<span class="fc" id="L45">	private static final DateFormat DATE_FORMAT = new SimpleDateFormat(DATE_FORMAT_STR);</span>
+
+	/**
+	 * Session expiration date. Static function needed for parsing.
+	 * 
+	 * @return Session expiration date.
+	 */
+	private static Date getSessionExpirationDate() {
+		try {
+<span class="fc" id="L54">			return DATE_FORMAT.parse(&quot;2120-09-10T20:00:04&quot;);</span>
+<span class="nc" id="L55">		} catch (final ParseException e) {</span>
+<span class="nc" id="L56">			e.printStackTrace();</span>
+<span class="nc" id="L57">			return null;</span>
+		}
+	}
+
+	// CHECKSTYLE:ON
+
+	/** ConfigurationTestFlags properties file. */
+<span class="fc" id="L64">	private static Properties testFlagsProps = null;</span>
+
+	/**
+	 * Get the properties' flags in a string.
+	 * @return A string, empty if there are no flags.
+	 */
+	public static String getFlagsInString() {
+<span class="nc bnc" id="L71" title="All 2 branches missed.">		if (testFlagsProps != null) {</span>
+<span class="nc" id="L72">			return testFlagsProps.toString();</span>
+		}
+<span class="nc" id="L74">		return &quot;&quot;;</span>
+	}
+
+	/**
+	 * Utility classes should have a private constructor.
+	 */
+	private Configuration() {
+
+	}
+
+	// CHECKSTYLE:OFF
+	/**
+	 * Type of configuration values.
+	 */
+<span class="fc" id="L88">	public enum ConfType {</span>
+<span class="fc" id="L89">		INTEGER, SHORT, LONG, FLOAT, BOOLEAN, STRING, DBHANDLER, DATE</span>
+	}
+
+	/**
+	 * Return whether the DEBUG level in the logging is enabled. 
+	 * @return True if Log4J has debug enables.
+	 */
+	public static boolean isDebugEnabled() {
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">		if (Flags.CHECK_LOG4J_DEBUG.getBooleanValue()) {</span>
+<span class="nc" id="L98">			return LogManager.getRootLogger().isDebugEnabled();</span>
+		}
+<span class="fc" id="L100">		return false;</span>
+	}
+
+	// CHECKSTYLE:ON
+
+	/**
+	 * Configurations enum.
+	 */
+<span class="fc" id="L108">	public enum Flags {</span>
+
+		// =============== BASIC ============ //
+
+		/** Indicates whether to check session (dataset access rights, etc) or not. */
+<span class="fc" id="L113">		CHECK_SESSION(false, ConfType.BOOLEAN),</span>
+		/** Indicates whether to check namespace owner or not. */
+<span class="fc" id="L115">		CHECK_NAMESPACE(false, ConfType.BOOLEAN),</span>
+		/** Expiration date for sessions when CHECK_SESSION=FALSE. */
+<span class="fc" id="L117">		EXPIRATION_DATE_IF_NOCHECK_SESSION(Configuration.getSessionExpirationDate(), ConfType.DATE),</span>
+		/** Indicates whether to check LOG4J or not. */
+<span class="fc" id="L119">		CHECK_LOG4J_DEBUG(false, ConfType.BOOLEAN),</span>
+		/** Indicates if MkPersistent should be synchronous. */
+<span class="fc" id="L121">		USE_SYNC_MKPERS(true, ConfType.BOOLEAN),</span>
+		/** Indicates if DataClay Classes must be registered or not. */
+<span class="fc" id="L123">		REGISTER_DATACLAY_CLASSES(false, ConfType.BOOLEAN),</span>
+		/** Indicates notification manager is active or not. */
+<span class="fc" id="L125">		NOTIFICATION_MANAGER_ACTIVE(false, ConfType.BOOLEAN),</span>
+		/** Indicates whether to enable memory gc or not. */
+<span class="fc" id="L127">		MEMORY_GC_ENABLED(true, ConfType.BOOLEAN),</span>
+		/** Indicates whether to enable global gc or not. */
+<span class="fc" id="L129">		GLOBAL_GC_ENABLED(true, ConfType.BOOLEAN),</span>
+		
+		/**
+		 * Indicates whether to check if object is read-only to accept replication or
+		 * not.
+		 */
+<span class="fc" id="L135">		CHECK_READ_ONLY(false, ConfType.BOOLEAN),</span>
+
+		/** Indicates path to persistent information of EE. */
+<span class="fc" id="L138">		EE_PERSISTENT_INFO_PATH(System.getProperty(&quot;user.dir&quot;) + File.separatorChar, ConfType.STRING),</span>
+
+		/** State file for healthcheck. */
+<span class="fc" id="L141">		STATE_FILE_PATH(&quot;state.txt&quot;, ConfType.STRING),</span>
+
+		// =============== PREFETCHING_FLAGS ========= //
+
+		/** Indicates if prefetching is enabled. */
+<span class="fc" id="L146">		PREFETCHING_ENABLED(false, ConfType.BOOLEAN),</span>
+		/** Indicates if parallel prefetching should be used */
+<span class="fc" id="L148">		PREFETCHING_PARALLEL_ENABLED(false, ConfType.BOOLEAN),</span>
+		/** Indicates if ROP prefetching should be used */
+<span class="fc" id="L150">		PREFETCHING_ROP_ENABLED(false, ConfType.BOOLEAN),</span>
+		/** Indicates fetch depth of ROP prefetching (ignored if ROP is disabled) */
+<span class="fc" id="L152">		PREFETCHING_ROP_DEPTH(1, ConfType.INTEGER),</span>
+
+		// =============== GRPC ========= //
+
+		/**
+		 * GRPC default is 4 MiB, dataClay default is unlimited while we do not have a
+		 * message chunking mechanism
+		 */
+<span class="fc" id="L160">		MAX_MESSAGE_SIZE(Integer.MAX_VALUE, ConfType.INTEGER),</span>
+
+		/** Path to Trusted certificates for verifying the remote endpoint's certificate. */
+<span class="fc" id="L163">		SSL_CLIENT_TRUSTED_CERTIFICATES(null, ConfType.STRING),</span>
+
+		/** Path to identifying certificate for this host. */
+<span class="fc" id="L166">		SSL_CLIENT_CERTIFICATE(null, ConfType.STRING),</span>
+
+		/** Path to identifying certificate for this host. */
+<span class="fc" id="L169">		SSL_CLIENT_KEY(null, ConfType.STRING),</span>
+
+		/** Custom header of service alias for calls to Logic module. Used in Traefik. **/
+<span class="fc" id="L172">		LM_SERVICE_ALIAS_HEADERMSG(&quot;logicmodule1&quot;, ConfType.STRING),</span>
+
+		/** Override authority hostname in SSL calls. */
+<span class="fc" id="L175">		SSL_TARGET_AUTHORITY(&quot;proxy&quot;, ConfType.STRING),</span>
+
+		// =============== PARAVER ============ //
+
+		/** Indicates if paraver interceptor is active or not. */
+<span class="fc" id="L180">		PARAVER_INTERCEPTOR_ACTIVE(false, ConfType.BOOLEAN), //FIXME: REMOVE THIS</span>
+		/**
+		 * Indicates if paraver interceptor for execution classes and stubs is active or
+		 * not.
+		 */
+<span class="fc" id="L185">		PARAVER_INTERCEPTOR_BYTECODE(false, ConfType.BOOLEAN),  //FIXME: REMOVE THIS</span>
+
+		// ============== MISC ============== //
+
+		/** Default value for DbHandler type for LOCAL data services. */
+<span class="fc" id="L190">		DB_HANDLER_TYPE_FOR_DATASERVICES(DBHandlerType.SQLITE, ConfType.DBHANDLER),</span>
+		/** Default value for DbHandler type for LOCAL logic module. */
+<span class="fc" id="L192">		DB_HANDLER_TYPE_FOR_LOGICMODULE(DBHandlerType.SQLITE, ConfType.DBHANDLER),</span>
+
+		/** Default read-write. */
+<span class="fc" id="L195">		READONLY_BY_DEFAULT(false, ConfType.BOOLEAN),</span>
+
+		// ============== DB ============== //
+
+		/** Maximum retries to connect to the database. */
+<span class="fc" id="L200">		MAX_RETRY_DATABASE_CONN(30, ConfType.SHORT),</span>
+		/** Millis to wait to retry connection to the database. */
+<span class="fc" id="L202">		RETRY_DATABASE_CONN_TIME(2000L, ConfType.LONG),</span>
+
+		/**
+		 * Indicates if we ignore replication from StorageItf. In this case, hint will
+		 * be the only location of an object.
+		 */
+<span class="fc" id="L208">		STORAGEITF_IGNORE_REPLICATION(true, ConfType.BOOLEAN),</span>
+
+		/** Experimental use of NIO streaming for array serialization. */
+<span class="fc" id="L211">		MULTIDIM_ARRAY_STREAM_SERIALIZATION(false, ConfType.BOOLEAN),</span>
+
+		// =============== CACHING ============== //
+
+		/** Defines the default load factor of the LRU caches. */
+<span class="fc" id="L216">		LRU_LOAD_FACTOR(0.75f, ConfType.FLOAT),</span>
+		/** Defines the timeunit used for the LRU cache that uses expiration dates. */
+<span class="fc" id="L218">		LRU_BYDATE_TIMEUNIT(TimeUnit.DAYS, null),</span>
+		/** Defines the value for the timeunit. */
+<span class="fc" id="L220">		LRU_BYDATE_TIMEUNIT_VALUE(1, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in Data Service cache. */
+<span class="fc" id="L222">		MAX_ENTRIES_DATASERVICE_CACHE(10000, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in Client cache. */
+<span class="fc" id="L224">		MAX_ENTRIES_CLIENT_CACHE(10000, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in MetaDataService cache. */
+<span class="fc" id="L226">		MAX_ENTRIES_METADATASERVICE_CACHE(10000, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in ClassManager cache. */
+<span class="fc" id="L228">		MAX_ENTRIES_CLASS_MANAGER_CACHE(10000, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in AccountManager cache. */
+<span class="fc" id="L230">		MAX_ENTRIES_ACCOUNT_MANAGER_CACHE(100, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in NamespaceManager cache. */
+<span class="fc" id="L232">		MAX_ENTRIES_NAMESPACE_MANAGER_CACHE(100, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in ContractManager cache. */
+<span class="fc" id="L234">		MAX_ENTRIES_CONTRACT_MANAGER_CACHE(100, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in DataSetManager cache. */
+<span class="fc" id="L236">		MAX_ENTRIES_DATASET_MANAGER_CACHE(100, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in DataContractManager cache. */
+<span class="fc" id="L238">		MAX_ENTRIES_DATACONTRACT_MANAGER_CACHE(100, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in InterfaceManager cache. */
+<span class="fc" id="L240">		MAX_ENTRIES_INTERFACE_MANAGER_CACHE(100, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in SessionManager cache. */
+<span class="fc" id="L242">		MAX_ENTRIES_SESSION_MANAGER_CACHE(100, ConfType.INTEGER),</span>
+
+		// ===== NOTIFICATION MANAGER ===== //
+
+		/** Default value for Maximum entries in NotificationManager Event queue. */
+<span class="fc" id="L247">		MAX_ENTRIES_NOTIFICATION_MANAGER_MSG_QUEUE(1000, ConfType.INTEGER),</span>
+		/** Default value for Maximum entries in NotificationManager session cache. */
+<span class="fc" id="L249">		MAX_ENTRIES_NOTIFICATION_MANAGER_SESSION_CACHE(100, ConfType.INTEGER),</span>
+		/**
+		 * Default value for time that should pass to consider a message to be old. In
+		 * millis.
+		 */
+<span class="fc" id="L254">		MAX_TIME_OLD_EVENT_MSGS(6000L, ConfType.LONG),</span>
+		/** Defines the period to check event message queue at Notification Manager. */
+<span class="fc" id="L256">		NOTIFICATION_MANAGER_INTERVAL(1000L, ConfType.LONG),</span>
+
+		// ===================== RETRIES AND TIME OUTS ===================== //
+
+
+		// NEW DATA-SERVICE OR EXECUTION ENVIRONMENT: WARNING: for each retry there is max_retries_logicmodule
+		/** Maximum autoregistration retries of a node. */
+<span class="fc" id="L263">		MAX_RETRY_AUTOREGISTER(10, ConfType.SHORT), </span>
+		/** Millis to wait to retry autoregistration of a node. */
+<span class="fc" id="L265">		RETRY_AUTOREGISTER_TIME(3000L, ConfType.LONG),</span>
+
+		// ANY CALL TO LOGICMODULE 
+		/** Default value for number of retries in connection to LogicModule. 
+		 * NOTE: Clients can wait at init waitForBackends*/
+<span class="fc" id="L270">		MAX_RETRIES_LOGICMODULE(1, ConfType.SHORT),</span>
+		/** Default value for sleeping before retrying in LM in millis. */
+<span class="fc" id="L272">		SLEEP_RETRIES_LOGICMODULE(100, ConfType.SHORT),</span>
+
+		// EXECUTION RETRIES
+
+		/**
+		 * Default value for number of retries IN EXECUTION
+		 */
+<span class="fc" id="L279">		MAX_EXECUTION_RETRIES(5, ConfType.SHORT),</span>
+
+		// WAIT FOR OBJECTS TO BE REGISTERED BY GC
+		/** Number of millis of time to wait for object to be registered. Default: NO WAIT */
+<span class="fc" id="L283">		TIMEOUT_WAIT_REGISTERED(0L, ConfType.LONG),</span>
+		/** Waiting milliseconds to check if object to be registered. */
+<span class="fc" id="L285">		SLEEP_WAIT_REGISTERED(50L, ConfType.LONG),</span>
+
+		/** Waiting milliseconds to check if backends where shutted down. */
+<span class="fc" id="L288">		SLEEP_WAIT_SHUTDOWN(200L, ConfType.LONG),</span>
+		
+		// ============== MEMORY MANAGEMENT =================== //
+
+		/** Minimum life time for an object to be flushed. */
+<span class="fc" id="L293">		MEMMGMT_MIN_OBJECT_TIME(500L, ConfType.LONG),</span>
+		/** Fraction of memory to consider it is under pressure. */
+<span class="fc" id="L295">		MEMMGMT_PRESSURE_FRACTION(0.7f, ConfType.FLOAT),</span>
+		/**
+		 * Interval to check if objects may be flushed (depending on memory pressure).
+		 */
+<span class="fc" id="L299">		MEMMGMT_CHECK_TIME_INTERVAL(5000L, ConfType.LONG),</span>
+		/** Waiting millis to other MEMMGT threads to finish during shutdown process. */
+<span class="fc" id="L301">		MEMMGMT_WAIT_TO_SHUTDOWN(200L, ConfType.LONG),</span>
+
+		// ============== GLOBAL GC ===================== //
+		/** Interval to check and collect objects in disk. (IN MILLIS) */
+<span class="fc" id="L305">		GLOBALGC_CHECK_TIME_INTERVAL(24 * 60 * 60 * 1000L, ConfType.LONG),</span>
+		/** Interval to check and send remote reference countings. (IN MILLIS) */
+<span class="fc" id="L307">		GLOBALGC_CHECK_REMOTE_PENDING(4000L, ConfType.LONG),</span>
+		/**
+		 * Interval to process pending reference counters. The idea is not to use same
+		 * collection interval to avoid retaining too much memory: one thing is the map
+		 * of counters (which is not released till collection or sending references to
+		 * other nodes) and other thing is the pending reference countings to process
+		 * (which are maps of oid -&gt; num refs per each object). (IN MILLIS)
+		 */
+<span class="fc" id="L315">		GLOBALGC_PROCESS_COUNTINGS_INTERVAL(2000L, ConfType.LONG),</span>
+
+		/**
+		 * Maximum time an object can be in quarantine. WARNING: this time must ensure
+		 * no race condition of wrong 0 references happen.
+		 */
+<span class="fc" id="L321">		GLOBALGC_MAX_TIME_QUARANTINE(16000L, ConfType.LONG),</span>
+
+		/** Waiting millis to other GC threads to finish during shutdown process. */
+<span class="fc" id="L324">		GLOBALGC_WAIT_TO_SHUTDOWN(30000L, ConfType.LONG),</span>
+
+		/**
+		 * Maximum number of objects to collect during a task, this allow us to avoid
+		 * infinite cleaning thread.
+		 */
+<span class="fc" id="L330">		GLOBALGC_MAX_OBJECTS_TO_COLLECT_PERTASK(1000, ConfType.INTEGER),</span>
+
+		/**
+		 * Initial delay for collector thread to start working in hours
+		 */
+<span class="fc" id="L335">		GLOBALGC_COLLECTOR_INITIAL_DELAY_HOURS(12L, ConfType.LONG),</span>
+
+		/** Default cache path. */
+<span class="fc" id="L338">		DEFAULT_GLOBALGC_CACHE_PATH(System.getProperty(&quot;user.dir&quot;) + File.separatorChar, ConfType.STRING),</span>
+
+		// ============= LAZY TASKS ==================== //
+
+		/** Interval to check if tasks must be run. */
+<span class="fc" id="L343">		PREFETCHING_TASKS_INTERVAL(500L, ConfType.LONG),</span>
+
+		// ============== DEPLOYMENT ============== //
+
+		/** Defines the file where aspectlib is located. */
+<span class="fc" id="L348">		ASPECTLIBPATH(</span>
+<span class="fc" id="L349">				System.getProperty(&quot;user.dir&quot;) + File.separatorChar + &quot;lib&quot; + File.separatorChar + &quot;aspectjrt.jar&quot;,</span>
+				ConfType.STRING),
+		/** Default value for path in which aspects are stored. */
+<span class="fc" id="L352">		ASPECTS_PATH(System.getProperty(&quot;user.dir&quot;) + File.separatorChar + &quot;execAspects&quot;, ConfType.STRING),</span>
+		/** Aspects Home dir. */
+<span class="fc" id="L354">		ASPECTS_HOME(&quot;&quot;, ConfType.STRING),</span>
+		/** DB storage path. */
+<span class="fc" id="L356">		STORAGE_PATH(File.separatorChar + &quot;dataclay&quot; + File.separatorChar + &quot;storage&quot;, ConfType.STRING),</span>
+		/** Default path in which classes to install are stored. */
+<span class="fc" id="L358">		DATACLAY_INSTALLED_CLASSES_SRC_PATH(</span>
+<span class="fc" id="L359">				System.getProperty(&quot;user.dir&quot;) + File.separatorChar + &quot;install_classes&quot; + File.separatorChar + &quot;src&quot;,</span>
+				ConfType.STRING),
+		/** Default path in which classes to install are compiled. */
+<span class="fc" id="L362">		DATACLAY_INSTALLED_CLASSES_BIN_PATH(</span>
+<span class="fc" id="L363">				System.getProperty(&quot;user.dir&quot;) + File.separatorChar + &quot;install_classes&quot; + File.separatorChar + &quot;bin&quot;,</span>
+				ConfType.STRING),
+		/** Default value for path in which execution classes are stored. */
+<span class="fc" id="L366">		EXECUTION_CLASSES_PATH(System.getProperty(&quot;user.dir&quot;) + File.separatorChar + &quot;execClasses/&quot;, ConfType.STRING),</span>
+		/** Defines the file where dependencies is located. */
+<span class="fc" id="L368">		INCLUDE_THIS_PROJECT(System.getProperty(&quot;user.dir&quot;) + File.separatorChar + &quot;target/classes&quot;, ConfType.STRING),</span>
+
+		/** Indicates path to extrae wrapper library. */
+<span class="fc" id="L371">		JAVACLAY_EXTRAE_WRAPPER_LIB(ProcessEnvironment.getInstance().get(&quot;JAVACLAY_EXTRAE_WRAPPER_LIB&quot;), ConfType.STRING),</span>
+		
+		/** Indicates if finish extrae must be called. */ 
+<span class="fc" id="L374">		FINISH_EXTRAE_TRACING(true, ConfType.BOOLEAN),</span>
+		
+		// =========== DEBUG ================ //
+
+		/** Whether AspectJ info should be printed. */
+<span class="fc" id="L379">		PRINT_ASPECTS_INFO(false, ConfType.BOOLEAN),</span>
+		/** Print bytes message. */
+<span class="fc" id="L381">		PRETTY_PRINT_MESSAGES(false, ConfType.BOOLEAN),</span>
+		/** Add debug information on methods. */
+<span class="fc" id="L383">		ADD_DEBUG_INFO_ON_METHODS(false, ConfType.BOOLEAN);</span>
+
+		// ============= END OF FLAGS ================== //
+
+		/** Indicates if configuration was loaded. */
+<span class="fc" id="L388">		private boolean loaded = false;</span>
+
+		/** Configuration value. */
+<span class="fc" id="L391">		private Object value = null;</span>
+
+		/** Indicates type of configuration. */
+<span class="fc" id="L394">		private ConfType valueType = null;</span>
+
+		/**
+		 * Constructor with default value
+		 * 
+		 * @param defaultValue
+		 *            Default value
+		 * @param defaultValType
+		 *            Default value type
+		 */
+<span class="fc" id="L404">		Flags(final Object defaultValue, final ConfType defaultValType) {</span>
+<span class="fc" id="L405">			value = defaultValue;</span>
+<span class="fc" id="L406">			valueType = defaultValType;</span>
+<span class="fc" id="L407">		}</span>
+
+		/**
+		 * @throws Exception
+		 *             if some exception occurs Init properties.
+		 */
+		private void init() throws Exception {
+<span class="fc bfc" id="L414" title="All 2 branches covered.">			if (testFlagsProps == null) {</span>
+<span class="fc" id="L415">				testFlagsProps = new Properties();</span>
+<span class="fc" id="L416">				File globalFile = null;</span>
+<span class="fc" id="L417">				LOGGER.debug(&quot;Looking for environment variable {}&quot;, Configuration.GLOBALPROPS_ENV);</span>
+<span class="fc" id="L418">				String globalPropsPath = ProcessEnvironment.getInstance().get(Configuration.GLOBALPROPS_ENV);</span>
+<span class="fc" id="L419">				boolean fileExists = false;</span>
+<span class="fc" id="L420">				LOGGER.debug(&quot;Found {} defined at {}. Trying to read.&quot;,</span>
+						Configuration.GLOBALPROPS_ENV, globalPropsPath);
+<span class="pc bpc" id="L422" title="3 of 4 branches missed.">				if (globalPropsPath != null &amp;&amp; !globalPropsPath.isEmpty()) {</span>
+<span class="nc" id="L423">					globalFile = new File(globalPropsPath);</span>
+<span class="nc bnc" id="L424" title="All 4 branches missed.">					fileExists = globalFile.isFile() &amp;&amp; globalFile.exists();</span>
+				}
+
+<span class="pc bpc" id="L427" title="1 of 2 branches missed.">				if (fileExists) {</span>
+<span class="nc" id="L428">					LOGGER.debug(&quot;Found {}. Initializing global properties with properties located at {}&quot;,</span>
+							Configuration.GLOBALPROPS_ENV, globalPropsPath);
+<span class="nc" id="L430">					final Path path = Paths.get(globalPropsPath).normalize();</span>
+<span class="nc" id="L431">					globalPropsPath = path.toAbsolutePath().toString();</span>
+<span class="nc" id="L432">					globalFile = new File(globalPropsPath);</span>
+
+<span class="nc" id="L434">				} else {</span>
+<span class="fc" id="L435">					final Path path = Paths.get(GLOBALPROPS_PATH).normalize();</span>
+<span class="fc" id="L436">					LOGGER.debug(&quot;Cannot find environment variable {}. Trying default location {}&quot;,</span>
+<span class="fc" id="L437">							Configuration.GLOBALPROPS_ENV, path.toAbsolutePath().toString());</span>
+<span class="fc" id="L438">					globalPropsPath = path.toAbsolutePath().toString();</span>
+<span class="fc" id="L439">					globalFile = new File(globalPropsPath);</span>
+
+				}
+
+<span class="fc" id="L443">				initializeGlobalProperties(globalFile);</span>
+			}
+<span class="fc bfc" id="L445" title="All 2 branches covered.">			if (valueType == null) {</span>
+<span class="pc bpc" id="L446" title="1 of 2 branches missed.">				if (value == null) {</span>
+<span class="nc" id="L447">					throw new Exception(&quot;Missing default value for configuration without Value type&quot;);</span>
+				}
+			} else {
+<span class="fc" id="L450">				LOGGER.debug(&quot;Looking for env variable set in global.properties: {}&quot;, this.name());</span>
+<span class="fc" id="L451">				String strVal = testFlagsProps.getProperty(this.name());</span>
+<span class="pc bpc" id="L452" title="1 of 2 branches missed.">				if (strVal != null) {</span>
+<span class="nc" id="L453">					LOGGER.info(&quot;Found environment variable set in global.properties: {}={}&quot;, this.name(), strVal);</span>
+				} else {
+<span class="fc" id="L455">					strVal = ProcessEnvironment.getInstance().get(this.name());</span>
+<span class="pc bpc" id="L456" title="1 of 2 branches missed.">					if (strVal != null) {</span>
+<span class="nc" id="L457">						LOGGER.info(&quot;Found environment variable defined: {}={}&quot;, this.name(), strVal);</span>
+					}
+				}
+				
+<span class="pc bpc" id="L461" title="1 of 2 branches missed.">				if (strVal != null) {</span>
+<span class="nc bnc" id="L462" title="All 9 branches missed.">					switch (valueType) {</span>
+					case BOOLEAN:
+<span class="nc" id="L464">						value = Boolean.valueOf(strVal);</span>
+<span class="nc" id="L465">						break;</span>
+					case FLOAT:
+<span class="nc" id="L467">						value = Float.valueOf(strVal);</span>
+<span class="nc" id="L468">						break;</span>
+					case INTEGER:
+<span class="nc" id="L470">						value = Integer.valueOf(strVal);</span>
+<span class="nc" id="L471">						break;</span>
+					case SHORT:
+<span class="nc" id="L473">						value = Short.valueOf(strVal);</span>
+<span class="nc" id="L474">						break;</span>
+					case LONG:
+<span class="nc" id="L476">						value = Long.valueOf(strVal);</span>
+<span class="nc" id="L477">						break;</span>
+					case STRING:
+<span class="nc" id="L479">						value = strVal;</span>
+<span class="nc" id="L480">						break;</span>
+					case DBHANDLER:
+<span class="nc bnc" id="L482" title="All 2 branches missed.">						if (strVal.equals(&quot;POSTGRES&quot;)) {</span>
+<span class="nc" id="L483">							value = DBHandlerType.POSTGRES;</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">						} else if (strVal.equals(&quot;SQLITE&quot;)) {</span>
+<span class="nc" id="L485">							value = DBHandlerType.SQLITE;</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">						} else if (strVal.equals(&quot;NVRAM&quot;)) {</span>
+<span class="nc" id="L487">							value = DBHandlerType.NVRAM;</span>
+						}
+						break;
+					case DATE:
+<span class="nc" id="L491">						value = DATE_FORMAT.parse(strVal);</span>
+<span class="nc" id="L492">						break;</span>
+					default:
+<span class="nc" id="L494">						throw new Exception(&quot;Wrong value Type: &quot; + valueType);</span>
+					}
+				} else {
+<span class="fc" id="L497">					LOGGER.debug(&quot;Not found environment variable set in global.properties, using default: {}={}&quot;, this.name(), value);</span>
+				}
+			}
+
+<span class="fc" id="L501">			loaded = true;</span>
+
+
+
+
+
+<span class="fc" id="L507">		}</span>
+
+		/**
+		 * Reload global properties
+		 * @param globalConfig Global properties file path
+		 */
+		public static void reloadGlobalConfiguration(final String globalConfig) {
+<span class="nc" id="L514">			final String globalPropsPath = globalConfig;</span>
+<span class="nc" id="L515">			final File globalFile = new File(globalConfig);</span>
+<span class="nc bnc" id="L516" title="All 4 branches missed.">			final boolean fileExists = globalFile.isFile() &amp;&amp; globalFile.exists();</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">			if (!fileExists) {</span>
+<span class="nc" id="L518">				LOGGER.debug(&quot;Cannot find global properties with properties located at {}&quot;,</span>
+						globalPropsPath);
+<span class="nc" id="L520">				return;</span>
+			} 
+<span class="nc" id="L522">			initializeGlobalProperties(globalFile);</span>
+<span class="nc bnc" id="L523" title="All 2 branches missed.">			for (final Configuration.Flags flag : Configuration.Flags.values()) { </span>
+				// unload it
+<span class="nc" id="L525">				flag.loaded = false;</span>
+			}
+<span class="nc" id="L527">		}</span>
+
+		/**
+		 * Read global properties file
+		 * @param globalFile global properties file
+		 */
+		public static void initializeGlobalProperties(final File globalFile) {
+<span class="fc" id="L534">			FileInputStream input = null;</span>
+			try {
+
+<span class="nc" id="L537">				input = new FileInputStream(globalFile);</span>
+
+				// load a properties file
+<span class="nc" id="L540">				testFlagsProps.load(input);</span>
+
+<span class="nc" id="L542">				LOGGER.info(&quot;Using global.properties file found at {}&quot;, globalFile.getAbsolutePath());</span>
+
+<span class="fc" id="L544">			} catch (final IOException ex) {</span>
+				// No global properties file, exit initialization
+<span class="fc" id="L546">				LOGGER.warn(&quot;No global.properties file found at {}. Using default values&quot;,</span>
+<span class="fc" id="L547">						globalFile.getAbsolutePath());</span>
+<span class="fc" id="L548">				return;</span>
+			} finally {
+<span class="pc bpc" id="L550" title="1 of 2 branches missed.">				if (input != null) {</span>
+					try {
+<span class="nc" id="L552">						input.close();</span>
+<span class="nc" id="L553">					} catch (final IOException e) {</span>
+<span class="nc" id="L554">						LOGGER.warn(&quot;No global.properties file found at {}. Using default values&quot;,</span>
+<span class="nc" id="L555">								globalFile.getAbsolutePath());</span>
+<span class="nc" id="L556">						return;</span>
+<span class="nc" id="L557">					}</span>
+				}
+			}
+<span class="nc" id="L560">		}</span>
+
+		/**
+		 * Get the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public Object getValue() {
+<span class="fc bfc" id="L568" title="All 2 branches covered.">			if (!loaded) {</span>
+				try {
+<span class="fc" id="L570">					init();</span>
+<span class="nc" id="L571">				} catch (final Exception e) {</span>
+<span class="nc" id="L572">					e.printStackTrace();</span>
+<span class="fc" id="L573">				}</span>
+			}
+<span class="fc" id="L575">			return value;</span>
+		}
+
+		/**
+		 * Get Date value of the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public Date getDate() {
+<span class="nc bnc" id="L584" title="All 2 branches missed.">			if (!loaded) {</span>
+				try {
+<span class="nc" id="L586">					init();</span>
+<span class="nc" id="L587">				} catch (final Exception e) {</span>
+<span class="nc" id="L588">					e.printStackTrace();</span>
+<span class="nc" id="L589">				}</span>
+			}
+<span class="nc" id="L591">			return (Date) value;</span>
+		}
+
+		/**
+		 * Get int value of the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public short getShortValue() {
+<span class="nc bnc" id="L600" title="All 2 branches missed.">			if (!loaded) {</span>
+				try {
+<span class="nc" id="L602">					init();</span>
+<span class="nc" id="L603">				} catch (final Exception e) {</span>
+<span class="nc" id="L604">					e.printStackTrace();</span>
+<span class="nc" id="L605">				}</span>
+			}
+<span class="nc bnc" id="L607" title="All 2 branches missed.">			if (value instanceof Short) { </span>
+<span class="nc" id="L608">				return (Short) value;</span>
+			} else {
+<span class="nc" id="L610">				return ((Integer) value).shortValue();</span>
+			}
+		}
+
+		/**
+		 * Get int value of the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public int getIntValue() {
+<span class="fc bfc" id="L620" title="All 2 branches covered.">			if (!loaded) {</span>
+				try {
+<span class="fc" id="L622">					init();</span>
+<span class="nc" id="L623">				} catch (final Exception e) {</span>
+<span class="nc" id="L624">					e.printStackTrace();</span>
+<span class="fc" id="L625">				}</span>
+			}
+<span class="fc" id="L627">			return (Integer) value;</span>
+		}
+
+		/**
+		 * Get long value of the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public long getLongValue() {
+<span class="nc bnc" id="L636" title="All 2 branches missed.">			if (!loaded) {</span>
+				try {
+<span class="nc" id="L638">					init();</span>
+<span class="nc" id="L639">				} catch (final Exception e) {</span>
+<span class="nc" id="L640">					e.printStackTrace();</span>
+<span class="nc" id="L641">				}</span>
+			}
+<span class="nc bnc" id="L643" title="All 2 branches missed.">			if (value instanceof Double) {</span>
+<span class="nc" id="L644">				return ((Double) value).longValue();</span>
+			}
+<span class="nc" id="L646">			return (Long) value;</span>
+		}
+
+		/**
+		 * Get boolean value of the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public boolean getBooleanValue() {
+<span class="fc bfc" id="L655" title="All 2 branches covered.">			if (!loaded) {</span>
+				try {
+<span class="fc" id="L657">					init();</span>
+<span class="nc" id="L658">				} catch (final Exception e) {</span>
+<span class="nc" id="L659">					e.printStackTrace();</span>
+<span class="fc" id="L660">				}</span>
+			}
+<span class="fc" id="L662">			return (Boolean) value;</span>
+		}
+
+		/**
+		 * Get String value of the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public String getStringValue() {
+<span class="fc bfc" id="L671" title="All 2 branches covered.">			if (!loaded) {</span>
+				try {
+<span class="fc" id="L673">					init();</span>
+<span class="nc" id="L674">				} catch (final Exception e) {</span>
+<span class="nc" id="L675">					e.printStackTrace();</span>
+<span class="fc" id="L676">				}</span>
+			}
+<span class="fc" id="L678">			return (String) value;</span>
+		}
+
+		/**
+		 * Get Float value of the Configurations::value
+		 * 
+		 * @return the value
+		 */
+		public float getFloatValue() {
+<span class="fc bfc" id="L687" title="All 2 branches covered.">			if (!loaded) {</span>
+				try {
+<span class="fc" id="L689">					init();</span>
+<span class="nc" id="L690">				} catch (final Exception e) {</span>
+<span class="nc" id="L691">					e.printStackTrace();</span>
+<span class="fc" id="L692">				}</span>
+			}
+<span class="fc" id="L694">			return (Float) value;</span>
+		}
+
+		/**
+		 * Set the Configurations::value (USED FOR TESTING PURPOSES)
+		 * 
+		 * @param newvalue
+		 *            the value
+		 */
+		public void setValue(final Object newvalue) {
+<span class="fc" id="L704">			this.value = newvalue;</span>
+<span class="fc" id="L705">		}</span>
+
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

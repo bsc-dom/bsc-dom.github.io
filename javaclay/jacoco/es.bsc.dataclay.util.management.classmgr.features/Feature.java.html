@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Feature.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr.features</a> &gt; <span class="el_source">Feature.java</span></div><h1>Feature.java</h1><pre class="source lang-java linenums">
+/**
+ * @file Feature.java
+ * @date OCt 8, 2012
+ */
+package es.bsc.dataclay.util.management.classmgr.features;
+
+/**
+ * This class implements a Feature.
+ * 
+ */
+
+public class Feature  {
+
+	/**
+	 * Enum that represents the possible types of features considering also their hierarchy.
+	 */
+<span class="fc" id="L18">	public enum FeatureType {</span>
+
+		/** Quantitative features. */
+<span class="fc" id="L21">		QUANTITATIVE(),</span>
+		/** Number of CPUs. */
+<span class="fc" id="L23">		CPU(QUANTITATIVE),</span>
+		/** Memory available. */
+<span class="fc" id="L25">		MEMORY(QUANTITATIVE),</span>
+		/** Qualitative features. */
+<span class="fc" id="L27">		QUALITATIVE(),</span>
+		/** Architecture (x86, x64). */
+<span class="fc" id="L29">		ARCHITECTURE(QUALITATIVE),</span>
+		/** Programming language. */
+<span class="fc" id="L31">		LANGUAGE(QUALITATIVE);</span>
+
+		/** Parent type. Each feature belongs to a parent type that can be qualitative or quantitative. */
+		private FeatureType parent;
+
+		/**
+		 * Feature Type constructor.
+		 */
+<span class="fc" id="L39">		FeatureType() {</span>
+<span class="fc" id="L40">			this.parent = null;</span>
+<span class="fc" id="L41">		}</span>
+
+		/**
+		 * Feature Type constructor with parent type.
+		 * @param theParent
+		 *            The parent type
+		 */
+<span class="fc" id="L48">		FeatureType(final FeatureType theParent) {</span>
+<span class="fc" id="L49">			this.setParent(theParent);</span>
+<span class="fc" id="L50">		}</span>
+
+		/**
+		 * Get the FeatureType::parent
+		 * @return the parent
+		 */
+		public FeatureType getParent() {
+<span class="fc" id="L57">			return this.parent;</span>
+		}
+
+		/**
+		 * Set the FeatureType::parent
+		 * @param theParent
+		 *            the parent to set
+		 */
+		public void setParent(final FeatureType theParent) {
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">			if (theParent == null) {</span>
+<span class="nc" id="L67">				throw new IllegalArgumentException(&quot;If a parent is set it cannot be null&quot;);</span>
+			}
+<span class="fc" id="L69">			this.parent = theParent;</span>
+<span class="fc" id="L70">		}</span>
+	}
+
+	/** Feature type. */
+	private FeatureType featureType;
+
+	/**
+	 * Creates an empty feature
+	 * @note This function does not generate a QualitativeRegistryID. It is necessary for the queries by example used in db4o.
+	 */
+<span class="nc" id="L80">	public Feature() {</span>
+<span class="nc" id="L81">	}</span>
+
+	/**
+	 * Feature constructor
+	 * @param theFeatureType
+	 *            Type of the feature
+	 * @post Creates a new Feature of type provided.
+	 */
+<span class="fc" id="L89">	public Feature(final FeatureType theFeatureType) {</span>
+<span class="fc" id="L90">		this.setType(theFeatureType);</span>
+<span class="fc" id="L91">	}</span>
+
+	/**
+	 * Get the type of this Feature
+	 * @return Feature::featureType of container Feature.
+	 */
+	public final FeatureType getType() {
+<span class="fc" id="L98">		return this.featureType;</span>
+	}
+
+	/**
+	 * Set the Feature::featureType of this Feature
+	 * @param theFeatureType
+	 *            Type to set
+	 */
+	public final void setType(final FeatureType theFeatureType) {
+<span class="pc bpc" id="L107" title="1 of 2 branches missed.">		if (theFeatureType == null) {</span>
+<span class="nc" id="L108">			throw new IllegalArgumentException(&quot;Feature type cannot be null&quot;);</span>
+		}
+<span class="fc" id="L110">		this.featureType = theFeatureType;</span>
+<span class="fc" id="L111">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

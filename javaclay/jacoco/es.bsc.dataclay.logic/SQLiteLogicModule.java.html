@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SQLiteLogicModule.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic</a> &gt; <span class="el_source">SQLiteLogicModule.java</span></div><h1>SQLiteLogicModule.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.logic;
+
+import es.bsc.dataclay.dbhandler.sql.SQLHandler;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteHandlerConfig;
+
+public class SQLiteLogicModule extends LogicModule&lt;SQLiteHandlerConfig&gt;{
+	private final boolean inMemory;
+
+	public SQLiteLogicModule(final String lmName, final String thehostname, final int theport, 
+			final boolean inMemory, final String theexposedIPForClient) throws InterruptedException {
+<span class="nc" id="L11">		super(lmName, thehostname, theport, theexposedIPForClient);</span>
+<span class="nc" id="L12">		this.inMemory = inMemory;</span>
+<span class="nc" id="L13">	}</span>
+
+	@Override
+	protected SQLiteHandlerConfig initDBConf() {
+<span class="nc" id="L17">		return new SQLiteHandlerConfig(name, false);</span>
+	}
+
+	@Override
+	protected SQLHandler&lt;SQLiteHandlerConfig&gt; initDBHandler() {
+<span class="nc" id="L22">		final SQLHandler&lt;SQLiteHandlerConfig&gt; dbHandler = (SQLHandler)dbConf.getDBHandler();</span>
+<span class="nc" id="L23">		dbHandler.open();</span>
+<span class="nc" id="L24">		return dbHandler;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

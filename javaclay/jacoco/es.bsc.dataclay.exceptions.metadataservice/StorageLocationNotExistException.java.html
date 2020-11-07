@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StorageLocationNotExistException.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.exceptions.metadataservice</a> &gt; <span class="el_source">StorageLocationNotExistException.java</span></div><h1>StorageLocationNotExistException.java</h1><pre class="source lang-java linenums">
+/**
+ * @file BackendNotExistException.java
+ * 
+ * @date May 28, 2013
+ */
+package es.bsc.dataclay.exceptions.metadataservice;
+
+import es.bsc.dataclay.exceptions.DataClayException;
+import es.bsc.dataclay.exceptions.ErrorDefs.ERRORCODE;
+import es.bsc.dataclay.util.ids.StorageLocationID;
+import es.bsc.dataclay.util.management.metadataservice.StorageLocation;
+
+/**
+ * This class represents the exceptions produced in MetaDataService module when a backend specified does not exist.
+ * 
+ */
+public class StorageLocationNotExistException extends DataClayException {
+
+	/** Serial version UID. */
+	private static final long serialVersionUID = -7075663709157332521L;
+
+	/**
+	 * This exception is produced when a backend with ID provided does not exist
+	 * @param backendID
+	 *            ID of the backend
+	 */
+	public StorageLocationNotExistException(final StorageLocationID backendID) {
+<span class="nc" id="L29">		super(ERRORCODE.STORAGE_LOCATION_NOT_EXIST, &quot;StorageLocation &quot; + backendID.toString() + &quot; does not exist &quot;, false);</span>
+<span class="nc" id="L30">	}</span>
+
+	/**
+	 * This exception is produced when a certain name does not correspont to any Storage Location
+	 * @param stLocName
+	 *            Name of the not existant backend
+	 */
+	public StorageLocationNotExistException(final String stLocName) {
+<span class="nc" id="L38">		super(ERRORCODE.STORAGE_LOCATION_NOT_EXIST, &quot;StorageLocation named &quot; + stLocName + &quot; does not exist &quot;, false);</span>
+<span class="nc" id="L39">	}</span>
+
+	/**
+	 * This exception is produced when a backend with specifications does not exist
+	 * @param backendProto
+	 *            Specifications of the backend
+	 */
+	public StorageLocationNotExistException(final StorageLocation backendProto) {
+<span class="nc" id="L47">		super(ERRORCODE.STORAGE_LOCATION_NOT_EXIST, &quot;Backend &quot; + backendProto.toString() + &quot; does not exist &quot;, false);</span>
+<span class="nc" id="L48">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

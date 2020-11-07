@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayRefList.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization</a> &gt; <span class="el_source">DataClayRefList.java</span></div><h1>DataClayRefList.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.serialization;
+
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * List of references wrapper for serialization. Used to share between different languages in DataClay.
+ */
+public final class DataClayRefList implements DataClaySerializable {
+
+	/** List of references to serialize. */
+	private List&lt;ObjectID&gt; references;
+
+	/**
+	 * Empty constructor for deserialization.
+	 */
+<span class="nc" id="L31">	public DataClayRefList() {</span>
+
+<span class="nc" id="L33">	}</span>
+
+	/**
+	 * Constructor
+	 * @param newrefs
+	 *            References
+	 */
+<span class="nc" id="L40">	public DataClayRefList(final List&lt;ObjectID&gt; newrefs) {</span>
+<span class="nc" id="L41">		this.setReferences(newrefs);</span>
+<span class="nc" id="L42">	}</span>
+
+	/**
+	 * @return the references
+	 */
+	public List&lt;ObjectID&gt; getReferences() {
+<span class="nc" id="L48">		return references;</span>
+	}
+
+	/**
+	 * @param newreferences
+	 *            the references to set
+	 */
+	public void setReferences(final List&lt;ObjectID&gt; newreferences) {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">		if (newreferences == null) {</span>
+<span class="nc" id="L57">			throw new IllegalArgumentException(&quot;References cannot be null&quot;);</span>
+		}
+<span class="nc" id="L59">		this.references = newreferences;</span>
+<span class="nc" id="L60">	}</span>
+
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+
+<span class="nc" id="L68">		dcBuffer.writeInt(this.references.size());</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">		for (final ObjectID ref : references) {</span>
+<span class="nc" id="L70">			ref.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L71">		}</span>
+<span class="nc" id="L72">	}</span>
+
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata, final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+
+<span class="nc" id="L78">		final int numRefs = dcBuffer.readInt();</span>
+<span class="nc" id="L79">		this.references = new ArrayList&lt;&gt;(numRefs);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		for (int i = 0; i &lt; numRefs; ++i) {</span>
+<span class="nc" id="L81">			final ObjectID ref = new ObjectID();</span>
+<span class="nc" id="L82">			ref.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L83">			references.add(ref);</span>
+		}
+
+<span class="nc" id="L86">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

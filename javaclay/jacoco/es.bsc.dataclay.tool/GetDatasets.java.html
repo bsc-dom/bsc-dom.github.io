@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GetDatasets.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">GetDatasets.java</span></div><h1>GetDatasets.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import java.util.Map;
+import java.util.Set;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.tool.Util.ERRCODE;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.datacontractmgr.DataContract;
+
+<span class="nc" id="L14">public class GetDatasets {</span>
+
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L17" title="All 2 branches missed.">		if (args.length != 2) {</span>
+<span class="nc" id="L18">			Util.finishErr(&quot;Bad arguments. Usage: \n\n &quot; + GetDatasets.class.getSimpleName()</span>
+					+ &quot; &lt;user_name&gt; &lt;user_pass&gt; \n&quot;, ERRCODE.ERROR);
+<span class="nc" id="L20">			return;</span>
+		}
+		try {
+<span class="nc" id="L23">			Util.init();</span>
+
+<span class="nc" id="L25">			final String applicantName = args[0];</span>
+<span class="nc" id="L26">			final String applicantPass = args[1];</span>
+
+			// Check account
+<span class="nc" id="L29">			final AccountID accountID = ClientManagementLib.getAccountID(applicantName);</span>
+<span class="nc bnc" id="L30" title="All 2 branches missed.">			if (accountID == null) {</span>
+<span class="nc" id="L31">				Util.finishErr(&quot;Invalid account&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L32">				return;</span>
+			}
+<span class="nc" id="L34">			final PasswordCredential credential = new PasswordCredential(applicantPass);</span>
+
+			// Get available public datasets
+<span class="nc" id="L37">			final Set&lt;String&gt; publicDatasets = ClientManagementLib.getPublicDatasets(accountID, credential);</span>
+
+<span class="nc" id="L39">			String msg = &quot;Accessible public datasets:&quot; + &quot;\n&quot;;</span>
+<span class="nc bnc" id="L40" title="All 2 branches missed.">			for (final String publicDS : publicDatasets) {</span>
+<span class="nc" id="L41">				msg += publicDS + &quot;\n&quot;;</span>
+<span class="nc" id="L42">			}</span>
+
+			// Get accessible datasets from data contracts
+<span class="nc" id="L45">			final Map&lt;DataContractID, DataContract&gt; dataContracts = ClientManagementLib.getDataContractsOfApplicant(accountID,</span>
+					credential);
+<span class="nc" id="L47">			msg += &quot;\n&quot;;</span>
+<span class="nc" id="L48">			msg += &quot;Accessible non-public datasets ids:&quot; + &quot;\n&quot;;</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">			for (final DataContract dc : dataContracts.values()) {</span>
+				// TODO Create getDatasetName from id in order to show the names
+<span class="nc" id="L51">				final String dataset = dc.getProviderDataSetID().toString();</span>
+<span class="nc" id="L52">				msg += dataset + &quot;\n&quot;;</span>
+<span class="nc" id="L53">			}</span>
+<span class="nc" id="L54">			Util.finishOut(msg);</span>
+<span class="nc" id="L55">		} catch (final Exception ex) {</span>
+<span class="nc" id="L56">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L57">		}</span>
+<span class="nc" id="L58">		System.exit(0); // Call this to finish logging threads</span>
+
+<span class="nc" id="L60">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

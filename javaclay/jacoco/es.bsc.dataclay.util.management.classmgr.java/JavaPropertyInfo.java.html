@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JavaPropertyInfo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr.java</a> &gt; <span class="el_source">JavaPropertyInfo.java</span></div><h1>JavaPropertyInfo.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.classmgr.java;
+
+import java.util.UUID;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.util.management.classmgr.LanguageDependantPropertyInfo;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents Java dependant information for a Property.
+ * 
+ */
+public final class JavaPropertyInfo implements LanguageDependantPropertyInfo {
+
+	/** ID. */
+	private UUID id;
+	/** Access flags. */
+	private int modifier;
+
+	/**
+	 * Creates an empty JavaPropertyInfo
+	 * @see
+	 */
+<span class="fc" id="L26">	public JavaPropertyInfo() {</span>
+
+<span class="fc" id="L28">	}</span>
+
+	/**
+	 * JavaPropertyInfo constructor
+	 * @param newmodifier
+	 *            Modifier flag of the property
+	 */
+	public JavaPropertyInfo(
+<span class="fc" id="L36">			final int newmodifier) {</span>
+<span class="fc" id="L37">		this.setModifier(newmodifier);</span>
+<span class="fc" id="L38">	}</span>
+
+	/**
+	 * Get the JavaPropertyInfo::modifier
+	 * @return the modifier
+	 */
+
+	public int getModifier() {
+<span class="fc" id="L46">		return modifier;</span>
+	}
+
+	/**
+	 * Set the JavaPropertyInfo::modifier
+	 * @param newmodifier
+	 *            the modifier to set
+	 */
+	public void setModifier(final int newmodifier) {
+<span class="fc" id="L55">		this.modifier = newmodifier;</span>
+<span class="fc" id="L56">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L60">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L61">		return yaml.dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L66">		return this.modifier;</span>
+
+	}
+
+	@Override
+	public boolean equals(final Object object) {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		if (object instanceof JavaPropertyInfo) {</span>
+<span class="nc" id="L73">			final JavaPropertyInfo other = (JavaPropertyInfo) object;</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			return this.modifier == other.getModifier();</span>
+		}
+<span class="nc" id="L76">		return false;</span>
+	}
+
+	/**
+	 * @return the id
+	 */
+	public UUID getId() {
+<span class="fc" id="L83">		return id;</span>
+	}
+
+	/**
+	 * @param theid
+	 *            the id to set
+	 */
+	public void setId(final UUID theid) {
+<span class="fc" id="L91">		this.id = theid;</span>
+<span class="fc" id="L92">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

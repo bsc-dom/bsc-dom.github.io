@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayObjectLoader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.loader</a> &gt; <span class="el_source">DataClayObjectLoader.java</span></div><h1>DataClayObjectLoader.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.loader;
+
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.api.BackendID;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.serialization.lib.ObjectWithDataParamOrReturn;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * This class is responsable to create DataClayObjects and load them with data
+ * coming from different resources. All possible constructions of DataClayObject
+ * should be included here. All possible &quot;filling instance&quot; use-cases should be
+ * managed here. Most of lockers should be located here.
+ * 
+ *
+ */
+public abstract class DataClayObjectLoader {
+<span class="fc" id="L26">	protected static final Logger logger = LogManager.getLogger(&quot;DataClayObjectLoader&quot;);</span>
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L29">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/**
+	 * Constructor
+	 */
+<span class="fc" id="L34">	public DataClayObjectLoader() {</span>
+
+<span class="fc" id="L36">	}</span>
+
+	/**
+	 * Create a new instance using proper class loader
+	 * 
+	 * @param classID
+	 *            ID of class
+	 * @param objectID
+	 *            ID of object
+	 * @return Instance
+	 */
+	protected abstract DataClayObject newInstance(final MetaClassID classID, final ObjectID objectID);
+
+	/**
+	 * Get runtime
+	 * 
+	 * @return The runtime being managed.
+	 */
+	protected abstract DataClayRuntime getRuntime();
+
+	/**
+	 * Check if instance exists in Heap or create a new PERSISTENT instance if
+	 * needed
+	 * 
+	 * @param classID
+	 *            ID of the class in case it is needed (not need to query) if null,
+	 *            look for class id in metadata.
+	 * @param objectID
+	 *            ID of object
+	 * @param hint
+	 *            Can be null. Hint in case object is a volatile in another DS and
+	 *            we need information.
+	 * @return Instance
+	 */
+	public DataClayObject getOrNewPersistentInstance(final MetaClassID classID, final ObjectID objectID,
+			final BackendID hint) {
+		// Check if already exists, if so, return it, otherwise, return new instance.
+<span class="nc" id="L73">		DataClayObject obj = null;</span>
+<span class="nc" id="L74">		final DataClayRuntime runtime = getRuntime();</span>
+<span class="nc" id="L75">		obj = runtime.getFromHeap(objectID);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L77">			runtime.lock(objectID);</span>
+			try {
+<span class="nc" id="L79">				obj = runtime.getFromHeap(objectID);</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">				if (obj == null) {</span>
+<span class="nc" id="L81">					obj = newInstanceInternal(classID, objectID, hint);</span>
+				}
+
+				// == set flags == //
+<span class="nc" id="L85">				obj.initializeObjectAsPersistent();</span>
+
+			} finally {
+<span class="nc" id="L88">				runtime.unlock(objectID);</span>
+			}
+		}
+<span class="nc" id="L91">		return obj;</span>
+	}
+
+	/**
+	 * Create a new instance using proper class loader
+	 * 
+	 * @param classID
+	 *            ID of the class in case it is needed (not need to query) if null,
+	 *            look for class id in metadata.
+	 * @param objectID
+	 *            ID of object
+	 * @param hint
+	 *            Can be null. Hint in case object is a volatile in another DS and
+	 *            we need information.
+	 * @return Instance
+	 */
+	protected DataClayObject newInstanceInternal(final MetaClassID classID, final ObjectID objectID,
+			final BackendID hint) {
+
+<span class="nc bnc" id="L110" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L111">			logger.debug(&quot;[==NewInstance==] Object &quot; + objectID + &quot; not in cache. Creating new instance.&quot;);</span>
+		}
+
+<span class="nc" id="L114">		DataClayObject obj = null;</span>
+<span class="nc" id="L115">		final DataClayRuntime runtime = getRuntime();</span>
+		// Get class ID of object
+<span class="nc" id="L117">		final MetaClassID theClassID = classID;</span>
+<span class="nc" id="L118">		final BackendID theHint = hint;</span>
+<span class="nc" id="L119">		obj = newInstance(theClassID, objectID);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (theHint != null) {</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L122">				logger.debug(&quot;[==Hint==] Setting hint (getOrNewInstanceInternal) on instance &quot; + obj.getObjectID()</span>
+<span class="nc" id="L123">						+ &quot; the hint : &quot; + runtime.getDSNameOfHint(hint));</span>
+			}
+<span class="nc" id="L125">			obj.setHint(theHint);</span>
+		}
+
+<span class="nc bnc" id="L128" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L129">			logger.debug(&quot;[==NewInstance==] Created new instance for &quot; + objectID + &quot;.&quot;);</span>
+		}
+
+<span class="nc" id="L132">		return obj;</span>
+	}
+
+	/**
+	 * Get from Heap or create a new volatile in EE and load data on it.
+	 * 
+	 * @param classID
+	 *            ID of class of the object
+	 * @param objectID
+	 *            ID of the object
+	 * @param hint
+	 *            Hint of the object
+	 * @param objWithData
+	 *            Data of the object
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps
+	 * @return Loaded volatile instance in EE.
+	 */
+	public DataClayObject getOrNewAndLoadVolatile(final MetaClassID classID, final ObjectID objectID,
+			final BackendID hint, final ObjectWithDataParamOrReturn objWithData,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps) {
+
+		// Check if already exists, if so, return it, otherwise, return new instance.
+		// RACE CONDITION DESIGN
+		// There are two objects A and B, A -&gt; B, A is persistent and B is volatile.
+		// There are two threads T1 and T2, T1 is executing a method on A that uses B,
+		// when deserializing A, B is loaded into
+		// heap as a persistent object (all associations are persistent). However, it is
+		// actually a volatile send by T2.
+		// When a volatile server is received and a persistent instance is found, this
+		// persistent instance should be &quot;replaced&quot;
+		// by the new volatile server.
+<span class="nc" id="L164">		DataClayObject volatileObj = null;</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L166">			logger.debug(&quot;Persistent object &quot; + objectID + &quot; under deserialization.&quot;);</span>
+		}
+<span class="nc" id="L168">		getRuntime().lock(objectID);</span>
+		try {
+
+<span class="nc" id="L171">			volatileObj = getRuntime().getFromHeap(objectID);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">			if (volatileObj == null) {</span>
+<span class="nc" id="L173">				volatileObj = newInstanceInternal(classID, objectID, hint);</span>
+			}
+
+<span class="nc" id="L176">			deserializeDataIntoInstance(volatileObj, objWithData, ifaceBitMaps);</span>
+
+			// force flags as volatile
+			// WARNING: RACE CONDITION at EE - during deserialization of volatiles the
+			// object may be created and
+			// loaded in Heap but not &quot;fully deserialized&quot; yet so even if any execution find
+			// it in the
+			// heap, object might
+			// be not ready (null fields, and no, so is loaded cannot
+			// be true till object was fully deserialized)
+<span class="nc" id="L186">			volatileObj.initializeObjectAsVolatile();</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L188">				logger.debug(&quot;Persistent object &quot; + objectID + &quot; is not under deserialization anymore.&quot;);</span>
+			}
+		} finally {
+<span class="nc" id="L191">			getRuntime().unlock(objectID);</span>
+		}
+
+<span class="nc" id="L194">		return volatileObj;</span>
+	}
+
+	/**
+	 * Deserialize data into instance.
+	 * 
+	 * @param instance
+	 *            Instance to be filled.
+	 * @param data
+	 *            Data
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps
+	 */
+	public abstract void deserializeDataIntoInstance(final DataClayObject instance,
+			final ObjectWithDataParamOrReturn data, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps);
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

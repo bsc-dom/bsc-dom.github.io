@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LockerPool.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.heap</a> &gt; <span class="el_source">LockerPool.java</span></div><h1>LockerPool.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.heap;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+import org.apache.logging.log4j.LogManager;
+
+/**
+ * Objects lockers class.
+ */
+public final class LockerPool {
+
+	/** Logger. */
+<span class="fc" id="L21">	private final Logger logger = LogManager.getLogger(&quot;LockerPool&quot;);</span>
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L24">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Map of lockers for objects. */
+	private final Map&lt;ObjectID, ReentrantLock&gt; lockers;
+
+	/**
+	 * Lockers constructor.
+	 */
+<span class="fc" id="L32">	public LockerPool() {</span>
+<span class="fc" id="L33">		lockers = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L34">	}</span>
+
+	/**
+	 * Lock the object with id provider
+	 * @param objectID
+	 *            ID of the object to lock
+	 */
+	public void lock(final ObjectID objectID) {
+		ReentrantLock locker;
+
+		//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// Locking design.
+		// ==============
+		// Java ConcurrentHashMap guarantees that all operations done are thread-safe but NOT atomic. In our case,
+		// imagine the code below and two threads located in the lines specified as comments:
+		//
+		// locker = lockers.get(objectID); //ObjectID is the same for both threads
+		// if (locker == null) { //Thread 2 is here
+		// locker = new ReentrantLock();
+		// lockers.put(objectID, lock); //Thread 1 is here
+		// }
+		//
+		// Thread 1 was the first to arrive and find out that there is no locker for the object &quot;he&quot; wants to lock. Therefore,
+		// Thread 1 creates a new locker. During creation of the Locker, Thread 2 arrives and find no locker.
+		// Thread 1 put the locker in the ConcurrentHashMap. Thread 2 also creates a locker and overrides Thread 1's locker.
+		// This is a problem we should solve since both threads are using differents lockers for the same object, loosing the
+		// concept of lockers.
+		//
+		// In order to solve that we need to create a synchronized block. We could create a synchronized block based in ObjectID since
+		// Threads accessing/creating lockers with same ObjectIDs can have a problem. However, our current implementation does NOT
+		// guarantee that two ObjectIDs representing same ID (ie with same UUID) are the same instances in Java memory.
+		// Therefore we cannot create a synchronized block using ObjectID. We could think about forcing all ObjectIDs to be
+		// unique (&quot;same-instances&quot;) in memory (only one instance of ObjectID representing an object) but it ends in having same synchr.
+		// but in the creation of the ObjectID (it can be in any request). Now, adding the synchronized block here is better
+		// in order to only lock 'if-needed' instead of doing it at creation time.
+		//
+		// Then, what should we synchronize? Anything that is 'common' for all threads. In our case, the Locker Pool is unique
+		// per runtime (server or client). For example:
+		//
+		// synchronized (this) {
+		// locker = lockers.get(objectID);
+		// if (locker == null) {
+		// locker = new ReentrantLock();
+		// lockers.put(objectID, lock);
+		// }
+		// }
+		//
+		// This would solve our problem. But it's a bottleneck! All threads that wants to lock anything, will end up locking
+		// the pool. Since our problem is just at 'creation' of lockers we move the synchronized block inside the if and we
+		// apply the design of 'double-check' of lockers:
+		//
+		// locker = lockers.get(objectID);
+		// if (locker == null) {
+		// synchronized (this) { // ensure only one locker is created per object
+		// locker = lockers.get(objectID);
+		// if (locker == null) {
+		// locker = new ReentrantLock();
+		// lockers.put(objectID, locker);
+		// }
+		// }
+		// }
+		//
+		// All threads that try to 'create' lockers are going to have the overhead of synchronizing the locker pool. However,
+		// it is not our critical path, since in our critical path everything is in cache and lockers exist.
+		//
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+<span class="nc" id="L101">		locker = lockers.get(objectID);</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		if (locker == null) {</span>
+<span class="nc" id="L103">			synchronized (this) { // ensure only one locker is created per object</span>
+<span class="nc" id="L104">				locker = lockers.get(objectID);</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">				if (locker == null) {</span>
+<span class="nc" id="L106">					locker = new ReentrantLock();</span>
+<span class="nc" id="L107">					lockers.put(objectID, locker);</span>
+				}
+<span class="nc" id="L109">			}</span>
+		}
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L112">			logger.debug(&quot;[==Lockers==] Waiting for lock &quot; + objectID);</span>
+		}
+<span class="nc" id="L114">		locker.lock(); // waits til the lock is available</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L116">			logger.debug(&quot;[==Lockers==] Locked &quot; + objectID);</span>
+		}
+<span class="nc" id="L118">	}</span>
+
+	/**
+	 * Unlock the object with id provider
+	 * @param objectID
+	 *            ID of the object to lock
+	 */
+	public void unlock(final ObjectID objectID) {
+		/**
+		 * Unlock object with object ID provided. If the locker does not exist, it means it was already released and cleaned from
+		 * memory. Since our lockers are Reentrant, there can be many 'unlock' calls unlocking the same locker. If our Memory manager
+		 * wants to clean a locker, it checks if it is unlocked and if so, it removes it.
+		 */
+<span class="nc" id="L131">		final ReentrantLock locker = lockers.get(objectID);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L133">			logger.debug(&quot;[==Lockers==] Unlocking &quot; + objectID);</span>
+		}
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		if (locker != null) {</span>
+<span class="nc" id="L136">			locker.unlock();</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L138">				logger.debug(&quot;[==Lockers==] Unlocked &quot; + objectID);</span>
+			}
+		}
+<span class="nc" id="L141">	}</span>
+
+	/**
+	 * Clean lockers.
+	 */
+	public void cleanLockers() {
+<span class="nc" id="L147">		int cleanedLockers = 0;</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">		for (final ObjectID objectID : lockers.keySet()) {</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L150">				logger.debug(&quot;[==Lockers==] Going to remove locker &quot; + objectID);</span>
+			}
+
+<span class="nc" id="L153">			final ReentrantLock locker = lockers.get(objectID);</span>
+<span class="nc" id="L154">			synchronized (this) { // prevent the object to be locked before cleaning</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">				if (!locker.isLocked()) { // It could have been locked before</span>
+<span class="nc" id="L156">					lockers.remove(objectID);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L158">						logger.debug(&quot;[==Lockers==] Removed locker &quot; + objectID);</span>
+					}
+<span class="nc" id="L160">					cleanedLockers++;</span>
+				}
+<span class="nc" id="L162">			}</span>
+<span class="nc" id="L163">		}</span>
+
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">			if (cleanedLockers &gt; 0) {</span>
+<span class="nc" id="L167">				logger.debug(&quot;[==Lockers==] Lockers cleaned &quot; + cleanedLockers);</span>
+			}
+		}
+<span class="nc" id="L170">	}</span>
+
+	/**
+	 * Get number of lockers.
+	 * @return Number of lockers
+	 */
+	public int numLockers() {
+<span class="nc" id="L177">		return lockers.size();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

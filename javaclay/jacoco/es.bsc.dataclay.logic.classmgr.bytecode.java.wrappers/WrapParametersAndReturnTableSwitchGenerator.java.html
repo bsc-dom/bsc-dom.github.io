@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>WrapParametersAndReturnTableSwitchGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers</a> &gt; <span class="el_source">WrapParametersAndReturnTableSwitchGenerator.java</span></div><h1>WrapParametersAndReturnTableSwitchGenerator.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers;
+
+import java.util.Collection;
+
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.InstructionAdapter;
+import org.objectweb.asm.commons.Method;
+
+import es.bsc.dataclay.logic.classmgr.bytecode.java.SerializationCodeGenerator;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethodsNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeTypes;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.switches.DataClaySwitchByImplementationID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.management.classmgr.Implementation;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.reflection.Reflector;
+import es.bsc.dataclay.util.structs.Tuple;
+
+/**
+ * Run table switch for wrapping parameters.
+ */
+public abstract class WrapParametersAndReturnTableSwitchGenerator extends DataClaySwitchByImplementationID {
+
+	/**
+	 * Constructor
+	 * @param themetaClass
+	 *            Information of class.
+	 * @param thestubInfo
+	 *            Stub info
+	 * @param theisExecClass
+	 *            isExec class
+	 * @param thegn
+	 *            Method generator.
+	 * @param theia
+	 *            Instruction adapter
+	 */
+	protected WrapParametersAndReturnTableSwitchGenerator(
+			final MetaClass themetaClass,
+			final StubInfo thestubInfo, final boolean theisExecClass,
+			final GeneratorAdapter thegn, final InstructionAdapter theia) {
+<span class="nc" id="L49">		super(themetaClass, thestubInfo, theisExecClass, thegn, theia);</span>
+<span class="nc" id="L50">	}</span>
+
+	/**
+	 * Get types to wrap
+	 * @param operation
+	 *            Operation
+	 * @return Types to wrap
+	 */
+	protected abstract Collection&lt;es.bsc.dataclay.util.management.classmgr.Type&gt; getTypesToWrap(final Operation operation);
+
+	/**
+	 * Get parameter
+	 * @param idx
+	 *            Index of parameter
+	 */
+	protected abstract void getParameter(int idx);
+
+	/**
+	 * Check if nothing to serialize
+	 * @param operation
+	 *            Op. to check.
+	 * @return TRUE if nothing to serialize
+	 */
+	protected abstract boolean checkIfNothingToSerialize(final Operation operation);
+
+	@Override
+	public final void generateCase(final Implementation impl) {
+
+<span class="nc" id="L78">		final Operation operation = metaClass.getOperation(impl.getOperationID());</span>
+
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if (checkIfNothingToSerialize(operation)) {</span>
+<span class="nc" id="L81">			return;</span>
+		}
+
+		// Create a new List&lt;DataClaySerializable&gt;
+<span class="nc" id="L85">		final int listWrappers = gn.newLocal(ByteCodeTypes.LIST);</span>
+<span class="nc" id="L86">		gn.newInstance(ByteCodeTypes.ARRLIST);</span>
+<span class="nc" id="L87">		gn.dup();</span>
+<span class="nc" id="L88">		gn.invokeConstructor(ByteCodeTypes.ARRLIST, ByteCodeMethods.EMPTY_CONSTRUCTOR);</span>
+<span class="nc" id="L89">		gn.storeLocal(listWrappers);</span>
+
+<span class="nc" id="L91">		final Collection&lt;es.bsc.dataclay.util.management.classmgr.Type&gt; typesToWrap = getTypesToWrap(operation);</span>
+
+<span class="nc" id="L93">		int k = 0;</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">		for (final es.bsc.dataclay.util.management.classmgr.Type paramDcType : typesToWrap) {</span>
+
+			// CODE: immutableparams.add(new Wrapper(param[paramIdx])
+<span class="nc" id="L97">			gn.loadLocal(listWrappers);</span>
+
+<span class="nc" id="L99">			final int curParamLocal = gn.newLocal(ByteCodeTypes.OBJECT);</span>
+<span class="nc" id="L100">			this.getParameter(k);</span>
+<span class="nc" id="L101">			gn.storeLocal(curParamLocal);</span>
+
+<span class="nc" id="L103">			final String typeName = paramDcType.getTypeName();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">			if (Reflector.isImmutableTypeName(typeName)</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">					|| Reflector.isPrimitiveTypeName(typeName)</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">					|| Reflector.isJavaTypeName(typeName)</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">					|| Reflector.isArrayTypeName(typeName)</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">					|| typeName.equals(ObjectID.class.getName())) {</span>
+				// =========== IMMUTABLES =============== //
+				// =========== LANGUAGE =============== //
+
+				// Wrap immutable
+				// Find wrapper type.
+<span class="nc" id="L114">				final Tuple&lt;Type, Type&gt; wrapperTypes = SerializationCodeGenerator.findWrapperType(typeName,</span>
+<span class="nc" id="L115">						paramDcType.getDescriptor());</span>
+<span class="nc" id="L116">				final Type wrapperType = wrapperTypes.getFirst();</span>
+<span class="nc" id="L117">				final Type paramType = wrapperTypes.getSecond();</span>
+				// Get constructor. Constructor always contains as the argument the original
+				// type to wrap.
+<span class="nc" id="L120">				final Method wrapperConstructor = new Method(ByteCodeMethodsNames.INIT_MTHD,</span>
+						Type.VOID_TYPE, new Type[] { paramType });
+
+<span class="nc" id="L123">				gn.newInstance(wrapperType);</span>
+<span class="nc" id="L124">				gn.dup();</span>
+<span class="nc" id="L125">				gn.loadLocal(curParamLocal);</span>
+<span class="nc" id="L126">				gn.checkCast(paramType);</span>
+<span class="nc" id="L127">				gn.invokeConstructor(wrapperType, wrapperConstructor);</span>
+
+<span class="nc" id="L129">			} else {</span>
+				// If DCobject just add
+<span class="nc" id="L131">				gn.loadLocal(curParamLocal);</span>
+			}
+
+<span class="nc" id="L134">			gn.invokeInterface(ByteCodeTypes.LIST, ByteCodeMethods.LIST_ADD);</span>
+<span class="nc" id="L135">			gn.pop(); // discard result of put.</span>
+
+<span class="nc" id="L137">			k++;</span>
+<span class="nc" id="L138">		}</span>
+
+<span class="nc" id="L140">		gn.loadLocal(listWrappers);</span>
+<span class="nc" id="L141">		gn.returnValue();</span>
+<span class="nc" id="L142">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

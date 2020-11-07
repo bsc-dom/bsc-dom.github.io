@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConstructorMethodTransformer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.methods</a> &gt; <span class="el_source">ConstructorMethodTransformer.java</span></div><h1>ConstructorMethodTransformer.java</h1><pre class="source lang-java linenums">
+/**
+ *
+ */
+package es.bsc.dataclay.logic.classmgr.bytecode.java.methods;
+
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.commons.AdviceAdapter;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.ByteCodeConstants;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeTypes;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.reflection.Reflector;
+import storage.StorageObject;
+
+/**
+ * DataClay constructor transformer.
+ */
+public final class ConstructorMethodTransformer extends AdviceAdapter {
+
+	/** Descriptor name of class of method. */
+	private final String classDesc;
+
+	/** Indicates if we are creating execution class. */
+	private final boolean isExecClass;
+
+	/**
+	 * Constructs a new method visitor
+	 * @param next
+	 *            Method visitor this method should delegate to.
+	 * @param accessFlags
+	 *            Access flags
+	 * @param methodName
+	 *            Method name
+	 * @param methodDescriptor
+	 *            Method descriptor
+	 * @param newclassDesc
+	 *            Class descriptor
+	 * @param newisExecClass
+	 *            Indicates if method must be transformed into an execution class or not.
+	 * @param theparentIsObject
+	 *            Indicates if parent is object
+	 */
+	public ConstructorMethodTransformer(final MethodVisitor next,
+			final int accessFlags, final String methodName, final String methodDescriptor,
+			final String newclassDesc,
+			final boolean newisExecClass,
+			final boolean theparentIsObject) {
+<span class="nc" id="L53">		super(Opcodes.ASM7, next, accessFlags, methodName, methodDescriptor);</span>
+<span class="nc" id="L54">		this.classDesc = newclassDesc;</span>
+<span class="nc" id="L55">		this.isExecClass = newisExecClass;</span>
+<span class="nc" id="L56">	}</span>
+
+	@Override
+	public void visitMethodInsn(final int opcode, final String owner, final String name, final String desc,
+			final boolean itf) {
+<span class="nc" id="L61">		final String dcobjectClassInternalName = Reflector.getInternalNameFromTypeName(DataClayObject.class.getName());</span>
+<span class="nc" id="L62">		final String objectClassInternalName = Reflector.getInternalNameFromTypeName(Object.class.getName());</span>
+<span class="nc" id="L63">		final String stObjectClassInternalName = Reflector.getInternalNameFromTypeName(StorageObject.class.getName());</span>
+<span class="nc bnc" id="L64" title="All 6 branches missed.">		if (opcode == Opcodes.INVOKESPECIAL &amp;&amp; owner.equals(objectClassInternalName) &amp;&amp; name.equals(&quot;&lt;init&gt;&quot;)) {</span>
+<span class="nc" id="L65">			String newOwner = null;</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">			if (isExecClass) {</span>
+<span class="nc" id="L67">				newOwner = Reflector.getInternalNameFromTypeName(DataClayExecutionObject.class.getName());</span>
+			} else {
+<span class="nc" id="L69">				newOwner = Reflector.getInternalNameFromTypeName(DataClayObject.class.getName());</span>
+			}
+<span class="nc" id="L71">			super.visitMethodInsn(opcode, newOwner, name, desc, itf);</span>
+<span class="nc bnc" id="L72" title="All 6 branches missed.">		} else if (opcode == Opcodes.INVOKESPECIAL &amp;&amp; owner.equals(stObjectClassInternalName) &amp;&amp; name.equals(&quot;&lt;init&gt;&quot;)) {</span>
+<span class="nc" id="L73">			String newOwner = null;</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			if (isExecClass) {</span>
+<span class="nc" id="L75">				newOwner = Reflector.getInternalNameFromTypeName(DataClayExecutionObject.class.getName());</span>
+			} else {
+<span class="nc" id="L77">				newOwner = Reflector.getInternalNameFromTypeName(DataClayObject.class.getName());</span>
+			}
+<span class="nc" id="L79">			super.visitMethodInsn(opcode, newOwner, name, desc, itf);</span>
+<span class="nc bnc" id="L80" title="All 6 branches missed.">		} else if (opcode == Opcodes.INVOKESPECIAL &amp;&amp; owner.equals(dcobjectClassInternalName) &amp;&amp; name.equals(&quot;&lt;init&gt;&quot;)) {</span>
+<span class="nc" id="L81">			String newOwner = null;</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">			if (isExecClass) {</span>
+<span class="nc" id="L83">				newOwner = Reflector.getInternalNameFromTypeName(DataClayExecutionObject.class.getName());</span>
+			} else {
+<span class="nc" id="L85">				newOwner = Reflector.getInternalNameFromTypeName(DataClayObject.class.getName());</span>
+			}
+<span class="nc" id="L87">			super.visitMethodInsn(opcode, newOwner, name, desc, itf);</span>
+<span class="nc" id="L88">		} else {</span>
+<span class="nc" id="L89">			super.visitMethodInsn(opcode, owner, name, desc, itf);</span>
+		}
+<span class="nc" id="L91">	}</span>
+
+	@Override
+	protected void onMethodEnter() {
+		/*
+		 * if (parentIsObject) { final InstructionAdapter ia = new InstructionAdapter(this); // Call init this.loadThis();
+		 * 
+		 * ia.aconst(null); if (isExecClass) { this.getStatic(ByteCodeTypes.DCOBJ_STATE, DataClayObjectState.VOLATILE_SERVER.name(),
+		 * ByteCodeTypes.DCOBJ_STATE); } else { this.getStatic(ByteCodeTypes.DCOBJ_STATE, DataClayObjectState.VOLATILE_CLIENT.name(),
+		 * ByteCodeTypes.DCOBJ_STATE); }
+		 * 
+		 * this.invokeVirtual(ByteCodeTypes.DCOBJ, ByteCodeMethods.DC_INIT_METHOD); }
+		 */
+
+<span class="nc" id="L105">	}</span>
+
+	@Override
+	protected void onMethodExit(final int opcode) {
+
+<span class="nc" id="L110">	}</span>
+
+	@Override
+	public void visitMaxs(final int maxStack, final int maxLocals) {
+		// We know that max stack is original method maxStack + 10 but we let ASM calculate it
+<span class="nc" id="L115">		super.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L116">	}</span>
+
+	@Override
+	public void visitFieldInsn(final int opcode, final String owner, final String name, final String desc) {
+		// Replace by setter and getter if not in $$set and $$get
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (isExecClass) {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">			if (opcode == Opcodes.PUTFIELD) {</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">				if (name.startsWith(ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;set&quot;)) {</span>
+					// don't inject code, just put field
+<span class="nc" id="L125">					super.visitFieldInsn(opcode, owner, name, desc);</span>
+				} else {
+					// change to a method instruction
+<span class="nc" id="L128">					final String setterName = ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;set&quot; + name;</span>
+<span class="nc" id="L129">					final String setterDesc = &quot;(&quot; + desc + &quot;)V&quot;;</span>
+<span class="nc" id="L130">					super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, owner, setterName, setterDesc, false);</span>
+<span class="nc" id="L131">				}</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			} else if (opcode == Opcodes.GETFIELD) {</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">				if (name.startsWith(ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;get&quot;)) {</span>
+					// don't inject code, just put field
+<span class="nc" id="L135">					super.visitFieldInsn(opcode, owner, name, desc);</span>
+				} else {
+					// change to a method instruction
+<span class="nc" id="L138">					final String getterName = ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;get&quot; + name;</span>
+<span class="nc" id="L139">					final String getterDesc = &quot;()&quot; + desc;</span>
+<span class="nc" id="L140">					super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, owner, getterName, getterDesc, false);</span>
+<span class="nc" id="L141">				}</span>
+			} else {
+<span class="nc" id="L143">				super.visitFieldInsn(opcode, owner, name, desc);</span>
+			}
+		} else {
+<span class="nc" id="L146">			super.visitFieldInsn(opcode, owner, name, desc);</span>
+		}
+<span class="nc" id="L148">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

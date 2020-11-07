@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ASTParser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.filtering</a> &gt; <span class="el_source">ASTParser.java</span></div><h1>ASTParser.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.filtering;
+
+import java.util.List;
+import java.util.Map;
+import java.util.StringTokenizer;
+import java.util.function.Predicate;
+
+import es.bsc.dataclay.exceptions.DataClayException;
+import es.bsc.dataclay.exceptions.ErrorDefs.ERRORCODE;
+import es.bsc.dataclay.logic.classmgr.ClassManager;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+<span class="nc" id="L14">public class ASTParser {</span>
+<span class="nc" id="L15">	public static String NESTED_ATTR_DELIMITER = &quot;/&quot;;</span>
+<span class="nc" id="L16">	public static String NULL_VALUE = &quot;null&quot;;</span>
+
+	// Filter := AndExpr | AndExpr &lt;'or'&gt; Filter
+	// AndExpr := Comp | Comp &lt;'and'&gt; AndExpr
+	@SuppressWarnings({ &quot;rawtypes&quot;, &quot;unchecked&quot; })
+	public static Predicate asPredicate(final List&lt;Object&gt; filter) {
+<span class="nc" id="L22">		Predicate result = null;</span>
+<span class="nc bnc" id="L23" title="All 2 branches missed.">		if (filter.size() == 0) {</span>
+<span class="nc" id="L24">			return result;</span>
+		}
+<span class="nc" id="L26">		final String token = filter.get(0).toString();</span>
+<span class="nc" id="L27">		final ASTListOp op = ASTListOp.fromString(token);</span>
+<span class="nc bnc" id="L28" title="All 4 branches missed.">		switch (op) {</span>
+		case FILTER:
+<span class="nc bnc" id="L30" title="All 2 branches missed.">			if (filter.size() == 2) { // Filter := AndExpr =&gt; token + List</span>
+<span class="nc" id="L31">				result = asPredicate((List&lt;Object&gt;) filter.get(1));</span>
+			} else { // Filter := AndExpr &lt;'or'&gt; Filter =&gt; token + List + List
+<span class="nc" id="L33">				result = asPredicate((List&lt;Object&gt;) filter.get(1)).or(asPredicate((List&lt;Object&gt;) filter.get(2)));</span>
+			}
+<span class="nc" id="L35">			break;</span>
+		case ANDEXPR:
+<span class="nc bnc" id="L37" title="All 2 branches missed.">			if (filter.size() == 2) { // AndExpr := Comp =&gt; token + List</span>
+<span class="nc" id="L38">				result = asPredicate((List&lt;Object&gt;) filter.get(1));</span>
+			} else { // Filter := Comp &lt;'and'&gt; AndExpr =&gt; token + List + List
+<span class="nc" id="L40">				result = asPredicate((List&lt;Object&gt;) filter.get(1)).and(asPredicate((List&lt;Object&gt;) filter.get(2)));</span>
+			}
+<span class="nc" id="L42">			break;</span>
+		case COMP:
+<span class="nc bnc" id="L44" title="All 2 branches missed.">			if (filter.size() == 2) { // Comp := ( Filter ) =&gt; token + List</span>
+<span class="nc" id="L45">				result = asPredicate((List&lt;Object&gt;) filter.get(1));</span>
+			} else {
+<span class="nc" id="L47">				result = attrCompAsPredicate(filter); // Comp:= Atr Op Val | Val Op Atr =&gt; token + List + List + List</span>
+			}
+<span class="nc" id="L49">			break;</span>
+		default:
+			break;
+		}
+<span class="nc" id="L53">		return result;</span>
+	}
+
+	@SuppressWarnings({ &quot;unchecked&quot;, &quot;rawtypes&quot; })
+	public static Predicate attrCompAsPredicate(List&lt;Object&gt; comp) {
+		// comp.get(0) is token :Comp
+<span class="nc" id="L59">		final List&lt;Object&gt; factor1 = (List&lt;Object&gt;) comp.get(1);</span>
+<span class="nc" id="L60">		final List&lt;Object&gt; operand = (List&lt;Object&gt;) comp.get(2);</span>
+<span class="nc" id="L61">		final List&lt;Object&gt; factor2 = (List&lt;Object&gt;) comp.get(3);</span>
+<span class="nc" id="L62">		final String kw1 = factor1.get(0).toString();</span>
+
+		final String attr, value;
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		if (ASTKeyword.isASTKeyword(kw1)) {</span>
+			// factor1 is attribute
+<span class="nc" id="L67">			attr = factor1.get(1).toString();</span>
+<span class="nc" id="L68">			value = factor2.get(1).toString();</span>
+
+		} else {
+			// factor2 is attribute
+<span class="nc" id="L72">			attr = factor2.get(1).toString();</span>
+<span class="nc" id="L73">			value = factor1.get(1).toString();</span>
+		}
+
+<span class="nc" id="L76">		final ASTOperand op = ASTOperand.fromString(operand.get(1).toString());</span>
+<span class="nc" id="L77">		return p -&gt; {</span>
+			try {
+				Comparable castedFieldValue;
+
+				// Nested attribute
+<span class="nc" id="L82">				StringTokenizer st = new StringTokenizer(attr, NESTED_ATTR_DELIMITER);</span>
+<span class="nc" id="L83">				Object curAttr = p.getClass().getMethod(ClassManager.GETTER_PREFIX + st.nextToken()).invoke(p);</span>
+<span class="nc bnc" id="L84" title="All 4 branches missed.">				while (st.hasMoreTokens() &amp;&amp; curAttr instanceof Map) {</span>
+<span class="nc" id="L85">					String next = st.nextToken();</span>
+<span class="nc" id="L86">					Map curAttrAsMap = (Map) curAttr;</span>
+<span class="nc" id="L87">					curAttr = curAttrAsMap.get(next);</span>
+<span class="nc" id="L88">				}</span>
+<span class="nc" id="L89">				castedFieldValue = (Comparable) curAttr;</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">				if (curAttr == null) {</span>
+<span class="nc bnc" id="L91" title="All 3 branches missed.">					switch (op) {</span>
+					case EQUALS:
+<span class="nc" id="L93">						return value.toString().equals(NULL_VALUE);</span>
+					case DIFFERENT:
+<span class="nc bnc" id="L95" title="All 2 branches missed.">						return !value.toString().equals(NULL_VALUE);</span>
+					default:
+<span class="nc" id="L97">						return false;</span>
+					}
+				}
+
+				// Condition check
+<span class="nc" id="L102">				Class&lt;? extends Comparable&gt; fieldType = castedFieldValue.getClass();</span>
+<span class="nc" id="L103">				Object condObjValue = valueAsObject(fieldType, value);</span>
+<span class="nc bnc" id="L104" title="All 9 branches missed.">				switch (op) {</span>
+				case DIFFERENT:
+<span class="nc bnc" id="L106" title="All 2 branches missed.">					return castedFieldValue.compareTo(condObjValue) != 0;</span>
+				case EQUALS:
+<span class="nc bnc" id="L108" title="All 2 branches missed.">					return castedFieldValue.compareTo(condObjValue) == 0;</span>
+				case GREATER:
+<span class="nc bnc" id="L110" title="All 2 branches missed.">					return castedFieldValue.compareTo(condObjValue) &gt; 0;</span>
+				case GREATER_EQUALS:
+<span class="nc bnc" id="L112" title="All 2 branches missed.">					return castedFieldValue.compareTo(condObjValue) &gt;= 0;</span>
+				case LESS:
+<span class="nc bnc" id="L114" title="All 2 branches missed.">					return castedFieldValue.compareTo(condObjValue) &lt; 0;</span>
+				case LESS_EQUALS:
+<span class="nc bnc" id="L116" title="All 2 branches missed.">					return castedFieldValue.compareTo(condObjValue) &lt;= 0;</span>
+				case PREFIX:
+<span class="nc" id="L118">					return castedFieldValue.toString().startsWith(condObjValue.toString());</span>
+				case CONTAINS:
+<span class="nc" id="L120">					return castedFieldValue.toString().contains(condObjValue.toString());</span>
+				default:
+<span class="nc" id="L122">					return false;</span>
+				}
+<span class="nc" id="L124">			} catch (Exception e) {</span>
+<span class="nc" id="L125">				throw new DataClayException(ERRORCODE.INVALID_PARAMETER_EXCEPTION,</span>
+<span class="nc" id="L126">						&quot;Invalid condition for a predicate. Message: &quot; + e.getMessage(),</span>
+						true);
+			}
+		};
+	}
+
+	private interface ASTElem {
+
+	}
+
+<span class="nc" id="L136">	public static enum ASTListOp implements ASTElem {</span>
+<span class="nc" id="L137">		FILTER(&quot;Filter&quot;), ANDEXPR(&quot;AndExpr&quot;), COMP(&quot;Comp&quot;);</span>
+		public String _token;
+
+<span class="nc" id="L140">		ASTListOp(String token) {</span>
+<span class="nc" id="L141">			this._token = token;</span>
+<span class="nc" id="L142">		}</span>
+
+		public static boolean isASTListOp(final String token) {
+<span class="nc bnc" id="L145" title="All 2 branches missed.">			for (ASTListOp x : ASTListOp.values()) {</span>
+<span class="nc bnc" id="L146" title="All 2 branches missed.">				if (x._token.equals(token)) {</span>
+<span class="nc" id="L147">					return true;</span>
+				}
+			}
+<span class="nc" id="L150">			return false;</span>
+		}
+
+		public static ASTListOp fromString(final String token) {
+<span class="nc bnc" id="L154" title="All 2 branches missed.">			for (ASTListOp val : ASTListOp.values()) {</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">				if (val._token.equals(token)) {</span>
+<span class="nc" id="L156">					return val;</span>
+				}
+			}
+<span class="nc" id="L159">			throw new DataClayException(ERRORCODE.INVALID_PARAMETER_EXCEPTION, &quot;ASTListOp &quot; + token + &quot; is not valid.&quot;,</span>
+					false);
+		}
+	}
+
+<span class="nc" id="L164">	public static enum ASTKeyword implements ASTElem {</span>
+<span class="nc" id="L165">		ATTRIBUTE(&quot;Attribute&quot;), EQOP(&quot;EqOp&quot;), RELOP(&quot;RelOp&quot;), INT(&quot;IntValue&quot;), STRING(&quot;String&quot;), BOOL(&quot;BoolValue&quot;), NULL(&quot;NullValue&quot;);</span>
+		public String _token;
+
+<span class="nc" id="L168">		ASTKeyword(String token) {</span>
+<span class="nc" id="L169">			this._token = token;</span>
+<span class="nc" id="L170">		}</span>
+
+		public static boolean isASTKeyword(final String token) {
+<span class="nc bnc" id="L173" title="All 2 branches missed.">			for (ASTKeyword x : ASTKeyword.values()) {</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">				if (x._token.equals(token)) {</span>
+<span class="nc" id="L175">					return true;</span>
+				}
+			}
+<span class="nc" id="L178">			return false;</span>
+		}
+
+		public static ASTKeyword fromString(final String token) {
+<span class="nc bnc" id="L182" title="All 2 branches missed.">			for (ASTKeyword val : ASTKeyword.values()) {</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">				if (val._token.equals(token)) {</span>
+<span class="nc" id="L184">					return val;</span>
+				}
+			}
+<span class="nc" id="L187">			throw new DataClayException(ERRORCODE.INVALID_PARAMETER_EXCEPTION, &quot;ASTKeyword &quot; + token + &quot; is not valid.&quot;,</span>
+					false);
+		}
+	}
+
+<span class="nc" id="L192">	public static enum ASTOperand implements ASTElem {</span>
+<span class="nc" id="L193">		EQUALS(&quot;=&quot;), DIFFERENT(&quot;!=&quot;), LESS(&quot;&lt;&quot;), GREATER(&quot;&gt;&quot;), LESS_EQUALS(&quot;&lt;=&quot;), GREATER_EQUALS(&quot;&gt;=&quot;), PREFIX(&quot;^=&quot;), CONTAINS(&quot;:=&quot;);</span>
+		public String _token;
+
+<span class="nc" id="L196">		ASTOperand(String token) {</span>
+<span class="nc" id="L197">			this._token = token;</span>
+<span class="nc" id="L198">		}</span>
+
+		public static boolean isASTOperand(final String token) {
+<span class="nc bnc" id="L201" title="All 2 branches missed.">			for (ASTOperand x : ASTOperand.values()) {</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">				if (x._token.equals(token)) {</span>
+<span class="nc" id="L203">					return true;</span>
+				}
+			}
+<span class="nc" id="L206">			return false;</span>
+		}
+
+		public static ASTOperand fromString(final String token) {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">			for (ASTOperand val : ASTOperand.values()) {</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">				if (val._token.equals(token)) {</span>
+<span class="nc" id="L212">					return val;</span>
+				}
+			}
+<span class="nc" id="L215">			throw new DataClayException(ERRORCODE.INVALID_PARAMETER_EXCEPTION, &quot;ASTOperand &quot; + token + &quot; is not valid.&quot;,</span>
+					false);
+		}
+	}
+
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	public static Comparable valueAsObject(final Class type, final String val) {
+<span class="nc" id="L222">		final ValueType supportedType = ValueType.fromClass(type);</span>
+<span class="nc bnc" id="L223" title="All 9 branches missed.">		switch (supportedType) {</span>
+		case BOOLEAN:
+		case BOOLEANCLASS:
+<span class="nc" id="L226">			return new Boolean(val); // only true if val == &quot;true&quot; (ignoring case)</span>
+		case DOUBLE:
+		case DOUBLECLASS:
+<span class="nc" id="L229">			return new Double(val);</span>
+		case FLOAT:
+		case FLOATCLASS:
+<span class="nc" id="L232">			return new Float(val);</span>
+		case INT:
+		case INTCLASS:
+<span class="nc" id="L235">			return new Integer(val);</span>
+		case SHORT:
+		case SHORTCLASS:
+<span class="nc" id="L238">			return new Short(val);</span>
+		case LONG:
+		case LONGCLASS:
+<span class="nc" id="L241">			return new Long(val);</span>
+		case STRING:
+<span class="nc" id="L243">			return val;</span>
+		case ID:
+<span class="nc" id="L245">			return val;</span>
+		default:
+			break;
+		}
+<span class="nc" id="L249">		return null;</span>
+	}
+
+<span class="nc" id="L252">	@SuppressWarnings(&quot;rawtypes&quot;)</span>
+	public enum ValueType {
+<span class="nc" id="L254">		INT(int.class), SHORT(short.class), LONG(long.class), FLOAT(float.class), DOUBLE(double.class), BOOLEAN(boolean.class), INTCLASS(Integer.class), LONGCLASS(</span>
+<span class="nc" id="L255">				Long.class), SHORTCLASS(Short.class), FLOATCLASS(Float.class), DOUBLECLASS(Double.class), BOOLEANCLASS(Boolean.class), STRING(String.class), ID(ObjectID.class);</span>
+
+		Class type;
+
+<span class="nc" id="L259">		private ValueType(Class theType) {</span>
+<span class="nc" id="L260">			type = theType;</span>
+<span class="nc" id="L261">		}</span>
+
+		Class getType() {
+<span class="nc" id="L264">			return type;</span>
+		}
+
+		public static ValueType fromClass(final Class checktype) {
+<span class="nc bnc" id="L268" title="All 2 branches missed.">			for (ValueType cat : ValueType.values()) {</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">				if (cat.getType().equals(checktype)) {</span>
+<span class="nc" id="L270">					return cat;</span>
+				}
+			}
+<span class="nc" id="L273">			throw new DataClayException(ERRORCODE.INVALID_PARAMETER_EXCEPTION,</span>
+<span class="nc" id="L274">					&quot;Attribute type: &quot; + checktype.getName() + &quot; is not supported for filtering.&quot;, false);</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

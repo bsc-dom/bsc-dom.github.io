@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InterfaceManagerDB.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.interfacemgr</a> &gt; <span class="el_source">InterfaceManagerDB.java</span></div><h1>InterfaceManagerDB.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.interfacemgr;
+
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectAlreadyExistException;
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectNotExistException;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.management.interfacemgr.Interface;
+
+/**
+ * Data base connection.
+ */
+public final class InterfaceManagerDB {
+
+	/** Data source. */
+	private final BasicDataSource dataSource;
+
+	/** Logger. */
+	private Logger logger;
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L43">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param managerName
+	 *            Name of the LM service managing.
+	 */
+<span class="fc" id="L51">	public InterfaceManagerDB(final BasicDataSource dataSource) {</span>
+<span class="fc" id="L52">		this.dataSource = dataSource;</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L54">			logger = LogManager.getLogger(&quot;LMDB&quot;);</span>
+		}
+<span class="fc" id="L56">	}</span>
+
+	/**
+	 * Create tables of MDS.
+	 */
+	public void createTables() {
+
+<span class="fc" id="L63">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L65">			conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">			for (final InterfaceManagerSQLStatements.SqlStatements stmt : InterfaceManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
+<span class="fc" id="L68">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L69">					updateStatement.execute();</span>
+				}
+			}
+<span class="nc" id="L72">		} catch (final SQLException e) {</span>
+<span class="nc" id="L73">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L77">					conn.close();</span>
+				}
+<span class="nc" id="L79">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L80">				ex1.printStackTrace();</span>
+<span class="fc" id="L81">			}</span>
+		}
+<span class="fc" id="L83">	}</span>
+
+	/**
+	 * Delete the tables of MDS. Just the other way around of createTables --much simpler.
+	 */
+	public void dropTables() {
+
+<span class="fc" id="L90">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L92">			conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L93" title="All 2 branches covered.">			for (final InterfaceManagerSQLStatements.SqlStatements stmt : InterfaceManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
+<span class="fc" id="L95">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L96">					updateStatement.execute();</span>
+				}
+			}
+<span class="nc" id="L99">		} catch (final SQLException e) {</span>
+<span class="nc" id="L100">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L104">					conn.close();</span>
+				}
+<span class="nc" id="L106">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L107">				ex1.printStackTrace();</span>
+<span class="fc" id="L108">			}</span>
+		}
+<span class="fc" id="L110">	}</span>
+
+	/**
+	 * Store into database
+	 * @param iface
+	 *            Interface to store
+	 */
+	public void store(final Interface iface) {
+<span class="fc" id="L118">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L120">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L121">			final PreparedStatement insertStatement = conn.prepareStatement(InterfaceManagerSQLStatements.SqlStatements.INSERT_INTERFACE.getSqlStatement());</span>
+<span class="fc" id="L122">			insertStatement.setObject(1, iface.getDataClayID().getId());</span>
+			// CHECKSTYLE:OFF
+<span class="fc" id="L124">			insertStatement.setString(2, iface.getProviderAccountName());</span>
+<span class="fc" id="L125">			insertStatement.setString(3, iface.getNamespace());</span>
+<span class="fc" id="L126">			insertStatement.setString(4, iface.getClassNamespace());</span>
+<span class="fc" id="L127">			insertStatement.setString(5, iface.getClassName());</span>
+<span class="fc" id="L128">			Array tArray = insertStatement.getConnection().createArrayOf(&quot;varchar&quot;, iface.getPropertiesInIface().toArray());</span>
+<span class="fc" id="L129">			insertStatement.setArray(6, tArray);</span>
+<span class="fc" id="L130">			tArray = insertStatement.getConnection().createArrayOf(&quot;varchar&quot;, iface.getOperationsSignatureInIface().toArray());</span>
+<span class="fc" id="L131">			insertStatement.setArray(7, tArray);</span>
+<span class="fc" id="L132">			insertStatement.setObject(8, iface.getProviderAccountID().getId());</span>
+<span class="fc" id="L133">			insertStatement.setObject(9, iface.getNamespaceID().getId());</span>
+<span class="fc" id="L134">			insertStatement.setObject(10, iface.getClassNamespaceID().getId());</span>
+<span class="fc" id="L135">			insertStatement.setObject(11, iface.getMetaClassID().getId());</span>
+
+<span class="fc bfc" id="L137" title="All 2 branches covered.">			if (iface.getOperationsIDs() != null) {</span>
+<span class="fc" id="L138">				final UUID[] opsUUIDs = new UUID[iface.getOperationsIDs().size()];</span>
+<span class="fc" id="L139">				int i = 0;</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">				for (final OperationID opID : iface.getOperationsIDs()) {</span>
+<span class="fc" id="L141">					opsUUIDs[i] = opID.getId();</span>
+<span class="fc" id="L142">					i++;</span>
+<span class="fc" id="L143">				}</span>
+
+<span class="fc" id="L145">				tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, opsUUIDs);</span>
+<span class="fc" id="L146">				insertStatement.setArray(12, tArray);</span>
+<span class="fc" id="L147">			} else {</span>
+<span class="fc" id="L148">				insertStatement.setArray(12, null);</span>
+			}
+
+<span class="fc bfc" id="L151" title="All 2 branches covered.">			if (iface.getPropertiesIDs() != null) {</span>
+
+<span class="fc" id="L153">				final UUID[] propsUUIDs = new UUID[iface.getPropertiesIDs().size()];</span>
+<span class="fc" id="L154">				int i = 0;</span>
+<span class="fc bfc" id="L155" title="All 2 branches covered.">				for (final PropertyID propID : iface.getPropertiesIDs()) {</span>
+<span class="fc" id="L156">					propsUUIDs[i] = propID.getId();</span>
+<span class="fc" id="L157">					i++;</span>
+<span class="fc" id="L158">				}</span>
+
+<span class="fc" id="L160">				tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, propsUUIDs);</span>
+<span class="fc" id="L161">				insertStatement.setArray(13, tArray);</span>
+<span class="fc" id="L162">			} else {</span>
+<span class="fc" id="L163">				insertStatement.setArray(13, null);</span>
+			}
+
+			// CHECKSTYLE:ON
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L168">				logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
+			}
+<span class="fc" id="L170">			insertStatement.executeUpdate();</span>
+
+<span class="nc" id="L172">		} catch (final Exception e) {</span>
+<span class="nc" id="L173">			e.printStackTrace();</span>
+<span class="nc" id="L174">			throw new DbObjectAlreadyExistException(iface.getDataClayID());</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L178">					conn.close();</span>
+				}
+<span class="nc" id="L180">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L181">				ex1.printStackTrace();</span>
+<span class="fc" id="L182">			}</span>
+		}
+
+<span class="fc" id="L185">	}</span>
+
+	/**
+	 * Deserialize Interface
+	 * @param rs
+	 *            Result set
+	 * @return Interface
+	 */
+	private Interface deserializeInterface(
+			final ResultSet rs) {
+<span class="fc" id="L195">		Interface iface = null;</span>
+		try {
+			// CHECKSTYLE:OFF
+<span class="fc" id="L198">			final InterfaceID interfaceID = new InterfaceID((UUID)rs.getObject(&quot;id&quot;));</span>
+<span class="fc" id="L199">			final String providerAccountName = rs.getString(&quot;providerAccountName&quot;);</span>
+<span class="fc" id="L200">			final String namespace = rs.getString(&quot;namespace&quot;);</span>
+
+<span class="fc" id="L202">			final String classNamespace = rs.getString(&quot;classNamespace&quot;);</span>
+<span class="fc" id="L203">			final String className = rs.getString(&quot;className&quot;);</span>
+<span class="fc" id="L204">			final String[] propertiesInIfaceArr = (String[]) rs.getArray(&quot;propertiesInIface&quot;).getArray();</span>
+<span class="fc" id="L205">			final Set&lt;String&gt; propertiesInIface = new HashSet&lt;&gt;(Arrays.asList(propertiesInIfaceArr));</span>
+<span class="fc" id="L206">			final String[] opsInIfaceArr = (String[]) rs.getArray(&quot;operationsSignatureInIface&quot;).getArray();</span>
+<span class="fc" id="L207">			final Set&lt;String&gt; operationsSignatureInIface = new HashSet&lt;&gt;(Arrays.asList(opsInIfaceArr));</span>
+
+<span class="fc" id="L209">			final AccountID providerAccountID = new AccountID((UUID)rs.getObject(&quot;providerAccountID&quot;));</span>
+<span class="fc" id="L210">			final NamespaceID namespaceID = new NamespaceID((UUID)rs.getObject(&quot;namespaceID&quot;));</span>
+<span class="fc" id="L211">			final NamespaceID classNamespaceID = new NamespaceID((UUID)rs.getObject(&quot;classNamespaceID&quot;));</span>
+<span class="fc" id="L212">			final MetaClassID metaClassID = new MetaClassID((UUID)rs.getObject(&quot;metaClassID&quot;));</span>
+
+<span class="fc" id="L214">			Array array = rs.getArray(&quot;operationsIDs&quot;);</span>
+<span class="fc" id="L215">			final Set&lt;OperationID&gt; operationsIDs = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L216" title="All 2 branches covered.">			if (array != null) {</span>
+<span class="fc" id="L217">				final UUID[] opsUUIDs = (UUID[]) array.getArray();</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">				for (final UUID opUUID : opsUUIDs) {</span>
+<span class="fc" id="L219">					operationsIDs.add(new OperationID(opUUID));</span>
+				}
+			}
+
+<span class="fc" id="L223">			array = rs.getArray(&quot;propertiesIDs&quot;);</span>
+<span class="fc" id="L224">			final Set&lt;PropertyID&gt; propertyIDs = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">			if (array != null) {</span>
+<span class="fc" id="L226">				final UUID[] propsUUIDs = (UUID[]) array.getArray();</span>
+<span class="fc bfc" id="L227" title="All 2 branches covered.">				for (final UUID propUUID : propsUUIDs) {</span>
+<span class="fc" id="L228">					propertyIDs.add(new PropertyID(propUUID));</span>
+				}
+			}
+
+<span class="fc" id="L232">			iface = new Interface();</span>
+<span class="fc" id="L233">			iface.setClassName(className);</span>
+<span class="fc" id="L234">			iface.setClassNamespace(classNamespace);</span>
+<span class="fc" id="L235">			iface.setClassNamespaceID(classNamespaceID);</span>
+<span class="fc" id="L236">			iface.setDataClayID(interfaceID);</span>
+<span class="fc" id="L237">			iface.setMetaClassID(metaClassID);</span>
+<span class="fc" id="L238">			iface.setNamespace(namespace);</span>
+<span class="fc" id="L239">			iface.setNamespaceID(namespaceID);</span>
+<span class="fc" id="L240">			iface.setOperationsIDs(operationsIDs);</span>
+<span class="fc" id="L241">			iface.setOperationsSignatureInIface(operationsSignatureInIface);</span>
+<span class="fc" id="L242">			iface.setPropertiesIDs(propertyIDs);</span>
+<span class="fc" id="L243">			iface.setPropertiesInIface(propertiesInIface);</span>
+<span class="fc" id="L244">			iface.setProviderAccountID(providerAccountID);</span>
+<span class="fc" id="L245">			iface.setProviderAccountName(providerAccountName);</span>
+
+<span class="nc" id="L247">		} catch (final SQLException e) {</span>
+<span class="nc" id="L248">			e.printStackTrace();</span>
+<span class="fc" id="L249">		}</span>
+<span class="fc" id="L250">		return iface;</span>
+	}
+
+	/**
+	 * Get interface by ID
+	 * @param ifaceID
+	 *            ID of the interface
+	 * @return The interface
+	 */
+	public Interface getInterfaceByID(final InterfaceID ifaceID) {
+<span class="fc" id="L260">		ResultSet rs = null;</span>
+<span class="fc" id="L261">		Interface iface = null;</span>
+<span class="fc" id="L262">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L264">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L265">			final PreparedStatement selectStatement = conn.prepareStatement(InterfaceManagerSQLStatements.SqlStatements.SELECT_INTERFACE.getSqlStatement());</span>
+
+<span class="fc" id="L267">			selectStatement.setObject(1, ifaceID.getId());</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L269">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L271">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L272" title="All 2 branches covered.">			if (rs.next()) {</span>
+<span class="fc" id="L273">				iface = deserializeInterface(rs);</span>
+			}
+
+<span class="nc" id="L276">		} catch (final SQLException e) {</span>
+<span class="nc" id="L277">			throw new DbObjectNotExistException(ifaceID);</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L280" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L281">					rs.close();</span>
+				}
+<span class="pc bpc" id="L283" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L284">					conn.close();</span>
+				}
+<span class="nc" id="L286">			} catch (final SQLException e) {</span>
+<span class="nc" id="L287">				e.printStackTrace();</span>
+<span class="fc" id="L288">			}</span>
+		}
+
+<span class="fc" id="L291">		return iface;</span>
+	}
+
+	/**
+	 * Delete
+	 * @param id
+	 *            ID of object to delete
+	 */
+	public void deleteInterface(final InterfaceID id) {
+<span class="fc" id="L300">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L302">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L303">			final PreparedStatement stmt = conn.prepareStatement(InterfaceManagerSQLStatements.SqlStatements.DELETE_INTERFACE.getSqlStatement());</span>
+<span class="fc" id="L304">			stmt.setObject(1, id.getId());</span>
+			// CHECKSTYLE:ON
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L307">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L309">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L311">		} catch (final Exception e) {</span>
+<span class="nc" id="L312">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L315" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L316">					conn.close();</span>
+				}
+<span class="nc" id="L318">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L319">				ex1.printStackTrace();</span>
+<span class="fc" id="L320">			}</span>
+		}
+<span class="fc" id="L322">	}</span>
+
+	/**
+	 * Get interfaces of class
+	 * @param namespaceID
+	 *            Namespace ID
+	 * @param classID
+	 *            class ID
+	 * @return The classes
+	 */
+	public List&lt;Interface&gt; getInterfacesOfClass(
+			final NamespaceID namespaceID, final MetaClassID classID) {
+<span class="fc" id="L334">		ResultSet rs = null;</span>
+<span class="fc" id="L335">		final List&lt;Interface&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L336">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L338">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L339">			final PreparedStatement selectStatement = conn.prepareStatement(InterfaceManagerSQLStatements.SqlStatements.SELECT_IFACES_OF_CLASS.getSqlStatement());</span>
+
+<span class="fc" id="L341">			selectStatement.setObject(1, namespaceID.getId());</span>
+<span class="fc" id="L342">			selectStatement.setObject(2, classID.getId());</span>
+
+<span class="pc bpc" id="L344" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L345">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L347">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L348" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L349">				result.add(deserializeInterface(rs));</span>
+			}
+<span class="nc" id="L351">		} catch (final SQLException e) {</span>
+<span class="nc" id="L352">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L355" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L356">					rs.close();</span>
+				}
+<span class="pc bpc" id="L358" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L359">					conn.close();</span>
+				}
+<span class="nc" id="L361">			} catch (final SQLException e) {</span>
+<span class="nc" id="L362">				e.printStackTrace();</span>
+<span class="fc" id="L363">			}</span>
+		}
+
+<span class="fc" id="L366">		return result;</span>
+	}
+
+	/**
+	 * Get interface by names
+	 * @param providerAccount
+	 *            Name of the account providing the interface
+	 * @param namespace
+	 *            Namespace of the class of the interface
+	 * @param classname
+	 *            Classname of the class of the interface
+	 * @param propertiesInIface
+	 *            Properties in interface
+	 * @param operationsSignatureInIface
+	 *            Operations in interface
+	 * @return The interface
+	 */
+	public Interface getInterfaceByNames(final String providerAccount, final String namespace, final String classname,
+			final Set&lt;String&gt; propertiesInIface, final Set&lt;String&gt; operationsSignatureInIface) {
+<span class="nc" id="L385">		ResultSet rs = null;</span>
+<span class="nc" id="L386">		Interface iface = null;</span>
+<span class="nc" id="L387">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L389">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L390">			final PreparedStatement selectStatement = conn.prepareStatement(InterfaceManagerSQLStatements.SqlStatements.SELECT_IFACE_FROM_NAMES.getSqlStatement());</span>
+
+<span class="nc" id="L392">			selectStatement.setString(1, providerAccount);</span>
+<span class="nc" id="L393">			selectStatement.setString(2, namespace);</span>
+			// CHECKSTYLE:OFF
+<span class="nc" id="L395">			selectStatement.setString(3, classname);</span>
+
+<span class="nc" id="L397">			Array tArray = selectStatement.getConnection().createArrayOf(&quot;varchar&quot;, propertiesInIface.toArray());</span>
+<span class="nc" id="L398">			selectStatement.setArray(4, tArray);</span>
+<span class="nc" id="L399">			tArray = selectStatement.getConnection().createArrayOf(&quot;varchar&quot;, operationsSignatureInIface.toArray());</span>
+<span class="nc" id="L400">			selectStatement.setArray(5, tArray);</span>
+			// CHECKSTYLE:ON
+<span class="nc bnc" id="L402" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L403">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="nc" id="L405">			rs = selectStatement.executeQuery();</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">			if (rs.next()) {</span>
+<span class="nc" id="L407">				iface = deserializeInterface(rs);</span>
+			}
+
+<span class="nc" id="L410">		} catch (final SQLException e) {</span>
+<span class="nc" id="L411">			throw new DbObjectNotExistException();</span>
+		} finally {
+			try {
+<span class="nc bnc" id="L414" title="All 2 branches missed.">				if (rs != null) {</span>
+<span class="nc" id="L415">					rs.close();</span>
+				}
+<span class="nc bnc" id="L417" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L418">					conn.close();</span>
+				}
+<span class="nc" id="L420">			} catch (final SQLException e) {</span>
+<span class="nc" id="L421">				e.printStackTrace();</span>
+<span class="nc" id="L422">			}</span>
+		}
+
+<span class="nc" id="L425">		return iface;</span>
+	}
+
+	/**
+	 * Close DB.
+	 */
+	public void close() {
+		try {
+<span class="fc" id="L433">			dataSource.close();</span>
+<span class="nc" id="L434">		}catch(Exception e) {</span>
+			// TODO
+<span class="nc" id="L436">			e.printStackTrace();</span>
+<span class="fc" id="L437">		}</span>
+<span class="fc" id="L438">	}</span>
+
+	/**
+	 * check if iface exists.
+	 * @param dataClayID
+	 *            ID of interface
+	 * @return TRUE if exists.
+	 */
+	public boolean existsObjectByID(final InterfaceID dataClayID) {
+<span class="fc bfc" id="L447" title="All 2 branches covered.">		return this.getInterfaceByID(dataClayID) != null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

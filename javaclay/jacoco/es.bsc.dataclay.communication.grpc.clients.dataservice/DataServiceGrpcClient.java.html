@@ -1,0 +1,1128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataServiceGrpcClient.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.communication.grpc.clients.dataservice</a> &gt; <span class="el_source">DataServiceGrpcClient.java</span></div><h1>DataServiceGrpcClient.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.communication.grpc.clients.dataservice;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.google.protobuf.ByteString;
+
+import es.bsc.dataclay.communication.grpc.Utils;
+import es.bsc.dataclay.communication.grpc.clients.CommonGrpcClient;
+import es.bsc.dataclay.communication.grpc.generated.dataservice.DataServiceGrpc;
+import es.bsc.dataclay.communication.grpc.generated.dataservice.DataServiceGrpc.DataServiceBlockingStub;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EmptyMessage;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExceptionInfo;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.GetTracesResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ActivateTracingRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.AssociateExecutionEnvironmentRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.CloseSessionInDSRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ConsolidateVersionRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.DeleteToDBRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.DeployClassesRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.DeployMetaClassesRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.EnrichClassRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExecuteImplementationRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExecuteImplementationResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExistsInDBRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExistsInDBResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExistsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExistsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.FederateRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.FilterObjectRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.FilterObjectResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetClassIDFromObjectInMemoryRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetClassIDFromObjectInMemoryResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetCopyOfObjectRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetCopyOfObjectResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetFederatedObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetFederatedObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetFromDBRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetFromDBResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetReferencedObjectIDsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetReferencedObjectIDsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetRetainedReferencesResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.InitBackendIDRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MakePersistentRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MigrateObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MigrateObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MigratedObjects;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MoveObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MoveObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewMetaDataRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewPersistentInstanceRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewPersistentInstanceResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewReplicaRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewReplicaResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewVersionRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewVersionResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.RemoveObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.RemoveObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.StoreObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.StoreToDBRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UnfederateRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpdateObjectRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpdateToDBRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpsertObjectsRequest;
+import es.bsc.dataclay.dataservice.api.DataServiceAPI;
+import es.bsc.dataclay.serialization.lib.ObjectWithDataParamOrReturn;
+import es.bsc.dataclay.serialization.lib.SerializedParametersOrReturn;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.ids.SessionID;
+import es.bsc.dataclay.util.ids.StorageLocationID;
+import es.bsc.dataclay.util.info.VersionInfo;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
+import es.bsc.dataclay.util.management.metadataservice.StorageLocation;
+import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
+import io.grpc.StatusRuntimeException;
+import io.grpc.netty.shaded.io.grpc.netty.NegotiationType;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import io.grpc.stub.MetadataUtils;
+
+/**
+ * Client code that makes gRPC calls to the server.
+ */
+@SuppressWarnings(&quot;all&quot;)
+public final class DataServiceGrpcClient implements DataServiceAPI {
+
+	/** Number of max seconds to shutdown. */
+	private static final int SECONDS_SHUTDOWN = 5;
+
+	/** Sleeping time while there is asynchronous request to wait for. */
+	private static final int ASYNC_WAIT_MILLIS = 1000;
+
+	/** Logger. */
+	private final Logger logger;
+
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L123">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Channel. */
+	private final ManagedChannel channel;
+
+	/** Blocking stub. */
+	private DataServiceBlockingStub blockingStub;
+
+	/** Number of asynchronous requests send. */
+<span class="nc" id="L132">	private final AtomicInteger asyncReqSend = new AtomicInteger(0);</span>
+
+	/** Number of asynchronous requests received. */
+<span class="nc" id="L135">	private final AtomicInteger asyncReqReceived = new AtomicInteger(0);</span>
+
+	/**
+	 * Construct client for accessing server at {@code host:port}.
+	 * 
+	 * @param originHostName
+	 *            DS host name
+	 * @param host
+	 *            Host
+	 * @param port
+	 *            Port
+	 */
+<span class="nc" id="L147">	public DataServiceGrpcClient(final String originHostName, final String host, final int port) {</span>
+		// Logger.getLogger(&quot;io.grpc&quot;).setLevel(Level.OFF);
+<span class="nc" id="L149">		logger = LogManager.getLogger(&quot;grpc.client.dataservice.&quot; + originHostName);</span>
+
+<span class="nc" id="L151">		ManagedChannelBuilder&lt;?&gt; chBuilder = NettyChannelBuilder.forAddress(host, port)</span>
+<span class="nc" id="L152">				.maxHeaderListSize(Integer.MAX_VALUE)</span>
+<span class="nc" id="L153">				.usePlaintext()</span>
+				//.keepAliveTimeout(Integer.MAX_VALUE, TimeUnit.SECONDS)
+				//.keepAliveWithoutCalls(true)
+<span class="nc" id="L156">				.maxInboundMessageSize(Integer.MAX_VALUE)//.negotiationType(NegotiationType.PLAINTEXT)</span>
+<span class="nc" id="L157">				.maxInboundMetadataSize(Integer.MAX_VALUE);</span>
+<span class="nc" id="L158">		channel = chBuilder.build();</span>
+<span class="nc" id="L159">		blockingStub = DataServiceGrpc.newBlockingStub(channel).withMaxOutboundMessageSize(Integer.MAX_VALUE)</span>
+<span class="nc" id="L160">				.withMaxInboundMessageSize(Integer.MAX_VALUE); </span>
+
+
+<span class="nc" id="L163">	}</span>
+
+	/**
+	 * Shutdown client
+	 * 
+	 * @throws InterruptedException
+	 *             if some exception occurs
+	 */
+	public void shutdown() throws InterruptedException {
+<span class="nc" id="L172">		channel.shutdownNow();</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		while (!channel.awaitTermination(SECONDS_SHUTDOWN, TimeUnit.SECONDS)) { </span>
+<span class="nc" id="L174">			System.out.println(&quot;[grpc] Waiting for channel to close...&quot;);</span>
+		}
+<span class="nc" id="L176">	}</span>
+
+	@Override
+	public void cleanCaches() {
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L183">			response = blockingStub.cleanCaches(EmptyMessage.newBuilder().build());</span>
+
+<span class="nc" id="L185">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L186">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L187">		}</span>
+<span class="nc" id="L188">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L189">	}</span>
+
+	@Override
+	public void registerPendingObjects() {
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L196">			response = blockingStub.registerPendingObjects(EmptyMessage.newBuilder().build());</span>
+<span class="nc" id="L197">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L198">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L199">		}</span>
+<span class="nc" id="L200">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L201">	}</span>
+
+	@Override
+	public void activateTracing(final int currentAvailableTaskID) {
+<span class="nc" id="L205">		final ActivateTracingRequest request = ActivateTracingRequest.newBuilder().setTaskid(currentAvailableTaskID)</span>
+<span class="nc" id="L206">				.build();</span>
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L210">			response = blockingStub.activateTracing(request);</span>
+
+<span class="nc" id="L212">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L213">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L214">		}</span>
+<span class="nc" id="L215">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L216">	}</span>
+
+	@Override
+	public void deactivateTracing() {
+<span class="nc" id="L220">		ExceptionInfo response = null;</span>
+		try {
+
+<span class="nc" id="L223">			response = blockingStub.deactivateTracing(EmptyMessage.newBuilder().build());</span>
+
+<span class="nc" id="L225">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L226">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L227">		}</span>
+<span class="nc" id="L228">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L229">	}</span>
+	
+	@Override
+	public Map&lt;String, byte[]&gt; getTraces() { 
+		final GetTracesResponse response;
+		try {
+<span class="nc" id="L235">			response = blockingStub.getTraces(EmptyMessage.newBuilder().build());</span>
+<span class="nc" id="L236">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L237">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L238">		}</span>
+<span class="nc" id="L239">		Utils.checkIsExc(response.getExcInfo());</span>
+<span class="nc" id="L240">		final Map&lt;String, byte[]&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">		for (final Entry&lt;String, ByteString&gt; entry : response.getTracesMap().entrySet()) {</span>
+<span class="nc" id="L242">			final byte[] objBytes = entry.getValue().toByteArray();</span>
+<span class="nc" id="L243">			result.put(entry.getKey(), objBytes);</span>
+<span class="nc" id="L244">		}</span>
+<span class="nc" id="L245">		return result;</span>
+	}
+
+	@Override
+	public void initBackendID(final StorageLocationID backendID) {
+<span class="nc" id="L250">		final InitBackendIDRequest request = InitBackendIDRequest.newBuilder().setBackendID(Utils.getMsgID(backendID))</span>
+<span class="nc" id="L251">				.build();</span>
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L255">			response = blockingStub.initBackendID(request);</span>
+
+<span class="nc" id="L257">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L258">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L259">		}</span>
+<span class="nc" id="L260">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L261">	}</span>
+
+	@Override
+	public void deployMetaClasses(final String namespaceName, final Map&lt;String, MetaClass&gt; deploymentPack) {
+		try {
+<span class="nc" id="L266">			final DeployMetaClassesRequest.Builder builder = DeployMetaClassesRequest.newBuilder();</span>
+<span class="nc" id="L267">			builder.setNamespace(namespaceName);</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">			for (final Entry&lt;String, MetaClass&gt; entry : deploymentPack.entrySet()) {</span>
+<span class="nc" id="L269">				logger.debug(&quot;Dumping metaclass&quot; + entry.getKey());</span>
+<span class="nc" id="L270">				builder.putDeploymentPack(entry.getKey(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L271">			}</span>
+<span class="nc" id="L272">			final DeployMetaClassesRequest request = builder.build();</span>
+			ExceptionInfo response;
+			try {
+<span class="nc" id="L275">				response = blockingStub.deployMetaClasses(request);</span>
+
+<span class="nc" id="L277">			} catch (final StatusRuntimeException ex) {</span>
+<span class="nc" id="L278">				logger.debug(&quot;deployMetaClasses error&quot;, ex);</span>
+<span class="nc" id="L279">				throw new RuntimeException(ex.getMessage());</span>
+<span class="nc" id="L280">			}</span>
+			// Utils.checkIsExc(response);
+<span class="nc" id="L282">		} catch (final Exception exr) {</span>
+<span class="nc" id="L283">			exr.printStackTrace();</span>
+<span class="nc" id="L284">		}</span>
+<span class="nc" id="L285">	}</span>
+
+	@Override
+	public void deployClasses(final String namespaceName, final Map&lt;Tuple&lt;String, MetaClassID&gt;, byte[]&gt; classesToDeploy,
+			final Map&lt;String, byte[]&gt; classesAspects, final Map&lt;String, byte[]&gt; stubYamls) {
+<span class="nc" id="L290">		final DeployClassesRequest.Builder builder = DeployClassesRequest.newBuilder();</span>
+<span class="nc" id="L291">		builder.setNamespace(namespaceName);</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">		for (final Entry&lt;Tuple&lt;String, MetaClassID&gt;, byte[]&gt; entry : classesToDeploy.entrySet()) {</span>
+<span class="nc" id="L293">			final String className = entry.getKey().getFirst();</span>
+<span class="nc" id="L294">			final MetaClassID classID = entry.getKey().getSecond();</span>
+<span class="nc" id="L295">			final byte[] bytes = entry.getValue();</span>
+<span class="nc" id="L296">			builder.putClassesToDeploy(className, ByteString.copyFrom(bytes));</span>
+<span class="nc" id="L297">			builder.putClassIds(className, Utils.getMsgID(classID));</span>
+<span class="nc" id="L298">		}</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">		for (final Entry&lt;String, byte[]&gt; aspect : classesAspects.entrySet()) {</span>
+<span class="nc" id="L300">			builder.putAspects(aspect.getKey(), ByteString.copyFrom(aspect.getValue()));</span>
+<span class="nc" id="L301">		}</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">		for (final Entry&lt;String, byte[]&gt; entry : stubYamls.entrySet()) {</span>
+<span class="nc" id="L303">			builder.putYamls(entry.getKey(), ByteString.copyFrom(entry.getValue()));</span>
+<span class="nc" id="L304">		}</span>
+<span class="nc" id="L305">		final DeployClassesRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L309">			response = blockingStub.deployClasses(request);</span>
+
+<span class="nc" id="L311">		} catch (final StatusRuntimeException ex) {</span>
+<span class="nc" id="L312">			logger.debug(&quot;deployClasses error&quot;, ex);</span>
+<span class="nc" id="L313">			throw new RuntimeException(ex.getMessage());</span>
+<span class="nc" id="L314">		}</span>
+<span class="nc" id="L315">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L316">	}</span>
+
+	@Override
+	public void enrichClass(final String namespaceName, final String className, final byte[] classToDeploy,
+			final byte[] classAspects, final byte[] stubYaml) {
+
+<span class="nc" id="L322">		final EnrichClassRequest.Builder requestBuilder = EnrichClassRequest.newBuilder().setNamespace(namespaceName)</span>
+<span class="nc" id="L323">				.setClassname(className).setClassToDeploy(ByteString.copyFrom(classToDeploy))</span>
+<span class="nc" id="L324">				.setAspect(ByteString.copyFrom(classAspects)).setYaml(ByteString.copyFrom(stubYaml));</span>
+
+<span class="nc" id="L326">		final EnrichClassRequest request = requestBuilder.build();</span>
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L330">			response = blockingStub.enrichClass(request);</span>
+
+<span class="nc" id="L332">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L333">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L334">		}</span>
+<span class="nc" id="L335">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L336">	}</span>
+
+	@Override
+	public ObjectID newPersistentInstance(final SessionID sessionID, final MetaClassID classID,
+			final ImplementationID implementationID, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final SerializedParametersOrReturn params) {
+<span class="nc" id="L342">		final NewPersistentInstanceRequest.Builder builder = NewPersistentInstanceRequest.newBuilder();</span>
+<span class="nc" id="L343">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L344">		builder.setClassID(Utils.getMsgID(classID));</span>
+<span class="nc" id="L345">		builder.setImplementationID(Utils.getMsgID(implementationID));</span>
+<span class="nc bnc" id="L346" title="All 2 branches missed.">		if (ifaceBitMaps != null) {</span>
+<span class="nc bnc" id="L347" title="All 2 branches missed.">			for (final Entry&lt;MetaClassID, byte[]&gt; entry : ifaceBitMaps.entrySet()) {</span>
+<span class="nc" id="L348">				builder.putIfaceBitMaps(entry.getKey().getId().toString(), ByteString.copyFrom(entry.getValue()));</span>
+<span class="nc" id="L349">			}</span>
+		}
+<span class="nc bnc" id="L351" title="All 2 branches missed.">		if (params != null) {</span>
+<span class="nc" id="L352">			builder.setParams(Utils.getParamsOrReturn(params));</span>
+		}
+
+<span class="nc" id="L355">		final NewPersistentInstanceRequest request = builder.build();</span>
+		NewPersistentInstanceResponse response;
+		try {
+
+<span class="nc" id="L359">			response = blockingStub.newPersistentInstance(request);</span>
+
+<span class="nc" id="L361">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L362">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L363">		}</span>
+<span class="nc" id="L364">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L366">		return Utils.getID(response.getObjectID());</span>
+	}
+
+	@Override
+	public void storeObjects(final SessionID sessionID, final List&lt;ObjectWithDataParamOrReturn&gt; objects,
+			final boolean moving, final Set&lt;ObjectID&gt; idsWithAlias) {
+<span class="nc" id="L372">		final StoreObjectsRequest.Builder builder = StoreObjectsRequest.newBuilder();</span>
+<span class="nc" id="L373">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc bnc" id="L374" title="All 2 branches missed.">		for (final ObjectWithDataParamOrReturn obj : objects) {</span>
+<span class="nc" id="L375">			builder.addObjects(Utils.getObjectWithDataParamOrReturn(obj));</span>
+<span class="nc" id="L376">		}</span>
+
+<span class="nc bnc" id="L378" title="All 2 branches missed.">		if (idsWithAlias != null) {</span>
+<span class="nc bnc" id="L379" title="All 2 branches missed.">			for (final ObjectID idWithAlias : idsWithAlias) {</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">				if (idWithAlias != null) {</span>
+<span class="nc" id="L381">					builder.addIdsWithAlias(Utils.getMsgID(idWithAlias));</span>
+				}
+<span class="nc" id="L383">			}</span>
+		}
+<span class="nc" id="L385">		builder.setMoving(moving);</span>
+<span class="nc" id="L386">		final StoreObjectsRequest request = builder.build();</span>
+
+<span class="nc bnc" id="L388" title="All 2 branches missed.">		if (Configuration.Flags.PRETTY_PRINT_MESSAGES.getBooleanValue()) {</span>
+<span class="nc" id="L389">			Utils.printMsg(request);</span>
+		}
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L393">			response = blockingStub.storeObjects(request);</span>
+<span class="nc" id="L394">		} catch (final StatusRuntimeException ex) {</span>
+<span class="nc" id="L395">			logger.debug(&quot;storeObjects error&quot;, ex);</span>
+<span class="nc" id="L396">			throw new RuntimeException(ex.getMessage());</span>
+<span class="nc" id="L397">		}</span>
+<span class="nc" id="L398">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L399">	}</span>
+
+	@Override
+	public void newMetaData(final Map&lt;ObjectID, MetaDataInfo&gt; mdInfos) {
+<span class="nc" id="L403">		final NewMetaDataRequest.Builder builder = NewMetaDataRequest.newBuilder();</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">		for (final Entry&lt;ObjectID, MetaDataInfo&gt; entry : mdInfos.entrySet()) {</span>
+<span class="nc" id="L405">			builder.putMdInfos(entry.getKey().getId().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L406">		}</span>
+<span class="nc" id="L407">		final NewMetaDataRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L411">			response = blockingStub.newMetaData(request);</span>
+
+<span class="nc" id="L413">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L414">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L415">		}</span>
+<span class="nc" id="L416">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L417">	}</span>
+
+	@Override
+	public SerializedParametersOrReturn getCopyOfObject(final SessionID sessionID, final ObjectID objectID,
+			final boolean recursive) {
+<span class="nc" id="L422">		final GetCopyOfObjectRequest.Builder builder = GetCopyOfObjectRequest.newBuilder();</span>
+<span class="nc" id="L423">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L424">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+<span class="nc" id="L425">		builder.setRecursive(recursive);</span>
+<span class="nc" id="L426">		final GetCopyOfObjectRequest request = builder.build();</span>
+		GetCopyOfObjectResponse response;
+		try {
+<span class="nc" id="L429">			response = blockingStub.getCopyOfObject(request);</span>
+<span class="nc" id="L430">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L431">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L432">		}</span>
+<span class="nc" id="L433">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L435">		final SerializedParametersOrReturn result = Utils.getParamsOrReturn(response.getRet());</span>
+<span class="nc" id="L436">		return result;</span>
+	}
+
+	@Override
+	public void updateObject(final SessionID sessionID, final ObjectID intoObjectID,
+			final SerializedParametersOrReturn fromObject) {
+<span class="nc" id="L442">		final UpdateObjectRequest.Builder builder = UpdateObjectRequest.newBuilder();</span>
+<span class="nc" id="L443">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L444">		builder.setIntoObjectID(Utils.getMsgID(intoObjectID));</span>
+<span class="nc" id="L445">		builder.setFromObject(Utils.getParamsOrReturn(fromObject));</span>
+<span class="nc" id="L446">		final UpdateObjectRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L449">			response = blockingStub.updateObject(request);</span>
+<span class="nc" id="L450">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L451">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L452">		}</span>
+<span class="nc" id="L453">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L454">	}</span>
+
+	@Override
+	public List&lt;ObjectWithDataParamOrReturn&gt; getObjects(final SessionID sessionID, final Set&lt;ObjectID&gt; objectIDs,
+			final boolean recursive, final boolean moving) {
+<span class="nc" id="L459">		final GetObjectsRequest.Builder builder = GetObjectsRequest.newBuilder();</span>
+<span class="nc bnc" id="L460" title="All 2 branches missed.">		for (final ObjectID oid : objectIDs) {</span>
+<span class="nc" id="L461">			builder.addObjectIDS(Utils.getMsgID(oid));</span>
+<span class="nc" id="L462">		}</span>
+<span class="nc" id="L463">		builder.setRecursive(recursive);</span>
+<span class="nc" id="L464">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L465">		builder.setMoving(moving);</span>
+<span class="nc" id="L466">		final GetObjectsRequest request = builder.build();</span>
+		GetObjectsResponse response;
+		try {
+
+<span class="nc" id="L470">			response = blockingStub.getObjects(request);</span>
+
+<span class="nc" id="L472">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L473">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L474">		}</span>
+<span class="nc" id="L475">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L477">		final List&lt;ObjectWithDataParamOrReturn&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L478" title="All 2 branches missed.">		for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectWithDataParamOrReturn entry : response</span>
+<span class="nc" id="L479">				.getObjectsList()) {</span>
+<span class="nc" id="L480">			result.add(Utils.getObjectWithDataParamOrReturn(entry));</span>
+<span class="nc" id="L481">		}</span>
+<span class="nc" id="L482">		return result;</span>
+	}
+
+	@Override
+	public Set&lt;ObjectID&gt; getReferencedObjectsIDs(final SessionID sessionID, final Set&lt;ObjectID&gt; objectIDs) {
+<span class="nc" id="L487">		final GetReferencedObjectIDsRequest.Builder builder = GetReferencedObjectIDsRequest.newBuilder();</span>
+<span class="nc bnc" id="L488" title="All 2 branches missed.">		for (final ObjectID oid : objectIDs) {</span>
+<span class="nc" id="L489">			builder.addObjectIDS(Utils.getMsgID(oid));</span>
+<span class="nc" id="L490">		}</span>
+<span class="nc" id="L491">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L492">		final GetReferencedObjectIDsRequest request = builder.build();</span>
+		GetReferencedObjectIDsResponse response;
+		try {
+
+<span class="nc" id="L496">			response = blockingStub.getReferencedObjectsIDs(request);</span>
+
+<span class="nc" id="L498">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L499">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L500">		}</span>
+<span class="nc" id="L501">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L503">		final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">		for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID entry : response</span>
+<span class="nc" id="L505">				.getObjectIDsList()) {</span>
+<span class="nc" id="L506">			result.add(Utils.getID(entry));</span>
+<span class="nc" id="L507">		}</span>
+<span class="nc" id="L508">		return result;</span>
+	}
+
+	@Override
+	public List&lt;ObjectWithDataParamOrReturn&gt; getFederatedObjects(final DataClayInstanceID extDataClayID,
+			final Set&lt;ObjectID&gt; objectIDs) {
+<span class="nc" id="L514">		final GetFederatedObjectsRequest.Builder builder = GetFederatedObjectsRequest.newBuilder();</span>
+<span class="nc" id="L515">		builder.setExtDataClayID(Utils.getMsgID(extDataClayID));</span>
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		for (final ObjectID oid : objectIDs) {</span>
+<span class="nc" id="L517">			builder.addObjectIDS(Utils.getMsgID(oid));</span>
+<span class="nc" id="L518">		}</span>
+<span class="nc" id="L519">		final GetFederatedObjectsRequest request = builder.build();</span>
+		GetFederatedObjectsResponse response;
+		try {
+
+<span class="nc" id="L523">			response = blockingStub.getFederatedObjects(request);</span>
+
+<span class="nc" id="L525">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L526">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L527">		}</span>
+<span class="nc" id="L528">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L530">		final List&lt;ObjectWithDataParamOrReturn&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">		for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectWithDataParamOrReturn entry : response</span>
+<span class="nc" id="L532">				.getObjectsList()) {</span>
+<span class="nc" id="L533">			result.add(Utils.getObjectWithDataParamOrReturn(entry));</span>
+<span class="nc" id="L534">		}</span>
+<span class="nc" id="L535">		return result;</span>
+	}
+
+	@Override
+	public SerializedParametersOrReturn filterObject(final SessionID sessionID, final ObjectID objectID,
+			final String conditions) {
+<span class="nc" id="L541">		final FilterObjectRequest.Builder builder = FilterObjectRequest.newBuilder();</span>
+<span class="nc" id="L542">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L543">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+<span class="nc" id="L544">		builder.setConditions(conditions);</span>
+<span class="nc" id="L545">		final FilterObjectRequest request = builder.build();</span>
+		FilterObjectResponse response;
+		try {
+
+<span class="nc" id="L549">			response = blockingStub.filterObject(request);</span>
+
+<span class="nc" id="L551">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L552">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L553">		}</span>
+<span class="nc" id="L554">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L556">		final SerializedParametersOrReturn result = Utils.getParamsOrReturn(response.getRet());</span>
+<span class="nc" id="L557">		return result;</span>
+	}
+
+	@Override
+	public void makePersistent(final SessionID sessionID, final SerializedParametersOrReturn params) {
+
+<span class="nc" id="L563">		final MakePersistentRequest.Builder builder = MakePersistentRequest.newBuilder();</span>
+
+<span class="nc" id="L565">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc bnc" id="L566" title="All 2 branches missed.">		if (params != null) {</span>
+<span class="nc" id="L567">			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SerializedParametersOrReturn paramsMgs = Utils</span>
+<span class="nc" id="L568">					.getParamsOrReturn(params);</span>
+<span class="nc" id="L569">			builder.setParams(paramsMgs);</span>
+		}
+<span class="nc" id="L571">		final MakePersistentRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L574">			response = blockingStub.makePersistent(request);</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">			if (Configuration.Flags.PRETTY_PRINT_MESSAGES.getBooleanValue()) {</span>
+<span class="nc" id="L576">				Utils.printMsg(response);</span>
+			}
+<span class="nc" id="L578">		} catch (final StatusRuntimeException ex) {</span>
+<span class="nc" id="L579">			logger.debug(&quot;** CAUGHT EXCEPTION **&quot;, ex.getStatus());</span>
+<span class="nc" id="L580">			throw ex;</span>
+<span class="nc" id="L581">		} catch (final Exception ex) {</span>
+<span class="nc" id="L582">			logger.debug(&quot;executeImplementation error&quot;, ex);</span>
+<span class="nc" id="L583">			throw ex;</span>
+<span class="nc" id="L584">		}</span>
+
+<span class="nc" id="L586">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L587">	}</span>
+
+	@Override
+	public void federate(final SessionID sessionID, final SerializedParametersOrReturn params) {
+
+<span class="nc" id="L592">		final FederateRequest.Builder builder = FederateRequest.newBuilder();</span>
+
+<span class="nc" id="L594">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc bnc" id="L595" title="All 2 branches missed.">		if (params != null) {</span>
+<span class="nc" id="L596">			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SerializedParametersOrReturn paramsMgs = Utils</span>
+<span class="nc" id="L597">					.getParamsOrReturn(params);</span>
+<span class="nc" id="L598">			builder.setParams(paramsMgs);</span>
+		}
+<span class="nc" id="L600">		final FederateRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L603">			response = blockingStub.withMaxInboundMessageSize(Integer.MAX_VALUE)</span>
+<span class="nc" id="L604">					.withMaxOutboundMessageSize(Integer.MAX_VALUE).federate(request);</span>
+<span class="nc bnc" id="L605" title="All 2 branches missed.">			if (Configuration.Flags.PRETTY_PRINT_MESSAGES.getBooleanValue()) {</span>
+<span class="nc" id="L606">				Utils.printMsg(response);</span>
+			}
+<span class="nc" id="L608">		} catch (final StatusRuntimeException ex) {</span>
+<span class="nc" id="L609">			logger.debug(&quot;** CAUGHT EXCEPTION **&quot;, ex);</span>
+<span class="nc" id="L610">			throw ex;</span>
+<span class="nc" id="L611">		} catch (final Exception ex) {</span>
+<span class="nc" id="L612">			logger.debug(&quot;federate error&quot;, ex);</span>
+<span class="nc" id="L613">			throw ex;</span>
+<span class="nc" id="L614">		}</span>
+
+<span class="nc" id="L616">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L617">	}</span>
+
+	@Override
+	public void unfederate(final SessionID sessionID, final Set&lt;ObjectID&gt; objectIDs) {
+
+<span class="nc" id="L622">		final UnfederateRequest.Builder builder = UnfederateRequest.newBuilder();</span>
+
+<span class="nc" id="L624">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc bnc" id="L625" title="All 2 branches missed.">		for (final ObjectID oid : objectIDs) {</span>
+<span class="nc" id="L626">			builder.addObjectIDs(Utils.getMsgID(oid));</span>
+<span class="nc" id="L627">		}</span>
+<span class="nc" id="L628">		final UnfederateRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L631">			response = blockingStub.unfederate(request);</span>
+<span class="nc" id="L632">		} catch (final Exception ex) {</span>
+<span class="nc" id="L633">			logger.debug(&quot;unfederate exception&quot;, ex);</span>
+<span class="nc" id="L634">			throw ex;</span>
+<span class="nc" id="L635">		}</span>
+
+<span class="nc" id="L637">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L638">	}</span>
+
+	@Override
+	public SerializedParametersOrReturn executeImplementation(final ObjectID objectID, final ImplementationID implID,
+			final SerializedParametersOrReturn params, final SessionID sessionID) {
+
+<span class="nc" id="L644">		final ExecuteImplementationRequest.Builder builder = ExecuteImplementationRequest.newBuilder();</span>
+
+<span class="nc" id="L646">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L647">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+<span class="nc" id="L648">		builder.setImplementationID(Utils.getMsgID(implID));</span>
+
+<span class="nc bnc" id="L650" title="All 2 branches missed.">		if (params != null) {</span>
+<span class="nc" id="L651">			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SerializedParametersOrReturn paramsMgs = Utils</span>
+<span class="nc" id="L652">					.getParamsOrReturn(params);</span>
+<span class="nc" id="L653">			builder.setParams(paramsMgs);</span>
+		}
+
+<span class="nc" id="L656">		final ExecuteImplementationRequest request = builder.build();</span>
+<span class="nc bnc" id="L657" title="All 2 branches missed.">		if (Configuration.Flags.PRETTY_PRINT_MESSAGES.getBooleanValue()) {</span>
+<span class="nc" id="L658">			Utils.printMsg(request);</span>
+		}
+
+		ExecuteImplementationResponse response;
+		try {
+
+<span class="nc bnc" id="L664" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L665">				logger.debug(&quot;** EXECUTE request to &quot; + blockingStub.getChannel());</span>
+			}
+
+<span class="nc" id="L668">			response = blockingStub.withMaxInboundMessageSize(Integer.MAX_VALUE)</span>
+<span class="nc" id="L669">					.withMaxOutboundMessageSize(Integer.MAX_VALUE).executeImplementation(request);</span>
+
+<span class="nc bnc" id="L671" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L672">				logger.debug(&quot;** FINISHED EXECUTE request to &quot; + blockingStub.getChannel());</span>
+			}
+
+<span class="nc bnc" id="L675" title="All 2 branches missed.">			if (Configuration.Flags.PRETTY_PRINT_MESSAGES.getBooleanValue()) {</span>
+<span class="nc" id="L676">				Utils.printMsg(response);</span>
+			}
+<span class="nc" id="L678">		} catch (final StatusRuntimeException ex) {</span>
+<span class="nc" id="L679">			logger.debug(&quot;** CAUGHT EXCEPTION possibly due to volatile controlled race condition **&quot;, ex);</span>
+<span class="nc" id="L680">			throw ex;</span>
+<span class="nc" id="L681">		} catch (final Exception ex) {</span>
+<span class="nc" id="L682">			logger.debug(&quot;executeImplementation error&quot;, ex);</span>
+<span class="nc" id="L683">			throw ex;</span>
+<span class="nc" id="L684">		}</span>
+
+<span class="nc" id="L686">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc bnc" id="L688" title="All 2 branches missed.">		if (response.hasRet()) {</span>
+<span class="nc" id="L689">			final SerializedParametersOrReturn result = Utils.getParamsOrReturn(response.getRet());</span>
+<span class="nc" id="L690">			return result;</span>
+		} else {
+<span class="nc" id="L692">			return null;</span>
+		}
+
+	}
+
+	@Override
+	public Tuple&lt;ObjectID, Map&lt;ObjectID, ObjectID&gt;&gt; newVersion(final SessionID sessionID, final ObjectID objectID,
+			final MetaDataInfo metadataInfo) {
+<span class="nc" id="L700">		final NewVersionRequest request = NewVersionRequest.newBuilder().setObjectID(Utils.getMsgID(objectID))</span>
+<span class="nc" id="L701">				.setSessionID(Utils.getMsgID(sessionID)).setMetadataInfo(CommonYAML.getYamlObject().dump(metadataInfo))</span>
+<span class="nc" id="L702">				.build();</span>
+		NewVersionResponse response;
+		try {
+
+<span class="nc" id="L706">			response = blockingStub.newVersion(request);</span>
+
+<span class="nc" id="L708">		} catch (final StatusRuntimeException ex) {</span>
+<span class="nc" id="L709">			logger.debug(&quot;newVersion error&quot;, ex);</span>
+<span class="nc" id="L710">			throw new RuntimeException(ex.getMessage());</span>
+<span class="nc" id="L711">		}</span>
+<span class="nc" id="L712">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L714">		final Map&lt;ObjectID, ObjectID&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L715">		final ObjectID oid = Utils.getID(response.getObjectID());</span>
+<span class="nc bnc" id="L716" title="All 2 branches missed.">		for (final Entry&lt;String, String&gt; entry : response.getVersionedIDsMap().entrySet()) {</span>
+<span class="nc" id="L717">			result.put(Utils.getObjectIDFromUUID(entry.getKey()), Utils.getObjectIDFromUUID(entry.getValue()));</span>
+<span class="nc" id="L718">		}</span>
+
+<span class="nc" id="L720">		return new Tuple&lt;&gt;(oid, result);</span>
+
+	}
+
+	@Override
+	public void consolidateVersion(final SessionID sessionID, final VersionInfo versionInfo) {
+<span class="nc" id="L726">		final ConsolidateVersionRequest request = ConsolidateVersionRequest.newBuilder()</span>
+<span class="nc" id="L727">				.setSessionID(Utils.getMsgID(sessionID)).setVersionInfo(CommonYAML.getYamlObject().dump(versionInfo))</span>
+<span class="nc" id="L728">				.build();</span>
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L732">			response = blockingStub.consolidateVersion(request);</span>
+
+<span class="nc" id="L734">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L735">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L736">		}</span>
+<span class="nc" id="L737">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L738">	}</span>
+
+	@Override
+	public void upsertObjects(final SessionID sessionID, final List&lt;ObjectWithDataParamOrReturn&gt; objectBytes) {
+<span class="nc" id="L742">		final UpsertObjectsRequest.Builder builder = UpsertObjectsRequest.newBuilder();</span>
+<span class="nc" id="L743">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc bnc" id="L744" title="All 2 branches missed.">		for (final ObjectWithDataParamOrReturn entry : objectBytes) {</span>
+<span class="nc" id="L745">			builder.addBytesUpdate(Utils.getObjectWithDataParamOrReturn(entry));</span>
+<span class="nc" id="L746">		}</span>
+<span class="nc" id="L747">		final UpsertObjectsRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L751">			response = blockingStub.upsertObjects(request);</span>
+
+<span class="nc" id="L753">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L754">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L755">		}</span>
+<span class="nc" id="L756">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L757">	}</span>
+
+	@Override
+	public Set&lt;ObjectID&gt; newReplica(final SessionID sessionID, final ObjectID objectID, final boolean recursive) {
+<span class="nc" id="L761">		final NewReplicaRequest request = NewReplicaRequest.newBuilder().setSessionID(Utils.getMsgID(sessionID))</span>
+<span class="nc" id="L762">				.setObjectID(Utils.getMsgID(objectID)).setRecursive(recursive).build();</span>
+		NewReplicaResponse response;
+		try {
+
+<span class="nc" id="L766">			response = blockingStub.newReplica(request);</span>
+
+<span class="nc" id="L768">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L769">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L770">		}</span>
+<span class="nc" id="L771">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L773">		final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L774" title="All 2 branches missed.">		for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID oid : response</span>
+<span class="nc" id="L775">				.getReplicatedIDsList()) {</span>
+<span class="nc" id="L776">			result.add(Utils.getID(oid));</span>
+<span class="nc" id="L777">		}</span>
+<span class="nc" id="L778">		return result;</span>
+	}
+
+	@Override
+	public Set&lt;ObjectID&gt; moveObjects(final SessionID sessionID, final ObjectID objectID,
+			final ExecutionEnvironmentID destStLocation, final boolean recursive) {
+<span class="nc" id="L784">		final MoveObjectsRequest request = MoveObjectsRequest.newBuilder().setSessionID(Utils.getMsgID(sessionID))</span>
+<span class="nc" id="L785">				.setDestLocID(Utils.getMsgID(destStLocation)).setRecursive(recursive)</span>
+<span class="nc" id="L786">				.setObjectID(Utils.getMsgID(objectID)).build();</span>
+		MoveObjectsResponse response;
+		try {
+
+<span class="nc" id="L790">			response = blockingStub.moveObjects(request);</span>
+
+<span class="nc" id="L792">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L793">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L794">		}</span>
+<span class="nc" id="L795">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L797">		final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L798" title="All 2 branches missed.">		for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID oid : response</span>
+<span class="nc" id="L799">				.getMovedObjectsList()) {</span>
+<span class="nc" id="L800">			result.add(Utils.getID(oid));</span>
+<span class="nc" id="L801">		}</span>
+<span class="nc" id="L802">		return result;</span>
+	}
+
+	@Override
+	public Map&lt;ObjectID, ExecutionEnvironmentID&gt; removeObjects(final SessionID sessionID, final Set&lt;ObjectID&gt; objectIDs,
+			final boolean recursive, final boolean moving, final ExecutionEnvironmentID newhint) {
+<span class="nc" id="L808">		final RemoveObjectsRequest.Builder builder = RemoveObjectsRequest.newBuilder();</span>
+<span class="nc" id="L809">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L810">		builder.setRecursive(recursive);</span>
+<span class="nc" id="L811">		builder.setMoving(moving);</span>
+<span class="nc" id="L812">		builder.setNewHint(Utils.getMsgID(newhint));</span>
+<span class="nc bnc" id="L813" title="All 2 branches missed.">		for (final ObjectID oid : objectIDs) {</span>
+<span class="nc" id="L814">			builder.addObjectIDs(Utils.getMsgID(oid));</span>
+<span class="nc" id="L815">		}</span>
+<span class="nc" id="L816">		final RemoveObjectsRequest request = builder.build();</span>
+		RemoveObjectsResponse response;
+		try {
+
+<span class="nc" id="L820">			response = blockingStub.removeObjects(request);</span>
+
+<span class="nc" id="L822">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L823">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L824">		}</span>
+<span class="nc" id="L825">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L827">		final Map&lt;ObjectID, ExecutionEnvironmentID&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L828" title="All 2 branches missed.">		for (final Entry&lt;String, String&gt; entry : response.getRemovedObjectsMap().entrySet()) {</span>
+<span class="nc" id="L829">			result.put(Utils.getObjectIDFromUUID(entry.getKey()),</span>
+<span class="nc" id="L830">					Utils.getExecutionEnvironmentIDFromUUID(entry.getValue()));</span>
+<span class="nc" id="L831">		}</span>
+<span class="nc" id="L832">		return result;</span>
+	}
+
+	@Override
+	public Tuple&lt;Map&lt;StorageLocationID, Set&lt;ObjectID&gt;&gt;, Set&lt;ObjectID&gt;&gt; migrateObjectsToBackends(
+			final Map&lt;StorageLocationID, StorageLocation&gt; backends) {
+
+<span class="nc" id="L839">		final MigrateObjectsRequest.Builder builder = MigrateObjectsRequest.newBuilder();</span>
+<span class="nc bnc" id="L840" title="All 2 branches missed.">		for (final Entry&lt;StorageLocationID, StorageLocation&gt; entry : backends.entrySet()) {</span>
+<span class="nc" id="L841">			builder.putDestStorageLocs(entry.getKey().getId().toString(),</span>
+<span class="nc" id="L842">					CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L843">		}</span>
+<span class="nc" id="L844">		final MigrateObjectsRequest request = builder.build();</span>
+		MigrateObjectsResponse response;
+		try {
+
+<span class="nc" id="L848">			response = blockingStub.migrateObjectsToBackends(request);</span>
+
+<span class="nc" id="L850">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L851">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L852">		}</span>
+<span class="nc" id="L853">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L855">		final Map&lt;StorageLocationID, Set&lt;ObjectID&gt;&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L856" title="All 2 branches missed.">		for (final Entry&lt;String, MigratedObjects&gt; entry : response.getMigratedObjsMap().entrySet()) {</span>
+<span class="nc" id="L857">			final MigratedObjects mObj = entry.getValue();</span>
+<span class="nc" id="L858">			final Set&lt;ObjectID&gt; oids = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L859" title="All 2 branches missed.">			for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID oid : mObj.getObjsList()) {</span>
+<span class="nc" id="L860">				oids.add(Utils.getID(oid));</span>
+<span class="nc" id="L861">			}</span>
+<span class="nc" id="L862">			result.put(Utils.getStorageLocationIDFromUUID(entry.getKey()), oids);</span>
+
+<span class="nc" id="L864">		}</span>
+
+<span class="nc" id="L866">		final Set&lt;ObjectID&gt; nonmigrated = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L867" title="All 2 branches missed.">		for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID oid : response</span>
+<span class="nc" id="L868">				.getNonMigratedObjs().getObjsList()) {</span>
+<span class="nc" id="L869">			nonmigrated.add(Utils.getID(oid));</span>
+<span class="nc" id="L870">		}</span>
+<span class="nc" id="L871">		return new Tuple&lt;&gt;(result, nonmigrated);</span>
+	}
+
+	@Override
+	public MetaClassID getClassIDFromObjectInMemory(final ObjectID objectID) {
+<span class="nc" id="L876">		final GetClassIDFromObjectInMemoryRequest request = GetClassIDFromObjectInMemoryRequest.newBuilder()</span>
+<span class="nc" id="L877">				.setObjectID(Utils.getMsgID(objectID)).build();</span>
+		GetClassIDFromObjectInMemoryResponse response;
+		try {
+
+<span class="nc" id="L881">			response = blockingStub.getClassIDFromObjectInMemory(request);</span>
+
+<span class="nc" id="L883">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L884">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L885">		}</span>
+<span class="nc" id="L886">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc bnc" id="L888" title="All 2 branches missed.">		if (response.hasClassID()) {</span>
+<span class="nc" id="L889">			return Utils.getID(response.getClassID());</span>
+		} else {
+<span class="nc" id="L891">			return null;</span>
+		}
+	}
+
+	@Override
+	public void cleanExecutionClassDirectory() {
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L900">			response = blockingStub.cleanExecutionClassDirectory(EmptyMessage.newBuilder().build());</span>
+
+<span class="nc" id="L902">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L903">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L904">		}</span>
+<span class="nc" id="L905">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L906">	}</span>
+
+	@Override
+	public void closeDbHandler() {
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L913">			response = blockingStub.closeDbHandler(EmptyMessage.newBuilder().build());</span>
+
+<span class="nc" id="L915">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L916">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L917">		}</span>
+<span class="nc" id="L918">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L919">	}</span>
+
+	@Override
+	public void shutDown() {
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L926">			response = blockingStub.shutDown(EmptyMessage.newBuilder().build());</span>
+
+<span class="nc" id="L928">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L929">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L930">		}</span>
+<span class="nc" id="L931">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L932">	}</span>
+
+	@Override
+	public void disconnectFromOthers() {
+		ExceptionInfo response;
+		try {
+
+<span class="nc" id="L939">			response = blockingStub.disconnectFromOthers(EmptyMessage.newBuilder().build());</span>
+
+<span class="nc" id="L941">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L942">			throw new RuntimeException(e.getStatus().getDescription());</span>
+<span class="nc" id="L943">		}</span>
+<span class="nc" id="L944">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L945">	}</span>
+
+	/**
+	 * Wait all async. requests
+	 */
+	public void waitAndProcessAllAsyncRequests() {
+<span class="nc bnc" id="L951" title="All 2 branches missed.">		while (asyncReqSend.get() != asyncReqReceived.get()) {</span>
+			try {
+<span class="nc" id="L953">				Thread.sleep(ASYNC_WAIT_MILLIS);</span>
+<span class="nc" id="L954">			} catch (final InterruptedException ex) {</span>
+<span class="nc" id="L955">				logger.debug(&quot;waitAndProcessAllAsyncRequests interrupted while sleeping&quot;, ex);</span>
+<span class="nc" id="L956">			}</span>
+		}
+<span class="nc" id="L958">	}</span>
+
+	@Override
+	public void closeSessionInDS(final SessionID sessionID) {
+<span class="nc" id="L962">		final CloseSessionInDSRequest.Builder builder = CloseSessionInDSRequest.newBuilder();</span>
+<span class="nc" id="L963">		builder.setSessionID(Utils.getMsgID(sessionID));</span>
+<span class="nc" id="L964">		final CloseSessionInDSRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L967">			response = blockingStub.closeSessionInDS(request);</span>
+<span class="nc" id="L968">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L969">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L970">		}</span>
+<span class="nc" id="L971">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L972">	}</span>
+
+	@Override
+	public void updateRefs(final Map&lt;ObjectID, Integer&gt; updateCounterRefs) {
+		final es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpdateRefsRequest.Builder builder = es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpdateRefsRequest
+<span class="nc" id="L977">				.newBuilder();</span>
+<span class="nc bnc" id="L978" title="All 2 branches missed.">		for (final Entry&lt;ObjectID, Integer&gt; entry : updateCounterRefs.entrySet()) {</span>
+<span class="nc" id="L979">			final ObjectID oid = entry.getKey();</span>
+<span class="nc" id="L980">			final Integer counter = entry.getValue();</span>
+<span class="nc" id="L981">			builder.putRefsToUpdate(oid.getId().toString(), counter);</span>
+<span class="nc" id="L982">		}</span>
+<span class="nc" id="L983">		final es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpdateRefsRequest request = builder</span>
+<span class="nc" id="L984">				.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L987">			response = blockingStub.updateRefs(request);</span>
+<span class="nc" id="L988">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L989">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L990">		}</span>
+<span class="nc" id="L991">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L992">	}</span>
+
+	@Override
+	public Set&lt;ObjectID&gt; getRetainedReferences() {
+		GetRetainedReferencesResponse response;
+		try {
+<span class="nc" id="L998">			response = blockingStub.getRetainedReferences(EmptyMessage.newBuilder().build());</span>
+<span class="nc" id="L999">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1000">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1001">		}</span>
+<span class="nc" id="L1002">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc" id="L1004">		final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L1005" title="All 2 branches missed.">		for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID oid : response</span>
+<span class="nc" id="L1006">				.getRetainedReferencesList()) {</span>
+<span class="nc" id="L1007">			result.add(Utils.getID(oid));</span>
+<span class="nc" id="L1008">		}</span>
+<span class="nc" id="L1009">		return result;</span>
+	}
+
+	@Override
+	public boolean existsInEE(final ObjectID objectID) {
+<span class="nc" id="L1014">		final ExistsRequest.Builder builder = ExistsRequest.newBuilder();</span>
+<span class="nc" id="L1015">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+<span class="nc" id="L1016">		final ExistsRequest request = builder.build();</span>
+		ExistsResponse response;
+		try {
+<span class="nc" id="L1019">			response = blockingStub.exists(request);</span>
+<span class="nc" id="L1020">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1021">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1022">		}</span>
+<span class="nc" id="L1023">		Utils.checkIsExc(response.getExcInfo());</span>
+<span class="nc" id="L1024">		return response.getExists();</span>
+	}
+
+	@Override
+	public boolean exists(final ObjectID objectID) {
+<span class="nc" id="L1029">		final ExistsInDBRequest.Builder builder = ExistsInDBRequest.newBuilder();</span>
+<span class="nc" id="L1030">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+<span class="nc" id="L1031">		final ExistsInDBRequest request = builder.build();</span>
+		ExistsInDBResponse response;
+		try {
+<span class="nc" id="L1034">			response = blockingStub.existsInDB(request);</span>
+<span class="nc" id="L1035">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1036">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1037">		}</span>
+<span class="nc" id="L1038">		Utils.checkIsExc(response.getExcInfo());</span>
+<span class="nc" id="L1039">		return response.getExists();</span>
+	}
+
+	@Override
+	public void store(final ExecutionEnvironmentID eeID, final ObjectID objectID, final byte[] bytes) {
+<span class="nc" id="L1044">		final StoreToDBRequest.Builder builder = StoreToDBRequest.newBuilder();</span>
+<span class="nc" id="L1045">		builder.setExecutionEnvironmentID(Utils.getMsgID(eeID));</span>
+<span class="nc" id="L1046">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+<span class="nc" id="L1047">		builder.setObjBytes(ByteString.copyFrom(bytes));</span>
+
+<span class="nc" id="L1049">		final StoreToDBRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L1052">			response = blockingStub.storeToDB(request);</span>
+<span class="nc" id="L1053">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1054">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1055">		}</span>
+<span class="nc" id="L1056">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L1057">	}</span>
+
+	@Override
+	public byte[] get(final ExecutionEnvironmentID eeID, final ObjectID objectID) {
+<span class="nc" id="L1061">		final GetFromDBRequest request = GetFromDBRequest.newBuilder().setExecutionEnvironmentID(Utils.getMsgID(eeID))</span>
+<span class="nc" id="L1062">				.setObjectID(Utils.getMsgID(objectID)).build();</span>
+		GetFromDBResponse response;
+		try {
+<span class="nc" id="L1065">			response = blockingStub.getFromDB(request);</span>
+<span class="nc" id="L1066">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1067">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1068">		}</span>
+<span class="nc" id="L1069">		Utils.checkIsExc(response.getExcInfo());</span>
+
+<span class="nc bnc" id="L1071" title="All 2 branches missed.">		if (response.getObjBytes() != null) {</span>
+<span class="nc" id="L1072">			return response.getObjBytes().toByteArray();</span>
+		} else {
+<span class="nc" id="L1074">			return null;</span>
+		}
+	}
+
+	@Override
+	public void update(final ExecutionEnvironmentID eeID, final ObjectID objectID, final byte[] newbytes,
+			final boolean dirty) {
+<span class="nc" id="L1081">		final UpdateToDBRequest.Builder builder = UpdateToDBRequest.newBuilder();</span>
+<span class="nc" id="L1082">		builder.setExecutionEnvironmentID(Utils.getMsgID(eeID));</span>
+<span class="nc" id="L1083">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+<span class="nc" id="L1084">		builder.setObjBytes(ByteString.copyFrom(newbytes));</span>
+<span class="nc" id="L1085">		builder.setDirty(dirty);</span>
+<span class="nc" id="L1086">		final UpdateToDBRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L1089">			response = blockingStub.updateToDB(request);</span>
+<span class="nc" id="L1090">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1091">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1092">		}</span>
+<span class="nc" id="L1093">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L1094">	}</span>
+
+	@Override
+	public void delete(final ExecutionEnvironmentID eeID, final ObjectID objectID) {
+<span class="nc" id="L1098">		final DeleteToDBRequest.Builder builder = DeleteToDBRequest.newBuilder();</span>
+<span class="nc" id="L1099">		builder.setExecutionEnvironmentID(Utils.getMsgID(eeID));</span>
+<span class="nc" id="L1100">		builder.setObjectID(Utils.getMsgID(objectID));</span>
+
+<span class="nc" id="L1102">		final DeleteToDBRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L1105">			response = blockingStub.deleteToDB(request);</span>
+<span class="nc" id="L1106">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1107">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1108">		}</span>
+<span class="nc" id="L1109">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L1110">	}</span>
+
+	@Override
+	public void associateExecutionEnvironment(final ExecutionEnvironmentID executionEnvironmentID) {
+<span class="nc" id="L1114">		final AssociateExecutionEnvironmentRequest.Builder builder = AssociateExecutionEnvironmentRequest.newBuilder();</span>
+<span class="nc" id="L1115">		builder.setExecutionEnvironmentID(Utils.getMsgID(executionEnvironmentID));</span>
+
+<span class="nc" id="L1117">		final AssociateExecutionEnvironmentRequest request = builder.build();</span>
+		ExceptionInfo response;
+		try {
+<span class="nc" id="L1120">			response = blockingStub.associateExecutionEnvironment(request);</span>
+<span class="nc" id="L1121">		} catch (final StatusRuntimeException e) {</span>
+<span class="nc" id="L1122">			throw new RuntimeException(e.getMessage());</span>
+<span class="nc" id="L1123">		}</span>
+<span class="nc" id="L1124">		Utils.checkIsExc(response);</span>
+<span class="nc" id="L1125">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

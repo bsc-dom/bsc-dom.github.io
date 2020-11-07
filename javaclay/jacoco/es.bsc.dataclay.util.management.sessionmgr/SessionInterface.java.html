@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SessionInterface.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.sessionmgr</a> &gt; <span class="el_source">SessionInterface.java</span></div><h1>SessionInterface.java</h1><pre class="source lang-java linenums">
+/**
+ * @file SessionInterface.java
+ * @date May 31, 2013
+ */
+package es.bsc.dataclay.util.management.sessionmgr;
+
+import java.io.Serializable;
+import java.util.Map;
+import java.util.UUID;
+
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+
+/**
+ * This class represents an interface in a Session.
+ * 
+ */
+public final class SessionInterface implements Serializable {
+
+	/** ID. */
+	private UUID id;
+	/** Serial version UID. */
+	private static final long serialVersionUID = 7949682815712165618L;
+	/** ID of the interface. */
+	private InterfaceID interfaceID;
+	/** Session Properties in the interface. */
+	private Map&lt;PropertyID, SessionProperty&gt; sessionProperties;
+	/** Session Operations in the interface. */
+	private Map&lt;OperationID, SessionOperation&gt; sessionOperations;
+	/** ID of the MetaClass from which the Session interface was created. */
+	private MetaClassID classOfInterface;
+	/** ID of the Imported Interface from which the Session interface was created. */
+	private InterfaceID importOfInterface;
+
+	/**
+	 * Empty constructor for specification of requirements while validating sessions
+	 */
+<span class="fc" id="L41">	public SessionInterface() {</span>
+
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * Session interface constructor
+	 * @param newinterfaceID
+	 *            ID of the interface
+	 * @param newclassOfInterface
+	 *            ID of the MetaClass from which the Session interface was created
+	 */
+<span class="nc" id="L52">	public SessionInterface(final InterfaceID newinterfaceID, final MetaClassID newclassOfInterface) {</span>
+<span class="nc" id="L53">		this.setInterfaceID(newinterfaceID);</span>
+<span class="nc" id="L54">		this.setClassOfInterface(newclassOfInterface);</span>
+<span class="nc" id="L55">	}</span>
+
+	/**
+	 * Get the SessionInterface::interfaceID
+	 * @return the interfaceID
+	 */
+
+	public InterfaceID getInterfaceID() {
+<span class="fc" id="L63">		return interfaceID;</span>
+	}
+
+	/**
+	 * Set the SessionInterface::interfaceID
+	 * @param newinterfaceID
+	 *            the interfaceID to set
+	 */
+	public void setInterfaceID(final InterfaceID newinterfaceID) {
+<span class="fc" id="L72">		this.interfaceID = newinterfaceID;</span>
+<span class="fc" id="L73">	}</span>
+
+	/**
+	 * Get the SessionInterface::sessionProperties
+	 * @return the sessionProperties
+	 */
+
+	public Map&lt;PropertyID, SessionProperty&gt; getSessionProperties() {
+<span class="fc" id="L81">		return sessionProperties;</span>
+	}
+
+	/**
+	 * Set the SessionInterface::sessionProperties
+	 * @param newsessionProperties
+	 *            the sessionProperties to set
+	 */
+	public void setSessionProperties(final Map&lt;PropertyID, SessionProperty&gt; newsessionProperties) {
+<span class="fc" id="L90">		this.sessionProperties = newsessionProperties;</span>
+<span class="fc" id="L91">	}</span>
+
+	/**
+	 * Get the SessionInterface::sessionOperations
+	 * @return the sessionOperations
+	 */
+
+	public Map&lt;OperationID, SessionOperation&gt; getSessionOperations() {
+<span class="fc" id="L99">		return sessionOperations;</span>
+	}
+
+	/**
+	 * Set the SessionInterface::sessionOperations
+	 * @param newsessionOperations
+	 *            the sessionOperations to set
+	 */
+	public void setSessionOperations(final Map&lt;OperationID, SessionOperation&gt; newsessionOperations) {
+<span class="fc" id="L108">		this.sessionOperations = newsessionOperations;</span>
+<span class="fc" id="L109">	}</span>
+
+	/**
+	 * Get the SessionInterface::classOfInterface
+	 * @return the classOfInterface
+	 */
+
+	public MetaClassID getClassOfInterface() {
+<span class="fc" id="L117">		return classOfInterface;</span>
+	}
+
+	/**
+	 * Set the SessionInterface::classOfInterface
+	 * @param newclassOfInterface
+	 *            the classOfInterface to set
+	 */
+	public void setClassOfInterface(final MetaClassID newclassOfInterface) {
+<span class="fc" id="L126">		this.classOfInterface = newclassOfInterface;</span>
+<span class="fc" id="L127">	}</span>
+
+	/**
+	 * Get the SessionInterface::importOfInterface
+	 * @return the importOfInterface
+	 */
+
+	public InterfaceID getImportOfInterface() {
+<span class="fc" id="L135">		return importOfInterface;</span>
+	}
+
+	/**
+	 * Set the SessionInterface::importOfInterface
+	 * @param newimportOfInterface
+	 *            the importOfInterface to set
+	 */
+	public void setImportOfInterface(final InterfaceID newimportOfInterface) {
+<span class="fc" id="L144">		this.importOfInterface = newimportOfInterface;</span>
+<span class="fc" id="L145">	}</span>
+
+	/**
+	 * get id
+	 * @return id
+	 */
+	public UUID getId() {
+<span class="nc" id="L152">		return id;</span>
+	}
+
+	/**
+	 * Set id
+	 * @param newid
+	 *            the id
+	 */
+	public void setId(final UUID newid) {
+<span class="fc" id="L161">		this.id = newid;</span>
+<span class="fc" id="L162">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

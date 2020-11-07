@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JavaImplementation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr.java</a> &gt; <span class="el_source">JavaImplementation.java</span></div><h1>JavaImplementation.java</h1><pre class="source lang-java linenums">
+/**
+ * @file Implementation.java
+ *
+ * @date Sep 26, 2012
+ */
+package es.bsc.dataclay.util.management.classmgr.java;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.management.classmgr.AccessedImplementation;
+import es.bsc.dataclay.util.management.classmgr.AccessedProperty;
+import es.bsc.dataclay.util.management.classmgr.Implementation;
+import es.bsc.dataclay.util.management.classmgr.PrefetchingInformation;
+import es.bsc.dataclay.util.management.classmgr.Type;
+import es.bsc.dataclay.util.management.classmgr.features.QualitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.QuantitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.Feature.FeatureType;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents a Java Implementation.
+ */
+public final class JavaImplementation extends Implementation {
+
+	/**
+	 * Creates an empty JavaImplementation
+	 */
+	public JavaImplementation() {
+<span class="fc" id="L35">		super();</span>
+<span class="fc" id="L36">	}</span>
+
+	/**
+	 *
+	 * Java Implementation Specification constructor with provided specifications
+	 * @param newposition
+	 *            Position of the implementation
+	 * @param newaccessedProperties
+	 *            PropertyID of the properties accessed by the Implementation
+	 * @param newaccessedImplementations
+	 *            IDs of the implementations accessed by the Implementation
+	 * @param newincludes
+	 *            Includes of the implementation
+	 * @param newPrefetchingInfo
+	 *            An object of PrefetchingInformation
+	 * @param newReqQuantitativeFeatures
+	 *            Quantitative features required to execute the code
+	 * @param newReqQualitativeFeatures
+	 *            Qualitative features required to execute the code
+	 * @param newnamespace
+	 *            Namespace of the class containing the implementation
+	 * @param newclassName
+	 *            Class name of the class containing the implementation
+	 * @param newopNameAndDescriptor
+	 *            Name and Descriptor of the operation
+	 * @post Creates a new ImplementationSpec with provided specifications and generates a new ImplementationID.
+	 */
+	// CHECKSTYLE:OFF
+	public JavaImplementation(final int newposition,
+			final List&lt;AccessedProperty&gt; newaccessedProperties,
+			final List&lt;AccessedImplementation&gt; newaccessedImplementations,
+			final List&lt;Type&gt; newincludes,
+			final PrefetchingInformation newPrefetchingInfo,
+			final Map&lt;FeatureType, QuantitativeFeature&gt; newReqQuantitativeFeatures,
+			final Map&lt;FeatureType, QualitativeFeature&gt; newReqQualitativeFeatures,
+			final String newnamespace, final String newclassName,
+			final String newopNameAndDescriptor) {
+		// CHECKSTYLE:ON
+<span class="fc" id="L74">		super(newposition, newaccessedProperties, newaccessedImplementations, newincludes,</span>
+				newPrefetchingInfo, newReqQuantitativeFeatures, newReqQualitativeFeatures,
+				newnamespace, newclassName, newopNameAndDescriptor);
+<span class="fc" id="L77">	}</span>
+
+	@Override
+	public Langs getLanguage() {
+<span class="nc" id="L81">		return Langs.LANG_JAVA;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L86">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L87">		return yaml.dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L92">		return Objects.hash(this.getNamespace(), this.getClassName(), this.getOpNameAndDescriptor(), this.getPosition());</span>
+	}
+
+	@Override
+	public boolean equals(final Object object) {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if (object instanceof JavaImplementation) {</span>
+<span class="nc" id="L98">			final JavaImplementation other = (JavaImplementation) object;</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">			return this.getNamespace().equals(other.getNamespace())</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">					&amp;&amp; this.getClassName().equals(other.getClassName())</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">					&amp;&amp; this.getOpNameAndDescriptor().equals(other.getOpNameAndDescriptor())</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">					&amp;&amp; this.getPosition() == other.getPosition();</span>
+		}
+<span class="nc" id="L104">		return false;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

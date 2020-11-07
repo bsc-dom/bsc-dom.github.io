@@ -1,0 +1,574 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Operation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr</a> &gt; <span class="el_source">Operation.java</span></div><h1>Operation.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.classmgr;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.OperationDepInfoAlreadyRegisteredException;
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.management.classmgr.java.JavaOperationInfo;
+import es.bsc.dataclay.util.management.classmgr.python.PythonOperationInfo;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents an Operation.
+ *
+ */
+public final class Operation extends MgrObject&lt;OperationID&gt; {
+
+	// === YAML SPECIFICATION === //
+	// Properties must be public for YAML parsing.
+	// CHECKSTYLE:OFF
+	/** Name of namespace of the class of the operation. */
+	private String namespace;
+	/** Name of the class of the operation. */
+	private String className;
+	/** Descriptor of the operation (signature without subtypes). */
+	private String descriptor;
+	/** Signature of the operation. */
+	private String signature;
+	/** Name of the operation. */
+	private String name;
+	/** Name and descriptor. */
+	private String nameAndDescriptor;
+	/** List of arguments of the Operation. */
+	private Map&lt;String, Type&gt; params;
+	/** Order of the parameters. */
+	private List&lt;String&gt; paramsOrder;
+	/** Type of the returned element of the Operation (if exists). */
+	private Type returnType;
+	/** Ordered list of implementations implementing the Operation. */
+	private SortedSet&lt;Implementation&gt; implementations;
+	/** Indicates operation is abstract. */
+	// @abarcelo: note that the *property name* is simply abstract,
+	// because of is&lt;Abstract&gt; and get&lt;Abstract&gt; getter and setter.
+	private boolean isAbstract;
+
+	// See comments on isAbstract property
+	/** Indicates operation is static constructor. */
+	private boolean isStaticConstructor;
+
+	// CHECKSTYLE:ON
+	// ==== DYNAMIC FIELDS ==== //
+	/** ID of the MetaClass containing the operation. */
+	private MetaClassID metaClassID;
+	/** ID of the namespace in which the operation has been created. */
+	private NamespaceID namespaceID;
+	/** Language dependant information. */
+	private Map&lt;Langs, LanguageDependantOperationInfo&gt; languageDepInfos;
+	/** Operation's annotations */
+	private List&lt;Annotation&gt; annotations;
+
+	/**
+	 * Creates an empty Operation
+	 */
+<span class="fc" id="L80">	public Operation() {</span>
+
+<span class="fc" id="L82">	}</span>
+
+	/**
+	 * Operation constructor with provided specifications
+	 * @param newname
+	 *            Name of the operation
+	 * @param newdescriptor
+	 *            Descriptor of the operation (signature without subtypes)
+	 * @param newsignature
+	 *            Signature of the operation
+	 * @param newnameAndDescriptor
+	 *            Name and descriptor of the operation
+	 * @param newnamespace
+	 *            Namespace of the class containing operation
+	 * @param newclassName
+	 *            Name of class of the operation
+	 * @param newisAbstract
+	 *            Indicates operation is abstract
+	 * @post Creates a new Operation with provided name and generates a new OperationID.
+	 */
+	public Operation(final String newname, final String newdescriptor, final String newsignature,
+			final String newnameAndDescriptor,
+			final String newnamespace, final String newclassName,
+<span class="fc" id="L105">			final boolean newisAbstract) {</span>
+<span class="fc" id="L106">		this.setNamespace(newnamespace);</span>
+<span class="fc" id="L107">		this.setSignature(newsignature);</span>
+<span class="fc" id="L108">		this.setNameAndDescriptor(newnameAndDescriptor);</span>
+<span class="fc" id="L109">		this.setDescriptor(newdescriptor);</span>
+<span class="fc" id="L110">		this.setClassName(newclassName);</span>
+<span class="fc" id="L111">		this.setName(newname);</span>
+<span class="fc" id="L112">		this.setImplementations(new TreeSet&lt;Implementation&gt;());</span>
+<span class="fc" id="L113">		this.setParams(new LinkedHashMap&lt;String, Type&gt;());</span>
+<span class="fc" id="L114">		this.setParamsOrder(new LinkedList&lt;String&gt;());</span>
+<span class="fc" id="L115">		this.setLanguageDepInfos(new HashMap&lt;Langs, LanguageDependantOperationInfo&gt;());</span>
+<span class="fc" id="L116">		this.setIsAbstract(newisAbstract);</span>
+<span class="fc" id="L117">		this.setIsStaticConstructor(newname.equals(&quot;&lt;clinit&gt;&quot;));</span>
+<span class="fc" id="L118">		this.setAnnotations(new ArrayList&lt;Annotation&gt;());</span>
+
+<span class="fc" id="L120">	}</span>
+
+	/**
+	 * Get the name of this Operation
+	 * @return Operation::name of container Operation.
+	 */
+	public String getName() {
+<span class="fc" id="L127">		return this.name;</span>
+	}
+
+	/**
+	 * Set the Operation::name of this Operation
+	 * @param newname
+	 *            New name to be set
+	 */
+	public void setName(final String newname) {
+<span class="fc" id="L136">		this.name = newname;</span>
+<span class="fc" id="L137">	}</span>
+
+	/**
+	 * Get the Parameters of this Operation
+	 * @return Operation::params of container Operation.
+	 */
+	public Map&lt;String, Type&gt; getParams() {
+<span class="fc" id="L144">		return this.params;</span>
+	}
+
+	/**
+	 * Set the Operation::params
+	 * @param newparams
+	 *            Parameter to set of this Operation.
+	 */
+	public void setParams(final Map&lt;String, Type&gt; newparams) {
+<span class="fc" id="L153">		this.params = newparams;</span>
+<span class="fc" id="L154">	}</span>
+
+	/**
+	 * Get the Parameter order of this Operation
+	 * @return Operation::paramOrder of container Operation.
+	 */
+	public List&lt;String&gt; getParamsOrder() {
+<span class="fc" id="L161">		return this.paramsOrder;</span>
+	}
+
+	/**
+	 * Set the Operation::paramOrder
+	 * @param newparamOrder
+	 *            The list of name of parameters, in the proper order.
+	 */
+	public void setParamsOrder(final List&lt;String&gt; newparamOrder) {
+<span class="fc" id="L170">		this.paramsOrder = newparamOrder;</span>
+<span class="fc" id="L171">	}</span>
+
+	/**
+	 * Add a new Params to the map of Params
+	 * @param paramName
+	 *            Name of the parameter
+	 * @param newparam
+	 *            Param to add
+	 * @post A new Param is added to Operation::params
+	 */
+	public void addParam(final String paramName, final Type newparam) {
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">		if (newparam == null) {</span>
+<span class="nc" id="L183">			throw new IllegalArgumentException(&quot;Params cannot be null&quot;);</span>
+		}
+<span class="fc" id="L185">		this.params.put(paramName, newparam);</span>
+<span class="fc" id="L186">		this.paramsOrder.add(paramName);</span>
+<span class="fc" id="L187">	}</span>
+
+	/**
+	 * @return the implementations
+	 */
+	public List&lt;Implementation&gt; getImplementations() {
+<span class="pc bpc" id="L193" title="1 of 2 branches missed.">		if (implementations == null) {</span>
+<span class="nc" id="L194">			return null;</span>
+		}
+<span class="fc" id="L196">		return new ArrayList&lt;&gt;(implementations);</span>
+	}
+
+	/**
+	 * @param newimplementations
+	 *            the implementations to set
+	 */
+	public void setImplementations(final SortedSet&lt;Implementation&gt; newimplementations) {
+<span class="fc" id="L204">		this.implementations = newimplementations;</span>
+<span class="fc" id="L205">	}</span>
+
+	/**
+	 * @param newimplementations
+	 *            the implementations to set
+	 *
+	 *         This is YAML friendly for lists --instead of sets which Python doesn't like because they contain non-hashable fields.
+	 */
+	public void setImplementations(final List&lt;Implementation&gt; newimplementations) {
+<span class="pc bpc" id="L214" title="1 of 2 branches missed.">		if (newimplementations == null) {</span>
+<span class="nc" id="L215">			this.implementations = null;</span>
+		} else {
+<span class="fc" id="L217">			this.implementations = new TreeSet&lt;&gt;(newimplementations);</span>
+		}
+<span class="fc" id="L219">	}</span>
+
+	/**
+	 * Add a new Implementation to the list of Implementations
+	 * @param newimplementation
+	 *            Implementation to add
+	 * @return TRUE if Implementation was not found and added. FALSE, otherwise.
+	 * @post A new Implementation is added to Operation::implementations
+	 */
+	public boolean addImplementation(final Implementation newimplementation) {
+<span class="pc bpc" id="L229" title="1 of 2 branches missed.">		if (this.implementations == null) {</span>
+<span class="nc" id="L230">			this.implementations = new TreeSet&lt;&gt;();</span>
+		}
+<span class="fc" id="L232">		newimplementation.setPosition(this.implementations.size());</span>
+<span class="fc" id="L233">		return this.implementations.add(newimplementation);</span>
+	}
+
+	/**
+	 * This operation verifies if a Implementation identified by implementationID exists in this Operation.
+	 * @param implementationID
+	 *            ID of the Implementation to query
+	 * @return TRUE if the provided Implementation exists in the Operation. FALSE otherwise.
+	 */
+	public boolean existsImplementationInOperation(final ImplementationID implementationID) {
+<span class="pc bpc" id="L243" title="1 of 2 branches missed.">		if (implementations == null) {</span>
+<span class="nc" id="L244">			return false;</span>
+		}
+<span class="pc bpc" id="L246" title="1 of 2 branches missed.">		for (final Implementation impl : implementations) {</span>
+<span class="fc bfc" id="L247" title="All 2 branches covered.">			if (impl.getDataClayID().equals(implementationID)) {</span>
+<span class="fc" id="L248">				return true;</span>
+			}
+<span class="fc" id="L250">		}</span>
+<span class="nc" id="L251">		return false;</span>
+
+	}
+
+	/**
+	 * Get the implementation with ID provided in this operation or NULL if it does not exist.
+	 * @param implementationID
+	 *            ID of the implementation to get
+	 * @return The Implementation in the operation or NULL if it does not exist.
+	 */
+	public Implementation getImplementationInOperation(final ImplementationID implementationID) {
+<span class="nc" id="L262">		final Iterator&lt;Implementation&gt; itImpls = implementations.iterator();</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">		while (itImpls.hasNext()) {</span>
+<span class="nc" id="L264">			final Implementation actualImpl = itImpls.next();</span>
+<span class="nc bnc" id="L265" title="All 2 branches missed.">			if (actualImpl.getDataClayID().equals(implementationID)) {</span>
+<span class="nc" id="L266">				return actualImpl;</span>
+			}
+<span class="nc" id="L268">		}</span>
+<span class="nc" id="L269">		return null;</span>
+	}
+
+	/**
+	 * This operation remove a Implementation identified by implementationID in the list of implementations.
+	 * @param implementationID
+	 *            ID of the implementation to remove
+	 * @return TRUE if the provided Implementation was successfully removed from system. FALSE otherwise.
+	 */
+	public boolean removeImplementation(final ImplementationID implementationID) {
+<span class="nc bnc" id="L279" title="All 2 branches missed.">		if (implementations == null) {</span>
+<span class="nc" id="L280">			return false;</span>
+		}
+
+<span class="nc" id="L283">		final Iterator&lt;Implementation&gt; itImpls = implementations.iterator();</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">		while (itImpls.hasNext()) {</span>
+<span class="nc" id="L285">			final Implementation actualImpl = itImpls.next();</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">			if (actualImpl.getDataClayID().equals(implementationID)) {</span>
+<span class="nc" id="L287">				return implementations.remove(actualImpl);</span>
+			}
+<span class="nc" id="L289">		}</span>
+
+<span class="nc" id="L291">		return false;</span>
+	}
+
+	/**
+	 * Get the Operation::returnType
+	 * @return the returnType
+	 */
+
+	public Type getReturnType() {
+<span class="fc" id="L300">		return this.returnType;</span>
+	}
+
+	/**
+	 * Set the Operation::returnType
+	 * @param newreturnType
+	 *            the returnType
+	 */
+
+	public void setReturnType(final Type newreturnType) {
+<span class="fc" id="L310">		this.returnType = newreturnType;</span>
+<span class="fc" id="L311">	}</span>
+
+	/**
+	 * Get the Operation::metaClassID
+	 * @return the metaClassID
+	 */
+
+	public MetaClassID getMetaClassID() {
+<span class="fc" id="L319">		return metaClassID;</span>
+	}
+
+	/**
+	 * Set the Operation::metaClassID
+	 * @param newmetaClassID
+	 *            the metaClassID to set
+	 */
+	public void setMetaClassID(final MetaClassID newmetaClassID) {
+<span class="fc" id="L328">		this.metaClassID = newmetaClassID;</span>
+<span class="fc" id="L329">	}</span>
+
+	/**
+	 * Get the Operation::languageDepInfos
+	 * @return the languageDepInfos
+	 */
+	public Map&lt;Langs, LanguageDependantOperationInfo&gt; getLanguageDepInfos() {
+<span class="fc" id="L336">		return languageDepInfos;</span>
+	}
+
+	/**
+	 * Get Java language-dependant information of the operation
+	 * @return Java language-dependant information of the operation
+	 */
+	public JavaOperationInfo getJavaOperationInfo() {
+<span class="nc" id="L344">		return (JavaOperationInfo) languageDepInfos.get(Langs.LANG_JAVA);</span>
+	}
+
+	/**
+	 * Get Python language-dependant information of the operation
+	 * @return Python language-dependant information of the operation
+	 */
+	public PythonOperationInfo getPythonOperationInfo() {
+<span class="nc" id="L352">		return (PythonOperationInfo) languageDepInfos.get(Langs.LANG_PYTHON);</span>
+	}
+
+	/**
+	 * Set the Operation::languageDepInfos
+	 * @param newlanguageDepInfos
+	 *            the languageDepInfos to set
+	 */
+	public void setLanguageDepInfos(final Map&lt;Langs, LanguageDependantOperationInfo&gt; newlanguageDepInfos) {
+<span class="fc" id="L361">		this.languageDepInfos = newlanguageDepInfos;</span>
+<span class="fc" id="L362">	}</span>
+
+	/**
+	 * Add language dependant information
+	 * @param langInfo
+	 *            Language information
+	 */
+	public void addLanguageDepInfo(final LanguageDependantOperationInfo langInfo) {
+<span class="pc bpc" id="L370" title="1 of 2 branches missed.">		if (langInfo instanceof JavaOperationInfo) {</span>
+<span class="pc bpc" id="L371" title="1 of 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_JAVA) != null) {</span>
+<span class="nc" id="L372">				throw new OperationDepInfoAlreadyRegisteredException(Langs.LANG_JAVA.name());</span>
+			} else {
+<span class="fc" id="L374">				this.languageDepInfos.put(Langs.LANG_JAVA, langInfo);</span>
+			}
+<span class="nc bnc" id="L376" title="All 2 branches missed.">		} else if (langInfo instanceof PythonOperationInfo) {</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_PYTHON) != null) {</span>
+<span class="nc" id="L378">				throw new OperationDepInfoAlreadyRegisteredException(Langs.LANG_PYTHON.name());</span>
+			} else {
+<span class="nc" id="L380">				this.languageDepInfos.put(Langs.LANG_PYTHON, langInfo);</span>
+			}
+		}
+<span class="fc" id="L383">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L387">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L388">		return yaml.dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L393">		return Objects.hash(this.name, this.nameAndDescriptor,</span>
+				this.namespace, this.className,
+<span class="fc" id="L395">				this.params, this.returnType, this.isAbstract);</span>
+
+	}
+
+	@Override
+	public boolean equals(final Object object) {
+<span class="nc bnc" id="L401" title="All 2 branches missed.">		if (object instanceof Operation) {</span>
+<span class="nc" id="L402">			final Operation other = (Operation) object;</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">			return this.name.equals(other.getName())</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">					&amp;&amp; this.className.equals(other.getClassName())</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">					&amp;&amp; this.namespace.equals(other.getNamespace())</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">					&amp;&amp; this.nameAndDescriptor.equals(other.getNameAndDescriptor());</span>
+
+		}
+<span class="nc" id="L409">		return false;</span>
+	}
+
+	/**
+	 * Get the Operation::isAbstract
+	 * @return the isAbstract
+	 */
+	public boolean getIsAbstract() {
+<span class="fc" id="L417">		return isAbstract;</span>
+	}
+
+	/**
+	 * Set the Operation::isAbstract
+	 * @param newisAbstract
+	 *            the isAbstract to set
+	 */
+	public void setIsAbstract(final boolean newisAbstract) {
+<span class="fc" id="L426">		this.isAbstract = newisAbstract;</span>
+<span class="fc" id="L427">	}</span>
+
+	/**
+	 * Get the Operation::isStaticConstructor
+	 * @return the isStaticConstructor
+	 */
+	public boolean getIsStaticConstructor() {
+<span class="fc" id="L434">		return isStaticConstructor;</span>
+	}
+
+	/**
+	 * Set the Operation::isStaticConstructor
+	 * @param newisStaticConstructor
+	 *            the isStaticConstructor to set
+	 */
+	public void setIsStaticConstructor(final boolean newisStaticConstructor) {
+<span class="fc" id="L443">		this.isStaticConstructor = newisStaticConstructor;</span>
+<span class="fc" id="L444">	}</span>
+
+	/**
+	 * Get the Operation::namespaceID
+	 * @return the namespaceID
+	 */
+	public NamespaceID getNamespaceID() {
+<span class="fc" id="L451">		return namespaceID;</span>
+	}
+
+	/**
+	 * Set the Operation::namespaceID
+	 * @param newnamespaceID
+	 *            the namespaceID to set
+	 */
+	public void setNamespaceID(final NamespaceID newnamespaceID) {
+<span class="fc" id="L460">		this.namespaceID = newnamespaceID;</span>
+<span class="fc" id="L461">	}</span>
+
+	/**
+	 * Get namespace
+	 * @return the namespace
+	 */
+	public String getNamespace() {
+<span class="fc" id="L468">		return namespace;</span>
+	}
+
+	/**
+	 * Set namespace
+	 * @param newnamespace
+	 *            the namespace to set
+	 */
+	public void setNamespace(final String newnamespace) {
+<span class="fc" id="L477">		this.namespace = newnamespace;</span>
+<span class="fc" id="L478">	}</span>
+
+	/**
+	 * Get className
+	 * @return the className
+	 */
+	public String getClassName() {
+<span class="fc" id="L485">		return className;</span>
+	}
+
+	/**
+	 * Set className
+	 * @param newclassName
+	 *            the className to set
+	 */
+	public void setClassName(final String newclassName) {
+<span class="fc" id="L494">		this.className = newclassName;</span>
+<span class="fc" id="L495">	}</span>
+
+	/**
+	 * Generate operation signature
+	 * @return Signature of the operation
+	 */
+	public String getSignature() {
+<span class="fc" id="L502">		return this.signature;</span>
+	}
+
+	/**
+	 * Set the Operation::signature
+	 * @param newsignature
+	 *            the signature to set
+	 */
+	public void setSignature(final String newsignature) {
+<span class="fc" id="L511">		this.signature = newsignature;</span>
+<span class="fc" id="L512">	}</span>
+
+	/**
+	 * Get descriptor
+	 * @return the descriptor
+	 */
+	public String getDescriptor() {
+<span class="fc" id="L519">		return descriptor;</span>
+	}
+
+	/**
+	 * Set descriptor
+	 * @param newdescriptor
+	 *            the descriptor to set
+	 */
+	public void setDescriptor(final String newdescriptor) {
+<span class="fc" id="L528">		this.descriptor = newdescriptor;</span>
+<span class="fc" id="L529">	}</span>
+
+	/**
+	 * Get nameAndDescriptor
+	 * @return the nameAndDescriptor
+	 */
+	public String getNameAndDescriptor() {
+<span class="fc" id="L536">		return nameAndDescriptor;</span>
+	}
+
+	/**
+	 * Set nameAndDescriptor
+	 * @param newnameAndDescriptor
+	 *            the nameAndDescriptor to set
+	 */
+	public void setNameAndDescriptor(final String newnameAndDescriptor) {
+<span class="fc" id="L545">		this.nameAndDescriptor = newnameAndDescriptor;</span>
+<span class="fc" id="L546">	}</span>
+
+	/**
+	 * Get annotations
+	 * @return List of operation's annotations
+	 */
+	public List&lt;Annotation&gt; getAnnotations() {
+<span class="fc" id="L553">		return annotations;</span>
+	}
+
+	/**
+	 * Set annotations
+	 * @param annotations
+	 *            the list of annotations to set
+	 */
+	public void setAnnotations(final List&lt;Annotation&gt; annotations) {
+<span class="fc" id="L562">		this.annotations = annotations;</span>
+<span class="fc" id="L563">	}</span>
+
+	/**
+	 * Add an annotation to the operation
+	 * @param annotation
+	 *            the annotation to add
+	 */
+	public void addAnnotation(final Annotation annotation) {
+<span class="nc" id="L571">		annotations.add(annotation);</span>
+<span class="nc" id="L572">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

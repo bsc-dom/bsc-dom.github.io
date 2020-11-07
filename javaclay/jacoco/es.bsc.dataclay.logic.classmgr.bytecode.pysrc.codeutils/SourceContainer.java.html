@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SourceContainer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.pysrc.codeutils</a> &gt; <span class="el_source">SourceContainer.java</span></div><h1>SourceContainer.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.pysrc.codeutils;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * This class may be used to synthesize Python source code files.
+ * 
+ * 
+ *         The current implementation can be used to synthesize a single Python source file which must contain one and only one
+ *         class. Although this is expected in Java, Python source files may contain more than one class, amongst other things.
+ */
+public final class SourceContainer {
+
+	/** Lines associated with the header of the file. */
+	private List&lt;String&gt; headerLines;
+	/** Lines associated with the definition of the class. */
+	private List&lt;String&gt; classDef;
+	/** Lines associated with the class body (functions). */
+	private List&lt;String&gt; classBody;
+	/** Lines associated with the class closure (not required by Python). */
+	private List&lt;String&gt; classEnd;
+	
+	/** Track whether any method has been added to this classs. */
+<span class="nc" id="L26">	private boolean hasAnyMethod = false;</span>
+
+	/**
+	 * Empty default constructor.
+	 */
+<span class="nc" id="L31">	public SourceContainer() {</span>
+		
+<span class="nc" id="L33">	}</span>
+
+	/**
+	 * Internal function to add lines to a certain sink.
+	 * 
+	 * @param sink
+	 *            A list of strings to where the lines will be appended.
+	 * @param lineList
+	 *            The list of strings.
+	 */
+	private static void addLines(final StringBuffer sink, final List&lt;String&gt; lineList) {
+<span class="nc bnc" id="L44" title="All 2 branches missed.">		for (String line : lineList) {</span>
+<span class="nc" id="L45">			sink.append(line);</span>
+<span class="nc" id="L46">		}</span>
+<span class="nc" id="L47">	}</span>
+
+	/**
+	 * Initialize the header of the Python source file with a simple comment.
+	 * @param extraComment
+	 *            An extra line that will be put as a comment in the &quot;header&quot;. This initialization should be called before any
+	 *            function related to the header.
+	 */
+	public void initHeader(final String extraComment) {
+<span class="nc" id="L56">		headerLines = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L57">		headerLines.add(LineFactory.generatePythonCommentLine(&quot;dataClay header&quot;, 0));</span>
+<span class="nc" id="L58">		headerLines.add(LineFactory.generatePythonCommentLine(extraComment, 0));</span>
+<span class="nc" id="L59">		headerLines.add(LineFactory.generatePythonCodeline(&quot;from dataclay import dclayMethod, DataClayObject&quot;, 0));</span>
+<span class="nc" id="L60">		headerLines.add(LineFactory.generatePythonCodeline(&quot;&quot;, 0));</span>
+<span class="nc" id="L61">	}</span>
+
+	/**
+	 * Put the import information into the Stub.
+	 * @param importInfo
+	 *            A list of tuples, containing the data provided by the registrator.
+	 */
+	public void addImportInfo(final List&lt;String&gt; importInfo) {
+		// Documentation / debugging purposes
+<span class="nc" id="L70">		headerLines.add(LineFactory.generatePythonCommentLine(</span>
+				&quot;Imports required by the following class&quot;, 0));
+		
+		// Imports, verbatim
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		for (String importLine : importInfo) {</span>
+<span class="nc" id="L75">			headerLines.add(LineFactory.generatePythonCodeline(importLine, 0));</span>
+<span class="nc" id="L76">		}</span>
+<span class="nc" id="L77">	}</span>
+
+	/**
+	 * Add an import line to the header of the file.
+	 * 
+	 * @param clsName
+	 *            The name of the import. The result will be simply _import clsName_.
+	 */
+	public void importModule(final String clsName) {
+<span class="nc" id="L86">		headerLines.add(LineFactory.generatePythonCodeline(&quot;import &quot; + clsName, 0));</span>
+<span class="nc" id="L87">	}</span>
+
+	/**
+	 * Initialize the class definition.
+	 * 
+	 *        This initialization should be called before any function related to the class definition and body.
+	 * 
+	 * @param name
+	 *            The name of the class.
+	 * @param parentName
+	 *            The name of the parent class.
+	 */
+	public void initClassDef(final String name, final String parentName) {
+<span class="nc" id="L100">		classDef = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L101">		classBody = new ArrayList&lt;String&gt;();</span>
+
+<span class="nc" id="L103">		classDef.add(LineFactory.generatePythonCommentLine(&quot;Definition of dataClay object class: &quot; + name, 0));</span>
+<span class="nc" id="L104">		classDef.add(LineFactory.generatePythonClass(name, parentName, 0));</span>
+<span class="nc" id="L105">	}</span>
+
+	/**
+	 * Build a certain method definition and put it into the class.
+	 * 
+	 * @param mthdName
+	 *            Name of the method.
+	 * @param params
+	 *            List of parameter names.
+	 * @param mthdCode
+	 *            A list of lines for the class --zero indentation.
+	 */
+	public void addMethod(final String mthdName, final String[] params, final String[] mthdCode) {
+<span class="nc" id="L118">		hasAnyMethod = true;</span>
+<span class="nc" id="L119">		classBody.add(LineFactory.generatePythonMethod(mthdName, params, 1));</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		for (int i = 0; i &lt; mthdCode.length; i++) {</span>
+<span class="nc" id="L121">			classBody.add(LineFactory.generatePythonCodeline(mthdCode[i], 1));</span>
+		}
+<span class="nc" id="L123">	}</span>
+
+	/**
+	 * End the class.
+	 * 
+	 *        This may be done at any moment --not necessarily at the end. It simply puts a certain comment at the end of the
+	 *        class definition. Esthetic.
+	 */
+	public void endClass() {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (!hasAnyMethod) {</span>
+<span class="nc" id="L133">			classBody.add(LineFactory.generatePythonCodeline(&quot;pass&quot;, 1));</span>
+		}
+<span class="nc" id="L135">		classEnd = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L136">		classEnd.add(LineFactory.generatePythonCommentLine(&quot;End of class definition&quot;, 0));</span>
+<span class="nc" id="L137">	}</span>
+
+	/**
+	 * Return the full source. Should be called at last.
+	 * 
+	 * @return A very long string containing all the source code.
+	 */
+	public String sourceToString() {
+<span class="nc" id="L145">		final StringBuffer ret = new StringBuffer();</span>
+
+<span class="nc" id="L147">		addLines(ret, headerLines);</span>
+<span class="nc" id="L148">		ret.append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L150">		addLines(ret, classDef);</span>
+<span class="nc" id="L151">		ret.append(&quot;\n&quot;);</span>
+<span class="nc" id="L152">		addLines(ret, classBody);</span>
+<span class="nc" id="L153">		addLines(ret, classEnd);</span>
+
+<span class="nc" id="L155">		return ret.toString();</span>
+	}
+
+	/**
+	 * Add an almost verbatim method into the body of the class.
+	 * 
+	 * @param implLines
+	 *            List of code lines of the method. It should include the definition --at zero indentation-- and the body
+	 *            definition with correct relative indent.
+	 */
+	public void addMethod(final String[] implLines) {
+		// Now the rest of the implementation is verbatim (relative indentation is present)
+<span class="nc bnc" id="L167" title="All 2 branches missed.">		for (String line : implLines) {</span>
+<span class="nc" id="L168">			classBody.add(LineFactory.generatePythonCodeline(line, 0));</span>
+		}
+
+<span class="nc" id="L171">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

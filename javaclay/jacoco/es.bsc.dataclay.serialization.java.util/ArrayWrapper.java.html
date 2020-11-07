@@ -1,0 +1,604 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ArrayWrapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.java.util</a> &gt; <span class="el_source">ArrayWrapper.java</span></div><h1>ArrayWrapper.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.java.util;
+
+import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.java.DataClayJavaWrapper;
+import es.bsc.dataclay.serialization.java.LanguageTypes;
+import es.bsc.dataclay.serialization.java.lang.ObjectWrapper;
+import es.bsc.dataclay.serialization.lib.DataClayDeserializationLib;
+import es.bsc.dataclay.serialization.lib.DataClaySerializationLib;
+import es.bsc.dataclay.serialization.lib.SerializationLibUtils;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.classloaders.DataClayClassLoader;
+import es.bsc.dataclay.util.classloaders.DataClayClassLoaderSrv;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.reflection.Reflector;
+
+/**
+ * This class represents an array of objects (also for multidimensional arrays) in DataClay.
+ */
+public final class ArrayWrapper extends DataClayJavaWrapper {
+
+	/** Object array. */
+	private Object objectArray;
+
+	/**
+	 * Constructor used for deserialization
+	 */
+<span class="fc" id="L41">	public ArrayWrapper() {</span>
+
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * Constructor
+	 * @param newobjectArray
+	 *            Object array
+	 */
+<span class="fc" id="L50">	public ArrayWrapper(final Object newobjectArray) {</span>
+<span class="fc" id="L51">		this.setObjectArray(newobjectArray);</span>
+<span class="fc" id="L52">	}</span>
+
+	/**
+	 * Get the DataClayObjectArray::objectArray
+	 * @return the objectArray
+	 */
+	@Override
+	public Object getJavaObject() {
+<span class="fc" id="L60">		return objectArray;</span>
+	}
+
+	/**
+	 * Set the DataClayObjectArray::objectArray
+	 * @param newobjectArray
+	 *            the objectArray to set
+	 */
+	public void setObjectArray(final Object newobjectArray) {
+<span class="fc" id="L69">		this.objectArray = newobjectArray;</span>
+<span class="fc" id="L70">	}</span>
+
+	/**
+	 * Get class given the class ID provided
+	 * @param classID
+	 *            ID of the class to get
+	 * @return yhe class identified by class id provided
+	 */
+	// CHECKSTYLE:OFF
+	private Class&lt;?&gt; getClass(final MetaClassID classID) {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if (DataClayObject.getLib().isDSLib()) {</span>
+<span class="nc" id="L81">			return DataClayClassLoaderSrv.getClass(classID);</span>
+		} else {
+<span class="nc" id="L83">			return DataClayClassLoader.getClass(classID);</span>
+		}
+	}
+
+	// CHECKSTYLE:ON
+
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+
+		// Serialize dimension and size
+<span class="fc" id="L97">		final int arrayLength = Array.getLength(objectArray);</span>
+<span class="fc" id="L98">		dcBuffer.writeVLQInt(arrayLength);</span>
+		// Check array type
+<span class="fc" id="L100">		final Class&lt;?&gt; compType = objectArray.getClass().getComponentType();</span>
+<span class="fc" id="L101">		final boolean isPrimitiveArray = compType.isPrimitive();</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">		if (isPrimitiveArray) {</span>
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">			if (Configuration.Flags.MULTIDIM_ARRAY_STREAM_SERIALIZATION.getBooleanValue()) {</span>
+				// Serialize directly
+				try {
+<span class="nc" id="L106">					dcBuffer.writeByte((byte) LanguageTypes.JAVA_PRIMITIVE_ARRAY.ordinal());</span>
+<span class="nc" id="L107">					dcBuffer.writeByteArray(SerializationLibUtils.serializeBinary(objectArray));</span>
+<span class="nc" id="L108">				} catch (IOException e) {</span>
+					// TODO Auto-generated catch block
+<span class="nc" id="L110">					e.printStackTrace();</span>
+<span class="nc" id="L111">				}</span>
+<span class="nc" id="L112">				return;</span>
+			} else {
+				// Serialize class tag of component type
+<span class="fc bfc" id="L115" title="All 2 branches covered.">				if (compType.equals(int.class)) {</span>
+<span class="fc" id="L116">					dcBuffer.writeByte((byte) LanguageTypes.INT.ordinal());</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">				} else if (compType.equals(byte.class)) {</span>
+<span class="fc" id="L118">					dcBuffer.writeByte((byte) LanguageTypes.BYTE.ordinal());</span>
+<span class="fc bfc" id="L119" title="All 2 branches covered.">				} else if (compType.equals(char.class)) {</span>
+<span class="fc" id="L120">					dcBuffer.writeByte((byte) LanguageTypes.CHAR.ordinal());</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">				} else if (compType.equals(boolean.class)) {</span>
+<span class="fc" id="L122">					dcBuffer.writeByte((byte) LanguageTypes.BOOL.ordinal());</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">				} else if (compType.equals(short.class)) {</span>
+<span class="fc" id="L124">					dcBuffer.writeByte((byte) LanguageTypes.SHORT.ordinal());</span>
+<span class="fc bfc" id="L125" title="All 2 branches covered.">				} else if (compType.equals(long.class)) {</span>
+<span class="fc" id="L126">					dcBuffer.writeByte((byte) LanguageTypes.LONG.ordinal());</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">				} else if (compType.equals(float.class)) {</span>
+<span class="fc" id="L128">					dcBuffer.writeByte((byte) LanguageTypes.FLOAT.ordinal());</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">				} else if (compType.equals(double.class)) {</span>
+<span class="fc" id="L130">					dcBuffer.writeByte((byte) LanguageTypes.DOUBLE.ordinal());</span>
+				}
+			}
+		} else {
+<span class="pc bpc" id="L134" title="1 of 2 branches missed.">			if (compType.isArray()) {</span>
+				// Get component type
+<span class="nc" id="L136">				Class&lt;?&gt; deepComponentType = compType;</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">				while (deepComponentType.isArray()) {</span>
+<span class="nc" id="L138">					deepComponentType = deepComponentType.getComponentType();</span>
+				}
+
+				// primitive multi-dimensional array and binary direct serialization
+<span class="nc bnc" id="L142" title="All 2 branches missed.">				if (deepComponentType.isPrimitive()</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">						&amp;&amp; Configuration.Flags.MULTIDIM_ARRAY_STREAM_SERIALIZATION.getBooleanValue()) {</span>
+					try {
+<span class="nc" id="L145">						dcBuffer.writeByte((byte) LanguageTypes.JAVA_PRIMITIVE_ARRAY.ordinal());</span>
+<span class="nc" id="L146">						dcBuffer.writeByteArray(SerializationLibUtils.serializeBinary(objectArray));</span>
+<span class="nc" id="L147">					} catch (IOException e) {</span>
+						// TODO Auto-generated catch block
+<span class="nc" id="L149">						e.printStackTrace();</span>
+<span class="nc" id="L150">					}</span>
+<span class="nc" id="L151">					return;</span>
+				} else {
+<span class="nc" id="L153">					dcBuffer.writeByte((byte) LanguageTypes.JAVA_ARRAY.ordinal());</span>
+<span class="nc" id="L154">					final String name = deepComponentType.getName();</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">					if (Reflector.isJavaPrimitiveOrArrayTypeName(name)) {</span>
+<span class="nc" id="L156">						dcBuffer.writeByte((byte) 0);</span>
+<span class="nc" id="L157">						dcBuffer.writeString(compType.getName());</span>
+					} else {
+						// array of dataClay objects
+<span class="nc" id="L160">						dcBuffer.writeByte((byte) 1);</span>
+<span class="nc" id="L161">						dcBuffer.writeVLQInt(Reflector.countOccurrences(compType.getName(), &quot;[&quot;));</span>
+<span class="nc" id="L162">						final StubInfo stubInfo = DataClayObject.getStubInfoFromClass(deepComponentType.getName());</span>
+<span class="nc" id="L163">						final MetaClassID compTypeID = stubInfo.getClassID();</span>
+<span class="nc" id="L164">						compTypeID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
+								curSerializedObjs, pendingObjs, referenceCounting);
+					}
+				}
+<span class="pc bfc" id="L168" title="All 2 branches covered.">			} else if (compType.equals(Integer.class)) {</span>
+<span class="fc" id="L169">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_INTEGER.ordinal());</span>
+<span class="fc bfc" id="L170" title="All 2 branches covered.">			} else if (compType.equals(Byte.class)) {</span>
+<span class="fc" id="L171">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_BYTE.ordinal());</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">			} else if (compType.equals(Character.class)) {</span>
+<span class="fc" id="L173">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_CHARACTER.ordinal());</span>
+<span class="fc bfc" id="L174" title="All 2 branches covered.">			} else if (compType.equals(Boolean.class)) {</span>
+<span class="fc" id="L175">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_BOOLEAN.ordinal());</span>
+<span class="fc bfc" id="L176" title="All 2 branches covered.">			} else if (compType.equals(Short.class)) {</span>
+<span class="fc" id="L177">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_SHORT.ordinal());</span>
+<span class="fc bfc" id="L178" title="All 2 branches covered.">			} else if (compType.equals(Long.class)) {</span>
+<span class="fc" id="L179">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_LONG.ordinal());</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">			} else if (compType.equals(Float.class)) {</span>
+<span class="fc" id="L181">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_FLOAT.ordinal());</span>
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">			} else if (compType.equals(Double.class)) {</span>
+<span class="fc" id="L183">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_DOUBLE.ordinal());</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">			} else if (compType.equals(Object.class)) {</span>
+<span class="nc" id="L185">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_OBJECT.ordinal());</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">			} else if (compType.equals(String.class)) {</span>
+<span class="nc" id="L187">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_STRING.ordinal());</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">			} else if (Collection.class.isAssignableFrom(compType)) {</span>
+<span class="nc" id="L189">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_COLLECTION.ordinal());</span>
+<span class="nc" id="L190">				dcBuffer.writeString(compType.getName());</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">			} else if (Map.class.isAssignableFrom(compType)) {</span>
+<span class="nc" id="L192">				dcBuffer.writeByte((byte) LanguageTypes.JAVA_MAP.ordinal());</span>
+<span class="nc" id="L193">				dcBuffer.writeString(compType.getName());</span>
+			} else {
+<span class="nc" id="L195">				dcBuffer.writeByte((byte) LanguageTypes.DATACLAYOBJ.ordinal());</span>
+<span class="nc" id="L196">				final StubInfo stubInfo = DataClayObject.getStubInfoFromClass(compType.getName());</span>
+<span class="nc" id="L197">				final MetaClassID compTypeID = stubInfo.getClassID();</span>
+				// MetaClassID compTypeID = (MetaClassID)
+				// Reflector.getStaticField(compType, StubFieldNames.MCLASSID_FIELDNAME);
+<span class="nc" id="L200">				compTypeID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
+						curSerializedObjs, pendingObjs, referenceCounting);
+
+			}
+		}
+<span class="pc bpc" id="L205" title="1 of 2 branches missed.">		if (arrayLength &gt; 0) {</span>
+
+			// Create nulls bitset if not primitive array
+<span class="fc" id="L208">			BitSet nullsBitSet = null;</span>
+<span class="fc" id="L209">			int bitSetIndex = -1;</span>
+<span class="fc bfc" id="L210" title="All 2 branches covered.">			if (!isPrimitiveArray) {</span>
+				// CHECKSTYLE:OFF
+<span class="fc" id="L212">				int numBytes = 0;</span>
+<span class="fc bfc" id="L213" title="All 2 branches covered.">				for (int i = 0; i &lt; arrayLength; ++i) {</span>
+<span class="fc bfc" id="L214" title="All 2 branches covered.">					if (i % 8 == 0) {</span>
+<span class="fc" id="L215">						numBytes++;</span>
+					}
+				}
+				// CHECKSTYLE:ON
+<span class="fc" id="L219">				dcBuffer.writeVLQInt(numBytes);</span>
+<span class="fc" id="L220">				bitSetIndex = dcBuffer.writerIndex();</span>
+<span class="fc" id="L221">				dcBuffer.writeBytes(new byte[numBytes]);</span>
+<span class="fc" id="L222">				nullsBitSet = new BitSet(arrayLength);</span>
+			}
+
+			// Serialize each element
+<span class="fc bfc" id="L226" title="All 2 branches covered.">			for (int i = 0; i &lt; arrayLength; ++i) {</span>
+<span class="fc" id="L227">				final Object element = Array.get(objectArray, i);</span>
+<span class="pc bpc" id="L228" title="1 of 4 branches missed.">				if (!isPrimitiveArray &amp;&amp; element != null) {</span>
+<span class="fc" id="L229">					nullsBitSet.set(i);</span>
+				}
+<span class="pc bpc" id="L231" title="1 of 2 branches missed.">				if (element == null) {</span>
+<span class="nc" id="L232">					continue;</span>
+				}
+<span class="fc bfc" id="L234" title="All 2 branches covered.">				if (isPrimitiveArray) {</span>
+<span class="fc bfc" id="L235" title="All 2 branches covered.">					if (compType.equals(int.class)) {</span>
+<span class="fc" id="L236">						dcBuffer.writeInts((int[]) objectArray);</span>
+<span class="fc" id="L237">						break;</span>
+<span class="fc bfc" id="L238" title="All 2 branches covered.">					} else if (compType.equals(byte.class)) {</span>
+<span class="fc" id="L239">						dcBuffer.writeByteArray((byte[]) objectArray);</span>
+<span class="fc" id="L240">						break;</span>
+<span class="fc bfc" id="L241" title="All 2 branches covered.">					} else if (compType.equals(char.class)) {</span>
+<span class="fc" id="L242">						dcBuffer.writeChars((char[]) objectArray);</span>
+<span class="fc" id="L243">						break;</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">					} else if (compType.equals(boolean.class)) {</span>
+<span class="fc" id="L245">						dcBuffer.writeBooleans((boolean[]) objectArray);</span>
+<span class="fc" id="L246">						break;</span>
+<span class="fc bfc" id="L247" title="All 2 branches covered.">					} else if (compType.equals(short.class)) {</span>
+<span class="fc" id="L248">						dcBuffer.writeShorts((short[]) objectArray);</span>
+<span class="fc" id="L249">						break;</span>
+<span class="fc bfc" id="L250" title="All 2 branches covered.">					} else if (compType.equals(long.class)) {</span>
+<span class="fc" id="L251">						dcBuffer.writeLongs((long[]) objectArray);</span>
+<span class="fc" id="L252">						break;</span>
+<span class="fc bfc" id="L253" title="All 2 branches covered.">					} else if (compType.equals(float.class)) {</span>
+<span class="fc" id="L254">						dcBuffer.writeFloats((float[]) objectArray);</span>
+<span class="fc" id="L255">						break;</span>
+<span class="pc bpc" id="L256" title="1 of 2 branches missed.">					} else if (compType.equals(double.class)) {</span>
+<span class="fc" id="L257">						dcBuffer.writeDoubles((double[]) objectArray);</span>
+<span class="fc" id="L258">						break;</span>
+					}
+<span class="pc bpc" id="L260" title="1 of 2 branches missed.">				} else if (compType.equals(String.class)) {</span>
+<span class="nc" id="L261">					dcBuffer.writeStrings((String[]) objectArray);</span>
+<span class="nc" id="L262">					break;</span>
+<span class="fc bfc" id="L263" title="All 2 branches covered.">				} else if (compType.equals(Integer.class)) {</span>
+<span class="fc" id="L264">					dcBuffer.writeInt((int) element);</span>
+<span class="fc bfc" id="L265" title="All 2 branches covered.">				} else if (compType.equals(Byte.class)) {</span>
+<span class="fc" id="L266">					dcBuffer.writeByte((byte) element);</span>
+<span class="fc bfc" id="L267" title="All 2 branches covered.">				} else if (compType.equals(Character.class)) {</span>
+<span class="fc" id="L268">					dcBuffer.writeChar((char) element);</span>
+<span class="fc bfc" id="L269" title="All 2 branches covered.">				} else if (compType.equals(Boolean.class)) {</span>
+<span class="fc" id="L270">					dcBuffer.writeBoolean((boolean) element);</span>
+<span class="fc bfc" id="L271" title="All 2 branches covered.">				} else if (compType.equals(Short.class)) {</span>
+<span class="fc" id="L272">					dcBuffer.writeShort((short) element);</span>
+<span class="fc bfc" id="L273" title="All 2 branches covered.">				} else if (compType.equals(Long.class)) {</span>
+<span class="fc" id="L274">					dcBuffer.writeLong((long) element);</span>
+<span class="fc bfc" id="L275" title="All 2 branches covered.">				} else if (compType.equals(Float.class)) {</span>
+<span class="fc" id="L276">					dcBuffer.writeFloat((float) element);</span>
+<span class="pc bpc" id="L277" title="1 of 2 branches missed.">				} else if (compType.equals(Double.class)) {</span>
+<span class="fc" id="L278">					dcBuffer.writeDouble((double) element);</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">				} else if (compType.equals(Object.class)) {</span>
+					// ==== GENERIC ==== //
+<span class="nc" id="L281">					final ObjectWrapper wrapper = new ObjectWrapper(element);</span>
+<span class="nc" id="L282">					wrapper.serialize(dcBuffer,</span>
+							ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+<span class="nc bnc" id="L284" title="All 2 branches missed.">				} else if (compType.isArray()) {</span>
+					// ==== ARRAY ==== //
+					// Check if was already serialized
+<span class="nc" id="L287">					Integer tag = curSerializedObjs.get(element);</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">					if (tag == null) {</span>
+<span class="nc" id="L289">						tag = new Integer(curSerializedObjs.size());</span>
+<span class="nc" id="L290">						dcBuffer.writeVLQInt(tag.intValue());</span>
+<span class="nc" id="L291">						curSerializedObjs.put(element, tag);</span>
+<span class="nc" id="L292">						new ArrayWrapper(element).serialize(dcBuffer,</span>
+								ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+					} else {
+<span class="nc" id="L295">						dcBuffer.writeVLQInt(tag.intValue());</span>
+					}
+<span class="nc bnc" id="L297" title="All 2 branches missed.">				} else if (Collection.class.isAssignableFrom(compType)) {</span>
+					// ==== COLLECTION ==== //
+					// Check if was already serialized
+<span class="nc" id="L300">					Integer tag = curSerializedObjs.get(element);</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">					if (tag == null) {</span>
+<span class="nc" id="L302">						tag = new Integer(curSerializedObjs.size());</span>
+<span class="nc" id="L303">						dcBuffer.writeVLQInt(tag.intValue());</span>
+<span class="nc" id="L304">						curSerializedObjs.put(element, tag);</span>
+<span class="nc" id="L305">						new CollectionWrapper((Collection) element).serialize(dcBuffer,</span>
+								ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+					} else {
+<span class="nc" id="L308">						dcBuffer.writeVLQInt(tag.intValue());</span>
+					}
+
+<span class="nc bnc" id="L311" title="All 2 branches missed.">				} else if (Map.class.isAssignableFrom(compType)) {</span>
+					// ==== MAP ==== //
+					// Check if was already serialized
+<span class="nc" id="L314">					Integer tag = curSerializedObjs.get(element);</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">					if (tag == null) {</span>
+<span class="nc" id="L316">						tag = new Integer(curSerializedObjs.size());</span>
+<span class="nc" id="L317">						dcBuffer.writeVLQInt(tag.intValue());</span>
+<span class="nc" id="L318">						curSerializedObjs.put(element, tag);</span>
+<span class="nc" id="L319">						new MapWrapper((Map) element).serialize(dcBuffer,</span>
+								ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+					} else {
+<span class="nc" id="L322">						dcBuffer.writeVLQInt(tag.intValue());</span>
+					}
+
+<span class="nc" id="L325">				} else {</span>
+					// ==== USER TYPE ==== //
+<span class="nc" id="L327">					DataClaySerializationLib.serializeAssociation((DataClayObject) element, dcBuffer, ignoreUserTypes,</span>
+							ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+				}
+			}
+<span class="fc bfc" id="L331" title="All 2 branches covered.">			if (!isPrimitiveArray) {</span>
+<span class="fc" id="L332">				final int j = dcBuffer.writerIndex();</span>
+<span class="fc" id="L333">				dcBuffer.setWriterIndex(bitSetIndex);</span>
+<span class="fc" id="L334">				dcBuffer.writeBytes(nullsBitSet.toByteArray());</span>
+<span class="fc" id="L335">				dcBuffer.setWriterIndex(j);</span>
+			}
+		}
+<span class="fc" id="L338">	}</span>
+
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedObjs) {
+
+		// Get size
+<span class="fc" id="L347">		final int arrLength = dcBuffer.readVLQInt();</span>
+<span class="pc bpc" id="L348" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L349">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array length deserialized: data=&quot;+  arrLength + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+		// Get component type
+<span class="fc" id="L352">		final byte compTypeByte = dcBuffer.readByte();</span>
+<span class="pc bpc" id="L353" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L354">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array type deserialized: data=&quot;+  compTypeByte + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+		// Get component type class
+<span class="fc" id="L357">		Class&lt;?&gt; compType = null;</span>
+<span class="pc bpc" id="L358" title="1 of 2 branches missed.">		if (compTypeByte == (byte) LanguageTypes.JAVA_PRIMITIVE_ARRAY.ordinal()</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">				&amp;&amp; Configuration.Flags.MULTIDIM_ARRAY_STREAM_SERIALIZATION.getBooleanValue()) {</span>
+			try {
+<span class="nc" id="L361">				objectArray = SerializationLibUtils.deserializeBinary(dcBuffer.readByteArray());</span>
+<span class="nc" id="L362">			} catch (Exception e) {</span>
+<span class="nc" id="L363">				e.printStackTrace();</span>
+<span class="nc" id="L364">			}</span>
+<span class="nc" id="L365">			return;</span>
+<span class="fc bfc" id="L366" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.INT.ordinal()) {</span>
+<span class="fc" id="L367">			compType = int.class;</span>
+<span class="fc bfc" id="L368" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.FLOAT.ordinal()) {</span>
+<span class="fc" id="L369">			compType = float.class;</span>
+<span class="fc bfc" id="L370" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.BOOL.ordinal()) {</span>
+<span class="fc" id="L371">			compType = boolean.class;</span>
+<span class="fc bfc" id="L372" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.BYTE.ordinal()) {</span>
+<span class="fc" id="L373">			compType = byte.class;</span>
+<span class="fc bfc" id="L374" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.CHAR.ordinal()) {</span>
+<span class="fc" id="L375">			compType = char.class;</span>
+<span class="fc bfc" id="L376" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.DOUBLE.ordinal()) {</span>
+<span class="fc" id="L377">			compType = double.class;</span>
+<span class="fc bfc" id="L378" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.SHORT.ordinal()) {</span>
+<span class="fc" id="L379">			compType = short.class;</span>
+<span class="fc bfc" id="L380" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.LONG.ordinal()) {</span>
+<span class="fc" id="L381">			compType = long.class;</span>
+<span class="fc bfc" id="L382" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_INTEGER.ordinal()) {</span>
+<span class="fc" id="L383">			compType = Integer.class;</span>
+<span class="fc bfc" id="L384" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_FLOAT.ordinal()) {</span>
+<span class="fc" id="L385">			compType = Float.class;</span>
+<span class="fc bfc" id="L386" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_BOOLEAN.ordinal()) {</span>
+<span class="fc" id="L387">			compType = Boolean.class;</span>
+<span class="fc bfc" id="L388" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_BYTE.ordinal()) {</span>
+<span class="fc" id="L389">			compType = Byte.class;</span>
+<span class="fc bfc" id="L390" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_CHARACTER.ordinal()) {</span>
+<span class="fc" id="L391">			compType = Character.class;</span>
+<span class="fc bfc" id="L392" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_DOUBLE.ordinal()) {</span>
+<span class="fc" id="L393">			compType = Double.class;</span>
+<span class="fc bfc" id="L394" title="All 2 branches covered.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_SHORT.ordinal()) {</span>
+<span class="fc" id="L395">			compType = Short.class;</span>
+<span class="pc bpc" id="L396" title="1 of 2 branches missed.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_LONG.ordinal()) {</span>
+<span class="fc" id="L397">			compType = Long.class;</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_STRING.ordinal()) {</span>
+<span class="nc" id="L399">			compType = String.class;</span>
+<span class="nc bnc" id="L400" title="All 2 branches missed.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_OBJECT.ordinal()) {</span>
+<span class="nc" id="L401">			compType = Object.class;</span>
+<span class="nc bnc" id="L402" title="All 2 branches missed.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_COLLECTION.ordinal()) {</span>
+<span class="nc" id="L403">			final String specificCollName = dcBuffer.readString();</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L405">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array type name deserialized: data=&quot;+  specificCollName + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+			try {
+<span class="nc" id="L408">				compType = ClassLoader.getSystemClassLoader().loadClass(specificCollName);</span>
+<span class="nc" id="L409">			} catch (final Exception e) {</span>
+<span class="nc" id="L410">				throw new RuntimeException(e);</span>
+<span class="nc" id="L411">			}</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_MAP.ordinal()) {</span>
+<span class="nc" id="L413">			final String specificMapName = dcBuffer.readString();</span>
+<span class="nc bnc" id="L414" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L415">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array type name deserialized: data=&quot;+  specificMapName + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+			try {
+<span class="nc" id="L418">				compType = ClassLoader.getSystemClassLoader().loadClass(specificMapName);</span>
+<span class="nc" id="L419">			} catch (final Exception e) {</span>
+<span class="nc" id="L420">				throw new RuntimeException(e);</span>
+<span class="nc" id="L421">			}</span>
+<span class="nc bnc" id="L422" title="All 2 branches missed.">		} else if (compTypeByte == (byte) LanguageTypes.JAVA_ARRAY.ordinal()) {</span>
+<span class="nc" id="L423">			final byte isJava = dcBuffer.readByte();</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">			if (isJava == (byte) 0) {</span>
+<span class="nc" id="L425">				final String arraySignature = dcBuffer.readString();</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">				if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L427">					DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array signature deserialized: data=&quot;+  arraySignature + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+				}
+<span class="nc bnc" id="L429" title="All 2 branches missed.">				if (DataClayObject.getLib().isDSLib()) {</span>
+<span class="nc" id="L430">					compType = Reflector.getClassFromSignatureAndArray(arraySignature,</span>
+							DataClayClassLoaderSrv.execEnvironmentClassLoader);
+				} else {
+
+<span class="nc" id="L434">					final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();</span>
+<span class="nc" id="L435">					compType = Reflector.getClassFromSignatureAndArray(arraySignature,</span>
+							classLoader);
+				}
+<span class="nc" id="L438">			} else {</span>
+<span class="nc" id="L439">				final int arrayDimension = dcBuffer.readVLQInt();</span>
+<span class="nc bnc" id="L440" title="All 2 branches missed.">				if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L441">					DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array dimension deserialized: data=&quot;+  arrayDimension + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+				}
+<span class="nc" id="L443">				final MetaClassID classID = new MetaClassID();</span>
+<span class="nc" id="L444">				classID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc bnc" id="L445" title="All 2 branches missed.">				if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L446">					DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array class id deserialized: data=&quot;+  classID + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+				}
+<span class="nc" id="L448">				compType = this.getClass(classID);</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">				if (arrayDimension &gt; 0) {</span>
+<span class="nc" id="L450">					final int[] dimensions = new int[arrayDimension];</span>
+<span class="nc" id="L451">					compType = Array.newInstance(compType, dimensions).getClass();</span>
+				}
+			}
+
+<span class="nc bnc" id="L455" title="All 2 branches missed.">		} else if (compTypeByte == (byte) LanguageTypes.DATACLAYOBJ.ordinal()) {</span>
+<span class="nc" id="L456">			final MetaClassID classID = new MetaClassID();</span>
+<span class="nc" id="L457">			classID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc bnc" id="L458" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L459">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array class id deserialized: data=&quot;+  classID + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+<span class="nc" id="L461">			compType = this.getClass(classID);</span>
+		}
+		// Create new array
+<span class="fc" id="L464">		this.objectArray = Array.newInstance(compType, arrLength);</span>
+<span class="fc" id="L465">		final boolean isPrimitiveArray = compType.isPrimitive();</span>
+<span class="pc bpc" id="L466" title="1 of 2 branches missed.">		if (arrLength &gt; 0) {</span>
+<span class="fc" id="L467">			BitSet nullsBitMap = null;</span>
+<span class="fc bfc" id="L468" title="All 2 branches covered.">			if (!isPrimitiveArray) {</span>
+				// Read nulls bit set
+<span class="fc" id="L470">				final int bitMapSize = dcBuffer.readVLQInt();</span>
+<span class="pc bpc" id="L471" title="1 of 2 branches missed.">				if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L472">					DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array bitmap size deserialized: data=&quot;+  bitMapSize + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+				}
+<span class="fc" id="L474">				final byte[] bytes = dcBuffer.readBytes(bitMapSize);</span>
+<span class="fc" id="L475">				nullsBitMap = BitSet.valueOf(bytes);</span>
+<span class="pc bpc" id="L476" title="1 of 2 branches missed.">				if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L477">					DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Array bitmap deserialized: data=&quot;+  nullsBitMap + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+				}
+			}
+
+<span class="fc bfc" id="L481" title="All 2 branches covered.">			for (int i = 0; i &lt; arrLength; ++i) {</span>
+<span class="fc" id="L482">				Object arrayElement = null;</span>
+<span class="pc bpc" id="L483" title="1 of 4 branches missed.">				if (!isPrimitiveArray &amp;&amp; !nullsBitMap.get(i)) {</span>
+<span class="nc" id="L484">					continue;</span>
+				}
+<span class="fc bfc" id="L486" title="All 2 branches covered.">				if (isPrimitiveArray) {</span>
+<span class="fc bfc" id="L487" title="All 2 branches covered.">					if (compType.equals(int.class)) {</span>
+<span class="fc" id="L488">						objectArray = dcBuffer.readInts(arrLength);</span>
+<span class="fc" id="L489">						break;</span>
+<span class="fc bfc" id="L490" title="All 2 branches covered.">					} else if (compType.equals(byte.class)) {</span>
+<span class="fc" id="L491">						objectArray = dcBuffer.readByteArray();</span>
+<span class="fc" id="L492">						break;</span>
+<span class="fc bfc" id="L493" title="All 2 branches covered.">					} else if (compType.equals(char.class)) {</span>
+<span class="fc" id="L494">						objectArray = dcBuffer.readChars(arrLength);</span>
+<span class="fc" id="L495">						break;</span>
+<span class="fc bfc" id="L496" title="All 2 branches covered.">					} else if (compType.equals(boolean.class)) {</span>
+<span class="fc" id="L497">						objectArray = dcBuffer.readBooleans(arrLength);</span>
+<span class="fc" id="L498">						break;</span>
+<span class="fc bfc" id="L499" title="All 2 branches covered.">					} else if (compType.equals(short.class)) {</span>
+<span class="fc" id="L500">						objectArray = dcBuffer.readShorts(arrLength);</span>
+<span class="fc" id="L501">						break;</span>
+<span class="fc bfc" id="L502" title="All 2 branches covered.">					} else if (compType.equals(long.class)) {</span>
+<span class="fc" id="L503">						objectArray = dcBuffer.readLongs(arrLength);</span>
+<span class="fc" id="L504">						break;</span>
+<span class="fc bfc" id="L505" title="All 2 branches covered.">					} else if (compType.equals(float.class)) {</span>
+<span class="fc" id="L506">						objectArray = dcBuffer.readFloats(arrLength);</span>
+<span class="fc" id="L507">						break;</span>
+<span class="pc bpc" id="L508" title="1 of 2 branches missed.">					} else if (compType.equals(double.class)) {</span>
+<span class="fc" id="L509">						objectArray = dcBuffer.readDoubles(arrLength);</span>
+<span class="fc" id="L510">						break;</span>
+					}
+				} else {
+<span class="pc bpc" id="L513" title="1 of 2 branches missed.">					if (compType.equals(String.class)) {</span>
+<span class="nc" id="L514">						objectArray = dcBuffer.readStrings(arrLength);</span>
+<span class="nc" id="L515">						break;</span>
+<span class="fc bfc" id="L516" title="All 2 branches covered.">					} else if (compType.equals(Integer.class)) {</span>
+<span class="fc" id="L517">						arrayElement = dcBuffer.readInt();</span>
+<span class="fc bfc" id="L518" title="All 2 branches covered.">					} else if (compType.equals(Byte.class)) {</span>
+<span class="fc" id="L519">						arrayElement = dcBuffer.readByte();</span>
+<span class="fc bfc" id="L520" title="All 2 branches covered.">					} else if (compType.equals(Character.class)) {</span>
+<span class="fc" id="L521">						arrayElement = dcBuffer.readChar();</span>
+<span class="fc bfc" id="L522" title="All 2 branches covered.">					} else if (compType.equals(Boolean.class)) {</span>
+<span class="fc" id="L523">						arrayElement = dcBuffer.readBoolean();</span>
+<span class="fc bfc" id="L524" title="All 2 branches covered.">					} else if (compType.equals(Short.class)) {</span>
+<span class="fc" id="L525">						arrayElement = dcBuffer.readShort();</span>
+<span class="fc bfc" id="L526" title="All 2 branches covered.">					} else if (compType.equals(Long.class)) {</span>
+<span class="fc" id="L527">						arrayElement = dcBuffer.readLong();</span>
+<span class="fc bfc" id="L528" title="All 2 branches covered.">					} else if (compType.equals(Float.class)) {</span>
+<span class="fc" id="L529">						arrayElement = dcBuffer.readFloat();</span>
+<span class="pc bpc" id="L530" title="1 of 2 branches missed.">					} else if (compType.equals(Double.class)) {</span>
+<span class="fc" id="L531">						arrayElement = dcBuffer.readDouble();</span>
+<span class="nc bnc" id="L532" title="All 2 branches missed.">					} else if (compType.equals(Object.class)) {</span>
+						// ==== GENERIC ==== //
+<span class="nc" id="L534">						final ObjectWrapper wrapper = new ObjectWrapper();</span>
+<span class="nc" id="L535">						wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc" id="L536">						arrayElement = wrapper.getJavaObject();</span>
+
+<span class="nc bnc" id="L538" title="All 2 branches missed.">					} else if (compType.isArray()) {</span>
+						// ==== ARRAY ==== //
+<span class="nc" id="L540">						final Integer tag = dcBuffer.readVLQInt();</span>
+<span class="nc" id="L541">						arrayElement = curDeserializedObjs.get(tag);</span>
+<span class="nc bnc" id="L542" title="All 2 branches missed.">						if (arrayElement == null) {</span>
+<span class="nc" id="L543">							final ArrayWrapper wrapper = new ArrayWrapper();</span>
+<span class="nc" id="L544">							wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc" id="L545">							arrayElement = wrapper.getJavaObject();</span>
+						}
+<span class="nc bnc" id="L547" title="All 2 branches missed.">					} else if (Collection.class.isAssignableFrom(compType)) {</span>
+						// ==== COLLECTION ==== //
+<span class="nc" id="L549">						final Integer tag = dcBuffer.readVLQInt();</span>
+<span class="nc" id="L550">						arrayElement = curDeserializedObjs.get(tag);</span>
+<span class="nc bnc" id="L551" title="All 2 branches missed.">						if (arrayElement == null) {</span>
+<span class="nc" id="L552">							final CollectionWrapper wrapper = new CollectionWrapper();</span>
+<span class="nc" id="L553">							wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc" id="L554">							arrayElement = wrapper.getJavaObject();</span>
+						}
+<span class="nc bnc" id="L556" title="All 2 branches missed.">					} else if (Map.class.isAssignableFrom(compType)) {</span>
+						// ==== MAP ==== //
+<span class="nc" id="L558">						final Integer tag = dcBuffer.readVLQInt();</span>
+<span class="nc" id="L559">						arrayElement = curDeserializedObjs.get(tag);</span>
+<span class="nc bnc" id="L560" title="All 2 branches missed.">						if (arrayElement == null) {</span>
+<span class="nc" id="L561">							final MapWrapper wrapper = new MapWrapper();</span>
+<span class="nc" id="L562">							wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc" id="L563">							arrayElement = wrapper.getJavaObject();</span>
+						}
+<span class="nc" id="L565">					} else {</span>
+<span class="nc" id="L566">						arrayElement = DataClayDeserializationLib.deserializeAssociation(dcBuffer,</span>
+								ifaceBitMaps, metadata,
+<span class="nc" id="L568">								curDeserializedObjs, DataClayObject.getLib());</span>
+					}
+				}
+				try {
+<span class="fc" id="L572">					Array.set(objectArray, i, arrayElement);</span>
+<span class="nc" id="L573">				} catch (final Exception e) {</span>
+<span class="nc" id="L574">					e.printStackTrace();</span>
+<span class="fc" id="L575">				}</span>
+			}
+		}
+<span class="fc" id="L578">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L582">		return objectArray.hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(final Object object) {
+<span class="nc bnc" id="L587" title="All 2 branches missed.">		if (!(object instanceof ArrayWrapper)) {</span>
+<span class="nc" id="L588">			return false;</span>
+		}
+<span class="nc" id="L590">		final ArrayWrapper value = (ArrayWrapper) object;</span>
+<span class="nc" id="L591">		return Arrays.deepEquals((Object[]) value.getJavaObject(), (Object[]) objectArray);</span>
+	}
+
+	@Override
+	public boolean isImmutable() {
+<span class="nc" id="L596">		return false;</span>
+	}
+
+	@Override
+	public boolean isNull() {
+<span class="nc bnc" id="L601" title="All 2 branches missed.">		return objectArray == null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

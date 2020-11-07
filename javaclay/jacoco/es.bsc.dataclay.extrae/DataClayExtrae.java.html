@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayExtrae.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.extrae</a> &gt; <span class="el_source">DataClayExtrae.java</span></div><h1>DataClayExtrae.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.extrae;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.ResourceBundle;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.util.Configuration;
+
+/**
+ * This utility class contains functions for Extrae tracing.
+ */
+<span class="nc" id="L20">public final class DataClayExtrae {</span>
+
+	public static final boolean COMPILE_EXTRAE = true;
+
+	/** Logger. */
+<span class="nc" id="L25">	private static final Logger logger = LogManager.getLogger(&quot;Paraver&quot;);</span>
+
+	/** Indicates that Extrae tracing is activated. */
+<span class="nc" id="L28">	public static boolean extraeTracing = false;</span>
+
+	/** Per each intervened method. It's value. */
+<span class="nc" id="L31">	private static final Map&lt;String, Long&gt; ALL_METHOD_VALUES = new HashMap&lt;&gt;();</span>
+	
+	/** Traced methods. */
+<span class="nc" id="L34">	private static Map&lt;String, Long&gt; tracedMethods = new HashMap&lt;&gt;();</span>
+
+	/** Type of dataClay events. */
+	private static final int EVENT_TYPE = 8000010;
+	
+	/** Extrae task ID. */
+<span class="nc" id="L40">	private static int taskID = 0;</span>
+	
+	/** First available task ID. */
+<span class="nc" id="L43">	private static int currentAvailableTaskID = 0;</span>
+
+	/** Indicates traces were generated. */
+<span class="nc" id="L46">	private static boolean generatedTraces = false;</span>
+	
+	static { 
+		if (COMPILE_EXTRAE) {
+			// read from paraver_values
+<span class="nc" id="L51">			final ResourceBundle props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.paraver_values&quot;);</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">			for (final String key : props.keySet()) {</span>
+<span class="nc" id="L53">				ALL_METHOD_VALUES.put(key, Long.valueOf(props.getString(key)));</span>
+<span class="nc" id="L54">			}</span>
+		}
+<span class="nc" id="L56">	}</span>
+	
+	
+	/**
+	 * Prepare Extrae tracing
+	 * 
+	 */
+	public static synchronized void initializeExtrae(
+			final boolean initializeWrapper) {
+		if (COMPILE_EXTRAE) {
+			try {
+
+<span class="nc bnc" id="L68" title="All 2 branches missed.">				if (initializeWrapper) {</span>
+
+<span class="nc" id="L70">					taskID = currentAvailableTaskID;</span>
+<span class="nc" id="L71">					currentAvailableTaskID++;</span>
+<span class="nc" id="L72">					es.bsc.cepbatools.extrae.Wrapper.SetTaskID(taskID);</span>
+<span class="nc" id="L73">					es.bsc.cepbatools.extrae.Wrapper.SetNumTasks(taskID + 1);</span>
+<span class="nc" id="L74">					logger.debug(&quot;** Calling Extrae Wrapper.Init()&quot;);</span>
+<span class="nc" id="L75">					es.bsc.cepbatools.extrae.Wrapper.Init();</span>
+				} else {
+					// if we have starting task ID = 2, then 1 master and 1 worker are set
+					// so we will have:
+					// 1 ds java x
+
+					//Wrapper.SetNumTasks(currentAvailableTaskID * 2 + 1); //COMPSs only
+<span class="nc" id="L82">					logger.debug(&quot;** WARNING: NOT calling Extrae Wrapper.Init()&quot;);</span>
+					//Wrapper.Init();
+					//	Wrapper.SetNumTasks(taskID + 1);
+				}
+
+				//Paraver.enablePThreads();
+<span class="nc" id="L88">				extraeTracing = true;</span>
+<span class="nc" id="L89">				logger.debug(&quot;** INITIALIZED Extrae TRACING FOR task ID &quot; + taskID + &quot;. Extrae has &quot;</span>
+<span class="nc" id="L90">						+ es.bsc.cepbatools.extrae.Wrapper.GetNumTasks() + &quot; tasks &quot;</span>
+						+ &quot;. \n WARNING: Application will NOT be traced if no &quot; +
+						&quot; initialization was done (COMPSs initializes it) or Paraver aspects injection was not applied&quot;);
+
+<span class="nc" id="L94">			} catch (final Exception e) {</span>
+<span class="nc" id="L95">				logger.debug(&quot;** Exception while initializing Extrae&quot;, e);</span>
+<span class="nc" id="L96">			} catch (final Error e) {</span>
+<span class="nc" id="L97">				logger.debug(&quot;** Error while initializing Extrae&quot;, e);</span>
+<span class="nc" id="L98">			}</span>
+		}
+<span class="nc" id="L100">	}</span>
+
+	/**
+	 * Enable Extrae tracing
+	 */
+	public static synchronized void enableExtraeTracing() {
+		if (COMPILE_EXTRAE) {
+<span class="nc" id="L107">			extraeTracing = true;</span>
+<span class="nc" id="L108">			taskID = currentAvailableTaskID;</span>
+<span class="nc" id="L109">			es.bsc.cepbatools.extrae.Wrapper.SetNumTasks(taskID + 1);</span>
+<span class="nc" id="L110">			logger.debug(&quot;** ENABLED Extrae TRACING FOR task ID &quot; + taskID + &quot;. Extrae has &quot;</span>
+<span class="nc" id="L111">					+ es.bsc.cepbatools.extrae.Wrapper.GetNumTasks() + &quot; tasks &quot;</span>
+					+ &quot;. \n WARNING: Trace with Extrae if enabled. Application will NOT be traced if no &quot; +
+					&quot; initialization was done (COMPSs initializes it) or Paraver aspects injection was not applied&quot;);
+		}
+		
+<span class="nc" id="L116">	}</span>
+	
+	/**
+	 * Disable Extrae tracing
+	 */
+	public static synchronized void disableExtraeTracing() {
+		if (COMPILE_EXTRAE) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			if (extraeTracing) {</span>
+<span class="nc" id="L124">				defineEventTypes();</span>
+<span class="nc" id="L125">				extraeTracing = false;</span>
+<span class="nc" id="L126">				generatedTraces = true;</span>
+<span class="nc" id="L127">				logger.debug(&quot;** FINISHED Extrae TRACING FOR &quot; + taskID + &quot; with task ID &quot; + es.bsc.cepbatools.extrae.Wrapper.GetTaskID());</span>
+
+			}
+<span class="nc" id="L130">			logger.debug(&quot;** DISABLED Extrae TRACING FOR task ID &quot; + taskID + &quot;. Extrae has &quot;</span>
+<span class="nc" id="L131">					+ es.bsc.cepbatools.extrae.Wrapper.GetNumTasks() + &quot; tasks &quot;</span>
+					+ &quot;. \n WARNING: Trace with Extrae if enabled. Application will NOT be traced if no &quot; +
+					&quot; initialization was done (COMPSs initializes it) or Paraver aspects injection was not applied&quot;);
+		}
+		
+<span class="nc" id="L136">	}</span>
+
+	/**
+	 * Finish tracing
+	 */
+	public static synchronized void finishTracing(final boolean finalizeWrapper) {
+		if (COMPILE_EXTRAE) {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">			if (extraeTracing) {</span>
+<span class="nc" id="L144">				defineEventTypes();</span>
+				//Wrapper.SetOptions(Wrapper.EXTRAE_ENABLE_ALL_OPTIONS &amp; ~Wrapper.EXTRAE_PTHREAD_OPTION);
+<span class="nc bnc" id="L146" title="All 2 branches missed.">				if (finalizeWrapper) {</span>
+<span class="nc" id="L147">					logger.debug(&quot;** Calling Extrae Wrapper.Fini()&quot;);</span>
+<span class="nc" id="L148">					es.bsc.cepbatools.extrae.Wrapper.Fini();</span>
+				}
+			/* else {
+				logger.debug(&quot;** WARNING: NOT calling Extrae Wrapper.Fini()&quot;);
+				try {
+					DataClayExtraeWrapper.Flush();
+				} catch (Error err) { 
+					err.printStackTrace();
+				} catch (Exception e) { 
+					e.printStackTrace();
+				}
+			} */
+				//Wrapper.SetOptions(Wrapper.EXTRAE_DISABLE_ALL_OPTIONS);
+<span class="nc" id="L161">				extraeTracing = false;</span>
+<span class="nc" id="L162">				generatedTraces = true;</span>
+<span class="nc" id="L163">				logger.debug(&quot;** FINISHED Extrae TRACING FOR &quot; + taskID + &quot; with task ID &quot; + es.bsc.cepbatools.extrae.Wrapper.GetTaskID());</span>
+
+
+
+			}
+		}
+<span class="nc" id="L169">	}</span>
+	
+	/**
+	 * Add an event
+	 * 
+	 * @param eventType
+	 *            Event type (enter, exit, exception)
+	 * @param methodSignature
+	 *            Method signature
+	 */
+	public static synchronized void emitEvent(final boolean enter, final String methodSignature) {
+		if (COMPILE_EXTRAE) {
+<span class="nc bnc" id="L181" title="All 2 branches missed.">			if (!extraeTracing) {</span>
+<span class="nc" id="L182">				return;</span>
+			}
+<span class="nc" id="L184">			final Long methodID = ALL_METHOD_VALUES.get(methodSignature);</span>
+<span class="nc bnc" id="L185" title="All 2 branches missed.">			if (methodID != null) {</span>
+<span class="nc" id="L186">				tracedMethods.put(methodSignature, methodID);</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">				if (enter) {</span>
+<span class="nc" id="L188">					es.bsc.cepbatools.extrae.Wrapper.Event(EVENT_TYPE, methodID);</span>
+				} else {
+<span class="nc" id="L190">					es.bsc.cepbatools.extrae.Wrapper.Event(EVENT_TYPE, 0);</span>
+				}
+				//logger.debug(&quot;Traced event (enter =&quot; + enter + &quot;) : &quot; + methodSignature + &quot; with value : &quot; + methodID);
+			}
+		}
+<span class="nc" id="L195">	}</span>
+	
+	/**
+     * When using extrae's tracing, this call enables the instrumentation of ALL created threads
+     * from here onwards. To deactivate it use disablePThreads().
+     */
+    public static void enablePThreads() {
+		if (COMPILE_EXTRAE) {
+<span class="nc" id="L203">			synchronized (DataClayExtrae.class) {</span>
+<span class="nc" id="L204">				es.bsc.cepbatools.extrae.Wrapper.SetOptions(es.bsc.cepbatools.extrae.Wrapper.EXTRAE_ENABLE_ALL_OPTIONS);</span>
+<span class="nc" id="L205">			}</span>
+		}
+<span class="nc" id="L207">    }</span>
+
+    /**
+     * When using extrae's tracing, this call disables the instrumentation of any created threads
+     * from here onwards. To reactivate it use enablePThreads()
+     */
+    public static void disablePThreads() {
+		if (COMPILE_EXTRAE) {
+<span class="nc" id="L215">			synchronized (DataClayExtrae.class) {</span>
+<span class="nc" id="L216">				es.bsc.cepbatools.extrae.Wrapper.SetOptions(es.bsc.cepbatools.extrae.Wrapper.EXTRAE_ENABLE_ALL_OPTIONS &amp; ~es.bsc.cepbatools.extrae.Wrapper.EXTRAE_PTHREAD_OPTION);</span>
+<span class="nc" id="L217">			}</span>
+		}
+<span class="nc" id="L219">    }</span>
+	
+	/**
+	 * Method to define event types for Extrae/Paraver based on current known called
+	 * methods.
+	 */
+	public static synchronized void defineEventTypes() {
+		if (COMPILE_EXTRAE) {
+<span class="nc bnc" id="L227" title="All 2 branches missed.">			if (!extraeTracing) {</span>
+<span class="nc" id="L228">				return;</span>
+			}
+<span class="nc" id="L230">			logger.debug(&quot;** DEFINING EVENT TYPES AND VALUES&quot;);</span>
+
+<span class="nc" id="L232">			final long[] methodValues = new long[tracedMethods.size() + 1];</span>
+<span class="nc" id="L233">			final String[] descriptors = new String[tracedMethods.size() + 1];</span>
+<span class="nc" id="L234">			int i = 1;</span>
+<span class="nc" id="L235">			methodValues[0] = 0;</span>
+<span class="nc" id="L236">			descriptors[0] = &quot;End&quot;;</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">			for (final Entry&lt;String, Long&gt; currentTracedMethod : tracedMethods.entrySet()) {</span>
+<span class="nc" id="L238">				final String methodDesc = currentTracedMethod.getKey();</span>
+<span class="nc" id="L239">				final Long methodValue = currentTracedMethod.getValue();</span>
+<span class="nc" id="L240">				descriptors[i] = methodDesc;</span>
+<span class="nc" id="L241">				methodValues[i] = methodValue;</span>
+<span class="nc" id="L242">				logger.debug(&quot;-- EVENT &quot; + methodDesc);</span>
+<span class="nc" id="L243">				i++;</span>
+<span class="nc" id="L244">			}</span>
+
+<span class="nc" id="L246">			es.bsc.cepbatools.extrae.Wrapper.defineEventType(EVENT_TYPE, &quot;dataClay&quot;, methodValues, descriptors);</span>
+		}
+<span class="nc" id="L248">	}</span>
+
+	/**
+	 * Indicates if Extrae tracing is enabled
+	 * 
+	 * @return True if it is active. 
+	 */
+	public static synchronized boolean extraeTracingIsEnabled() {
+<span class="nc" id="L256">		return extraeTracing;</span>
+	}
+
+	/**
+	 * Get Extrae task ID
+	 * @return task ID
+	 */
+	public static int getTaskID() {
+<span class="nc" id="L264">		return taskID;</span>
+	}
+	
+	/**
+	 * Get WRAPPER Extrae task ID
+	 * @return task ID
+	 */
+	public static int getWrapperTaskID() {
+		if (COMPILE_EXTRAE) {
+<span class="nc" id="L273">			return es.bsc.cepbatools.extrae.Wrapper.GetTaskID();</span>
+		}
+		return 0;
+	}
+
+
+	/**
+	 * Get current available task ID
+	 * @return Current available task ID
+	 */
+	public static int getCurrentAvailableTaskID() {
+<span class="nc" id="L284">		return currentAvailableTaskID;</span>
+	}
+	
+	/**
+	 * Get current available task ID and increment it by one.
+	 * @return Current available task ID
+	 */
+	public static int getAndIncrementCurrentAvailableTaskID() {
+<span class="nc" id="L292">		final int nextTaskID = currentAvailableTaskID;</span>
+<span class="nc" id="L293">		currentAvailableTaskID++;</span>
+<span class="nc" id="L294">		return nextTaskID;</span>
+	}
+
+	/**
+	 * Set current available task ID
+	 * @param thecurrentAvailableTaskID Current available task ID
+	 */
+	public static void setCurrentAvailableTaskID(final int thecurrentAvailableTaskID) {
+<span class="nc" id="L302">		DataClayExtrae.currentAvailableTaskID = thecurrentAvailableTaskID;</span>
+<span class="nc" id="L303">	}</span>
+	
+	/**
+	 * Get Extrae traces in workspace directory
+	 * @return
+	 */
+	public static Map&lt;String, byte[]&gt; getTraces() { 
+<span class="nc" id="L310">		final Map&lt;String, byte[]&gt; traces = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">		if (generatedTraces) {</span>
+	
+<span class="nc" id="L313">			final java.io.BufferedReader b = null;</span>
+			// Read TRACE.mpits
+			try {
+<span class="nc" id="L316">				final String folderPath = System.getProperty(&quot;user.dir&quot;) + File.separator + &quot;set-0&quot;;</span>
+	
+<span class="nc" id="L318">				final File folder = new File(folderPath); //TODO: only set-0?</span>
+<span class="nc" id="L319">				logger.debug(&quot; READING FROM FOLDER &quot; + folderPath);</span>
+				
+				 // retrieve file listing
+<span class="nc" id="L322">			    final File[] fileList = folder.listFiles();</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">			    if (fileList != null) {</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">				    for (final File file : fileList ) {</span>
+<span class="nc" id="L325">						final byte[] bArray = Files.readAllBytes(file.toPath());</span>
+<span class="nc" id="L326">						traces.put(file.getName(), bArray);</span>
+					}
+			    }
+<span class="nc" id="L329">				logger.debug(&quot;Sending files: &quot; + traces.keySet());</span>
+				
+				
+<span class="nc" id="L332">			} catch (final IOException e) {</span>
+<span class="nc" id="L333">				logger.debug(&quot;Exception while getting traces&quot;, e);</span>
+				
+			} finally { 
+<span class="nc bnc" id="L336" title="All 2 branches missed.">				if (b != null) { </span>
+					try {
+<span class="nc" id="L338">						b.close();</span>
+<span class="nc" id="L339">					} catch (final IOException e) {</span>
+<span class="nc" id="L340">						logger.debug(&quot;Exception while getting traces&quot;, e);</span>
+						
+<span class="nc" id="L342">					}</span>
+				}
+			}
+<span class="nc" id="L345">			generatedTraces = false;</span>
+		}
+<span class="nc" id="L347">		return traces;</span>
+
+	}
+
+	/**
+	 * Indicates there are generated traces ready. 
+	 * @return TRUE if there are generated traces ready. 
+	 */
+	public static boolean isGeneratedTraces() {
+<span class="nc" id="L356">		return generatedTraces;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,467 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImportedInterface.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.namespacemgr</a> &gt; <span class="el_source">ImportedInterface.java</span></div><h1>ImportedInterface.java</h1><pre class="source lang-java linenums">
+/**
+ * @file ImportedInterface.java
+ * @date May 29, 2013
+ */
+package es.bsc.dataclay.util.management.namespacemgr;
+
+import java.io.Serializable;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.UUID;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.serialization.DataClaySerializable;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+
+/**
+ * This class represents an imported interface in a Namespace.
+ * 
+ */
+public final class ImportedInterface implements Serializable, DataClaySerializable {
+
+	/** ID. */
+	private UUID id;
+	/** Serial version UID. */
+	private static final long serialVersionUID = -5961304602399766492L;
+	/** Name of the class of the imported interface. */
+	private String importedClassName;
+	/** ID of the interface to import. */
+	private InterfaceID interfaceID;
+	/** ID of the contract used to import the interface. */
+	private ContractID contractID;
+	/** ID of the class of the import. */
+	private MetaClassID classOfImportID;
+	/** ID of the namespace of the class of the import. */
+	private NamespaceID namespaceIDofClass;
+	/** Set of IDs of properties using import. */
+	private HashSet&lt;PropertyID&gt; propertiesUsingImports;
+	/** Set of IDs of operations using import. */
+	private HashSet&lt;OperationID&gt; operationsUsingImports;
+	/** Set IDs of of implementations using import. */
+	private HashSet&lt;ImplementationID&gt; implementationsUsingImports;
+	/** Set of IDs of metaclasses that are subclass of the import. */
+	private HashSet&lt;MetaClassID&gt; subClassesOfImport;
+
+	/**
+	 * Empty constructor for queries
+	 */
+<span class="fc" id="L60">	public ImportedInterface() {</span>
+
+<span class="fc" id="L62">	}</span>
+
+	/**
+	 * Imported interface constructor
+	 * @param newimportedClassName
+	 *            Name of the class of the imported interface
+	 * @param newinterfaceID
+	 *            ID of the interface to import
+	 * @param newcontractID
+	 *            ID of the contract used to import the interface
+	 * @param newclassOfImportID
+	 *            ID of the class of the import
+	 * @param newnamespaceIDofClass
+	 *            ID of the namespace of the class of the import
+	 */
+	public ImportedInterface(final String newimportedClassName,
+			final InterfaceID newinterfaceID, final ContractID newcontractID,
+<span class="fc" id="L79">			final MetaClassID newclassOfImportID, final NamespaceID newnamespaceIDofClass) {</span>
+<span class="fc" id="L80">		this.setImportedClassName(newimportedClassName);</span>
+<span class="fc" id="L81">		this.setClassOfImportID(newclassOfImportID);</span>
+<span class="fc" id="L82">		this.setInterfaceID(newinterfaceID);</span>
+<span class="fc" id="L83">		this.setContractID(newcontractID);</span>
+<span class="fc" id="L84">		this.setNamespaceIDofClass(newnamespaceIDofClass);</span>
+<span class="fc" id="L85">		this.setPropertiesUsingImports(new HashSet&lt;PropertyID&gt;());</span>
+<span class="fc" id="L86">		this.setOperationsUsingImports(new HashSet&lt;OperationID&gt;());</span>
+<span class="fc" id="L87">		this.setImplementationsUsingImports(new HashSet&lt;ImplementationID&gt;());</span>
+<span class="fc" id="L88">		this.setSubClassesOfImport(new HashSet&lt;MetaClassID&gt;());</span>
+<span class="fc" id="L89">	}</span>
+
+	/**
+	 * Get the Namespace::propertiesUsingImports
+	 * @return the propertiesUsingImports
+	 */
+	public HashSet&lt;PropertyID&gt; getPropertiesUsingImports() {
+<span class="fc" id="L96">		return propertiesUsingImports;</span>
+	}
+
+	/**
+	 * Set the Namespace::propertiesUsingImports
+	 * @param newpropertiesUsingImports
+	 *            the propertiesUsingImports to set
+	 */
+	public void setPropertiesUsingImports(final HashSet&lt;PropertyID&gt; newpropertiesUsingImports) {
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">		if (newpropertiesUsingImports == null) {</span>
+<span class="nc" id="L106">			throw new IllegalArgumentException(&quot;propertiesUsingImports cannot be null&quot;);</span>
+		}
+<span class="fc" id="L108">		this.propertiesUsingImports = newpropertiesUsingImports;</span>
+<span class="fc" id="L109">	}</span>
+
+	/**
+	 * Get the Namespace::operationsUsingImports
+	 * @return the operationsUsingImports
+	 */
+	public HashSet&lt;OperationID&gt; getOperationsUsingImports() {
+<span class="fc" id="L116">		return operationsUsingImports;</span>
+	}
+
+	/**
+	 * Set the Namespace::operationsUsingImports
+	 * @param newoperationsUsingImports
+	 *            the operationsUsingImports to set
+	 */
+	public void setOperationsUsingImports(final HashSet&lt;OperationID&gt; newoperationsUsingImports) {
+<span class="pc bpc" id="L125" title="1 of 2 branches missed.">		if (newoperationsUsingImports == null) {</span>
+<span class="nc" id="L126">			throw new IllegalArgumentException(&quot;operationsUsingImports cannot be null&quot;);</span>
+		}
+<span class="fc" id="L128">		this.operationsUsingImports = newoperationsUsingImports;</span>
+<span class="fc" id="L129">	}</span>
+
+	/**
+	 * Get the Namespace::implementationsUsingImports
+	 * @return the implementationsUsingImports
+	 */
+	public HashSet&lt;ImplementationID&gt; getImplementationsUsingImports() {
+<span class="fc" id="L136">		return implementationsUsingImports;</span>
+	}
+
+	/**
+	 * Set the Namespace::implementationsUsingImports
+	 * @param newimplementationsUsingImports
+	 *            the implementationsUsingImports to set
+	 */
+	public void setImplementationsUsingImports(final HashSet&lt;ImplementationID&gt; newimplementationsUsingImports) {
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">		if (newimplementationsUsingImports == null) {</span>
+<span class="nc" id="L146">			throw new IllegalArgumentException(&quot;implementationsUsingImports cannot be null&quot;);</span>
+		}
+<span class="fc" id="L148">		this.implementationsUsingImports = newimplementationsUsingImports;</span>
+<span class="fc" id="L149">	}</span>
+
+	/**
+	 * Get the ImportedInterface::subClassesOfImport
+	 * @return the subClassesOfImport
+	 */
+	public HashSet&lt;MetaClassID&gt; getSubClassesOfImport() {
+<span class="fc" id="L156">		return subClassesOfImport;</span>
+	}
+
+	/**
+	 * Set the ImportedInterface::subClassesOfImport
+	 * @param newsubClassesOfImport
+	 *            the subClassesOfImport to set
+	 */
+	public void setSubClassesOfImport(final HashSet&lt;MetaClassID&gt; newsubClassesOfImport) {
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">		if (newsubClassesOfImport == null) {</span>
+<span class="nc" id="L166">			throw new IllegalArgumentException(&quot;SubClasses of import cannot be null&quot;);</span>
+		}
+<span class="fc" id="L168">		this.subClassesOfImport = newsubClassesOfImport;</span>
+<span class="fc" id="L169">	}</span>
+
+	/**
+	 * Specifies if an imported interface is in use or not
+	 * @return TRUE if the interface is in use by some property, operation, implementation or subclass. FALSE otherwise.
+	 */
+	public boolean inUse() {
+<span class="pc bpc" id="L176" title="1 of 4 branches missed.">		return !(this.implementationsUsingImports.isEmpty() &amp;&amp; this.operationsUsingImports.isEmpty()</span>
+<span class="pc bpc" id="L177" title="2 of 4 branches missed.">				&amp;&amp; this.propertiesUsingImports.isEmpty() &amp;&amp; this.subClassesOfImport.isEmpty());</span>
+	}
+
+	/**
+	 * Add property that uses an import
+	 * @param propertyID
+	 *            ID of the property
+	 */
+	public void addPropertyUsingImport(final PropertyID propertyID) {
+<span class="fc" id="L186">		this.propertiesUsingImports.add(propertyID);</span>
+<span class="fc" id="L187">	}</span>
+
+	/**
+	 * Add operation that uses an import
+	 * @param operationID
+	 *            ID of the operation
+	 */
+	public void addOperationUsingImport(final OperationID operationID) {
+<span class="fc" id="L195">		this.operationsUsingImports.add(operationID);</span>
+<span class="fc" id="L196">	}</span>
+
+	/**
+	 * Add implementation that uses an import
+	 * @param implementationID
+	 *            ID of the implementation
+	 */
+	public void addImplementationUsingImport(final ImplementationID implementationID) {
+<span class="fc" id="L204">		this.implementationsUsingImports.add(implementationID);</span>
+<span class="fc" id="L205">	}</span>
+
+	/**
+	 * Add subclass that uses an import
+	 * @param metaClassID
+	 *            ID of the class
+	 */
+	public void addSubClassUsingImport(final MetaClassID metaClassID) {
+<span class="fc" id="L213">		this.subClassesOfImport.add(metaClassID);</span>
+<span class="fc" id="L214">	}</span>
+
+	/**
+	 * Remove property that uses an import
+	 * @param propertyID
+	 *            ID of the property
+	 */
+	public void removePropertyUsingImport(final PropertyID propertyID) {
+<span class="nc" id="L222">		this.propertiesUsingImports.remove(propertyID);</span>
+<span class="nc" id="L223">	}</span>
+
+	/**
+	 * Remove operation that uses an import
+	 * @param operationID
+	 *            ID of the operation
+	 */
+	public void removeOperationUsingImport(final OperationID operationID) {
+<span class="fc" id="L231">		this.operationsUsingImports.remove(operationID);</span>
+<span class="fc" id="L232">	}</span>
+
+	/**
+	 * Remove implementation that uses an import
+	 * @param implementationID
+	 *            ID of the implementation
+	 */
+	public void removeImplementationUsingImport(final ImplementationID implementationID) {
+<span class="fc" id="L240">		this.implementationsUsingImports.remove(implementationID);</span>
+<span class="fc" id="L241">	}</span>
+
+	/**
+	 * Remove subclass that uses an import
+	 * @param metaClassID
+	 *            ID of the class
+	 */
+	public void removeSubClassUsingImport(final MetaClassID metaClassID) {
+<span class="fc" id="L249">		this.subClassesOfImport.remove(metaClassID);</span>
+<span class="fc" id="L250">	}</span>
+
+	/**
+	 * Get the ImportedInterface::importedClassName
+	 * @return the importedClassName
+	 */
+	public String getImportedClassName() {
+<span class="fc" id="L257">		return importedClassName;</span>
+	}
+
+	/**
+	 * Set the ImportedInterface::importedClassName
+	 * @param newimportedClassName
+	 *            the importedClassName to set
+	 */
+	public void setImportedClassName(final String newimportedClassName) {
+<span class="pc bpc" id="L266" title="1 of 2 branches missed.">		if (newimportedClassName == null) {</span>
+<span class="nc" id="L267">			throw new IllegalArgumentException(&quot;importedClassName cannot be null&quot;);</span>
+		}
+<span class="fc" id="L269">		this.importedClassName = newimportedClassName;</span>
+<span class="fc" id="L270">	}</span>
+
+	/**
+	 * Get the ImportedInterface::interfaceID
+	 * @return the interfaceID
+	 */
+	public InterfaceID getInterfaceID() {
+<span class="fc" id="L277">		return interfaceID;</span>
+	}
+
+	/**
+	 * Set the ImportedInterface::interfaceID
+	 * @param newinterfaceID
+	 *            the interfaceID to set
+	 */
+	public void setInterfaceID(final InterfaceID newinterfaceID) {
+<span class="pc bpc" id="L286" title="1 of 2 branches missed.">		if (newinterfaceID == null) {</span>
+<span class="nc" id="L287">			throw new IllegalArgumentException(&quot;interfaceID cannot be null&quot;);</span>
+		}
+<span class="fc" id="L289">		this.interfaceID = newinterfaceID;</span>
+<span class="fc" id="L290">	}</span>
+
+	/**
+	 * Get the ImportedInterface::contractID
+	 * @return the contractID
+	 */
+	public ContractID getContractID() {
+<span class="fc" id="L297">		return contractID;</span>
+	}
+
+	/**
+	 * Set the ImportedInterface::contractID
+	 * @param newcontractID
+	 *            the contractID to set
+	 */
+	public void setContractID(final ContractID newcontractID) {
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">		if (newcontractID == null) {</span>
+<span class="nc" id="L307">			throw new IllegalArgumentException(&quot;contractID cannot be null&quot;);</span>
+		}
+<span class="fc" id="L309">		this.contractID = newcontractID;</span>
+<span class="fc" id="L310">	}</span>
+
+	/**
+	 * Get the ImportedInterface::classOfImportID
+	 * @return the classOfImportID
+	 */
+	public MetaClassID getClassOfImportID() {
+<span class="fc" id="L317">		return classOfImportID;</span>
+	}
+
+	/**
+	 * Set the ImportedInterface::classOfImportID
+	 * @param newclassOfImportID
+	 *            the classOfImportID to set
+	 */
+	public void setClassOfImportID(final MetaClassID newclassOfImportID) {
+<span class="pc bpc" id="L326" title="1 of 2 branches missed.">		if (newclassOfImportID == null) {</span>
+<span class="nc" id="L327">			throw new IllegalArgumentException(&quot;classOfImportID cannot be null&quot;);</span>
+		}
+<span class="fc" id="L329">		this.classOfImportID = newclassOfImportID;</span>
+<span class="fc" id="L330">	}</span>
+
+	/**
+	 * Get the ImportedInterface::namespaceIDofClass
+	 * @return the namespaceIDofClass
+	 */
+	public NamespaceID getNamespaceIDofClass() {
+<span class="fc" id="L337">		return namespaceIDofClass;</span>
+	}
+
+	/**
+	 * Set the ImportedInterface::namespaceIDofClass
+	 * @param newnamespaceIDofClass
+	 *            the namespaceIDofClass to set
+	 */
+	public void setNamespaceIDofClass(final NamespaceID newnamespaceIDofClass) {
+<span class="pc bpc" id="L346" title="1 of 2 branches missed.">		if (newnamespaceIDofClass == null) {</span>
+<span class="nc" id="L347">			throw new IllegalArgumentException(&quot;namespaceIDofClass cannot be null&quot;);</span>
+		}
+<span class="fc" id="L349">		this.namespaceIDofClass = newnamespaceIDofClass;</span>
+<span class="fc" id="L350">	}</span>
+
+	@Override
+	public boolean equals(final Object t) {
+<span class="pc bpc" id="L354" title="1 of 2 branches missed.">		if (t instanceof ImportedInterface) {</span>
+<span class="fc" id="L355">			final ImportedInterface other = (ImportedInterface) t;</span>
+<span class="pc bpc" id="L356" title="1 of 2 branches missed.">			return other.getImportedClassName().equals(this.getImportedClassName())</span>
+<span class="pc bpc" id="L357" title="1 of 2 branches missed.">					&amp;&amp; other.getInterfaceID().equals(this.getInterfaceID())</span>
+<span class="pc bpc" id="L358" title="1 of 2 branches missed.">					&amp;&amp; other.getContractID().equals(this.getContractID())</span>
+<span class="pc bpc" id="L359" title="1 of 2 branches missed.">					&amp;&amp; other.getNamespaceIDofClass().equals(this.getNamespaceIDofClass())</span>
+<span class="pc bpc" id="L360" title="1 of 2 branches missed.">					&amp;&amp; other.getClassOfImportID().equals(this.getClassOfImportID());</span>
+		}
+<span class="nc" id="L362">		return false;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L367">		return this.interfaceID.hashCode(); // any arbitrary constant will do</span>
+	}
+
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs, final ListIterator&lt;DataClayObject&gt; pendingObjs,
+			ReferenceCounting referenceCounting) {
+
+<span class="nc" id="L376">		dcBuffer.writeString(importedClassName);</span>
+<span class="nc" id="L377">		interfaceID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L378">		contractID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L379">		classOfImportID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L380">		namespaceIDofClass.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+
+<span class="nc" id="L382">		dcBuffer.writeInt(propertiesUsingImports.size());</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">		for (final PropertyID propID : propertiesUsingImports) {</span>
+<span class="nc" id="L384">			propID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L385">		}</span>
+
+<span class="nc" id="L387">		dcBuffer.writeInt(operationsUsingImports.size());</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">		for (final OperationID opID : operationsUsingImports) {</span>
+<span class="nc" id="L389">			opID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L390">		}</span>
+
+<span class="nc" id="L392">		dcBuffer.writeInt(implementationsUsingImports.size());</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">		for (final ImplementationID implID : implementationsUsingImports) {</span>
+<span class="nc" id="L394">			implID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L395">		}</span>
+
+<span class="nc" id="L397">		dcBuffer.writeInt(subClassesOfImport.size());</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">		for (final MetaClassID clazzID : subClassesOfImport) {</span>
+<span class="nc" id="L399">			clazzID.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L400">		}</span>
+<span class="nc" id="L401">	}</span>
+
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+
+<span class="nc" id="L408">		importedClassName = dcBuffer.readString();</span>
+<span class="nc" id="L409">		interfaceID = new InterfaceID();</span>
+<span class="nc" id="L410">		interfaceID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L411">		contractID = new ContractID();</span>
+<span class="nc" id="L412">		contractID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L413">		classOfImportID = new MetaClassID();</span>
+<span class="nc" id="L414">		classOfImportID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L415">		namespaceIDofClass = new NamespaceID();</span>
+<span class="nc" id="L416">		namespaceIDofClass.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L417">		this.propertiesUsingImports = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L418">		int size = dcBuffer.readInt();</span>
+<span class="nc bnc" id="L419" title="All 2 branches missed.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="nc" id="L420">			final PropertyID propID = new PropertyID();</span>
+<span class="nc" id="L421">			propID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L422">			propertiesUsingImports.add(propID);</span>
+		}
+
+<span class="nc" id="L425">		this.operationsUsingImports = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L426">		size = dcBuffer.readInt();</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="nc" id="L428">			final OperationID opID = new OperationID();</span>
+<span class="nc" id="L429">			opID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L430">			operationsUsingImports.add(opID);</span>
+		}
+
+<span class="nc" id="L433">		this.implementationsUsingImports = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L434">		size = dcBuffer.readInt();</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="nc" id="L436">			final ImplementationID implID = new ImplementationID();</span>
+<span class="nc" id="L437">			implID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L438">			implementationsUsingImports.add(implID);</span>
+		}
+
+<span class="nc" id="L441">		this.subClassesOfImport = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L442">		size = dcBuffer.readInt();</span>
+<span class="nc bnc" id="L443" title="All 2 branches missed.">		for (int i = 0; i &lt; size; ++i) {</span>
+<span class="nc" id="L444">			final MetaClassID clazzID = new MetaClassID();</span>
+<span class="nc" id="L445">			clazzID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L446">			subClassesOfImport.add(clazzID);</span>
+		}
+<span class="nc" id="L448">	}</span>
+
+	/**
+	 * get id
+	 * @return id
+	 */
+	public UUID getId() {
+<span class="fc" id="L455">		return id;</span>
+	}
+
+	/**
+	 * Set id
+	 * @param newid
+	 *            the id
+	 */
+	public void setId(final UUID newid) {
+<span class="fc" id="L464">		this.id = newid;</span>
+<span class="fc" id="L465">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

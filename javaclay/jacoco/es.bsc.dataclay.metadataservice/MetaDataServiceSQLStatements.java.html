@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MetaDataServiceSQLStatements.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.metadataservice</a> &gt; <span class="el_source">MetaDataServiceSQLStatements.java</span></div><h1>MetaDataServiceSQLStatements.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.metadataservice;
+
+import java.util.ResourceBundle;
+
+/**
+ * This class represents SQL statements.
+ */
+public final class MetaDataServiceSQLStatements {
+
+	/** Properties. */
+<span class="fc" id="L12">	private static ResourceBundle props = null;</span>
+
+	/**
+	 * Utility classes should have private constructor.
+	 */
+	private MetaDataServiceSQLStatements() {
+
+	}
+
+	/**
+	 * Init properties of the properties file
+	 */
+	static {
+<span class="pc bpc" id="L25" title="1 of 2 branches missed.">		if (props == null) {</span>
+<span class="fc" id="L26">			props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.metadata_service_sql&quot;);</span>
+		}
+<span class="fc" id="L28">	}</span>
+
+	/**
+	 * This enumeration represent all possible SQL statements.
+	 */
+<span class="fc" id="L33">	public enum SqlStatements {</span>
+
+		/** Create metadata table. */
+<span class="fc" id="L36">		CREATE_TABLE_METADATA,</span>
+		/** Create storage locations table. */
+<span class="fc" id="L38">		CREATE_TABLE_STORAGE_LOCATIONS,</span>
+		/** Create execution environments table. */
+<span class="fc" id="L40">		CREATE_TABLE_EXECUTION_ENVIRONMENTS,</span>
+
+		/** Drop metadata table. */
+<span class="fc" id="L43">		DROP_TABLE_METADATA,</span>
+		/** Drop storage locations table. */
+<span class="fc" id="L45">		DROP_TABLE_STORAGE_LOCATIONS,</span>
+		/** Drop execution environments table. */
+<span class="fc" id="L47">		DROP_TABLE_EXECUTION_ENVIRONMENTS,</span>
+
+		/** Insert metadata. */
+<span class="fc" id="L50">		INSERT_METADATA,</span>
+		/** Insert storage location. */
+<span class="fc" id="L52">		INSERT_STORAGE_LOCATION,</span>
+		/** Insert execution environment. */
+<span class="fc" id="L54">		INSERT_EXECUTION_ENVIRONMENT,</span>
+
+		/** Select metadata. */
+<span class="fc" id="L57">		SELECT_METADATA,</span>
+		/** Get all object ids in system. */
+<span class="fc" id="L59">		SELECT_ALL_OIDS,</span>
+		/** Select storage location. */
+<span class="fc" id="L61">		SELECT_STORAGE_LOCATION,</span>
+		/** Select execution environment. */
+<span class="fc" id="L63">		SELECT_EXECUTION_ENVIRONMENT,</span>
+
+		/** Exists metadata by id. */
+<span class="fc" id="L66">		EXISTS_METADATA_BY_ID,</span>
+		/** Exists storage location by id. */
+<span class="fc" id="L68">		EXISTS_STORAGE_LOCATION_BY_ID,</span>
+		/** Exists execution environment by id. */
+<span class="fc" id="L70">		EXISTS_EXECUTION_ENVIRONMENT_BY_ID,</span>
+		/** Exists execution environment by host and port. */
+<span class="fc" id="L72">		EXISTS_EXECUTION_ENVIRONMENT_BY_HOSTPORT,</span>
+		/** Exists storage location by host and port. */
+<span class="fc" id="L74">		EXISTS_STORAGE_LOCATION_BY_HOSTPORT,</span>
+
+		/** Exists metadata by dataset id. */
+<span class="fc" id="L77">		EXISTS_METADATA_BY_DATASETID,</span>
+		/** Delete metadata. */
+<span class="fc" id="L79">		DELETE_METADATA,</span>
+
+		/** Delete storage location. */
+<span class="fc" id="L82">		DELETE_STORAGE_LOCATION,</span>
+		/** Delete execution environment. */
+<span class="fc" id="L84">		DELETE_EXECUTION_ENVIRONMENT,</span>
+
+		/** Update aliases. */
+<span class="fc" id="L87">		UPDATE_ALIAS_METADATA,</span>
+		/** Update dataset id. */
+<span class="fc" id="L89">		UPDATE_DATASETID_METADATA,</span>
+		/** Update read only metadata. */
+<span class="fc" id="L91">		UPDATE_READONLY_METADATA,</span>
+		/** Update st. locs metadata. */
+<span class="fc" id="L93">		UPDATE_LOCS_METADATA,</span>
+		/** Update for replica. */
+<span class="fc" id="L95">		UPDATE_FOR_REPLICA_METADATA,</span>
+
+		/** Select all metadata from class. */
+<span class="fc" id="L98">		SELECT_METADATA_FOR_CLASS,</span>
+		/** Select metadata by alias (and class) */
+<span class="fc" id="L100">		SELECT_METADATA_BY_ALIAS,</span>
+
+		/** Select all storage locations. */
+<span class="fc" id="L103">		SELECT_ALL_LOCS,</span>
+		/** Select all execution environments. */
+<span class="fc" id="L105">		SELECT_ALL_EXECENVS,</span>
+		/** Select all execution environments. */
+<span class="fc" id="L107">		SELECT_ALL_EXECENVS_BY_LANG,</span>
+
+		/** Select storage location by name. */
+<span class="fc" id="L110">		SELECT_STLOC_BY_NAME,</span>
+		/** Select exec environment by name and language. */
+<span class="fc" id="L112">		SELECT_EXECENV_BY_NAME_LANG,</span>
+		/** Select exec environment by hostname and port. */
+<span class="fc" id="L114">		SELECT_EXECENV_BY_HOSTNAME_AND_PORT,</span>
+		
+		/** Update storage location. */
+<span class="fc" id="L117">		UPDATE_STORAGE_LOCATION,</span>
+		/** Update execution environment. */
+<span class="fc" id="L119">		UPDATE_EXECUTION_ENVIRONMENT,</span>
+
+		/** Table of external dataClay info. */
+<span class="fc" id="L122">		CREATE_TABLE_DATACLAYS,</span>
+		/** Table of objects federated with external dataClay instances. */
+<span class="fc" id="L124">		CREATE_TABLE_FEDERATED_OBJECTS,</span>
+		/** Table of external objects federated from an external dataClay instance. */
+<span class="fc" id="L126">		CREATE_TABLE_EXTERNAL_OBJECTS,</span>
+
+		/** Insert dataclay external info. */
+<span class="fc" id="L129">		INSERT_DATACLAY_INFO,</span>
+		/** Select dataclay external info by id. */
+<span class="fc" id="L131">		SELECT_DATACLAY_INFO_BY_ID,</span>
+		/** Select dataclay external info by name. */
+<span class="fc" id="L133">		SELECT_DATACLAY_INFO_BY_NAME,</span>
+		/** Select dataclay id from host and port. */
+<span class="fc" id="L135">		SELECT_DATACLAY_ID_FROM_HOST_PORT,</span>
+		/** Delete dataClay instance. */
+<span class="fc" id="L137">		DELETE_DATACLAY,</span>
+		
+		/** Select all dataclays. */
+<span class="fc" id="L140">		SELECT_ALL_DATACLAYS,</span>
+
+		/** Insert a federated object with an external dataClay instance. */
+<span class="fc" id="L143">		INSERT_FEDERATED_OBJECT,</span>
+		/** Delete a federated object with an external dataClay instance. */
+<span class="fc" id="L145">		DELETE_FEDERATED_OBJECT,</span>
+		/** Check if an object is already federated with a dataClay instance. */
+<span class="fc" id="L147">		EXISTS_FEDERATED_OBJECT_WITH_DC,</span>
+		/** Check if an object is federated. */
+<span class="fc" id="L149">		EXISTS_FEDERATED_OBJECT,</span>
+		/** Select dataClay ids for which an object has been federated. */
+<span class="fc" id="L151">		SELECT_TARGET_DATACLAYS_FEDERATED_OBJECT,</span>
+
+		/** Insert an object federated from an external dataClay instance. */
+<span class="fc" id="L154">		INSERT_EXTERNAL_OBJECT,</span>
+		/** Delete an object federated from an external dataClay instance. */
+<span class="fc" id="L156">		DELETE_EXTERNAL_OBJECT,</span>
+		/** Check if an object is federated from an external dataClay instance. */
+<span class="fc" id="L158">		EXISTS_EXTERNAL_OBJECT,</span>
+		/** Select id of external dataClay federating an object with current dataClay instance. */
+<span class="fc" id="L160">		SELECT_SOURCE_DATACLAY_EXTERNAL_OBJECT,</span>
+		
+		/** Select all unregistered external objects. */
+<span class="fc" id="L163">		SELECT_UNREGISTERED_EXTERNAL_OBJECTS,</span>
+		/** Update external object to be unregistered. */
+<span class="fc" id="L165">		UPDATE_UNREGISTER_EXTERNAL_OBJECT,</span>
+
+		/** Select objects federated/belonging to external dataClay. */
+<span class="fc" id="L168">		SELECT_OBJECTS_FEDERATED_WITH_DATACLAY,</span>
+		
+		/** Select all execution environments in host name. */
+<span class="fc" id="L171">		SELECT_ALL_EXECENV_BY_HOSTNAME_AND_LANG;</span>
+
+		/** SQL statement. */
+		private String sqlStatement;
+
+		/**
+		 * Init properties of the properties file
+		 */
+		private void init() {
+<span class="fc" id="L180">			final String sqlSt = props.getString(this.name());</span>
+<span class="fc" id="L181">			setSqlStatement(sqlSt);</span>
+<span class="fc" id="L182">		}</span>
+
+		/**
+		 * Get the sqlStatement
+		 * 
+		 * @return the sqlStatement
+		 */
+		public String getSqlStatement() {
+<span class="fc bfc" id="L190" title="All 2 branches covered.">			if (sqlStatement == null) {</span>
+<span class="fc" id="L191">				init();</span>
+			}
+<span class="fc" id="L193">			return sqlStatement;</span>
+		}
+
+		/**
+		 * Set the sqlStatement
+		 * 
+		 * @param newsqlStatement
+		 *            the sqlStatement
+		 */
+		public void setSqlStatement(final String newsqlStatement) {
+<span class="fc" id="L203">			sqlStatement = newsqlStatement;</span>
+<span class="fc" id="L204">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,1027 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayClassTransformer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java</a> &gt; <span class="el_source">DataClayClassTransformer.java</span></div><h1>DataClayClassTransformer.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.java;
+
+import java.lang.reflect.Modifier;
+import java.util.List;
+import java.util.UUID;
+
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.InstructionAdapter;
+import org.objectweb.asm.commons.Method;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeFieldNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethodsNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeTypes;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.methods.DataClayExecutionMethodTransformer;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.methods.DataClayMethodTransformer;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.methods.DataClayStubMethodTransformer;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.run.RunTableSwitchGenerator;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers.SetWrapperParametersTableSwitchGenerator;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers.SetWrapperReturnTableSwitchGenerator;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers.WrapParametersTableSwitchGenerator;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers.WrapReturnTableSwitchGenerator;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.management.classmgr.Annotation;
+import es.bsc.dataclay.util.management.classmgr.Implementation;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.classmgr.Property;
+import es.bsc.dataclay.util.management.classmgr.Type;
+import es.bsc.dataclay.util.management.stubs.ImplementationStubInfo;
+import es.bsc.dataclay.util.management.stubs.PropertyStubInfo;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.reflection.Reflector;
+import es.bsc.dataclay.util.replication.Replication;
+import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.util.tools.java.DataClayClassVisitor;
+
+/**
+ * DataClayClassTransformer.
+ */
+public final class DataClayClassTransformer extends ClassVisitor {
+
+	/** MetaClass of the stub to create. */
+	private final MetaClass metaClass;
+
+	/** Information of which methods, properties, ... the stub must contains. */
+	private final StubInfo stubInfo;
+
+	/** Parent class name. */
+	private final String parentName;
+
+	/** Indicates if we are generating an execution class. */
+	private final boolean isExecClass;
+
+
+	/**
+	 * Constructor
+	 * 
+	 * @param cv
+	 *            Class visitor this class visitor will delegate to.
+	 * @param theMetaClass
+	 *            MetaClass of the stub to create.
+	 * @param thestubInfo
+	 *            Information of which methods, properties, ... the stub must contains. Or null if exec. class.
+	 * @param newisExecClass
+	 *            Indicates if we are generating an execution class
+	 */
+	public DataClayClassTransformer(final ClassVisitor cv, final MetaClass theMetaClass, final StubInfo thestubInfo,
+			final boolean newisExecClass) {
+<span class="nc" id="L78">		super(Opcodes.ASM7, cv);</span>
+<span class="nc" id="L79">		this.metaClass = theMetaClass;</span>
+<span class="nc" id="L80">		this.stubInfo = thestubInfo;</span>
+<span class="nc" id="L81">		this.isExecClass = newisExecClass;</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">		if (metaClass.getParentType() != null) {</span>
+<span class="nc" id="L83">			parentName = Reflector.getInternalNameFromTypeName(metaClass.getParentType().getTypeName());</span>
+		} else {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">			if (this.isExecClass) {</span>
+<span class="nc" id="L86">				parentName = ByteCodeTypes.DCEXECOBJ.getInternalName();</span>
+			} else {
+<span class="nc" id="L88">				parentName = ByteCodeTypes.DCOBJ.getInternalName();</span>
+			}
+		}
+<span class="nc" id="L91">	}</span>
+
+	@Override
+	public FieldVisitor visitField(final int access, final String name, final String desc, final String signature,
+			final Object value) {
+
+<span class="nc" id="L97">		int actualFieldAccess = access &amp; (~Opcodes.ACC_FINAL);</span>
+
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (Modifier.isInterface(metaClass.getJavaClassInfo().getModifier())) {</span>
+			// if interface, do not modify code
+<span class="nc" id="L101">			return super.visitField(actualFieldAccess, name, desc, signature, value);</span>
+		}
+<span class="nc bnc" id="L103" title="All 2 branches missed.">		if (desc.equals(DataClayClassVisitor.ECA_SIGNATURE)) {</span>
+			// ECA fields are always added?
+			// Static constructors initialize ecas, and some stubs obtain the static
+			// constructor
+			// if we do not want users to see the eca fields, change it.
+<span class="nc" id="L108">			return cv.visitField(actualFieldAccess, name, desc, signature, value);</span>
+		}
+
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (isExecClass) {</span>
+<span class="nc" id="L112">			return cv.visitField(actualFieldAccess, name, desc, signature, value);</span>
+		} else {
+			// Check if add field
+<span class="nc" id="L115">			final PropertyStubInfo propStubInfo = stubInfo.getPropertyWithName(name);</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">			if (propStubInfo != null) {</span>
+<span class="nc" id="L117">				return cv.visitField(actualFieldAccess, name, desc, signature, value);</span>
+			} else {
+<span class="nc" id="L119">				return null;</span>
+			}
+		}
+	}
+
+	@Override
+	public MethodVisitor visitMethod(final int access, final String name, final String desc, final String signature,
+			final String[] exceptions) {
+<span class="nc bnc" id="L127" title="All 2 branches missed.">		if (Modifier.isInterface(metaClass.getJavaClassInfo().getModifier())) {</span>
+			// if interface, do not modify code
+<span class="nc" id="L129">			return super.visitMethod(access, name, desc, signature, exceptions);</span>
+		}
+		/**
+		 * New methods (enrichments) has different name in bytecode of the class, for example for method setName(), a new method
+		 * added will be setName$$1(). For stubs: Therefore, if the stub information indicates that the method present in the
+		 * stub must be setName$$1, we just modifies the name, descriptor and signature to setName(). For execution classes all
+		 * methods are included.
+		 */
+
+		// Take into account that operations has always signature WITHOUT $$1,...
+<span class="nc" id="L139">		String nameWithoutMark = name;</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">		if (name.contains(ByteCodeConstants.DATACLAY_PREFIX_MARK)) {</span>
+<span class="nc" id="L141">			nameWithoutMark = name.substring(0, name.indexOf(ByteCodeConstants.DATACLAY_PREFIX_MARK));</span>
+		}
+<span class="nc" id="L143">		final Operation operation = metaClass.getOperation(nameWithoutMark + desc);</span>
+<span class="nc" id="L144">		String actualMethodName = name;</span>
+<span class="nc" id="L145">		String actualMethodDesc = desc;</span>
+<span class="nc" id="L146">		String actualMethodSignature = signature;</span>
+
+		// Get proper implementation, local implementation id is the code used 'inside'
+		// the method
+		// remoteImplementationID is used by &quot;executeRemote&quot;.
+<span class="nc" id="L151">		int implPosition = 0;</span>
+<span class="nc" id="L152">		boolean addMethod = false;</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		if (isExecClass) {</span>
+			// All methods are added
+<span class="nc" id="L155">			addMethod = true;</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">			if (name.contains(ByteCodeConstants.DATACLAY_PREFIX_MARK)) {</span>
+				// since there is no enrichments, get first implementation
+<span class="nc" id="L158">				implPosition = 0;</span>
+			}
+		} else {
+			// ==== CHECK IF ADD METHOD OR NOT === //
+<span class="nc" id="L162">			final ImplementationStubInfo implSpec = stubInfo</span>
+<span class="nc" id="L163">					.getImplementationByNameAndSignature(nameWithoutMark + desc);</span>
+<span class="nc" id="L164">			final ImplementationID localImplementationID = implSpec.getLocalImplID();</span>
+<span class="nc" id="L165">			final Implementation localImpl = operation.getImplementationInOperation(localImplementationID);</span>
+<span class="nc" id="L166">			implPosition = localImpl.getPosition();</span>
+<span class="nc" id="L167">			actualMethodName = operation.getName();</span>
+<span class="nc" id="L168">			actualMethodDesc = operation.getDescriptor();</span>
+<span class="nc" id="L169">			actualMethodSignature = operation.getSignature();</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">			if (name.contains(ByteCodeConstants.DATACLAY_PREFIX_MARK)) {</span>
+				// Check if we must add it. If implPosition is 0, it means we should add the
+				// default method without
+				// any $$.
+<span class="nc bnc" id="L174" title="All 2 branches missed.">				if (name.equals(operation.getName() + ByteCodeConstants.DATACLAY_PREFIX_MARK + implPosition)) {</span>
+<span class="nc" id="L175">					addMethod = true;</span>
+				}
+<span class="nc bnc" id="L177" title="All 2 branches missed.">			} else if (implPosition == 0) {</span>
+				// Add it if and only if impl position is 0.
+<span class="nc" id="L179">				addMethod = true;</span>
+			}
+		}
+
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		if (addMethod) {</span>
+
+			// Get implementation
+<span class="nc" id="L186">			Implementation implToAdd = null;</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">			for (final Implementation impl : operation.getImplementations()) {</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">				if (impl.getPosition() == implPosition) {</span>
+<span class="nc" id="L189">					implToAdd = impl;</span>
+				}
+<span class="nc" id="L191">			}</span>
+
+			// Normal method (without $$)
+<span class="nc" id="L194">			final MethodVisitor mv = cv.visitMethod(access, actualMethodName, actualMethodDesc, actualMethodSignature,</span>
+					exceptions);
+
+			// Check if method has same serialize signature
+<span class="nc bnc" id="L198" title="All 2 branches missed.">			if (desc.equals(SerializationCodeGenerator.SERIALIZE_DESCRIPTOR)</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">					&amp;&amp; name.equals(SerializationCodeGenerator.SERIALIZE_NAME)) {</span>
+<span class="nc" id="L200">				return mv; // Do not inject code before serialization method.</span>
+			}
+			// Check if method has same deserialize signature
+<span class="nc bnc" id="L203" title="All 2 branches missed.">			if (desc.equals(SerializationCodeGenerator.DESERIALIZE_DESCRIPTOR)</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">					&amp;&amp; name.equals(SerializationCodeGenerator.DESERIALIZE_NAME)) {</span>
+<span class="nc" id="L205">				return mv; // Do not inject code before serialization method.</span>
+			}
+
+			// Inject code TODO refactor
+<span class="nc bnc" id="L209" title="All 2 branches missed.">			final DataClayMethodTransformer mVisitor = isExecClass</span>
+<span class="nc" id="L210">					? new DataClayExecutionMethodTransformer(mv, access, actualMethodName, actualMethodDesc,</span>
+<span class="nc" id="L211">							Reflector.getDescriptorFromTypeName(metaClass.getName()), operation, implToAdd,</span>
+<span class="nc" id="L212">							metaClass.getProperties())</span>
+<span class="nc" id="L213">							: new DataClayStubMethodTransformer(mv, access, actualMethodName, actualMethodDesc,</span>
+<span class="nc" id="L214">									Reflector.getDescriptorFromTypeName(metaClass.getName()), operation, implToAdd,</span>
+<span class="nc" id="L215">									metaClass.getProperties());</span>
+<span class="nc" id="L216">					return mVisitor;</span>
+		}
+
+<span class="nc" id="L219">		return null;</span>
+
+	}
+
+	@Override
+	public void visitEnd() {
+
+		/**
+		 * Adding new fields or methods: You cannot do this in the visit method, for example, because this may result in a call
+		 * to visitField followed by visitSource, visitOuterClass, visitAnnotation or visitAttribute, which is not valid. You
+		 * cannot put this new call in the visitSource, visitOuterClass, visitAnnotation or visitAttribute methods, for the same
+		 * reason. The only possibilities are the visitInnerClass, visitField, visitMethod or visitEnd methods
+		 **/
+<span class="nc bnc" id="L232" title="All 2 branches missed.">		if (!Modifier.isInterface(metaClass.getJavaClassInfo().getModifier())) {</span>
+<span class="nc" id="L233">			injectFields();</span>
+<span class="nc" id="L234">			injectSettersAndGetters();</span>
+<span class="nc" id="L235">			injectMethods();</span>
+		}
+<span class="nc" id="L237">		cv.visitEnd();</span>
+<span class="nc" id="L238">	}</span>
+
+	/**
+	 * Inject new fields in class
+	 */
+	private void injectFields() {
+		// Add new fields
+<span class="nc bnc" id="L245" title="All 2 branches missed.">		if (!isExecClass) {</span>
+			// isStubField
+<span class="nc" id="L247">			final FieldVisitor fv = cv.visitField(Opcodes.ACC_PUBLIC, ByteCodeFieldNames.IS_STUB_FIELDNAME,</span>
+<span class="nc" id="L248">					org.objectweb.asm.Type.BOOLEAN_TYPE.getDescriptor(), null, 1);</span>
+<span class="nc" id="L249">			fv.visitEnd();</span>
+		}
+<span class="nc" id="L251">	}</span>
+
+	/**
+	 * Inject new methods in class
+	 */
+	private void injectMethods() {
+		// New constructors
+<span class="nc" id="L258">		generateConstructorObjectIDState();</span>
+		// generateConstructorAlias();
+<span class="nc" id="L260">		generateGetByAlias();</span>
+<span class="nc" id="L261">		generateDeleteAlias();</span>
+		// Serialization methods
+		// Check if there is a method with serialize signature
+		/*
+		 * if (!personalizedSerialization) { SerializationCodeGenerator.generateSerializeMethod(cv, classType,
+		 * parentInternalName, fields); } // Check if there is a method with deserialize signature if
+		 * (!personalizedDeserialization) { SerializationCodeGenerator.generateDeserializeMethod(cv, classType,
+		 * parentInternalName, fields); }
+		 */
+
+<span class="nc" id="L271">		this.generateWrapFieldsSerializationMethod();</span>
+<span class="nc" id="L272">		this.generateWrapFieldsDeserializationMethod();</span>
+<span class="nc" id="L273">		this.generateSetFieldsDeserializationMethod();</span>
+<span class="nc" id="L274">		this.generateRunMethod();</span>
+<span class="nc" id="L275">		this.generateWrapParametersMethod();</span>
+<span class="nc" id="L276">		this.generateWrapReturnMethod();</span>
+<span class="nc" id="L277">		this.generateSetWrappersParameters();</span>
+<span class="nc" id="L278">		this.generateSetWrappersReturn();</span>
+
+<span class="nc bnc" id="L280" title="All 2 branches missed.">		if (this.isExecClass) {</span>
+<span class="nc" id="L281">			this.generateSetAll();</span>
+		}
+<span class="nc" id="L283">	}</span>
+
+	/**
+	 * Inject setters and getters ($$get... and $$set)
+	 */
+	private void injectSettersAndGetters() {
+<span class="nc bnc" id="L289" title="All 2 branches missed.">		if (isExecClass) {</span>
+			// All properties
+<span class="nc bnc" id="L291" title="All 2 branches missed.">			for (final Property prop : metaClass.getProperties()) {</span>
+<span class="nc" id="L292">				generateGetter(prop);</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">				if (prop.isReplicated()) {</span>
+<span class="nc" id="L294">					generateSetter(prop, true);</span>
+				}
+<span class="nc" id="L296">				generateSetter(prop, false);</span>
+<span class="nc" id="L297">			}</span>
+		} else {
+			// Check if they are in stub
+<span class="nc bnc" id="L300" title="All 2 branches missed.">			for (final PropertyStubInfo propInfo : stubInfo.getProperties().values()) {</span>
+<span class="nc" id="L301">				final Property prop = metaClass.getProperty(propInfo.getPropertyID());</span>
+<span class="nc" id="L302">				generateGetter(prop);</span>
+<span class="nc" id="L303">				generateSetter(prop, false);</span>
+<span class="nc" id="L304">			}</span>
+		}
+<span class="nc" id="L306">	}</span>
+
+	/**
+	 * Generate getter
+	 * 
+	 * @param property
+	 *            Property for which to generate getter
+	 */
+	private void generateGetter(final Property property) {
+
+<span class="nc" id="L316">		final Type propertyType = property.getType();</span>
+<span class="nc" id="L317">		final String propertyTypeDesc = propertyType.getDescriptor();</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">		if (propertyTypeDesc.equals(DataClayClassVisitor.ECA_SIGNATURE)) {</span>
+			// ECA fields has no getter and setter
+<span class="nc" id="L320">			return;</span>
+		}
+<span class="nc" id="L322">		final String propertyName = property.getName();</span>
+<span class="nc" id="L323">		final String propertyTypeSignature = propertyType.getSignature();</span>
+
+<span class="nc" id="L325">		final String classDesc = Reflector.getDescriptorFromTypeName(metaClass.getName());</span>
+<span class="nc" id="L326">		final String getterDesc = &quot;()&quot; + propertyTypeDesc;</span>
+<span class="nc" id="L327">		String getterSignature = null;</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">		if (propertyTypeSignature != null) {</span>
+<span class="nc" id="L329">			getterSignature = &quot;()&quot; + propertyTypeSignature;</span>
+		}
+
+		// Create method header
+<span class="nc" id="L333">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, &quot;$$get&quot; + propertyName, getterDesc, getterSignature,</span>
+				null);
+
+<span class="nc" id="L336">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC, &quot;$$get&quot; + propertyName, getterDesc);</span>
+
+<span class="nc" id="L338">		final org.objectweb.asm.Type propTypeASM = org.objectweb.asm.Type.getType(propertyTypeDesc);</span>
+<span class="nc" id="L339">		final org.objectweb.asm.Type ownerTypeASM = org.objectweb.asm.Type.getType(classDesc);</span>
+
+		// Code
+<span class="nc" id="L342">		gn.visitCode(); // Start code</span>
+
+<span class="nc" id="L344">		DataClayMethodTransformer.injectStartMethod(gn, getterDesc, classDesc, &quot;$$get&quot; + propertyName,</span>
+<span class="nc" id="L345">				&quot;$$get&quot; + propertyName + getterDesc, property.getGetterImplementationID().toString(), isExecClass, null,</span>
+				null);
+
+<span class="nc" id="L348">		DataClayMethodTransformer.injectEndMethod(gn, getterDesc, classDesc, &quot;$$get&quot; + propertyName + getterDesc,</span>
+<span class="nc" id="L349">				property.getGetterImplementationID().toString());</span>
+
+<span class="nc bnc" id="L351" title="All 2 branches missed.">		if (isExecClass) {</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">			if (Reflector.isJavaTypeName(propertyType.getTypeName())</span>
+<span class="nc bnc" id="L353" title="All 2 branches missed.">					|| Reflector.isJavaPrimitiveOrArraySignature(propertyType.getSignatureOrDescriptor())) {</span>
+				// Set dirty flag to true
+<span class="nc" id="L355">				gn.loadThis();</span>
+<span class="nc" id="L356">				gn.invokeVirtual(ownerTypeASM, ByteCodeMethods.DCOBJ_SETASDIRTY);</span>
+			}
+		}
+
+<span class="nc" id="L360">		gn.loadThis(); // Load this //Stack: &lt;This&gt;</span>
+<span class="nc" id="L361">		gn.getField(ownerTypeASM, propertyName, propTypeASM); // Stack: &lt;Field&gt; &lt;Field&gt; (Can be 2 if long)</span>
+<span class="nc" id="L362">		gn.returnValue();</span>
+
+		/** MAX Stack for a Getter: 2 */
+<span class="nc" id="L365">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L366">		gn.visitEnd();</span>
+<span class="nc" id="L367">	}</span>
+
+	/**
+	 * Generate setter
+	 * 
+	 * @param property
+	 *            Property for which to generate setter
+	 * @param replicated Indicates if setter was defined to use replication mechanism
+	 */
+	private void generateSetter(final Property property, final boolean replicated) {
+
+<span class="nc" id="L378">		final Type propertyType = property.getType();</span>
+<span class="nc" id="L379">		final String propertyTypeDesc = propertyType.getDescriptor();</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">		if (propertyTypeDesc.equals(DataClayClassVisitor.ECA_SIGNATURE)) {</span>
+			// ECA fields has no setter
+<span class="nc" id="L382">			return;</span>
+		}
+
+<span class="nc" id="L385">		final String propertyName = property.getName();</span>
+<span class="nc" id="L386">		final String classDesc = Reflector.getDescriptorFromTypeName(metaClass.getName());</span>
+<span class="nc" id="L387">		final String propertyTypeSignature = propertyType.getSignature();</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">		final String setterDesc = replicated ? &quot;(&quot; + propertyTypeDesc + &quot;Ljava/lang/Boolean;)V&quot;</span>
+<span class="nc" id="L389">				: &quot;(&quot; + propertyTypeDesc + &quot;)V&quot;;</span>
+
+<span class="nc" id="L391">		String setterSignature = null;</span>
+<span class="nc bnc" id="L392" title="All 2 branches missed.">		if (propertyTypeSignature != null) {</span>
+<span class="nc" id="L393">			setterSignature = &quot;(&quot; + propertyTypeSignature + &quot;)V&quot;;</span>
+		}
+
+<span class="nc bnc" id="L396" title="All 2 branches missed.">		final String set = replicated ? ByteCodeConstants.DATACLAY_SET_UPDATE_PREFIX</span>
+<span class="nc" id="L397">				: ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;set&quot;;</span>
+
+		// Create method header
+<span class="nc" id="L400">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, set + propertyName, setterDesc, setterSignature,</span>
+				null);
+
+<span class="nc" id="L403">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC, set + propertyName, setterDesc);</span>
+
+<span class="nc" id="L405">		final org.objectweb.asm.Type propTypeASM = org.objectweb.asm.Type.getType(propertyTypeDesc);</span>
+<span class="nc" id="L406">		final org.objectweb.asm.Type ownerTypeASM = org.objectweb.asm.Type.getType(classDesc);</span>
+
+		// Code
+<span class="nc" id="L409">		gn.visitCode(); // Start code</span>
+
+<span class="nc bnc" id="L411" title="All 2 branches missed.">		if (replicated) {</span>
+<span class="nc" id="L412">			DataClayMethodTransformer.injectSetterStartMethod(gn, setterDesc, classDesc, propertyName,</span>
+<span class="nc" id="L413">					propertyName + setterDesc.replace(&quot;)&quot;, &quot;Ljava/lang/Boolean;)&quot;),</span>
+<span class="nc" id="L414">					property.getUpdateImplementationID().toString(), isExecClass, property.getAnnotations(),</span>
+					replicated);
+
+			// TODO needs a deep refactoring: the replicated setter should be generated
+			// indipendently from the normal setter
+<span class="nc" id="L419">			final List&lt;Annotation&gt; annotations = property.getAnnotations();</span>
+<span class="nc bnc" id="L420" title="All 2 branches missed.">			for (final Annotation a : annotations) {</span>
+<span class="nc" id="L421">				final String beforeAnnotationDescr = &quot;L&quot; + Replication.BeforeUpdate.class.getName().replace('.', '/')</span>
+						+ &quot;;&quot;;
+<span class="nc bnc" id="L423" title="All 2 branches missed.">				if (a.getDescr().equals(beforeAnnotationDescr)) {</span>
+<span class="nc" id="L424">					DataClayExecutionMethodTransformer.injectMethodFromAnnotation(gn, a,</span>
+<span class="nc" id="L425">							property.getSetterImplementationID().toString(), </span>
+<span class="nc" id="L426">							property.getUpdateImplementationID().toString(), </span>
+							propertyTypeDesc);
+<span class="nc" id="L428">					break;</span>
+				}
+<span class="nc" id="L430">			}</span>
+<span class="nc" id="L431">		} else {</span>
+<span class="nc" id="L432">			DataClayMethodTransformer.injectSetterStartMethod(gn, setterDesc, classDesc, propertyName,</span>
+<span class="nc" id="L433">					propertyName + setterDesc, property.getSetterImplementationID().toString(), isExecClass,</span>
+<span class="nc" id="L434">					property.getAnnotations(), replicated);</span>
+		}
+
+		// Set dirty flag to true
+<span class="nc bnc" id="L438" title="All 2 branches missed.">		if (isExecClass) {</span>
+<span class="nc" id="L439">			gn.loadThis();</span>
+<span class="nc" id="L440">			gn.invokeVirtual(ownerTypeASM, ByteCodeMethods.DCOBJ_SETASDIRTY);</span>
+		}
+
+<span class="nc" id="L443">		gn.loadThis(); // Stack: &lt;This&gt;</span>
+<span class="nc" id="L444">		gn.loadArg(0); // Stack: &lt;This&gt; &lt;Arg&gt; &lt;Arg&gt; (can be two slots if long)</span>
+<span class="nc" id="L445">		gn.putField(ownerTypeASM, propertyName, propTypeASM); // Stack: &lt;&gt;</span>
+
+<span class="nc bnc" id="L447" title="All 2 branches missed.">		if (replicated) {</span>
+<span class="nc" id="L448">			DataClayExecutionMethodTransformer.injectReplicatedEndMethod(gn, setterDesc, classDesc,</span>
+<span class="nc" id="L449">					set + propertyName + setterDesc, property.getSetterImplementationID().toString(),</span>
+<span class="nc" id="L450">					property.getUpdateImplementationID().toString(),</span>
+<span class="nc" id="L451">					property.getAnnotations());</span>
+		} else {
+<span class="nc" id="L453">			DataClayMethodTransformer.injectEndMethod(gn, setterDesc, classDesc, set + propertyName + setterDesc,</span>
+<span class="nc" id="L454">					property.getSetterImplementationID().toString());</span>
+		}
+
+<span class="nc" id="L457">		gn.returnValue();</span>
+<span class="nc" id="L458">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L459">		gn.visitEnd();</span>
+<span class="nc" id="L460">	}</span>
+
+	/**
+	 * Generate setAll method
+	 */
+	private void generateSetAll() {
+
+<span class="nc" id="L467">		final String classDesc = Reflector.getDescriptorFromTypeName(metaClass.getName());</span>
+<span class="nc" id="L468">		final String signature = Reflector.getSignatureFromTypeName(DataClayObject.class.getName());</span>
+
+<span class="nc" id="L470">		final String opDesc = &quot;(&quot; + signature + &quot;)V&quot;;</span>
+
+<span class="nc" id="L472">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethodsNames.SET_ALL_FIELDS, opDesc, null,</span>
+				null);
+
+<span class="nc" id="L475">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC, ByteCodeMethodsNames.SET_ALL_FIELDS,</span>
+				opDesc);
+
+		// Parameters
+<span class="nc" id="L479">		gn.visitParameter(&quot;otherObject&quot;, Opcodes.ACC_FINAL);</span>
+
+		// Code
+<span class="nc" id="L482">		gn.visitCode(); // Start code</span>
+
+<span class="nc" id="L484">		final org.objectweb.asm.Type currentClassType = org.objectweb.asm.Type.getType(classDesc);</span>
+
+<span class="nc bnc" id="L486" title="All 2 branches missed.">		for (final Property property : metaClass.getProperties()) {</span>
+
+<span class="nc" id="L488">			final Type propertyType = property.getType();</span>
+<span class="nc" id="L489">			final String propertyName = property.getName();</span>
+<span class="nc" id="L490">			final String propertyDesc = propertyType.getDescriptor();</span>
+<span class="nc" id="L491">			final org.objectweb.asm.Type currentPropertyType = org.objectweb.asm.Type.getType(propertyDesc);</span>
+<span class="nc" id="L492">			final Method getter = new Method(&quot;$$get&quot; + propertyName, currentPropertyType, ByteCodeTypes.NO_ARGS);</span>
+
+			// SETTER CALL this.$$setField(...)
+<span class="nc" id="L495">			gn.loadThis();</span>
+
+			// GETTER CALL otherObject.$$getField()
+<span class="nc" id="L498">			gn.loadArg(0); // Stack: &lt;This&gt; &lt;DataClayObject&gt;</span>
+<span class="nc" id="L499">			gn.checkCast(currentClassType); // Stack: &lt;This&gt; &lt;TypeA&gt;</span>
+<span class="nc" id="L500">			gn.invokeVirtual(currentClassType, getter);</span>
+
+			final Method setter;
+<span class="nc bnc" id="L503" title="All 2 branches missed.">			if (!property.isReplicated()) {</span>
+<span class="nc" id="L504">				setter = new Method(&quot;$$set&quot; + propertyName, org.objectweb.asm.Type.VOID_TYPE,</span>
+						new org.objectweb.asm.Type[] { currentPropertyType });
+			} else {
+<span class="nc" id="L507">				setter = new Method(&quot;$$setUpdate$$&quot; + propertyName, org.objectweb.asm.Type.VOID_TYPE,</span>
+						new org.objectweb.asm.Type[] { currentPropertyType, ByteCodeTypes.BOOLEAN });
+<span class="nc" id="L509">				gn.push(false);</span>
+<span class="nc" id="L510">				gn.box(org.objectweb.asm.Type.BOOLEAN_TYPE);</span>
+			}
+
+			// call setter
+<span class="nc" id="L514">			gn.invokeVirtual(currentClassType, setter);</span>
+
+<span class="nc" id="L516">		}</span>
+
+<span class="nc" id="L518">		gn.returnValue();</span>
+<span class="nc" id="L519">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L520">		gn.visitEnd();</span>
+
+<span class="nc" id="L522">	}</span>
+
+	/**
+	 * Generates the constructor that receives ObjectID
+	 */
+	private void generateConstructorObjectIDState() {
+
+		// Create method header
+<span class="nc" id="L530">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.DC_INIT_METHOD.getName(),</span>
+<span class="nc" id="L531">				ByteCodeMethods.DC_INIT_METHOD.getDescriptor(), null, null);</span>
+<span class="nc" id="L532">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC,</span>
+<span class="nc" id="L533">				ByteCodeMethods.DC_INIT_METHOD.getName(), ByteCodeMethods.DC_INIT_METHOD.getDescriptor());</span>
+
+		// Code
+<span class="nc" id="L536">		gn.visitCode(); // Start code</span>
+<span class="nc" id="L537">		gn.loadThis(); // Stack: &lt;This&gt;</span>
+		// gn.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L539">		gn.loadArg(0); // Stack: &lt;This&gt; &lt;Oid&gt;</span>
+<span class="nc" id="L540">		mv.visitMethodInsn(Opcodes.INVOKESPECIAL, parentName, ByteCodeMethods.DC_INIT_METHOD.getName(),</span>
+<span class="nc" id="L541">				ByteCodeMethods.DC_INIT_METHOD.getDescriptor(), false);</span>
+<span class="nc" id="L542">		gn.returnValue();</span>
+<span class="nc" id="L543">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L544">		gn.visitEnd();</span>
+<span class="nc" id="L545">	}</span>
+
+	/**
+	 * Generates static getByAlias method
+	 */
+	private void generateGetByAlias() {
+<span class="nc" id="L551">		String fullClassName = metaClass.getName();</span>
+<span class="nc bnc" id="L552" title="All 2 branches missed.">		if (this.isExecClass) {</span>
+<span class="nc" id="L553">			fullClassName = metaClass.getNamespace() + &quot;.&quot; + metaClass.getName();</span>
+		}
+<span class="nc" id="L555">		generateInternalGetByAliasSafe(ByteCodeMethodsNames.GETOBJ_BY_ALIAS, </span>
+<span class="nc" id="L556">				Reflector.getDescriptorFromTypeName(fullClassName),</span>
+				fullClassName);
+<span class="nc" id="L558">		generateInternalGetByAliasSafe(ByteCodeMethodsNames.GETOBJ_BY_ALIAS_EXT, </span>
+<span class="nc" id="L559">				Reflector.getDescriptorFromTypeName(ByteCodeTypes.OBJECT.getInternalName()),</span>
+				fullClassName);
+
+<span class="nc" id="L562">		generateInternalGetByAliasUnsafe(ByteCodeMethodsNames.GETOBJ_BY_ALIAS, </span>
+<span class="nc" id="L563">				Reflector.getDescriptorFromTypeName(fullClassName),</span>
+				fullClassName);
+<span class="nc" id="L565">		generateInternalGetByAliasUnsafe(ByteCodeMethodsNames.GETOBJ_BY_ALIAS_EXT, </span>
+<span class="nc" id="L566">				Reflector.getDescriptorFromTypeName(ByteCodeTypes.OBJECT.getInternalName()),</span>
+				fullClassName);
+<span class="nc" id="L568">	}</span>
+
+	/**
+	 * Generate internal getByAlias method.
+	 * 
+	 * @param methodName Name of the getByAlias method to generate
+	 * @param classDesc
+	 *            Return type
+	 * @param className
+	 *            name of the class of the object
+	 * 
+	 */
+	private void generateInternalGetByAliasSafe(final String methodName, 
+			final String classDesc, final String className) {
+<span class="nc" id="L582">		final String signature = Reflector.getSignatureFromTypeName(String.class.getName());</span>
+
+<span class="nc" id="L584">		final String opDesc = &quot;(&quot; + signature + &quot;)&quot; + classDesc;</span>
+<span class="nc" id="L585">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,</span>
+				methodName, opDesc, null, null);
+<span class="nc" id="L587">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,</span>
+				methodName, opDesc);
+
+		// Parameters
+<span class="nc" id="L591">		gn.visitParameter(&quot;alias&quot;, Opcodes.ACC_FINAL);</span>
+
+		// Code
+<span class="nc" id="L594">		gn.visitCode(); // Start code</span>
+
+		// ==== CLASSID === /
+<span class="nc" id="L597">		gn.newInstance(ByteCodeTypes.MCLASSID); // Stack: &lt;This&gt; &lt;ClassID&gt;</span>
+<span class="nc" id="L598">		gn.dup();</span>
+
+<span class="nc" id="L600">		gn.newInstance(ByteCodeTypes.UUID);</span>
+<span class="nc" id="L601">		gn.dup();</span>
+<span class="nc" id="L602">		final UUID classID = metaClass.getDataClayID().getId();</span>
+<span class="nc" id="L603">		gn.visitLdcInsn(classID.getMostSignificantBits());</span>
+<span class="nc" id="L604">		gn.visitLdcInsn(classID.getLeastSignificantBits());</span>
+<span class="nc" id="L605">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.UUID.getInternalName(),</span>
+<span class="nc" id="L606">				ByteCodeMethods.UUID_INIT_METHOD.getName(), ByteCodeMethods.UUID_INIT_METHOD.getDescriptor(),</span>
+				false);
+<span class="nc" id="L608">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.MCLASSID.getInternalName(),</span>
+<span class="nc" id="L609">				ByteCodeMethods.MCLASSID_INIT_METHOD.getName(),</span>
+<span class="nc" id="L610">				ByteCodeMethods.MCLASSID_INIT_METHOD.getDescriptor(), false);</span>
+
+
+<span class="nc" id="L613">		gn.loadArg(0); // Stack: &lt;This&gt; &lt;ClassID&gt; &lt;Alias&gt;</span>
+
+<span class="nc" id="L615">		gn.push(true); // Stack: &lt;This&gt; &lt;ClassID&gt; &lt;Alias&gt; &lt;true&gt;</span>
+
+<span class="nc" id="L617">		mv.visitMethodInsn(Opcodes.INVOKESTATIC, ByteCodeTypes.DCOBJ.getInternalName(),</span>
+<span class="nc" id="L618">				ByteCodeMethods.DCOBJ_GET_BY_ALIAS.getName(), ByteCodeMethods.DCOBJ_GET_BY_ALIAS.getDescriptor(),</span>
+				false);
+<span class="nc" id="L620">		gn.checkCast(org.objectweb.asm.Type.getType(classDesc));</span>
+<span class="nc" id="L621">		gn.returnValue();</span>
+
+<span class="nc" id="L623">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L624">		gn.visitEnd();</span>
+<span class="nc" id="L625">	}</span>
+
+	/**
+	 * Generate internal getByAlias method.
+	 * 
+	 * @param methodName Name of the getByAlias method to generate
+	 * @param classDesc
+	 *            Return type
+	 * @param className
+	 *            name of the class of the object
+	 * 
+	 */
+	private void generateInternalGetByAliasUnsafe(final String methodName, 
+			final String classDesc, final String className) {
+<span class="nc" id="L639">		final String signature = Reflector.getSignatureFromTypeName(String.class.getName())</span>
+<span class="nc" id="L640">				+ Reflector.getSignatureFromTypeName(&quot;boolean&quot;);</span>
+
+<span class="nc" id="L642">		final String opDesc = &quot;(&quot; + signature + &quot;)&quot; + classDesc;</span>
+<span class="nc" id="L643">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,</span>
+				methodName, opDesc, null, null);
+<span class="nc" id="L645">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,</span>
+				methodName, opDesc);
+
+		// Parameters
+<span class="nc" id="L649">		gn.visitParameter(&quot;alias&quot;, Opcodes.ACC_FINAL);</span>
+
+		// Code
+<span class="nc" id="L652">		gn.visitCode(); // Start code</span>
+
+		// ==== CLASSID === /
+<span class="nc" id="L655">		gn.newInstance(ByteCodeTypes.MCLASSID); // Stack: &lt;This&gt; &lt;ClassID&gt;</span>
+<span class="nc" id="L656">		gn.dup();</span>
+
+<span class="nc" id="L658">		gn.newInstance(ByteCodeTypes.UUID);</span>
+<span class="nc" id="L659">		gn.dup();</span>
+<span class="nc" id="L660">		final UUID classID = metaClass.getDataClayID().getId();</span>
+<span class="nc" id="L661">		gn.visitLdcInsn(classID.getMostSignificantBits());</span>
+<span class="nc" id="L662">		gn.visitLdcInsn(classID.getLeastSignificantBits());</span>
+<span class="nc" id="L663">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.UUID.getInternalName(),</span>
+<span class="nc" id="L664">				ByteCodeMethods.UUID_INIT_METHOD.getName(), ByteCodeMethods.UUID_INIT_METHOD.getDescriptor(),</span>
+				false);
+<span class="nc" id="L666">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.MCLASSID.getInternalName(),</span>
+<span class="nc" id="L667">				ByteCodeMethods.MCLASSID_INIT_METHOD.getName(),</span>
+<span class="nc" id="L668">				ByteCodeMethods.MCLASSID_INIT_METHOD.getDescriptor(), false);</span>
+
+
+<span class="nc" id="L671">		gn.loadArg(0); // Stack: &lt;This&gt; &lt;ClassID&gt; &lt;Alias&gt;</span>
+<span class="nc" id="L672">		gn.loadArg(1); // Stack: &lt;This&gt; &lt;ClassID&gt; &lt;Alias&gt; &lt;Safe&gt;</span>
+
+<span class="nc" id="L674">		mv.visitMethodInsn(Opcodes.INVOKESTATIC, ByteCodeTypes.DCOBJ.getInternalName(),</span>
+<span class="nc" id="L675">				ByteCodeMethods.DCOBJ_GET_BY_ALIAS.getName(), ByteCodeMethods.DCOBJ_GET_BY_ALIAS.getDescriptor(),</span>
+				false);
+<span class="nc" id="L677">		gn.checkCast(org.objectweb.asm.Type.getType(classDesc));</span>
+<span class="nc" id="L678">		gn.returnValue();</span>
+
+<span class="nc" id="L680">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L681">		gn.visitEnd();</span>
+<span class="nc" id="L682">	}</span>
+
+
+	/**
+	 * Generates static deleteAlias method
+	 */
+	private void generateDeleteAlias() {
+
+		// Create method header
+<span class="nc" id="L691">		final String signature = Reflector.getSignatureFromTypeName(String.class.getName());</span>
+<span class="nc" id="L692">		final String opDesc = &quot;(&quot; + signature + &quot;)V&quot;;</span>
+<span class="nc" id="L693">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,</span>
+				ByteCodeMethodsNames.DELETE_ALIAS, opDesc, null, null);
+<span class="nc" id="L695">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC + Opcodes.ACC_STATIC,</span>
+				ByteCodeMethodsNames.DELETE_ALIAS, opDesc);
+
+		// Parameters
+<span class="nc" id="L699">		gn.visitParameter(&quot;alias&quot;, Opcodes.ACC_FINAL);</span>
+
+		// Code
+<span class="nc" id="L702">		gn.visitCode(); // Start code</span>
+
+<span class="nc" id="L704">		gn.push(metaClass.getName()); // Stack: &lt;This&gt; &lt;ClassName&gt;</span>
+<span class="nc" id="L705">		gn.loadArg(0); // Stack: &lt;This&gt; &lt;ClassName&gt; &lt;Alias&gt;</span>
+<span class="nc" id="L706">		mv.visitMethodInsn(Opcodes.INVOKESTATIC, ByteCodeTypes.DCOBJ.getInternalName(),</span>
+<span class="nc" id="L707">				ByteCodeMethods.DCOBJ_DELETE_ALIAS.getName(), ByteCodeMethods.DCOBJ_DELETE_ALIAS.getDescriptor(),</span>
+				false);
+<span class="nc" id="L709">		gn.returnValue();</span>
+
+<span class="nc" id="L711">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L712">		gn.visitEnd();</span>
+<span class="nc" id="L713">	}</span>
+
+	/**
+	 * Generate wrap fields method.
+	 */
+	private void generateWrapFieldsSerializationMethod() {
+<span class="nc" id="L719">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.WRAP_FIELDS_SER.getName(),</span>
+<span class="nc" id="L720">				ByteCodeMethods.WRAP_FIELDS_SER.getDescriptor(), null, null);</span>
+<span class="nc" id="L721">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC,</span>
+<span class="nc" id="L722">				ByteCodeMethods.WRAP_FIELDS_SER.getName(), ByteCodeMethods.WRAP_FIELDS_SER.getDescriptor());</span>
+
+<span class="nc" id="L724">		gn.visitCode();</span>
+
+		// Get class type
+<span class="nc" id="L727">		final String classDescriptor = Reflector.getDescriptorFromTypeName(metaClass.getName());</span>
+<span class="nc" id="L728">		final org.objectweb.asm.Type classType = org.objectweb.asm.Type.getType(classDescriptor);</span>
+
+		// Create a new List&lt;DataClaySerializable&gt;
+		// Check which fields to add
+<span class="nc bnc" id="L732" title="All 2 branches missed.">		for (final Property prop : metaClass.getProperties()) {</span>
+<span class="nc" id="L733">			final int modProp = prop.getJavaPropertyInfo().getModifier();</span>
+<span class="nc bnc" id="L734" title="All 4 branches missed.">			if (Modifier.isStatic(modProp) &amp;&amp; Modifier.isFinal(modProp)) {</span>
+<span class="nc" id="L735">				continue;</span>
+			}
+<span class="nc bnc" id="L737" title="All 4 branches missed.">			if (isExecClass || stubInfo.containsProperty(prop.getName())) {</span>
+
+<span class="nc" id="L739">				final String fieldName = prop.getName();</span>
+<span class="nc" id="L740">				final Type paramDcType = prop.getType();</span>
+<span class="nc" id="L741">				final String typeName = paramDcType.getTypeName(); // &quot;int&quot;, &quot;float&quot;, ... &quot;java.lang.Integer&quot;...</span>
+<span class="nc" id="L742">				final org.objectweb.asm.Type fieldType = org.objectweb.asm.Type.getType(prop.getType().getDescriptor());</span>
+
+				// CODE: wrappedParams.add(new Wrapper(field)
+<span class="nc" id="L745">				gn.loadArg(0);</span>
+
+<span class="nc bnc" id="L747" title="All 4 branches missed.">				if (Reflector.isImmutableTypeName(typeName) || Reflector.isPrimitiveTypeName(typeName)</span>
+<span class="nc bnc" id="L748" title="All 4 branches missed.">						|| Reflector.isArrayTypeName(typeName) || Reflector.isJavaTypeName(typeName)</span>
+<span class="nc bnc" id="L749" title="All 2 branches missed.">						|| typeName.equals(ObjectID.class.getName())) {</span>
+					// =========== IMMUTABLES =============== //
+					// =========== LANGUAGE =============== //
+
+					// Wrap immutable
+					// Find wrapper type.
+<span class="nc" id="L755">					final Tuple&lt;org.objectweb.asm.Type, org.objectweb.asm.Type&gt; wrapperTypes = SerializationCodeGenerator</span>
+<span class="nc" id="L756">							.findWrapperType(typeName, paramDcType.getDescriptor());</span>
+<span class="nc" id="L757">					final org.objectweb.asm.Type wrapperType = wrapperTypes.getFirst();</span>
+<span class="nc" id="L758">					final org.objectweb.asm.Type paramType = wrapperTypes.getSecond();</span>
+					// Get constructor. Constructor always contains as the argument the original
+					// type to wrap.
+<span class="nc" id="L761">					final Method wrapperConstructor = new Method(ByteCodeMethodsNames.INIT_MTHD,</span>
+							org.objectweb.asm.Type.VOID_TYPE, new org.objectweb.asm.Type[] { paramType });
+
+<span class="nc" id="L764">					gn.newInstance(wrapperType);</span>
+<span class="nc" id="L765">					gn.dup();</span>
+<span class="nc" id="L766">					gn.loadThis();</span>
+<span class="nc" id="L767">					gn.getField(classType, fieldName, fieldType);</span>
+<span class="nc bnc" id="L768" title="All 2 branches missed.">					if (!fieldType.equals(paramType)) {</span>
+						// If field type is java immutable i.e. not same as param type, we must box it
+<span class="nc" id="L770">						gn.box(fieldType);</span>
+					} else {
+<span class="nc" id="L772">						gn.checkCast(paramType);</span>
+					}
+<span class="nc" id="L774">					gn.invokeConstructor(wrapperType, wrapperConstructor);</span>
+
+<span class="nc" id="L776">				} else {</span>
+					// If DCobject just add
+<span class="nc" id="L778">					gn.loadThis();</span>
+<span class="nc" id="L779">					gn.getField(classType, fieldName, fieldType);</span>
+				}
+
+<span class="nc" id="L782">				gn.invokeInterface(ByteCodeTypes.LIST, ByteCodeMethods.LIST_ADD);</span>
+<span class="nc" id="L783">				gn.pop(); // discard result of put.</span>
+
+			}
+<span class="nc" id="L786">		}</span>
+
+<span class="nc bnc" id="L788" title="All 2 branches missed.">		if (metaClass.getParentType() != null) {</span>
+<span class="nc" id="L789">			gn.loadThis();</span>
+<span class="nc" id="L790">			gn.loadArg(0);</span>
+<span class="nc" id="L791">			gn.visitMethodInsn(Opcodes.INVOKESPECIAL,</span>
+<span class="nc" id="L792">					Reflector.getInternalNameFromTypeName(metaClass.getParentType().getTypeName()),</span>
+<span class="nc" id="L793">					ByteCodeMethods.WRAP_FIELDS_SER.getName(), ByteCodeMethods.WRAP_FIELDS_SER.getDescriptor(), false);</span>
+<span class="nc" id="L794">			gn.returnValue();</span>
+		} else {
+<span class="nc" id="L796">			gn.returnValue();</span>
+		}
+
+		/** MAX Stack */
+<span class="nc" id="L800">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L801">		gn.visitEnd();</span>
+
+<span class="nc" id="L803">	}</span>
+
+	/**
+	 * Generate wrap fields method.
+	 */
+	private void generateWrapFieldsDeserializationMethod() {
+<span class="nc" id="L809">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.WRAP_FIELDS_DESER.getName(),</span>
+<span class="nc" id="L810">				ByteCodeMethods.WRAP_FIELDS_DESER.getDescriptor(), null, null);</span>
+<span class="nc" id="L811">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC,</span>
+<span class="nc" id="L812">				ByteCodeMethods.WRAP_FIELDS_DESER.getName(), ByteCodeMethods.WRAP_FIELDS_DESER.getDescriptor());</span>
+<span class="nc" id="L813">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+<span class="nc" id="L815">		gn.visitCode();</span>
+
+		// Create a new List&lt;DataClaySerializable&gt;
+		// Check which fields to add
+<span class="nc bnc" id="L819" title="All 2 branches missed.">		for (final Property prop : metaClass.getProperties()) {</span>
+<span class="nc" id="L820">			final int modProp = prop.getJavaPropertyInfo().getModifier();</span>
+<span class="nc bnc" id="L821" title="All 4 branches missed.">			if (Modifier.isStatic(modProp) &amp;&amp; Modifier.isFinal(modProp)) {</span>
+<span class="nc" id="L822">				continue;</span>
+			}
+<span class="nc bnc" id="L824" title="All 4 branches missed.">			if (isExecClass || stubInfo.containsProperty(prop.getName())) {</span>
+
+<span class="nc" id="L826">				final Type paramDcType = prop.getType();</span>
+<span class="nc" id="L827">				final String typeName = paramDcType.getTypeName(); // &quot;int&quot;, &quot;float&quot;, ... &quot;java.lang.Integer&quot;...</span>
+
+				// CODE: wrappedParams.add(new Wrapper())
+<span class="nc" id="L830">				gn.loadArg(0);</span>
+
+<span class="nc bnc" id="L832" title="All 4 branches missed.">				if (Reflector.isImmutableTypeName(typeName) || Reflector.isPrimitiveTypeName(typeName)</span>
+<span class="nc bnc" id="L833" title="All 4 branches missed.">						|| Reflector.isArrayTypeName(typeName) || Reflector.isJavaTypeName(typeName)</span>
+<span class="nc bnc" id="L834" title="All 2 branches missed.">						|| typeName.equals(ObjectID.class.getName())) {</span>
+					// =========== IMMUTABLES =============== //
+					// =========== LANGUAGE =============== //
+
+					// Wrap immutable
+					// Find wrapper type.
+<span class="nc" id="L840">					final Tuple&lt;org.objectweb.asm.Type, org.objectweb.asm.Type&gt; wrapperTypes = SerializationCodeGenerator</span>
+<span class="nc" id="L841">							.findWrapperType(typeName, paramDcType.getDescriptor());</span>
+<span class="nc" id="L842">					final org.objectweb.asm.Type wrapperType = wrapperTypes.getFirst();</span>
+					// Get constructor. Constructor always contains as the argument the original
+					// type to wrap.
+<span class="nc" id="L845">					final Method wrapperConstructor = new Method(ByteCodeMethodsNames.INIT_MTHD,</span>
+							org.objectweb.asm.Type.VOID_TYPE, new org.objectweb.asm.Type[] {});
+
+<span class="nc" id="L848">					gn.newInstance(wrapperType);</span>
+<span class="nc" id="L849">					gn.dup();</span>
+<span class="nc" id="L850">					gn.invokeConstructor(wrapperType, wrapperConstructor);</span>
+
+<span class="nc" id="L852">				} else {</span>
+					// If DCobject, null means no wrapper
+<span class="nc" id="L854">					ia.aconst(null);</span>
+				}
+
+<span class="nc" id="L857">				gn.invokeInterface(ByteCodeTypes.LIST, ByteCodeMethods.LIST_ADD);</span>
+<span class="nc" id="L858">				gn.pop(); // discard result of put.</span>
+
+			}
+<span class="nc" id="L861">		}</span>
+
+<span class="nc bnc" id="L863" title="All 2 branches missed.">		if (metaClass.getParentType() != null) {</span>
+<span class="nc" id="L864">			gn.loadThis();</span>
+<span class="nc" id="L865">			gn.loadArg(0);</span>
+<span class="nc" id="L866">			gn.visitMethodInsn(Opcodes.INVOKESPECIAL,</span>
+<span class="nc" id="L867">					Reflector.getInternalNameFromTypeName(metaClass.getParentType().getTypeName()),</span>
+<span class="nc" id="L868">					ByteCodeMethods.WRAP_FIELDS_DESER.getName(), ByteCodeMethods.WRAP_FIELDS_DESER.getDescriptor(),</span>
+					false);
+<span class="nc" id="L870">			gn.returnValue();</span>
+		} else {
+<span class="nc" id="L872">			gn.returnValue();</span>
+		}
+
+		/** MAX Stack */
+<span class="nc" id="L876">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L877">		gn.visitEnd();</span>
+
+<span class="nc" id="L879">	}</span>
+
+	/**
+	 * Generate set fields deserialization method.
+	 */
+	private void generateSetFieldsDeserializationMethod() {
+<span class="nc" id="L885">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.SET_FIELDS_DESER.getName(),</span>
+<span class="nc" id="L886">				ByteCodeMethods.SET_FIELDS_DESER.getDescriptor(), null, null);</span>
+<span class="nc" id="L887">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC,</span>
+<span class="nc" id="L888">				ByteCodeMethods.SET_FIELDS_DESER.getName(), ByteCodeMethods.SET_FIELDS_DESER.getDescriptor());</span>
+
+<span class="nc" id="L890">		gn.visitCode();</span>
+
+		// Get class type
+<span class="nc" id="L893">		final String classDescriptor = Reflector.getDescriptorFromTypeName(metaClass.getName());</span>
+<span class="nc" id="L894">		final org.objectweb.asm.Type classType = org.objectweb.asm.Type.getType(classDescriptor);</span>
+
+<span class="nc" id="L896">		final int objVar = gn.newLocal(ByteCodeTypes.OBJECT);</span>
+
+		// Create a new List&lt;DataClaySerializable&gt;
+		// Check which fields to add
+<span class="nc bnc" id="L900" title="All 2 branches missed.">		for (final Property prop : metaClass.getProperties()) {</span>
+<span class="nc bnc" id="L901" title="All 4 branches missed.">			if (isExecClass || stubInfo.containsProperty(prop.getName())) {</span>
+
+<span class="nc" id="L903">				final String fieldName = prop.getName();</span>
+<span class="nc" id="L904">				final Type paramDcType = prop.getType();</span>
+<span class="nc" id="L905">				final String typeName = paramDcType.getTypeName(); // &quot;int&quot;, &quot;float&quot;, ... &quot;java.lang.Integer&quot;...</span>
+<span class="nc" id="L906">				final org.objectweb.asm.Type fieldType = org.objectweb.asm.Type.getType(prop.getType().getDescriptor());</span>
+
+				// CODE: field = (cast) queue.poll();
+<span class="nc" id="L909">				gn.loadArg(0);</span>
+<span class="nc" id="L910">				gn.invokeInterface(ByteCodeTypes.JAVA_QUEUE, ByteCodeMethods.QUEUE_POLL);</span>
+<span class="nc" id="L911">				gn.storeLocal(objVar);</span>
+
+<span class="nc" id="L913">				gn.loadLocal(objVar);</span>
+<span class="nc" id="L914">				final Label continueLabel = new Label();</span>
+<span class="nc" id="L915">				gn.ifNull(continueLabel);</span>
+
+<span class="nc" id="L917">				gn.loadThis();</span>
+<span class="nc" id="L918">				gn.loadLocal(objVar);</span>
+
+<span class="nc bnc" id="L920" title="All 4 branches missed.">				if (Reflector.isImmutableTypeName(typeName) || Reflector.isPrimitiveTypeName(typeName)) {</span>
+					// If field type is java immutable i.e. not same as param type, we must box it
+<span class="nc" id="L922">					gn.unbox(fieldType);</span>
+
+				} else {
+<span class="nc" id="L925">					gn.checkCast(fieldType);</span>
+				}
+<span class="nc" id="L927">				gn.putField(classType, fieldName, fieldType);</span>
+
+<span class="nc" id="L929">				gn.visitLabel(continueLabel);</span>
+
+			}
+<span class="nc" id="L932">		}</span>
+
+<span class="nc bnc" id="L934" title="All 2 branches missed.">		if (metaClass.getParentType() != null) {</span>
+<span class="nc" id="L935">			gn.loadThis();</span>
+<span class="nc" id="L936">			gn.loadArg(0);</span>
+<span class="nc" id="L937">			gn.visitMethodInsn(Opcodes.INVOKESPECIAL,</span>
+<span class="nc" id="L938">					Reflector.getInternalNameFromTypeName(metaClass.getParentType().getTypeName()),</span>
+<span class="nc" id="L939">					ByteCodeMethods.SET_FIELDS_DESER.getName(), ByteCodeMethods.SET_FIELDS_DESER.getDescriptor(),</span>
+					false);
+<span class="nc" id="L941">			gn.returnValue();</span>
+		} else {
+<span class="nc" id="L943">			gn.returnValue();</span>
+		}
+
+		/** MAX Stack */
+<span class="nc" id="L947">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L948">		gn.visitEnd();</span>
+
+<span class="nc" id="L950">	}</span>
+
+	/**
+	 * Generate run method.
+	 */
+	private void generateRunMethod() {
+<span class="nc" id="L956">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.RUN_METHOD.getName(),</span>
+<span class="nc" id="L957">				ByteCodeMethods.RUN_METHOD.getDescriptor(), null, null);</span>
+<span class="nc" id="L958">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC, ByteCodeMethods.RUN_METHOD.getName(),</span>
+<span class="nc" id="L959">				ByteCodeMethods.RUN_METHOD.getDescriptor());</span>
+<span class="nc" id="L960">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+<span class="nc" id="L962">		final RunTableSwitchGenerator runGen = new RunTableSwitchGenerator(metaClass, stubInfo, isExecClass, gn, ia);</span>
+<span class="nc" id="L963">		runGen.generateCode(true);</span>
+<span class="nc" id="L964">	}</span>
+
+	/**
+	 * Generate wrapParameters method.
+	 */
+	private void generateWrapParametersMethod() {
+<span class="nc" id="L970">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.WRAP_PARAMETERS.getName(),</span>
+<span class="nc" id="L971">				ByteCodeMethods.WRAP_PARAMETERS.getDescriptor(), null, null);</span>
+<span class="nc" id="L972">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC,</span>
+<span class="nc" id="L973">				ByteCodeMethods.WRAP_PARAMETERS.getName(), ByteCodeMethods.WRAP_PARAMETERS.getDescriptor());</span>
+<span class="nc" id="L974">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+<span class="nc" id="L976">		final WrapParametersTableSwitchGenerator switchGen = new WrapParametersTableSwitchGenerator(metaClass, stubInfo,</span>
+				isExecClass, gn, ia);
+<span class="nc" id="L978">		switchGen.generateCode(false);</span>
+<span class="nc" id="L979">	}</span>
+
+	/**
+	 * Generate wrapReturn method.
+	 */
+	private void generateWrapReturnMethod() {
+<span class="nc" id="L985">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.WRAP_RETURN.getName(),</span>
+<span class="nc" id="L986">				ByteCodeMethods.WRAP_RETURN.getDescriptor(), null, null);</span>
+<span class="nc" id="L987">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC, ByteCodeMethods.WRAP_RETURN.getName(),</span>
+<span class="nc" id="L988">				ByteCodeMethods.WRAP_RETURN.getDescriptor());</span>
+<span class="nc" id="L989">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+<span class="nc" id="L991">		final WrapReturnTableSwitchGenerator switchGen = new WrapReturnTableSwitchGenerator(metaClass, stubInfo,</span>
+				isExecClass, gn, ia);
+<span class="nc" id="L993">		switchGen.generateCode(true);</span>
+<span class="nc" id="L994">	}</span>
+
+	/**
+	 * Generate setWrappersParams method.
+	 */
+	private void generateSetWrappersParameters() {
+<span class="nc" id="L1000">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.SET_WRAP_PARAMETERS.getName(),</span>
+<span class="nc" id="L1001">				ByteCodeMethods.SET_WRAP_PARAMETERS.getDescriptor(), null, null);</span>
+<span class="nc" id="L1002">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC,</span>
+<span class="nc" id="L1003">				ByteCodeMethods.SET_WRAP_PARAMETERS.getName(), ByteCodeMethods.SET_WRAP_PARAMETERS.getDescriptor());</span>
+<span class="nc" id="L1004">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+<span class="nc" id="L1006">		final SetWrapperParametersTableSwitchGenerator switchGen = new SetWrapperParametersTableSwitchGenerator(</span>
+				metaClass, stubInfo, isExecClass, gn, ia);
+<span class="nc" id="L1008">		switchGen.generateCode(false);</span>
+<span class="nc" id="L1009">	}</span>
+
+	/**
+	 * Generate setWrappersReturn method.
+	 */
+	private void generateSetWrappersReturn() {
+<span class="nc" id="L1015">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, ByteCodeMethods.SET_WRAP_RETURN.getName(),</span>
+<span class="nc" id="L1016">				ByteCodeMethods.SET_WRAP_RETURN.getDescriptor(), null, null);</span>
+<span class="nc" id="L1017">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC,</span>
+<span class="nc" id="L1018">				ByteCodeMethods.SET_WRAP_RETURN.getName(), ByteCodeMethods.SET_WRAP_RETURN.getDescriptor());</span>
+<span class="nc" id="L1019">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+<span class="nc" id="L1021">		final SetWrapperReturnTableSwitchGenerator switchGen = new SetWrapperReturnTableSwitchGenerator(metaClass,</span>
+				stubInfo, isExecClass, gn, ia);
+<span class="nc" id="L1023">		switchGen.generateCode(true);</span>
+<span class="nc" id="L1024">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ObjectWrapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.java.lang</a> &gt; <span class="el_source">ObjectWrapper.java</span></div><h1>ObjectWrapper.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.java.lang;
+
+import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.java.DataClayJavaWrapper;
+import es.bsc.dataclay.serialization.java.LanguageTypes;
+import es.bsc.dataclay.serialization.java.util.ArrayWrapper;
+import es.bsc.dataclay.serialization.java.util.CollectionWrapper;
+import es.bsc.dataclay.serialization.java.util.MapWrapper;
+import es.bsc.dataclay.serialization.java.util.concurrent.atomic.AtomicIntegerWrapper;
+import es.bsc.dataclay.serialization.lib.DataClayDeserializationLib;
+import es.bsc.dataclay.serialization.lib.DataClaySerializationLib;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * Utility functions for wrapping Java classes into DataClay.
+ */
+public final class ObjectWrapper extends DataClayJavaWrapper {
+
+	/** Object. */
+	private Object genericObject;
+
+	/**
+	 * Constructor used for deserialization
+	 */
+<span class="fc" id="L41">	public ObjectWrapper() {</span>
+
+<span class="fc" id="L43">	}</span>
+
+	/**
+	 * Constructor
+	 * @param newobject
+	 *            Object
+	 */
+<span class="fc" id="L50">	public ObjectWrapper(final Object newobject) {</span>
+<span class="fc" id="L51">		this.genericObject = newobject;</span>
+<span class="fc" id="L52">	}</span>
+
+	/**
+	 * Get the object
+	 * @return the genericObject
+	 */
+	@Override
+	public Object getJavaObject() {
+<span class="fc" id="L60">		return genericObject;</span>
+	}
+
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+
+<span class="fc" id="L70">		final Class&lt;?&gt; returnType = genericObject.getClass();</span>
+<span class="pc bpc" id="L71" title="1 of 2 branches missed.">		if (DataClayObject.class.isAssignableFrom(returnType)) {</span>
+<span class="nc" id="L72">			dcBuffer.writeByte((byte) LanguageTypes.DATACLAYOBJ.ordinal());</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L74">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.DATACLAYOBJ.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L76">			DataClaySerializationLib.serializeAssociation((DataClayObject) genericObject, dcBuffer,</span>
+					ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">		} else if (returnType.equals(ObjectID.class)) {</span>
+<span class="nc" id="L80">			dcBuffer.writeByte((byte) LanguageTypes.DATACLAY_OID.ordinal());</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L82">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.DATACLAY_OID.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L84">			((ObjectID) genericObject).serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
+					curSerializedObjs, pendingObjs, referenceCounting);
+
+<span class="fc bfc" id="L87" title="All 2 branches covered.">		} else if (returnType.equals(Integer.class)) {</span>
+			// ---------------- JAVA INTEGER ---------------- //
+<span class="fc" id="L89">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_INTEGER.ordinal());</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L91">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_INTEGER.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L93">			dcBuffer.writeInt((Integer) genericObject);</span>
+
+<span class="fc bfc" id="L95" title="All 2 branches covered.">		} else if (returnType.equals(Boolean.class)) {</span>
+			// ---------------- JAVA BOOLEAN ---------------- //
+<span class="fc" id="L97">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_BOOLEAN.ordinal());</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L99">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_BOOLEAN.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L101">			dcBuffer.writeBoolean((Boolean) genericObject);</span>
+
+<span class="fc bfc" id="L103" title="All 2 branches covered.">		} else if (returnType.equals(Byte.class)) {</span>
+			// ---------------- JAVA BYTE ---------------- //
+<span class="fc" id="L105">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_BYTE.ordinal());</span>
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L107">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_BYTE.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L109">			dcBuffer.writeByte((Byte) genericObject);</span>
+
+<span class="fc bfc" id="L111" title="All 2 branches covered.">		} else if (returnType.equals(Character.class)) {</span>
+			// ---------------- JAVA CHAR ---------------- //
+<span class="fc" id="L113">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_CHARACTER.ordinal());</span>
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L115">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_CHARACTER.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L117">			dcBuffer.writeChar((Character) genericObject);</span>
+
+<span class="fc bfc" id="L119" title="All 2 branches covered.">		} else if (returnType.equals(Double.class)) {</span>
+			// ---------------- JAVA DOUBLE ---------------- //
+<span class="fc" id="L121">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_DOUBLE.ordinal());</span>
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L123">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_DOUBLE.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L125">			dcBuffer.writeDouble((Double) genericObject);</span>
+
+<span class="fc bfc" id="L127" title="All 2 branches covered.">		} else if (returnType.equals(Float.class)) {</span>
+			// ---------------- JAVA FLOAT ---------------- //
+<span class="fc" id="L129">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_FLOAT.ordinal());</span>
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L131">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_FLOAT.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L133">			dcBuffer.writeFloat((Float) genericObject);</span>
+
+<span class="fc bfc" id="L135" title="All 2 branches covered.">		} else if (returnType.equals(Long.class)) {</span>
+			// ---------------- JAVA LONG ---------------- //
+<span class="fc" id="L137">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_LONG.ordinal());</span>
+<span class="pc bpc" id="L138" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L139">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_LONG.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L141">			dcBuffer.writeLong((Long) genericObject);</span>
+
+<span class="fc bfc" id="L143" title="All 2 branches covered.">		} else if (returnType.equals(Short.class)) {</span>
+			// ---------------- JAVA SHORT ---------------- //
+<span class="fc" id="L145">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_SHORT.ordinal());</span>
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L147">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_SHORT.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L149">			dcBuffer.writeShort((Short) genericObject);</span>
+
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">		} else if (returnType.equals(String.class)) {</span>
+			// ---------------- JAVA STRING ---------------- //
+<span class="nc" id="L153">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_STRING.ordinal());</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L155">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_STRING.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L157">			dcBuffer.writeString((String) genericObject);</span>
+
+<span class="pc bpc" id="L159" title="1 of 2 branches missed.">		} else if (returnType.equals(AtomicInteger.class)) {</span>
+<span class="nc" id="L160">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_ATOMIC_INTEGER.ordinal());</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L162">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_ATOMIC_INTEGER.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L164">			DataClaySerializationLib.serializeJavaField(new AtomicIntegerWrapper((AtomicInteger) genericObject),</span>
+					dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+
+<span class="pc bpc" id="L167" title="1 of 2 branches missed.">		} else if (returnType.isArray()) {</span>
+			// ---------------- ARRAY ---------------- //
+<span class="nc" id="L169">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_ARRAY.ordinal());</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L171">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_ARRAY.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L173">			DataClaySerializationLib.serializeJavaField(new ArrayWrapper(genericObject),</span>
+					dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+
+<span class="pc bpc" id="L176" title="1 of 2 branches missed.">		} else if (Collection.class.isAssignableFrom(returnType)) {</span>
+			// ---------------- COLLECTION ---------------- //
+
+<span class="fc" id="L179">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_COLLECTION.ordinal());</span>
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L181">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_COLLECTION.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L183">			DataClaySerializationLib.serializeJavaField(new CollectionWrapper((Collection) genericObject),</span>
+					dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+
+<span class="nc bnc" id="L186" title="All 2 branches missed.">		} else if (Map.Entry.class.isAssignableFrom(returnType)) {</span>
+<span class="nc" id="L187">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_MAP_ENTRY.ordinal());</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L189">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_MAP_ENTRY.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L191">			DataClaySerializationLib.serializeJavaField(new es.bsc.dataclay.serialization.java.util.Map.EntryWrapper((Map.Entry) genericObject),</span>
+					dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+
+<span class="nc bnc" id="L194" title="All 2 branches missed.">		} else if (Map.class.isAssignableFrom(returnType)) {</span>
+			// ---------------- MAP ---------------- //
+<span class="nc" id="L196">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_MAP.ordinal());</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L198">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized generic type: data=&quot; + LanguageTypes.JAVA_MAP.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L200">			DataClaySerializationLib.serializeJavaField(new MapWrapper((Map) genericObject),</span>
+					dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+		} else {
+<span class="nc" id="L203">			DataClaySerializationLib.LOGGER.error(&quot;Type {} is not DataClay serializable. Ignoring.&quot;,</span>
+<span class="nc" id="L204">					genericObject.getClass().getName());</span>
+		}
+
+<span class="fc" id="L207">	}</span>
+
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedObjs) {
+
+<span class="fc" id="L215">		final byte langTypeByte = dcBuffer.readByte();</span>
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L217">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Generic objec type deserialized: data=&quot;+  langTypeByte + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+<span class="pc bpc" id="L219" title="1 of 2 branches missed.">		if (langTypeByte == (byte) LanguageTypes.DATACLAYOBJ.ordinal()) {</span>
+<span class="nc" id="L220">			this.genericObject = DataClayDeserializationLib.deserializeAssociation(dcBuffer,</span>
+					ifaceBitMaps, metadata, curDeserializedObjs,
+<span class="nc" id="L222">					DataClayObject.getLib());</span>
+<span class="pc bpc" id="L223" title="1 of 2 branches missed.">		} else if (langTypeByte == (byte) LanguageTypes.DATACLAY_OID.ordinal()) {</span>
+<span class="nc" id="L224">			final ObjectID oid = new ObjectID();</span>
+<span class="nc" id="L225">			oid.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc" id="L226">			this.genericObject = oid;</span>
+<span class="pc bfc" id="L227" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_INTEGER.ordinal()) {</span>
+<span class="fc" id="L228">			this.genericObject = dcBuffer.readInt();</span>
+<span class="fc bfc" id="L229" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_BOOLEAN.ordinal()) {</span>
+<span class="fc" id="L230">			this.genericObject = dcBuffer.readBoolean();</span>
+<span class="fc bfc" id="L231" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_BYTE.ordinal()) {</span>
+<span class="fc" id="L232">			this.genericObject = dcBuffer.readByte();</span>
+<span class="fc bfc" id="L233" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_CHARACTER.ordinal()) {</span>
+<span class="fc" id="L234">			this.genericObject = dcBuffer.readChar();</span>
+<span class="fc bfc" id="L235" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_DOUBLE.ordinal()) {</span>
+<span class="fc" id="L236">			this.genericObject = dcBuffer.readDouble();</span>
+<span class="fc bfc" id="L237" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_FLOAT.ordinal()) {</span>
+<span class="fc" id="L238">			this.genericObject = dcBuffer.readFloat();</span>
+<span class="fc bfc" id="L239" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_LONG.ordinal()) {</span>
+<span class="fc" id="L240">			this.genericObject = dcBuffer.readLong();</span>
+<span class="fc bfc" id="L241" title="All 2 branches covered.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_SHORT.ordinal()) {</span>
+<span class="fc" id="L242">			this.genericObject = dcBuffer.readShort();</span>
+<span class="pc bpc" id="L243" title="1 of 2 branches missed.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_STRING.ordinal()) {</span>
+<span class="nc" id="L244">			this.genericObject = dcBuffer.readString();</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_ARRAY.ordinal()) {</span>
+<span class="nc" id="L246">			this.genericObject = DataClayDeserializationLib.deserializeJavaField(new ArrayWrapper(),</span>
+					dcBuffer, ifaceBitMaps, metadata,
+					curDeserializedObjs);
+<span class="pc bpc" id="L249" title="1 of 2 branches missed.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_COLLECTION.ordinal()) {</span>
+<span class="fc" id="L250">			this.genericObject = DataClayDeserializationLib.deserializeJavaField(new CollectionWrapper(),</span>
+					dcBuffer, ifaceBitMaps, metadata,
+					curDeserializedObjs);
+<span class="nc bnc" id="L253" title="All 2 branches missed.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_MAP.ordinal()) {</span>
+<span class="nc" id="L254">			this.genericObject = DataClayDeserializationLib.deserializeJavaField(new MapWrapper(),</span>
+					dcBuffer, ifaceBitMaps, metadata,
+					curDeserializedObjs);
+<span class="nc bnc" id="L257" title="All 2 branches missed.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_MAP_ENTRY.ordinal()) {</span>
+<span class="nc" id="L258">			this.genericObject = DataClayDeserializationLib.deserializeJavaField(new es.bsc.dataclay.serialization.java.util.Map.EntryWrapper(),</span>
+					dcBuffer, ifaceBitMaps, metadata,
+					curDeserializedObjs);
+<span class="nc bnc" id="L261" title="All 2 branches missed.">		} else if (langTypeByte == (byte) LanguageTypes.JAVA_ATOMIC_INTEGER.ordinal()) {</span>
+<span class="nc" id="L262">			this.genericObject = DataClayDeserializationLib.deserializeJavaField(new AtomicIntegerWrapper(),</span>
+					dcBuffer, ifaceBitMaps, metadata,
+					curDeserializedObjs);
+		} else {
+<span class="nc" id="L266">			DataClayDeserializationLib.LOGGER.error(&quot;Type {} is not DataClay serializable. Ignoring.&quot;,</span>
+<span class="nc" id="L267">					genericObject.getClass().getName());</span>
+		}
+<span class="pc bpc" id="L269" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L270">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Generic objec deserialized: readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+<span class="fc" id="L272">	}</span>
+
+	// CHECKSTYLE:OFF
+
+	@Override
+	public boolean isImmutable() {
+<span class="nc" id="L278">		return false;</span>
+	}
+
+	@Override
+	public boolean isNull() {
+<span class="nc bnc" id="L283" title="All 2 branches missed.">		return genericObject == null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

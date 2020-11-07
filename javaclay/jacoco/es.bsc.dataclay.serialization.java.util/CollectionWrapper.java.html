@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CollectionWrapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.java.util</a> &gt; <span class="el_source">CollectionWrapper.java</span></div><h1>CollectionWrapper.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.java.util;
+
+import java.util.BitSet;
+import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.java.DataClayJavaWrapper;
+import es.bsc.dataclay.serialization.java.LanguageTypes;
+import es.bsc.dataclay.serialization.java.lang.ObjectWrapper;
+import es.bsc.dataclay.serialization.lib.DataClayDeserializationLib;
+import es.bsc.dataclay.serialization.lib.DataClaySerializationLib;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.classloaders.DataClayClassLoader;
+import es.bsc.dataclay.util.classloaders.DataClayClassLoaderSrv;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * This class represents a java Collection in DataClay.
+ */
+public final class CollectionWrapper extends DataClayJavaWrapper {
+
+	/** Collection. */
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	private Collection collection;
+
+	/**
+	 * Constructor for recursive deserialization
+	 */
+<span class="fc" id="L38">	public CollectionWrapper() {</span>
+
+<span class="fc" id="L40">	}</span>
+
+	/**
+	 * Constructor
+	 * @param newcollection
+	 *            Collection
+	 */
+	@SuppressWarnings(&quot;rawtypes&quot;)
+<span class="fc" id="L48">	public CollectionWrapper(final Collection newcollection) {</span>
+<span class="fc" id="L49">		this.setCollection(newcollection);</span>
+<span class="fc" id="L50">	}</span>
+
+	/**
+	 * Get the DataClayCollection::collection
+	 * @return the collection
+	 */
+	@Override
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	public Collection getJavaObject() {
+<span class="fc" id="L59">		return collection;</span>
+	}
+
+	/**
+	 * Set the DataClayCollection::collection
+	 * @param newcollection
+	 *            the collection to set
+	 */
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	public void setCollection(final Collection newcollection) {
+<span class="fc" id="L69">		this.collection = newcollection;</span>
+<span class="fc" id="L70">	}</span>
+
+	// CHECKSTYLE:OFF
+	/**
+	 * Get genericWrapper
+	 * @return Generic wrapper
+	 */
+	private ObjectWrapper newGeneric() {
+<span class="fc" id="L78">		return new ObjectWrapper();</span>
+	}
+
+	/**
+	 * Get genericWrapper
+	 * @param newObj
+	 *            generic object to wrap
+	 */
+	private ObjectWrapper newGeneric(final Object newObj) {
+<span class="fc" id="L87">		return new ObjectWrapper(newObj);</span>
+	}
+
+	/**
+	 * Load class using proper class loader
+	 * @param className
+	 *            Name of class
+	 * @return Class loaded
+	 */
+	private Class&lt;?&gt; loadClass(final String className) {
+<span class="fc" id="L97">		final String fullClassName = className;</span>
+<span class="fc" id="L98">		Class&lt;?&gt; clazz = null;</span>
+<span class="pc bpc" id="L99" title="2 of 4 branches missed.">		if (DataClayObject.getLib() != null &amp;&amp; DataClayObject.getLib().isDSLib()) {</span>
+<span class="nc" id="L100">			clazz = DataClayClassLoaderSrv.getClass(fullClassName);</span>
+		} else {
+<span class="fc" id="L102">			clazz = DataClayClassLoader.getClass(fullClassName);</span>
+		}
+
+<span class="fc" id="L105">		return clazz;</span>
+	}
+
+	/**
+	 * Load class using proper class loader
+	 * @param className
+	 *            Name of class
+	 * @return
+	 */
+	private Class&lt;?&gt; loadClass(final MetaClassID classID) {
+<span class="nc" id="L115">		Class&lt;?&gt; clazz = null;</span>
+<span class="nc bnc" id="L116" title="All 4 branches missed.">		if (DataClayObject.getLib() != null &amp;&amp; DataClayObject.getLib().isDSLib()) {</span>
+<span class="nc" id="L117">			clazz = DataClayClassLoaderSrv.getClass(classID);</span>
+		} else {
+<span class="nc" id="L119">			clazz = DataClayClassLoader.getClass(classID);</span>
+		}
+
+<span class="nc" id="L122">		return clazz;</span>
+	}
+
+	// CHECKSTYLE:ON
+
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+
+		// Indicate if Java collection or not
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">		if (collection instanceof DataClayObject) {</span>
+<span class="nc" id="L134">			dcBuffer.writeByte((byte) LanguageTypes.DATACLAYOBJ.ordinal());</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L136">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection type serialized: data=&quot; + LanguageTypes.DATACLAYOBJ.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L138">			final DataClayObject dcColl = (DataClayObject) collection;</span>
+<span class="nc" id="L139">			dcColl.getMetaClassID().serialize(dcBuffer, ignoreUserTypes,</span>
+					ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+<span class="nc bnc" id="L141" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L142">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection class id serialized: data=&quot; + dcColl.getMetaClassID() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L144">		} else {</span>
+<span class="fc" id="L145">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_COLLECTION.ordinal());</span>
+<span class="pc bpc" id="L146" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L147">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection type serialized: data=&quot; + LanguageTypes.JAVA_COLLECTION.ordinal() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L149">			dcBuffer.writeString(collection.getClass().getName());</span>
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L151">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection name serialized: data=&quot; + collection.getClass().getName() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+		}
+
+<span class="fc" id="L155">		final int collSize = collection.size();</span>
+
+<span class="fc" id="L157">		dcBuffer.writeVLQInt(collSize);</span>
+<span class="pc bpc" id="L158" title="1 of 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L159">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection size serialized: data=&quot; + collSize + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+		}
+<span class="pc bpc" id="L161" title="1 of 2 branches missed.">		if (collSize &gt; 0) {</span>
+
+			// === NULLS BITMAP === //
+			// CHECKSTYLE:OFF
+<span class="fc" id="L165">			int numBytes = 0;</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">			for (int i = 0; i &lt; collSize; ++i) {</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">				if (i % 8 == 0) {</span>
+<span class="fc" id="L168">					numBytes++;</span>
+				}
+			}
+			// CHECKSTYLE:ON
+<span class="fc" id="L172">			dcBuffer.writeVLQInt(numBytes);</span>
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L174">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection bitmap size serialized: data=&quot; + numBytes + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L176">			final int bitSetIndex = dcBuffer.writerIndex();</span>
+<span class="fc" id="L177">			dcBuffer.writeBytes(new byte[numBytes]);</span>
+<span class="fc" id="L178">			final BitSet nullsBitSet = new BitSet(collSize);</span>
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L180">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection bitmap serialized: data=&quot; + nullsBitSet + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+			// ===================== //
+
+<span class="fc" id="L184">			int i = 0;</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">			for (final Object element : collection) {</span>
+
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">				if (element != null) {</span>
+<span class="fc" id="L188">					nullsBitSet.set(i);</span>
+					// ==== ALL TYPES IN COLLECTIONS ARE GENERIC ==== //
+<span class="fc" id="L190">					final ObjectWrapper wrapper = this.newGeneric(element);</span>
+<span class="fc" id="L191">					wrapper.serialize(dcBuffer,</span>
+							ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+
+				}
+<span class="fc" id="L195">				i++;</span>
+<span class="fc" id="L196">			}</span>
+
+			// === UPDATE NULLS BITMAP === //
+<span class="fc" id="L199">			final int j = dcBuffer.writerIndex();</span>
+<span class="fc" id="L200">			dcBuffer.setWriterIndex(bitSetIndex);</span>
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L202">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Modified writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L204">			dcBuffer.writeBytes(nullsBitSet.toByteArray());</span>
+<span class="pc bpc" id="L205" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L206">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Collection bitmap serialized: data=&quot; + nullsBitSet + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L208">			dcBuffer.setWriterIndex(j);</span>
+<span class="pc bpc" id="L209" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L210">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Modified writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+
+		}
+<span class="fc" id="L214">	}</span>
+
+	@SuppressWarnings({ &quot;unchecked&quot;, &quot;rawtypes&quot; })
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+<span class="fc" id="L222">		final byte collType = dcBuffer.readByte();</span>
+<span class="pc bpc" id="L223" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L224">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection type deserialized: data=&quot;+  collType + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+<span class="pc bpc" id="L226" title="1 of 2 branches missed.">		if (collType == LanguageTypes.JAVA_COLLECTION.ordinal()) {</span>
+<span class="fc" id="L227">			final String collName = dcBuffer.readString();</span>
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L229">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection name deserialized: data=&quot;+  collName + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+
+			// Instantiate collection
+			try {
+<span class="fc" id="L234">				final Class&lt;?&gt; collClass = loadClass(collName);</span>
+<span class="fc" id="L235">				collection = (Collection) collClass.newInstance();</span>
+<span class="nc" id="L236">			} catch (final Exception e) {</span>
+<span class="nc" id="L237">				e.printStackTrace();</span>
+<span class="nc" id="L238">				throw new RuntimeException(e);</span>
+<span class="fc" id="L239">			}</span>
+<span class="fc" id="L240">		} else {</span>
+<span class="nc" id="L241">			final MetaClassID classID = new MetaClassID();</span>
+<span class="nc" id="L242">			classID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L244">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection class id deserialized: data=&quot;+  classID + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+			try {
+<span class="nc" id="L247">				final Class&lt;?&gt; collClass = loadClass(classID);</span>
+<span class="nc" id="L248">				collection = (Collection) collClass.getConstructor(ObjectID.class).newInstance(new ObjectID());</span>
+<span class="nc" id="L249">			} catch (final Exception e) {</span>
+<span class="nc" id="L250">				e.printStackTrace();</span>
+<span class="nc" id="L251">				throw new RuntimeException(e);</span>
+<span class="nc" id="L252">			}</span>
+		}
+
+<span class="fc" id="L255">		final int collSize = dcBuffer.readVLQInt();</span>
+<span class="pc bpc" id="L256" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L257">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection size deserialized: data=&quot;+  collSize + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+<span class="pc bpc" id="L259" title="1 of 2 branches missed.">		if (collSize &gt; 0) {</span>
+
+			// === NULLS BITMAP === //
+<span class="fc" id="L262">			final int bitMapSize = dcBuffer.readVLQInt();</span>
+<span class="pc bpc" id="L263" title="1 of 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L264">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection bitmap size deserialized: data=&quot;+  bitMapSize + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+<span class="fc" id="L266">			final byte[] bytes = dcBuffer.readBytes(bitMapSize);</span>
+<span class="fc" id="L267">			final BitSet nullsBitMap = BitSet.valueOf(bytes);</span>
+<span class="pc bpc" id="L268" title="1 of 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L269">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection bitmap deserialized: data=&quot;+  nullsBitMap + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+			// ===================== //
+
+			// Fill collection
+<span class="fc bfc" id="L274" title="All 2 branches covered.">			for (int i = 0; i &lt; collSize; ++i) {</span>
+
+<span class="fc" id="L276">				Object element = null;</span>
+<span class="pc bpc" id="L277" title="1 of 2 branches missed.">				if (nullsBitMap.get(i)) {</span>
+<span class="fc" id="L278">					final ObjectWrapper wrapper = newGeneric();</span>
+<span class="fc" id="L279">					wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="fc" id="L280">					element = wrapper.getJavaObject();</span>
+
+				}
+<span class="fc" id="L283">				collection.add(element);</span>
+			}
+		}
+<span class="fc" id="L286">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L290">		return collection.hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(final Object object) {
+<span class="nc bnc" id="L295" title="All 2 branches missed.">		if (!(object instanceof CollectionWrapper)) {</span>
+<span class="nc" id="L296">			return false;</span>
+		}
+
+<span class="nc" id="L299">		final CollectionWrapper value = (CollectionWrapper) object;</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">		for (final Object element : this.collection) {</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">			if (!value.getJavaObject().contains(element)) {</span>
+<span class="nc" id="L302">				return false;</span>
+			}
+<span class="nc" id="L304">		}</span>
+<span class="nc" id="L305">		return true;</span>
+	}
+
+	@Override
+	public boolean isImmutable() {
+<span class="fc" id="L310">		return false;</span>
+	}
+
+	@Override
+	public boolean isNull() {
+<span class="nc bnc" id="L315" title="All 2 branches missed.">		return collection == null;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

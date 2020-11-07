@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CfgLogicEnvLoader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.configs</a> &gt; <span class="el_source">CfgLogicEnvLoader.java</span></div><h1>CfgLogicEnvLoader.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.util.configs;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.EnumMap;
+import java.util.Map;
+
+import es.bsc.dataclay.util.ProcessEnvironment;
+
+/**
+ * This class parses the environment variables and generates a Logic Module configuration.
+ * 
+ * @see CfgLogic
+ * 
+ */
+public final class CfgLogicEnvLoader {
+	/**
+	 * CfgLogicParser constructor.
+	 * @throws IllegalAccessException
+	 *             Prevent instantiation
+	 */
+<span class="nc" id="L22">	private CfgLogicEnvLoader() throws IllegalAccessException {</span>
+<span class="nc" id="L23">		throw new IllegalAccessException(&quot;This class cannot be instantiated&quot;);</span>
+	}
+
+	/**
+	 * The configurable properties.
+	 * 
+	 */
+<span class="nc" id="L30">	public enum ConfigLogicProperties {</span>
+		/** Logic module name. */
+<span class="nc" id="L32">		LOGIC_MOD_NAME,</span>
+		/** Logic module tcp port environment variable name. */
+<span class="nc" id="L34">		LOGIC_MOD_TCPPORT,</span>
+		/** Logic module host environment variable name. */
+<span class="nc" id="L36">		LOGIC_MOD_HOSTNAME,</span>
+		/** IPs to be send to clients when information of a registered EE/SL is required. Can be null.*/
+<span class="nc" id="L38">		EXPOSED_IP_FOR_CLIENT,</span>
+		/** In memory database. */
+<span class="nc" id="L40">		LOGIC_MOD_IN_MEMORY</span>
+	}
+
+	/** The names of the config tags. */
+	public static final Map&lt;ConfigLogicProperties, String&gt; ENVVAR_NAMES;
+
+	/**
+	 * Association between keys and strings that the configuration file must contain. It means, to look for a Logic Module
+	 *        Port, the parser must search &quot;LogicModulePort&quot;.
+	 */
+	static {
+<span class="nc" id="L51">		ENVVAR_NAMES = new EnumMap&lt;&gt;(ConfigLogicProperties.class);</span>
+<span class="nc" id="L52">		ENVVAR_NAMES.put(ConfigLogicProperties.LOGIC_MOD_TCPPORT, &quot;LOGICMODULE_PORT_TCP&quot;);</span>
+<span class="nc" id="L53">		ENVVAR_NAMES.put(ConfigLogicProperties.LOGIC_MOD_HOSTNAME, &quot;LOGICMODULE_HOST&quot;);</span>
+<span class="nc" id="L54">		ENVVAR_NAMES.put(ConfigLogicProperties.LOGIC_MOD_NAME, &quot;LOGICMODULE_NAME&quot;);</span>
+<span class="nc" id="L55">		ENVVAR_NAMES.put(ConfigLogicProperties.LOGIC_MOD_IN_MEMORY, &quot;LOGICMODULE_IN_MEMORY&quot;);</span>
+<span class="nc" id="L56">		ENVVAR_NAMES.put(ConfigLogicProperties.EXPOSED_IP_FOR_CLIENT, &quot;EXPOSED_IP_FOR_CLIENT&quot;);</span>
+
+<span class="nc" id="L58">	}</span>
+
+	/**
+	 * This method parses the configuration from the environment
+	 */
+	public static CfgLogic parseConfiguration() {
+
+<span class="nc" id="L65">		final int logicport = new Integer(ProcessEnvironment.getInstance().get(CfgLogicEnvLoader.ENVVAR_NAMES.get(</span>
+				ConfigLogicProperties.LOGIC_MOD_TCPPORT)));
+<span class="nc" id="L67">		String logicHostName = ProcessEnvironment.getInstance().get(CfgLogicEnvLoader.ENVVAR_NAMES.get(</span>
+				ConfigLogicProperties.LOGIC_MOD_HOSTNAME));
+<span class="nc bnc" id="L69" title="All 4 branches missed.">		if (logicHostName == null || logicHostName.isEmpty()) {</span>
+			try {
+<span class="nc" id="L71">				logicHostName = InetAddress.getLocalHost().getHostAddress();</span>
+<span class="nc" id="L72">			} catch (final UnknownHostException e) {</span>
+<span class="nc" id="L73">				e.printStackTrace();</span>
+				// Fallback: localhost
+<span class="nc" id="L75">				logicHostName = &quot;127.0.0.1&quot;;</span>
+<span class="nc" id="L76">			}</span>
+		}
+<span class="nc" id="L78">		String logicName = ProcessEnvironment.getInstance().get(CfgLogicEnvLoader.ENVVAR_NAMES.get(</span>
+				ConfigLogicProperties.LOGIC_MOD_NAME));
+<span class="nc bnc" id="L80" title="All 4 branches missed.">		if (logicName == null || logicName.isEmpty()) {</span>
+<span class="nc" id="L81">			logicName = &quot;LM&quot;;</span>
+		}
+		
+<span class="nc" id="L84">		final String exposedIPForClient =  ProcessEnvironment.getInstance().get(CfgLogicEnvLoader.ENVVAR_NAMES.get(</span>
+				ConfigLogicProperties.EXPOSED_IP_FOR_CLIENT));
+<span class="nc" id="L86">		final String inMemoryEnv = ProcessEnvironment.getInstance().get(ENVVAR_NAMES.get(ConfigLogicProperties.LOGIC_MOD_IN_MEMORY));</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">		final boolean inMemory = inMemoryEnv != null ? Boolean.parseBoolean(inMemoryEnv) : false;</span>
+
+<span class="nc" id="L89">		return new CfgLogic(logicName, logicHostName, logicport, inMemory, exposedIPForClient);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

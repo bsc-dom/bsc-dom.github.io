@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SQLArray.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dbhandler.sql.common</a> &gt; <span class="el_source">SQLArray.java</span></div><h1>SQLArray.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.dbhandler.sql.common;
+
+import java.sql.Array;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Map;
+import java.util.UUID;
+
+public class SQLArray implements Array {
+	private static final char DELIMITER = (char)1;
+	private final String serializedArray;
+
+<span class="fc" id="L13">	public SQLArray(String baseTypeName, Object[] array) {</span>
+<span class="pc bpc" id="L14" title="1 of 4 branches missed.">		if(!baseTypeName.equals(&quot;varchar&quot;) &amp;&amp; !baseTypeName.equals(&quot;uuid&quot;)) {</span>
+<span class="nc" id="L15">			throw new IllegalArgumentException(&quot;Unsupported&quot;);</span>
+		}
+
+<span class="fc" id="L18">		StringBuffer sb = new StringBuffer(baseTypeName + DELIMITER);</span>
+<span class="pc bpc" id="L19" title="1 of 2 branches missed.">		if(array != null) {</span>
+<span class="fc bfc" id="L20" title="All 2 branches covered.">			for(Object o: array) {</span>
+<span class="fc" id="L21">				sb.append(o.toString() + DELIMITER);</span>
+			}
+		}
+<span class="fc" id="L24">		serializedArray = sb.toString();</span>
+<span class="fc" id="L25">	}</span>
+
+<span class="fc" id="L27">	public SQLArray(String array) {</span>
+<span class="pc bpc" id="L28" title="2 of 4 branches missed.">		if(array == null || array.equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L29">			this.serializedArray = null;</span>
+<span class="nc" id="L30">			return;</span>
+		}
+<span class="fc" id="L32">		this.serializedArray = array;</span>
+<span class="fc" id="L33">	}</span>
+
+	@Override
+	public String getBaseTypeName() throws SQLException {
+<span class="fc" id="L37">		return serializedArray.substring(0, serializedArray.indexOf(DELIMITER));</span>
+	}
+
+	private int getSize() {
+<span class="fc" id="L41">		return serializedArray.split(&quot;&quot; + DELIMITER).length - 1;</span>
+	}
+
+	@Override
+	public Object getArray() throws SQLException {
+<span class="pc bpc" id="L46" title="2 of 4 branches missed.">		if(serializedArray == null || serializedArray.equals(&quot;null&quot;)) {</span>
+<span class="nc" id="L47">			return null;</span>
+		}
+
+<span class="fc" id="L50">		final String type = getBaseTypeName();</span>
+<span class="fc" id="L51">		final int size = getSize();</span>
+
+<span class="fc bfc" id="L53" title="All 2 branches covered.">		if(size == 0) {</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">			return type.equals(&quot;varchar&quot;) ? new String[0] : new UUID[0];</span>
+		}
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">		if(size == -1) {</span>
+<span class="nc" id="L57">			return null;</span>
+		}
+
+<span class="fc" id="L60">		int start = serializedArray.indexOf(DELIMITER) + 1;</span>
+<span class="fc" id="L61">		int end = serializedArray.lastIndexOf(DELIMITER);</span>
+
+<span class="fc" id="L63">		String[] elements = serializedArray.substring(start, end).split(&quot;&quot; + DELIMITER);</span>
+
+<span class="fc bfc" id="L65" title="All 2 branches covered.">		if(type.equals(&quot;varchar&quot;)) {</span>
+<span class="fc" id="L66">			return elements;</span>
+		}
+
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">		if(type.equals(&quot;uuid&quot;)) {</span>
+<span class="fc" id="L70">			UUID[] array = new UUID[size];</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">			for(int i = 0; i &lt; elements.length; i++) {</span>
+<span class="fc" id="L72">				array[i] = UUID.fromString(elements[i]);</span>
+			}
+<span class="fc" id="L74">			return array;</span>
+		}
+
+<span class="nc" id="L77">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	public String toString() {
+<span class="fc" id="L81">		return serializedArray;</span>
+	}
+
+	@Override
+	public int getBaseType() throws SQLException {
+<span class="nc" id="L86">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public Object getArray(Map&lt;String, Class&lt;?&gt;&gt; map) throws SQLException {
+<span class="nc" id="L91">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public Object getArray(long index, int count) throws SQLException {
+<span class="nc" id="L96">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public Object getArray(long index, int count, Map&lt;String, Class&lt;?&gt;&gt; map) throws SQLException {
+<span class="nc" id="L101">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public ResultSet getResultSet() throws SQLException {
+<span class="nc" id="L106">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public ResultSet getResultSet(Map&lt;String, Class&lt;?&gt;&gt; map) throws SQLException {
+<span class="nc" id="L111">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public ResultSet getResultSet(long index, int count) throws SQLException {
+<span class="nc" id="L116">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public ResultSet getResultSet(long index, int count, Map&lt;String, Class&lt;?&gt;&gt; map) throws SQLException {
+<span class="nc" id="L121">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+	@Override
+	public void free() throws SQLException {
+<span class="nc" id="L126">		System.out.println(&quot;unsupported&quot;);;throw new SQLException(&quot;Unsupported&quot;);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

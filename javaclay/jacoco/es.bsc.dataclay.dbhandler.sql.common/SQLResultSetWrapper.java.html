@@ -1,0 +1,845 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SQLResultSetWrapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dbhandler.sql.common</a> &gt; <span class="el_source">SQLResultSetWrapper.java</span></div><h1>SQLResultSetWrapper.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.dbhandler.sql.common;
+
+import java.sql.Array;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.UUID;
+
+public class SQLResultSetWrapper implements ResultSet {
+	private final ResultSet rs;
+
+<span class="fc" id="L11">	public SQLResultSetWrapper(ResultSet rs) {</span>
+<span class="fc" id="L12">		this.rs = rs;</span>
+<span class="fc" id="L13">	}</span>
+
+	@Override
+	public Object getObject(int col) throws SQLException {
+<span class="fc" id="L17">		UUID uuid = null;</span>
+<span class="fc" id="L18">		String s = rs.getString(col);</span>
+<span class="fc bfc" id="L19" title="All 2 branches covered.">		if (s == null) {</span>
+<span class="fc" id="L20">			return null;</span>
+		}
+		try {
+<span class="pc bpc" id="L23" title="1 of 2 branches missed.">			if (s.length() == 36) {</span>
+<span class="fc" id="L24">				uuid = UUID.fromString(s);</span>
+			}
+<span class="nc" id="L26">		} catch (Exception e) {</span>
+<span class="nc" id="L27">			return (Object) s;</span>
+<span class="fc" id="L28">		}</span>
+<span class="fc" id="L29">		return uuid;</span>
+	}
+
+	public java.lang.Object getObject(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L33">		return this.getObject(findColumn(arg0));</span>
+	}
+
+	public Array getArray(int i) throws SQLException {
+<span class="fc" id="L37">		final String s = rs.getString(i);</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">		if (s == null) {</span>
+<span class="fc" id="L39">			return null;</span>
+		}
+<span class="fc" id="L41">		return new SQLArray(s);</span>
+	}
+
+	public Array getArray(String col) throws SQLException {
+<span class="fc" id="L45">		return getArray(findColumn(col));</span>
+	}
+
+	/* Wrapped calls */
+	public java.lang.String getString(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L50">		return rs.getString(arg0);</span>
+	}
+
+	public java.lang.String getString(int arg0) throws SQLException {
+<span class="fc" id="L54">		return rs.getString(arg0);</span>
+	}
+
+	public java.sql.Time getTime(int arg0, java.util.Calendar arg1) throws SQLException {
+<span class="nc" id="L58">		return rs.getTime(arg0, arg1);</span>
+	}
+
+	public java.sql.Time getTime(java.lang.String arg0, java.util.Calendar arg1) throws SQLException {
+<span class="nc" id="L62">		return rs.getTime(arg0, arg1);</span>
+	}
+
+	public java.sql.Time getTime(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L66">		return rs.getTime(arg0);</span>
+	}
+
+	public java.sql.Time getTime(int arg0) throws SQLException {
+<span class="nc" id="L70">		return rs.getTime(arg0);</span>
+	}
+
+	public java.sql.Date getDate(int arg0) throws SQLException {
+<span class="nc" id="L74">		return rs.getDate(arg0);</span>
+	}
+
+	public java.sql.Date getDate(int arg0, java.util.Calendar arg1) throws SQLException {
+<span class="nc" id="L78">		return rs.getDate(arg0, arg1);</span>
+	}
+
+	public java.sql.Date getDate(java.lang.String arg0, java.util.Calendar arg1) throws SQLException {
+<span class="nc" id="L82">		return rs.getDate(arg0, arg1);</span>
+	}
+
+	public java.sql.Date getDate(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L86">		return rs.getDate(arg0);</span>
+	}
+
+	public boolean wasNull() throws SQLException {
+<span class="nc" id="L90">		return rs.wasNull();</span>
+	}
+
+	public java.math.BigDecimal getBigDecimal(int arg0) throws SQLException {
+<span class="nc" id="L94">		return rs.getBigDecimal(arg0);</span>
+	}
+
+	public java.math.BigDecimal getBigDecimal(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L98">		return rs.getBigDecimal(arg0);</span>
+	}
+
+	public java.math.BigDecimal getBigDecimal(int arg0, int arg1) throws SQLException {
+<span class="nc" id="L102">		return rs.getBigDecimal(arg0, arg1);</span>
+	}
+
+	public java.math.BigDecimal getBigDecimal(java.lang.String arg0, int arg1) throws SQLException {
+<span class="nc" id="L106">		return rs.getBigDecimal(arg0, arg1);</span>
+	}
+
+	public java.sql.Timestamp getTimestamp(int arg0, java.util.Calendar arg1) throws SQLException {
+<span class="nc" id="L110">		return rs.getTimestamp(arg0, arg1);</span>
+	}
+
+	public java.sql.Timestamp getTimestamp(java.lang.String arg0, java.util.Calendar arg1) throws SQLException {
+<span class="nc" id="L114">		return rs.getTimestamp(arg0, arg1);</span>
+	}
+
+	public java.sql.Timestamp getTimestamp(int arg0) throws SQLException {
+<span class="nc" id="L118">		return rs.getTimestamp(arg0);</span>
+	}
+
+	public java.sql.Timestamp getTimestamp(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L122">		return rs.getTimestamp(arg0);</span>
+	}
+
+	public java.io.InputStream getAsciiStream(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L126">		return rs.getAsciiStream(arg0);</span>
+	}
+
+	public java.io.InputStream getAsciiStream(int arg0) throws SQLException {
+<span class="nc" id="L130">		return rs.getAsciiStream(arg0);</span>
+	}
+
+	public java.io.InputStream getUnicodeStream(int arg0) throws SQLException {
+<span class="nc" id="L134">		return rs.getUnicodeStream(arg0);</span>
+	}
+
+	public java.io.InputStream getUnicodeStream(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L138">		return rs.getUnicodeStream(arg0);</span>
+	}
+
+	public java.io.InputStream getBinaryStream(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L142">		return rs.getBinaryStream(arg0);</span>
+	}
+
+	public java.io.InputStream getBinaryStream(int arg0) throws SQLException {
+<span class="nc" id="L146">		return rs.getBinaryStream(arg0);</span>
+	}
+
+	public java.sql.SQLWarning getWarnings() throws SQLException {
+<span class="nc" id="L150">		return rs.getWarnings();</span>
+	}
+
+	public void clearWarnings() throws SQLException {
+<span class="nc" id="L154">		rs.clearWarnings();</span>
+<span class="nc" id="L155">	}</span>
+
+	public java.lang.String getCursorName() throws SQLException {
+<span class="nc" id="L158">		return rs.getCursorName();</span>
+	}
+
+	public java.sql.ResultSetMetaData getMetaData() throws SQLException {
+<span class="nc" id="L162">		return rs.getMetaData();</span>
+	}
+
+	public int findColumn(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L166">		return rs.findColumn(arg0);</span>
+	}
+
+	public java.io.Reader getCharacterStream(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L170">		return rs.getCharacterStream(arg0);</span>
+	}
+
+	public java.io.Reader getCharacterStream(int arg0) throws SQLException {
+<span class="nc" id="L174">		return rs.getCharacterStream(arg0);</span>
+	}
+
+	public boolean isBeforeFirst() throws SQLException {
+<span class="nc" id="L178">		return rs.isBeforeFirst();</span>
+	}
+
+	public boolean isAfterLast() throws SQLException {
+<span class="nc" id="L182">		return rs.isAfterLast();</span>
+	}
+
+	public boolean isFirst() throws SQLException {
+<span class="nc" id="L186">		return rs.isFirst();</span>
+	}
+
+	public boolean isLast() throws SQLException {
+<span class="nc" id="L190">		return rs.isLast();</span>
+	}
+
+	public void beforeFirst() throws SQLException {
+<span class="nc" id="L194">		rs.beforeFirst();</span>
+<span class="nc" id="L195">	}</span>
+
+	public void afterLast() throws SQLException {
+<span class="nc" id="L198">		rs.afterLast();</span>
+<span class="nc" id="L199">	}</span>
+
+	public boolean last() throws SQLException {
+<span class="nc" id="L202">		return rs.last();</span>
+	}
+
+	public int getRow() throws SQLException {
+<span class="nc" id="L206">		return rs.getRow();</span>
+	}
+
+	public boolean absolute(int arg0) throws SQLException {
+<span class="nc" id="L210">		return rs.absolute(arg0);</span>
+	}
+
+	public boolean relative(int arg0) throws SQLException {
+<span class="nc" id="L214">		return rs.relative(arg0);</span>
+	}
+
+	public void setFetchDirection(int arg0) throws SQLException {
+<span class="nc" id="L218">		rs.setFetchDirection(arg0);</span>
+<span class="nc" id="L219">	}</span>
+
+	public int getFetchDirection() throws SQLException {
+<span class="nc" id="L222">		return rs.getFetchDirection();</span>
+	}
+
+	public void setFetchSize(int arg0) throws SQLException {
+<span class="nc" id="L226">		rs.setFetchSize(arg0);</span>
+<span class="nc" id="L227">	}</span>
+
+	public int getFetchSize() throws SQLException {
+<span class="nc" id="L230">		return rs.getFetchSize();</span>
+	}
+
+	public int getConcurrency() throws SQLException {
+<span class="nc" id="L234">		return rs.getConcurrency();</span>
+	}
+
+	public boolean rowUpdated() throws SQLException {
+<span class="nc" id="L238">		return rs.rowUpdated();</span>
+	}
+
+	public boolean rowInserted() throws SQLException {
+<span class="nc" id="L242">		return rs.rowInserted();</span>
+	}
+
+	public boolean rowDeleted() throws SQLException {
+<span class="nc" id="L246">		return rs.rowDeleted();</span>
+	}
+
+	public void updateNull(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L250">		rs.updateNull(arg0);</span>
+<span class="nc" id="L251">	}</span>
+
+	public void updateNull(int arg0) throws SQLException {
+<span class="nc" id="L254">		rs.updateNull(arg0);</span>
+<span class="nc" id="L255">	}</span>
+
+	public void updateBoolean(int arg0, boolean arg1) throws SQLException {
+<span class="nc" id="L258">		rs.updateBoolean(arg0, arg1);</span>
+<span class="nc" id="L259">	}</span>
+
+	public void updateBoolean(java.lang.String arg0, boolean arg1) throws SQLException {
+<span class="nc" id="L262">		rs.updateBoolean(arg0, arg1);</span>
+<span class="nc" id="L263">	}</span>
+
+	public void updateByte(java.lang.String arg0, byte arg1) throws SQLException {
+<span class="nc" id="L266">		rs.updateByte(arg0, arg1);</span>
+<span class="nc" id="L267">	}</span>
+
+	public void updateByte(int arg0, byte arg1) throws SQLException {
+<span class="nc" id="L270">		rs.updateByte(arg0, arg1);</span>
+<span class="nc" id="L271">	}</span>
+
+	public void updateShort(java.lang.String arg0, short arg1) throws SQLException {
+<span class="nc" id="L274">		rs.updateShort(arg0, arg1);</span>
+<span class="nc" id="L275">	}</span>
+
+	public void updateShort(int arg0, short arg1) throws SQLException {
+<span class="nc" id="L278">		rs.updateShort(arg0, arg1);</span>
+<span class="nc" id="L279">	}</span>
+
+	public void updateInt(int arg0, int arg1) throws SQLException {
+<span class="nc" id="L282">		rs.updateInt(arg0, arg1);</span>
+<span class="nc" id="L283">	}</span>
+
+	public void updateInt(java.lang.String arg0, int arg1) throws SQLException {
+<span class="nc" id="L286">		rs.updateInt(arg0, arg1);</span>
+<span class="nc" id="L287">	}</span>
+
+	public void updateLong(java.lang.String arg0, long arg1) throws SQLException {
+<span class="nc" id="L290">		rs.updateLong(arg0, arg1);</span>
+<span class="nc" id="L291">	}</span>
+
+	public void updateLong(int arg0, long arg1) throws SQLException {
+<span class="nc" id="L294">		rs.updateLong(arg0, arg1);</span>
+<span class="nc" id="L295">	}</span>
+
+	public void updateFloat(int arg0, float arg1) throws SQLException {
+<span class="nc" id="L298">		rs.updateFloat(arg0, arg1);</span>
+<span class="nc" id="L299">	}</span>
+
+	public void updateFloat(java.lang.String arg0, float arg1) throws SQLException {
+<span class="nc" id="L302">		rs.updateFloat(arg0, arg1);</span>
+<span class="nc" id="L303">	}</span>
+
+	public void updateDouble(java.lang.String arg0, double arg1) throws SQLException {
+<span class="nc" id="L306">		rs.updateDouble(arg0, arg1);</span>
+<span class="nc" id="L307">	}</span>
+
+	public void updateDouble(int arg0, double arg1) throws SQLException {
+<span class="nc" id="L310">		rs.updateDouble(arg0, arg1);</span>
+<span class="nc" id="L311">	}</span>
+
+	public void updateBigDecimal(java.lang.String arg0, java.math.BigDecimal arg1) throws SQLException {
+<span class="nc" id="L314">		rs.updateBigDecimal(arg0, arg1);</span>
+<span class="nc" id="L315">	}</span>
+
+	public void updateBigDecimal(int arg0, java.math.BigDecimal arg1) throws SQLException {
+<span class="nc" id="L318">		rs.updateBigDecimal(arg0, arg1);</span>
+<span class="nc" id="L319">	}</span>
+
+	public void updateString(int arg0, java.lang.String arg1) throws SQLException {
+<span class="nc" id="L322">		rs.updateString(arg0, arg1);</span>
+<span class="nc" id="L323">	}</span>
+
+	public void updateString(java.lang.String arg0, java.lang.String arg1) throws SQLException {
+<span class="nc" id="L326">		rs.updateString(arg0, arg1);</span>
+<span class="nc" id="L327">	}</span>
+
+	public void updateDate(int arg0, java.sql.Date arg1) throws SQLException {
+<span class="nc" id="L330">		rs.updateDate(arg0, arg1);</span>
+<span class="nc" id="L331">	}</span>
+
+	public void updateDate(java.lang.String arg0, java.sql.Date arg1) throws SQLException {
+<span class="nc" id="L334">		rs.updateDate(arg0, arg1);</span>
+<span class="nc" id="L335">	}</span>
+
+	public void updateTime(int arg0, java.sql.Time arg1) throws SQLException {
+<span class="nc" id="L338">		rs.updateTime(arg0, arg1);</span>
+<span class="nc" id="L339">	}</span>
+
+	public void updateTime(java.lang.String arg0, java.sql.Time arg1) throws SQLException {
+<span class="nc" id="L342">		rs.updateTime(arg0, arg1);</span>
+<span class="nc" id="L343">	}</span>
+
+	public void updateTimestamp(java.lang.String arg0, java.sql.Timestamp arg1) throws SQLException {
+<span class="nc" id="L346">		rs.updateTimestamp(arg0, arg1);</span>
+<span class="nc" id="L347">	}</span>
+
+	public void updateTimestamp(int arg0, java.sql.Timestamp arg1) throws SQLException {
+<span class="nc" id="L350">		rs.updateTimestamp(arg0, arg1);</span>
+<span class="nc" id="L351">	}</span>
+
+	public void updateAsciiStream(java.lang.String arg0, java.io.InputStream arg1, int arg2) throws SQLException {
+<span class="nc" id="L354">		rs.updateAsciiStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L355">	}</span>
+
+	public void updateAsciiStream(int arg0, java.io.InputStream arg1, long arg2) throws SQLException {
+<span class="nc" id="L358">		rs.updateAsciiStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L359">	}</span>
+
+	public void updateAsciiStream(java.lang.String arg0, java.io.InputStream arg1) throws SQLException {
+<span class="nc" id="L362">		rs.updateAsciiStream(arg0, arg1);</span>
+<span class="nc" id="L363">	}</span>
+
+	public void updateAsciiStream(int arg0, java.io.InputStream arg1) throws SQLException {
+<span class="nc" id="L366">		rs.updateAsciiStream(arg0, arg1);</span>
+<span class="nc" id="L367">	}</span>
+
+	public void updateAsciiStream(int arg0, java.io.InputStream arg1, int arg2) throws SQLException {
+<span class="nc" id="L370">		rs.updateAsciiStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L371">	}</span>
+
+	public void updateAsciiStream(java.lang.String arg0, java.io.InputStream arg1, long arg2) throws SQLException {
+<span class="nc" id="L374">		rs.updateAsciiStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L375">	}</span>
+
+	public void updateBinaryStream(java.lang.String arg0, java.io.InputStream arg1) throws SQLException {
+<span class="nc" id="L378">		rs.updateBinaryStream(arg0, arg1);</span>
+<span class="nc" id="L379">	}</span>
+
+	public void updateBinaryStream(int arg0, java.io.InputStream arg1, int arg2) throws SQLException {
+<span class="nc" id="L382">		rs.updateBinaryStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L383">	}</span>
+
+	public void updateBinaryStream(int arg0, java.io.InputStream arg1) throws SQLException {
+<span class="nc" id="L386">		rs.updateBinaryStream(arg0, arg1);</span>
+<span class="nc" id="L387">	}</span>
+
+	public void updateBinaryStream(int arg0, java.io.InputStream arg1, long arg2) throws SQLException {
+<span class="nc" id="L390">		rs.updateBinaryStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L391">	}</span>
+
+	public void updateBinaryStream(java.lang.String arg0, java.io.InputStream arg1, int arg2) throws SQLException {
+<span class="nc" id="L394">		rs.updateBinaryStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L395">	}</span>
+
+	public void updateBinaryStream(java.lang.String arg0, java.io.InputStream arg1, long arg2) throws SQLException {
+<span class="nc" id="L398">		rs.updateBinaryStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L399">	}</span>
+
+	public void updateCharacterStream(int arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L402">		rs.updateCharacterStream(arg0, arg1);</span>
+<span class="nc" id="L403">	}</span>
+
+	public void updateCharacterStream(int arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L406">		rs.updateCharacterStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L407">	}</span>
+
+	public void updateCharacterStream(int arg0, java.io.Reader arg1, int arg2) throws SQLException {
+<span class="nc" id="L410">		rs.updateCharacterStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L411">	}</span>
+
+	public void updateCharacterStream(java.lang.String arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L414">		rs.updateCharacterStream(arg0, arg1);</span>
+<span class="nc" id="L415">	}</span>
+
+	public void updateCharacterStream(java.lang.String arg0, java.io.Reader arg1, int arg2) throws SQLException {
+<span class="nc" id="L418">		rs.updateCharacterStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L419">	}</span>
+
+	public void updateCharacterStream(java.lang.String arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L422">		rs.updateCharacterStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L423">	}</span>
+
+	public void updateObject(java.lang.String arg0, java.lang.Object arg1, int arg2) throws SQLException {
+<span class="nc" id="L426">		rs.updateObject(arg0, arg1, arg2);</span>
+<span class="nc" id="L427">	}</span>
+
+	public void updateObject(java.lang.String arg0, java.lang.Object arg1) throws SQLException {
+<span class="nc" id="L430">		rs.updateObject(arg0, arg1);</span>
+<span class="nc" id="L431">	}</span>
+
+	public void updateObject(int arg0, java.lang.Object arg1, java.sql.SQLType arg2) throws SQLException {
+<span class="nc" id="L434">		rs.updateObject(arg0, arg1, arg2);</span>
+<span class="nc" id="L435">	}</span>
+
+	public void updateObject(java.lang.String arg0, java.lang.Object arg1, java.sql.SQLType arg2, int arg3)
+			throws SQLException {
+<span class="nc" id="L439">		rs.updateObject(arg0, arg1, arg2, arg3);</span>
+<span class="nc" id="L440">	}</span>
+
+	public void updateObject(int arg0, java.lang.Object arg1, java.sql.SQLType arg2, int arg3) throws SQLException {
+<span class="nc" id="L443">		rs.updateObject(arg0, arg1, arg2, arg3);</span>
+<span class="nc" id="L444">	}</span>
+
+	public void updateObject(int arg0, java.lang.Object arg1, int arg2) throws SQLException {
+<span class="nc" id="L447">		rs.updateObject(arg0, arg1, arg2);</span>
+<span class="nc" id="L448">	}</span>
+
+	public void updateObject(java.lang.String arg0, java.lang.Object arg1, java.sql.SQLType arg2) throws SQLException {
+<span class="nc" id="L451">		rs.updateObject(arg0, arg1, arg2);</span>
+<span class="nc" id="L452">	}</span>
+
+	public void updateObject(int arg0, java.lang.Object arg1) throws SQLException {
+<span class="nc" id="L455">		rs.updateObject(arg0, arg1);</span>
+<span class="nc" id="L456">	}</span>
+
+	public void insertRow() throws SQLException {
+<span class="nc" id="L459">		rs.insertRow();</span>
+<span class="nc" id="L460">	}</span>
+
+	public void updateRow() throws SQLException {
+<span class="nc" id="L463">		rs.updateRow();</span>
+<span class="nc" id="L464">	}</span>
+
+	public void deleteRow() throws SQLException {
+<span class="nc" id="L467">		rs.deleteRow();</span>
+<span class="nc" id="L468">	}</span>
+
+	public void refreshRow() throws SQLException {
+<span class="nc" id="L471">		rs.refreshRow();</span>
+<span class="nc" id="L472">	}</span>
+
+	public void cancelRowUpdates() throws SQLException {
+<span class="nc" id="L475">		rs.cancelRowUpdates();</span>
+<span class="nc" id="L476">	}</span>
+
+	public void moveToInsertRow() throws SQLException {
+<span class="nc" id="L479">		rs.moveToInsertRow();</span>
+<span class="nc" id="L480">	}</span>
+
+	public void moveToCurrentRow() throws SQLException {
+<span class="nc" id="L483">		rs.moveToCurrentRow();</span>
+<span class="nc" id="L484">	}</span>
+
+	public java.sql.Statement getStatement() throws SQLException {
+<span class="nc" id="L487">		return rs.getStatement();</span>
+	}
+
+	public java.sql.Blob getBlob(int arg0) throws SQLException {
+<span class="nc" id="L491">		return rs.getBlob(arg0);</span>
+	}
+
+	public java.sql.Blob getBlob(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L495">		return rs.getBlob(arg0);</span>
+	}
+
+	public java.sql.Clob getClob(int arg0) throws SQLException {
+<span class="nc" id="L499">		return rs.getClob(arg0);</span>
+	}
+
+	public java.sql.Clob getClob(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L503">		return rs.getClob(arg0);</span>
+	}
+
+	public void updateRef(java.lang.String arg0, java.sql.Ref arg1) throws SQLException {
+<span class="nc" id="L507">		rs.updateRef(arg0, arg1);</span>
+<span class="nc" id="L508">	}</span>
+
+	public void updateRef(int arg0, java.sql.Ref arg1) throws SQLException {
+<span class="nc" id="L511">		rs.updateRef(arg0, arg1);</span>
+<span class="nc" id="L512">	}</span>
+
+	public void updateBlob(int arg0, java.io.InputStream arg1, long arg2) throws SQLException {
+<span class="nc" id="L515">		rs.updateBlob(arg0, arg1, arg2);</span>
+<span class="nc" id="L516">	}</span>
+
+	public void updateBlob(java.lang.String arg0, java.sql.Blob arg1) throws SQLException {
+<span class="nc" id="L519">		rs.updateBlob(arg0, arg1);</span>
+<span class="nc" id="L520">	}</span>
+
+	public void updateBlob(int arg0, java.sql.Blob arg1) throws SQLException {
+<span class="nc" id="L523">		rs.updateBlob(arg0, arg1);</span>
+<span class="nc" id="L524">	}</span>
+
+	public void updateBlob(int arg0, java.io.InputStream arg1) throws SQLException {
+<span class="nc" id="L527">		rs.updateBlob(arg0, arg1);</span>
+<span class="nc" id="L528">	}</span>
+
+	public void updateBlob(java.lang.String arg0, java.io.InputStream arg1) throws SQLException {
+<span class="nc" id="L531">		rs.updateBlob(arg0, arg1);</span>
+<span class="nc" id="L532">	}</span>
+
+	public void updateBlob(java.lang.String arg0, java.io.InputStream arg1, long arg2) throws SQLException {
+<span class="nc" id="L535">		rs.updateBlob(arg0, arg1, arg2);</span>
+<span class="nc" id="L536">	}</span>
+
+	public void updateClob(java.lang.String arg0, java.sql.Clob arg1) throws SQLException {
+<span class="nc" id="L539">		rs.updateClob(arg0, arg1);</span>
+<span class="nc" id="L540">	}</span>
+
+	public void updateClob(int arg0, java.sql.Clob arg1) throws SQLException {
+<span class="nc" id="L543">		rs.updateClob(arg0, arg1);</span>
+<span class="nc" id="L544">	}</span>
+
+	public void updateClob(int arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L547">		rs.updateClob(arg0, arg1, arg2);</span>
+<span class="nc" id="L548">	}</span>
+
+	public void updateClob(int arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L551">		rs.updateClob(arg0, arg1);</span>
+<span class="nc" id="L552">	}</span>
+
+	public void updateClob(java.lang.String arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L555">		rs.updateClob(arg0, arg1);</span>
+<span class="nc" id="L556">	}</span>
+
+	public void updateClob(java.lang.String arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L559">		rs.updateClob(arg0, arg1, arg2);</span>
+<span class="nc" id="L560">	}</span>
+
+	public void updateArray(int arg0, java.sql.Array arg1) throws SQLException {
+<span class="nc" id="L563">		rs.updateArray(arg0, arg1);</span>
+<span class="nc" id="L564">	}</span>
+
+	public void updateArray(java.lang.String arg0, java.sql.Array arg1) throws SQLException {
+<span class="nc" id="L567">		rs.updateArray(arg0, arg1);</span>
+<span class="nc" id="L568">	}</span>
+
+	public java.sql.RowId getRowId(int arg0) throws SQLException {
+<span class="nc" id="L571">		return rs.getRowId(arg0);</span>
+	}
+
+	public java.sql.RowId getRowId(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L575">		return rs.getRowId(arg0);</span>
+	}
+
+	public void updateRowId(int arg0, java.sql.RowId arg1) throws SQLException {
+<span class="nc" id="L579">		rs.updateRowId(arg0, arg1);</span>
+<span class="nc" id="L580">	}</span>
+
+	public void updateRowId(java.lang.String arg0, java.sql.RowId arg1) throws SQLException {
+<span class="nc" id="L583">		rs.updateRowId(arg0, arg1);</span>
+<span class="nc" id="L584">	}</span>
+
+	public int getHoldability() throws SQLException {
+<span class="nc" id="L587">		return rs.getHoldability();</span>
+	}
+
+	public boolean isClosed() throws SQLException {
+<span class="nc" id="L591">		return rs.isClosed();</span>
+	}
+
+	public void updateNString(int arg0, java.lang.String arg1) throws SQLException {
+<span class="nc" id="L595">		rs.updateNString(arg0, arg1);</span>
+<span class="nc" id="L596">	}</span>
+
+	public void updateNString(java.lang.String arg0, java.lang.String arg1) throws SQLException {
+<span class="nc" id="L599">		rs.updateNString(arg0, arg1);</span>
+<span class="nc" id="L600">	}</span>
+
+	public void updateNClob(java.lang.String arg0, java.sql.NClob arg1) throws SQLException {
+<span class="nc" id="L603">		rs.updateNClob(arg0, arg1);</span>
+<span class="nc" id="L604">	}</span>
+
+	public void updateNClob(int arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L607">		rs.updateNClob(arg0, arg1, arg2);</span>
+<span class="nc" id="L608">	}</span>
+
+	public void updateNClob(int arg0, java.sql.NClob arg1) throws SQLException {
+<span class="nc" id="L611">		rs.updateNClob(arg0, arg1);</span>
+<span class="nc" id="L612">	}</span>
+
+	public void updateNClob(java.lang.String arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L615">		rs.updateNClob(arg0, arg1);</span>
+<span class="nc" id="L616">	}</span>
+
+	public void updateNClob(int arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L619">		rs.updateNClob(arg0, arg1);</span>
+<span class="nc" id="L620">	}</span>
+
+	public void updateNClob(java.lang.String arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L623">		rs.updateNClob(arg0, arg1, arg2);</span>
+<span class="nc" id="L624">	}</span>
+
+	public java.sql.NClob getNClob(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L627">		return rs.getNClob(arg0);</span>
+	}
+
+	public java.sql.NClob getNClob(int arg0) throws SQLException {
+<span class="nc" id="L631">		return rs.getNClob(arg0);</span>
+	}
+
+	public java.sql.SQLXML getSQLXML(int arg0) throws SQLException {
+<span class="nc" id="L635">		return rs.getSQLXML(arg0);</span>
+	}
+
+	public java.sql.SQLXML getSQLXML(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L639">		return rs.getSQLXML(arg0);</span>
+	}
+
+	public void updateSQLXML(java.lang.String arg0, java.sql.SQLXML arg1) throws SQLException {
+<span class="nc" id="L643">		rs.updateSQLXML(arg0, arg1);</span>
+<span class="nc" id="L644">	}</span>
+
+	public void updateSQLXML(int arg0, java.sql.SQLXML arg1) throws SQLException {
+<span class="nc" id="L647">		rs.updateSQLXML(arg0, arg1);</span>
+<span class="nc" id="L648">	}</span>
+
+	public java.lang.String getNString(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L651">		return rs.getNString(arg0);</span>
+	}
+
+	public java.lang.String getNString(int arg0) throws SQLException {
+<span class="nc" id="L655">		return rs.getNString(arg0);</span>
+	}
+
+	public java.io.Reader getNCharacterStream(int arg0) throws SQLException {
+<span class="nc" id="L659">		return rs.getNCharacterStream(arg0);</span>
+	}
+
+	public java.io.Reader getNCharacterStream(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L663">		return rs.getNCharacterStream(arg0);</span>
+	}
+
+	public void updateNCharacterStream(int arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L667">		rs.updateNCharacterStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L668">	}</span>
+
+	public void updateNCharacterStream(int arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L671">		rs.updateNCharacterStream(arg0, arg1);</span>
+<span class="nc" id="L672">	}</span>
+
+	public void updateNCharacterStream(java.lang.String arg0, java.io.Reader arg1) throws SQLException {
+<span class="nc" id="L675">		rs.updateNCharacterStream(arg0, arg1);</span>
+<span class="nc" id="L676">	}</span>
+
+	public void updateNCharacterStream(java.lang.String arg0, java.io.Reader arg1, long arg2) throws SQLException {
+<span class="nc" id="L679">		rs.updateNCharacterStream(arg0, arg1, arg2);</span>
+<span class="nc" id="L680">	}</span>
+
+	public void updateBytes(java.lang.String arg0, byte[] arg1) throws SQLException {
+<span class="nc" id="L683">		rs.updateBytes(arg0, arg1);</span>
+<span class="nc" id="L684">	}</span>
+
+	public void updateBytes(int arg0, byte[] arg1) throws SQLException {
+<span class="nc" id="L687">		rs.updateBytes(arg0, arg1);</span>
+<span class="nc" id="L688">	}</span>
+
+	public java.lang.Object getObject(java.lang.String arg0, java.util.Map arg1) throws SQLException {
+<span class="nc" id="L691">		return rs.getObject(arg0, arg1);</span>
+	}
+
+	public java.lang.Object getObject(int arg0, java.lang.Class arg1) throws SQLException {
+<span class="nc" id="L695">		return rs.getObject(arg0, arg1);</span>
+	}
+
+	public java.lang.Object getObject(int arg0, java.util.Map arg1) throws SQLException {
+<span class="nc" id="L699">		return rs.getObject(arg0, arg1);</span>
+	}
+
+	public java.lang.Object getObject(java.lang.String arg0, java.lang.Class arg1) throws SQLException {
+<span class="nc" id="L703">		return rs.getObject(arg0, arg1);</span>
+	}
+
+	public boolean getBoolean(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L707">		return rs.getBoolean(arg0);</span>
+	}
+
+	public boolean getBoolean(int arg0) throws SQLException {
+<span class="fc" id="L711">		return rs.getBoolean(arg0);</span>
+	}
+
+	public byte getByte(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L715">		return rs.getByte(arg0);</span>
+	}
+
+	public byte getByte(int arg0) throws SQLException {
+<span class="nc" id="L719">		return rs.getByte(arg0);</span>
+	}
+
+	public short getShort(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L723">		return rs.getShort(arg0);</span>
+	}
+
+	public short getShort(int arg0) throws SQLException {
+<span class="nc" id="L727">		return rs.getShort(arg0);</span>
+	}
+
+	public int getInt(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L731">		return rs.getInt(arg0);</span>
+	}
+
+	public int getInt(int arg0) throws SQLException {
+<span class="nc" id="L735">		return rs.getInt(arg0);</span>
+	}
+
+	public long getLong(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L739">		return rs.getLong(arg0);</span>
+	}
+
+	public long getLong(int arg0) throws SQLException {
+<span class="nc" id="L743">		return rs.getLong(arg0);</span>
+	}
+
+	public float getFloat(int arg0) throws SQLException {
+<span class="nc" id="L747">		return rs.getFloat(arg0);</span>
+	}
+
+	public float getFloat(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L751">		return rs.getFloat(arg0);</span>
+	}
+
+	public double getDouble(int arg0) throws SQLException {
+<span class="nc" id="L755">		return rs.getDouble(arg0);</span>
+	}
+
+	public double getDouble(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L759">		return rs.getDouble(arg0);</span>
+	}
+
+	public byte[] getBytes(java.lang.String arg0) throws SQLException {
+<span class="fc" id="L763">		return rs.getBytes(arg0);</span>
+	}
+
+	public byte[] getBytes(int arg0) throws SQLException {
+<span class="fc" id="L767">		return rs.getBytes(arg0);</span>
+	}
+
+	public boolean next() throws SQLException {
+<span class="fc" id="L771">		return rs.next();</span>
+	}
+
+	public java.net.URL getURL(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L775">		return rs.getURL(arg0);</span>
+	}
+
+	public java.net.URL getURL(int arg0) throws SQLException {
+<span class="nc" id="L779">		return rs.getURL(arg0);</span>
+	}
+
+	public boolean first() throws SQLException {
+<span class="nc" id="L783">		return rs.first();</span>
+	}
+
+	public void close() throws SQLException {
+<span class="fc" id="L787">		rs.close();</span>
+<span class="fc" id="L788">	}</span>
+
+	public int getType() throws SQLException {
+<span class="nc" id="L791">		return rs.getType();</span>
+	}
+
+	public java.sql.Ref getRef(java.lang.String arg0) throws SQLException {
+<span class="nc" id="L795">		return rs.getRef(arg0);</span>
+	}
+
+	public java.sql.Ref getRef(int arg0) throws SQLException {
+<span class="nc" id="L799">		return rs.getRef(arg0);</span>
+	}
+
+	public boolean previous() throws SQLException {
+<span class="nc" id="L803">		return rs.previous();</span>
+	}
+
+	public boolean isWrapperFor(java.lang.Class arg0) throws SQLException {
+<span class="nc" id="L807">		return rs.isWrapperFor(arg0);</span>
+	}
+
+	public java.lang.Object unwrap(java.lang.Class arg0) throws SQLException {
+<span class="nc" id="L811">		return rs.unwrap(arg0);</span>
+	}
+
+	/* Automatically generate wrapper */
+	// import java.lang.reflect.Method;
+	// import java.lang.reflect.Parameter;
+	// public static void main(String[] args) {
+	// Method[] methods = ResultSet.class.getMethods();
+	// for(Method method: methods) {
+	// String types = &quot;&quot;;
+	// String arguments = &quot;&quot;;
+	// for(Parameter parameter: method.getParameters()) {
+	// types += parameter.getType().getCanonicalName() + &quot; &quot; + parameter.getName() +
+	// &quot;,&quot;;
+	// arguments += parameter.getName() + &quot;,&quot;;
+	// }
+	//
+	// if(arguments.length() &gt; 0) {
+	// types = types.replaceAll(&quot;,$&quot;, &quot;&quot;);
+	// arguments = arguments.replaceAll(&quot;,$&quot;, &quot;&quot;);
+	// }
+	//
+	// String returnType = method.getReturnType().getCanonicalName();
+	//
+	// String m = &quot;public &quot; + returnType + &quot; &quot; + method.getName() + &quot;(&quot; + types + &quot;)
+	// throws SQLException{\n\t&quot;;
+	// if(!returnType.equals(&quot;void&quot;)) {
+	// m += &quot;return &quot;;
+	// }
+	// m += &quot;rs.&quot; + method.getName() + &quot;(&quot; + arguments + &quot;);\n}&quot;;
+	// System.out.println(m);
+	// }
+	// }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

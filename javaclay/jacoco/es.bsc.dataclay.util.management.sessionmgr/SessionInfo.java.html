@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SessionInfo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.sessionmgr</a> &gt; <span class="el_source">SessionInfo.java</span></div><h1>SessionInfo.java</h1><pre class="source lang-java linenums">
+/**
+ * @file SessionInfo.java
+ * @date Mar 4, 2014
+ */
+package es.bsc.dataclay.util.management.sessionmgr;
+
+import java.util.Calendar;
+import java.util.Map;
+import java.util.Set;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.ids.SessionID;
+
+/**
+ * Class that represents the info of a session.
+ * 
+ */
+public final class SessionInfo {
+
+	/** ID of the session. */
+	private SessionID sessionID;
+	/** Account of the session. */
+	private AccountID accountID;
+	/** Visible properties per class. */
+	private Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; propertiesOfClasses;
+	/** Session contracts. */
+	private Map&lt;ContractID, SessionContract&gt; sessionContracts;
+	/** Session contracts. */
+	private Map&lt;DataContractID, SessionDataContract&gt; sessionDataContracts;
+	/** Data Contract of store. */
+	private DataContractID dataContractIDforStore;
+	/** Programming language used during the session. */
+	private Langs language;
+	/** Struct to store stub interface bitmaps. */
+	private Map&lt;MetaClassID, byte[]&gt; ifaceBitmaps;
+	/** Expiration date of the session considering its contracts. */
+	private Calendar endDate;
+
+	/** ID of external dataClay instance if needed. */
+	private DataClayInstanceID extDataClayID;
+
+	/**
+	 * For yaml deserialization.
+	 */
+<span class="nc" id="L52">	public SessionInfo() {</span>
+
+<span class="nc" id="L54">	}</span>
+
+	/**
+	 * Constructor for the info of the session
+	 * @param newsessionID
+	 *            ID of the session
+	 * @param newaccountID
+	 *            account of the session
+	 * @param thesessionContracts
+	 *            info of the contracts in the session
+	 * @param thesessionDataContracts
+	 *            info of the data contracts in the session
+	 * @param thedataContractIDforStore
+	 *            id of the data contract for store
+	 * @param newlanguage
+	 *            programming language for the session
+	 * @param newpropertiesOfClasses
+	 *            visible properties per class for this session
+	 * @param newifaceBitmaps
+	 *            interface bitmaps for the session.
+	 * @param newendDate
+	 *            end date of the session considering its contracts
+	 */
+	public SessionInfo(
+			final SessionID newsessionID,
+			final AccountID newaccountID, final Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; newpropertiesOfClasses,
+			final Map&lt;ContractID, SessionContract&gt; thesessionContracts,
+			final Map&lt;DataContractID, SessionDataContract&gt; thesessionDataContracts,
+			final DataContractID thedataContractIDforStore, final Langs newlanguage,
+<span class="fc" id="L83">			final Map&lt;MetaClassID, byte[]&gt; newifaceBitmaps, final Calendar newendDate) {</span>
+<span class="fc" id="L84">		setSessionID(newsessionID);</span>
+<span class="fc" id="L85">		setAccountID(newaccountID);</span>
+<span class="fc" id="L86">		setSessionContracts(thesessionContracts);</span>
+<span class="fc" id="L87">		setSessionDataContracts(thesessionDataContracts);</span>
+<span class="fc" id="L88">		setDataContractIDforStore(thedataContractIDforStore);</span>
+<span class="fc" id="L89">		setLanguage(newlanguage);</span>
+<span class="fc" id="L90">		setPropertiesOfClasses(newpropertiesOfClasses);</span>
+<span class="fc" id="L91">		setIfaceBitmaps(newifaceBitmaps);</span>
+<span class="fc" id="L92">		setEndDate(newendDate);</span>
+<span class="fc" id="L93">	}</span>
+
+	/**
+	 * Constructor for external sessions
+	 * @param sessionID
+	 *            id of the session
+	 * @param extDataClayID
+	 *            id of external dataClay instance
+	 * @param accountID
+	 *            id of the account on behalf of external dataClay instance
+	 * @param language
+	 *            language of the session
+	 * @param endDate
+	 *            expiration date
+	 */
+<span class="nc" id="L108">	public SessionInfo(final SessionID sessionID, final DataClayInstanceID extDataClayID, final AccountID accountID, final Langs language, final Calendar endDate) {</span>
+<span class="nc" id="L109">		setSessionID(sessionID);</span>
+<span class="nc" id="L110">		setExtDataClayID(extDataClayID);</span>
+<span class="nc" id="L111">		setAccountID(accountID);</span>
+<span class="nc" id="L112">		setLanguage(language);</span>
+<span class="nc" id="L113">		setEndDate(endDate);</span>
+<span class="nc" id="L114">	}</span>
+
+	/**
+	 * Get the SessionInfo::sessionContracts
+	 * @return the sessionContracts
+	 */
+	public Map&lt;ContractID, SessionContract&gt; getSessionContracts() {
+<span class="fc" id="L121">		return sessionContracts;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::sessionContracts
+	 * @param newsessionContracts
+	 *            the sessionContracts to set
+	 */
+	public void setSessionContracts(final Map&lt;ContractID, SessionContract&gt; newsessionContracts) {
+<span class="fc" id="L130">		this.sessionContracts = newsessionContracts;</span>
+<span class="fc" id="L131">	}</span>
+
+	/**
+	 * Get the SessionInfo::sessionDataContracts
+	 * @return the sessionDataContracts
+	 */
+	public Map&lt;DataContractID, SessionDataContract&gt; getSessionDataContracts() {
+<span class="fc" id="L138">		return sessionDataContracts;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::sessionDataContracts
+	 * @param newsessionDataContracts
+	 *            the sessionDataContracts to set
+	 */
+	public void setSessionDataContracts(final Map&lt;DataContractID, SessionDataContract&gt; newsessionDataContracts) {
+<span class="fc" id="L147">		this.sessionDataContracts = newsessionDataContracts;</span>
+<span class="fc" id="L148">	}</span>
+
+	/**
+	 * Get the SessionInfo::dataContractIDforStore
+	 * @return the dataContractIDforStore
+	 */
+	public DataContractID getDataContractIDforStore() {
+<span class="nc" id="L155">		return dataContractIDforStore;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::dataContractIDforStore
+	 * @param newdataContractIDforStore
+	 *            the dataContractIDforStore to set
+	 */
+	public void setDataContractIDforStore(final DataContractID newdataContractIDforStore) {
+<span class="fc" id="L164">		this.dataContractIDforStore = newdataContractIDforStore;</span>
+<span class="fc" id="L165">	}</span>
+
+	/**
+	 * Get the SessionInfo::accountID
+	 * @return the accountID
+	 */
+	public AccountID getAccountID() {
+<span class="nc" id="L172">		return accountID;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::accountID
+	 * @param newaccountID
+	 *            the accountID to set
+	 */
+	public void setAccountID(final AccountID newaccountID) {
+<span class="fc" id="L181">		this.accountID = newaccountID;</span>
+<span class="fc" id="L182">	}</span>
+
+	/**
+	 * Get the SessionInfo::language
+	 * @return the language
+	 */
+	public Langs getLanguage() {
+<span class="nc" id="L189">		return language;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::language
+	 * @param newlanguage
+	 *            the language to set
+	 */
+	public void setLanguage(final Langs newlanguage) {
+<span class="fc" id="L198">		this.language = newlanguage;</span>
+<span class="fc" id="L199">	}</span>
+
+	/**
+	 * Get the SessionInfo::propertiesOfClasses
+	 * @return the propertiesOfClasses
+	 */
+	public Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; getPropertiesOfClasses() {
+<span class="nc" id="L206">		return propertiesOfClasses;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::propertiesOfClasses
+	 * @param newpropertiesOfClasses
+	 *            the propertiesOfClasses to set
+	 */
+	public void setPropertiesOfClasses(final Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; newpropertiesOfClasses) {
+<span class="fc" id="L215">		this.propertiesOfClasses = newpropertiesOfClasses;</span>
+<span class="fc" id="L216">	}</span>
+
+	/**
+	 * Get the SessionInfo::ifaceBitmaps
+	 * @return the ifaceBitmaps
+	 */
+	public Map&lt;MetaClassID, byte[]&gt; getIfaceBitmaps() {
+<span class="nc" id="L223">		return ifaceBitmaps;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::ifaceBitmaps
+	 * @param newifaceBitmaps
+	 *            the ifaceBitmaps to set
+	 */
+	public void setIfaceBitmaps(final Map&lt;MetaClassID, byte[]&gt; newifaceBitmaps) {
+<span class="fc" id="L232">		this.ifaceBitmaps = newifaceBitmaps;</span>
+<span class="fc" id="L233">	}</span>
+
+	/**
+	 * Get the SessionInfo::endDate
+	 * @return the endDate
+	 */
+	public Calendar getEndDate() {
+<span class="fc" id="L240">		return endDate;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::endDate
+	 * @param newendDate
+	 *            the newendDate to set
+	 */
+	public void setEndDate(final Calendar newendDate) {
+<span class="fc" id="L249">		this.endDate = newendDate;</span>
+<span class="fc" id="L250">	}</span>
+
+	/**
+	 * @return the sessionID
+	 */
+	public SessionID getSessionID() {
+<span class="fc" id="L256">		return sessionID;</span>
+	}
+
+	/**
+	 * @param thesessionID
+	 *            the sessionID to set
+	 */
+	public void setSessionID(final SessionID thesessionID) {
+<span class="fc" id="L264">		this.sessionID = thesessionID;</span>
+<span class="fc" id="L265">	}</span>
+
+	/**
+	 * @return id of external dataClay of this session
+	 */
+	public DataClayInstanceID getExtDataClayID() {
+<span class="nc" id="L271">		return extDataClayID;</span>
+	}
+
+	/**
+	 * Set the SessionInfo::extDataClayID
+	 * @param extDataClayID
+	 *            id external dataClayID to set
+	 */
+	public void setExtDataClayID(DataClayInstanceID extDataClayID) {
+<span class="nc" id="L280">		this.extDataClayID = extDataClayID;</span>
+<span class="nc" id="L281">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataServiceSrv.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dataservice.server</a> &gt; <span class="el_source">DataServiceSrv.java</span></div><h1>DataServiceSrv.java</h1><pre class="source lang-java linenums">
+/**
+ * @file DataServiceSrv.java
+ * @date Oct 8, 2012
+ */
+package es.bsc.dataclay.dataservice.server;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.communication.grpc.clients.CommonGrpcClient;
+import es.bsc.dataclay.communication.grpc.services.dataservice.DataServiceServer;
+import es.bsc.dataclay.dataservice.DataService;
+import es.bsc.dataclay.dbhandler.DBHandlerConf;
+import es.bsc.dataclay.exceptions.metadataservice.ExecutionEnvironmentAlreadyExistsException;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.configs.CfgDataService;
+import es.bsc.dataclay.util.configs.CfgDataServiceEnvLoader;
+import es.bsc.dataclay.util.configs.CfgLogic;
+import es.bsc.dataclay.util.configs.CfgLogicEnvLoader;
+
+/**
+ * This class implements the service part of the Data Service.
+ * 
+ */
+public final class DataServiceSrv {
+
+	/** Logger. */
+<span class="nc" id="L33">	private static final Logger logger = LogManager.getLogger(&quot;DataService.srv&quot;);</span>
+
+	/** Server name. */
+	private final String srvName;
+
+	/** Grpc server. */
+	private final DataServiceServer grpcServer;
+
+	/** Grpc client. */
+	private CommonGrpcClient grpcClient;
+
+	// CHECKSTYLE:OFF
+	/** Indicates if server is running or not. */
+	public boolean runningServer;
+	// CHECKSTYLE:ON
+
+	/** Indicates if server has opened client connections with LM or not. */
+	private boolean dSconnectedToLM;
+
+	/** DataServices reference. */
+	private final DataService dataService;
+
+	/** DS configuration. */
+	private final CfgDataService cfgDS;
+
+	/** Logic Module configuration. */
+	private final CfgLogic cfgLM;
+
+	/**
+	 * Start server
+	 * @param thecfgDS
+	 *            DS configuration
+	 * @param thecfgLM
+	 *            LM configuration
+	 * @throws Exception
+	 *             if some exception occurs
+	 */
+<span class="nc" id="L70">	public DataServiceSrv(final CfgDataService thecfgDS, final CfgLogic thecfgLM) throws Exception {</span>
+		// Handler info
+<span class="nc" id="L72">		cfgDS = thecfgDS;</span>
+<span class="nc" id="L73">		cfgLM = thecfgLM;</span>
+<span class="nc" id="L74">		final DBHandlerConf dbHandlerConf = cfgDS.getDbHandlerConf();</span>
+		// Create DataService
+<span class="nc" id="L76">		dataService = new DataService(cfgDS.getName(), cfgDS.getHostname(),</span>
+<span class="nc" id="L77">				cfgDS.getTcpPort(), dbHandlerConf, this);</span>
+<span class="nc" id="L78">		grpcServer = new DataServiceServer(cfgDS.getTcpPort(), dataService);</span>
+<span class="nc" id="L79">		srvName = cfgDS.getName();</span>
+<span class="nc" id="L80">	}</span>
+
+	/**
+	 * Start service.
+	 * @throws Exception
+	 *             if some exception occurs
+	 */
+	public void start() throws Exception {
+
+<span class="nc" id="L89">		grpcServer.start();</span>
+
+		// Initialize client
+		// Connect to the LogicModule and register the DataService
+<span class="nc" id="L93">		CfgLogicEnvLoader.parseConfiguration();</span>
+
+		//
+<span class="nc" id="L96">		boolean registered = false;</span>
+<span class="nc" id="L97">		short retry = 0;</span>
+<span class="nc" id="L98">		final short maxRetries = Configuration.Flags.MAX_RETRY_AUTOREGISTER.getShortValue();</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		while (!registered) {</span>
+			try {
+<span class="nc" id="L101">				dataService.initLocalWithAutoregistration(cfgLM.getLogicModuleHostName(),</span>
+<span class="nc" id="L102">						cfgLM.getLogicModuleTCPPort(),</span>
+<span class="nc" id="L103">						cfgDS.getName());</span>
+<span class="nc" id="L104">				registered = true;</span>
+
+<span class="nc" id="L106">			} catch (final ExecutionEnvironmentAlreadyExistsException es) {</span>
+<span class="nc" id="L107">				registered = true;</span>
+				// already registered
+<span class="nc" id="L109">			} catch (final Exception e) {</span>
+<span class="nc" id="L110">				retry++;</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">				if (retry &gt; maxRetries) {</span>
+<span class="nc" id="L112">					throw e;</span>
+				}
+<span class="nc" id="L114">				logger.info(&quot;[{}] LM not started yet. Retrying...&quot;, srvName);</span>
+<span class="nc" id="L115">				logger.debug(&quot;Catched Exception in iteration&quot;, e);</span>
+<span class="nc" id="L116">				Thread.sleep(Configuration.Flags.RETRY_AUTOREGISTER_TIME.getLongValue());</span>
+<span class="nc" id="L117">			}</span>
+		}
+
+<span class="nc" id="L120">		grpcClient = dataService.runtime.getCommonGrpcClient();</span>
+<span class="nc" id="L121">		final String serviceName = cfgDS.getName();</span>
+<span class="nc" id="L122">		final Thread shutdownHook = new Thread() {</span>
+			@Override
+			public void run() {
+				try {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">					if (runningServer) {</span>
+<span class="nc" id="L127">						stopService();</span>
+					}
+<span class="nc" id="L129">				} catch (final Exception e) {</span>
+<span class="nc" id="L130">					e.printStackTrace();</span>
+<span class="nc" id="L131">				}</span>
+<span class="nc" id="L132">				System.err.println(&quot;DATASERVICE GRACEFULLY STOPPED&quot;);</span>
+<span class="nc" id="L133">			}</span>
+		};
+<span class="nc" id="L135">		shutdownHook.setName(srvName + &quot;-ShutdownHook&quot;);</span>
+<span class="nc" id="L136">		Runtime.getRuntime().addShutdownHook(shutdownHook);</span>
+<span class="nc" id="L137">		runningServer = true;</span>
+<span class="nc" id="L138">		dSconnectedToLM = true;</span>
+<span class="nc" id="L139">		final String content = &quot;READY&quot;;</span>
+		try {
+<span class="nc" id="L141">			Files.write(Paths.get(Configuration.Flags.STATE_FILE_PATH.getStringValue()), content.getBytes());</span>
+		}
+<span class="nc" id="L143">		catch(IOException e) {</span>
+<span class="nc" id="L144">			logger.error(Configuration.Flags.STATE_FILE_PATH + &quot; not writable. Skipping file creation.&quot;);</span>
+<span class="nc" id="L145">		}</span>
+<span class="nc" id="L146">		grpcServer.blockUntilShutdown();</span>
+<span class="nc" id="L147">	}</span>
+
+	/**
+	 * Unbinds the service
+	 */
+	public void stopService() {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		if (dataService != null) {</span>
+
+			// ==== Ask and Notify LM === //
+<span class="nc" id="L156">			runningServer = false;</span>
+<span class="nc" id="L157">			logger.info(&quot;[{}] Notifying LM current EE shut down...&quot;, srvName);</span>
+<span class="nc" id="L158">			dataService.notifyExecutionEnvironmentShutdown();</span>
+<span class="nc" id="L159">			logger.info(&quot;[{}] Waiting for associated execution environments to shut down...&quot;, srvName);</span>
+<span class="nc" id="L160">			dataService.waitForExecutionEnvironmentsToFinish();</span>
+			
+			// ==== Store metaData cache === //
+<span class="nc" id="L163">			logger.info(&quot;[{}] Updating all objects in memory...&quot;, srvName);</span>
+<span class="nc" id="L164">			dataService.shutdownUpdate();</span>
+<span class="nc" id="L165">			logger.info(&quot;[{}] Persisting EE static information...&quot;, srvName);</span>
+<span class="nc" id="L166">			dataService.persistEEInfo();</span>
+<span class="nc" id="L167">			logger.info(&quot;[{}] Finishing cached threads...&quot;, srvName);</span>
+<span class="nc" id="L168">			dataService.finishCacheThreads();</span>
+
+<span class="nc" id="L170">			logger.info(&quot;[{}] Notifying LM current EE shut down...&quot;, srvName);</span>
+<span class="nc" id="L171">			dataService.notifyStorageLocationShutdown();</span>
+			
+<span class="nc" id="L173">			disconnectFromOthers();</span>
+<span class="nc" id="L174">			logger.info(&quot;[{}] Finishing server connections...&quot;, srvName);</span>
+<span class="nc" id="L175">			grpcClient.finishClientConnections();</span>
+<span class="nc" id="L176">			grpcServer.stop();</span>
+
+<span class="nc" id="L178">			logger.info(&quot;[{}] Stop service procedure done!&quot;, srvName);</span>
+		}
+<span class="nc" id="L180">	}</span>
+
+	/**
+	 * Disconnect DS from others
+	 */
+	public void disconnectFromOthers() {
+		// This is done so all client connections should be closed before closing server connections.
+<span class="nc bnc" id="L187" title="All 2 branches missed.">		if (dSconnectedToLM) {</span>
+<span class="nc" id="L188">			dataService.finishClientConnections();</span>
+<span class="nc" id="L189">			dSconnectedToLM = false;</span>
+		}
+<span class="nc" id="L191">	}</span>
+
+	/**
+	 * 
+	 * @param args
+	 *            args[0] == the manager configuration file path with the configuration for backends and so on
+	 * @throws Exception
+	 *             if some exception was thrown
+	 */
+	public static void main(final String[] args) throws Exception {
+<span class="nc" id="L201">		final CfgDataService cfgDS = CfgDataServiceEnvLoader.parseConfiguration();</span>
+<span class="nc" id="L202">		final CfgLogic cfgLM = CfgLogicEnvLoader.parseConfiguration();</span>
+<span class="nc" id="L203">		new DataServiceSrv(cfgDS, cfgLM).start();</span>
+<span class="nc" id="L204">	}</span>
+
+	/**
+	 * 
+	 * @param args
+	 *            args[0] == the manager configuration file path with the configuration for backends and so on
+	 * @throws Exception
+	 *             if some exception was thrown
+	 * @return DSSrv for test.
+	 */
+	public static DataServiceSrv getForTest(final String[] args) throws Exception {
+<span class="nc" id="L215">		final CfgDataService cfgDS = CfgDataServiceEnvLoader.parseConfiguration();</span>
+<span class="nc" id="L216">		final CfgLogic cfgLM = CfgLogicEnvLoader.parseConfiguration();</span>
+<span class="nc" id="L217">		return new DataServiceSrv(cfgDS, cfgLM);</span>
+	}
+
+	/**
+	 * Used in mock testing
+	 * @return DataSercice
+	 */
+	public DataService getDataService() {
+<span class="nc" id="L225">		return dataService;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

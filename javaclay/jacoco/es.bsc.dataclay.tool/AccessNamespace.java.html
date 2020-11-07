@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccessNamespace.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">AccessNamespace.java</span></div><h1>AccessNamespace.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.tool.Util.ERRCODE;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.classmgr.Property;
+import es.bsc.dataclay.util.management.contractmgr.Contract;
+import es.bsc.dataclay.util.management.contractmgr.InterfaceInContract;
+import es.bsc.dataclay.util.management.contractmgr.OpImplementations;
+import es.bsc.dataclay.util.management.interfacemgr.Interface;
+
+<span class="nc" id="L30">public class AccessNamespace {</span>
+
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L33" title="All 2 branches missed.">		if (args.length != 3) {</span>
+<span class="nc" id="L34">			Util.finishErr(&quot;Bad arguments. Usage: \n\n &quot; + AccessNamespace.class.getSimpleName()</span>
+					+ &quot; &lt;applicant_username&gt; &lt;applicant_pass&gt; &lt;namespace_name&gt; \n&quot;, ERRCODE.ERROR);
+<span class="nc" id="L36">			return;</span>
+		}
+		try {
+<span class="nc" id="L39">			Util.init();</span>
+
+<span class="nc" id="L41">			final String applicantName = args[0];</span>
+<span class="nc" id="L42">			final String applicantPass = args[1];</span>
+<span class="nc" id="L43">			final String namespace = args[2];</span>
+
+			// Check account
+<span class="nc" id="L46">			final AccountID applicantID = ClientManagementLib.getAccountID(applicantName);</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">			if (applicantID == null) {</span>
+<span class="nc" id="L48">				Util.finishErr(&quot;Invalid account&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L49">				return;</span>
+			}
+<span class="nc" id="L51">			final PasswordCredential applicantCredential = new PasswordCredential(applicantPass);</span>
+
+			// Check namespace
+<span class="nc" id="L54">			final NamespaceID nspaceID = ClientManagementLib.getNamespaceID(applicantID, applicantCredential, namespace);</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">			if (nspaceID == null) {</span>
+<span class="nc" id="L56">				Util.finishErr(&quot;Namespace &quot; + namespace + &quot; does not exist.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L57">				return;</span>
+			}
+
+<span class="nc" id="L60">			ContractID contractID = null;</span>
+<span class="nc" id="L61">			final Map&lt;ContractID, Contract&gt; curContracts = ClientManagementLib.getContractsOfApplicant(applicantID,</span>
+					applicantCredential, nspaceID);
+<span class="nc bnc" id="L63" title="All 4 branches missed.">			if (curContracts != null &amp;&amp; curContracts.size() != 0) {</span>
+<span class="nc" id="L64">				contractID = curContracts.keySet().iterator().next();</span>
+			} else {
+				// Register to public contract of the namespace
+<span class="nc" id="L67">				contractID = ClientManagementLib.registerToPublicContractOfNamespace(applicantID, applicantCredential,</span>
+						nspaceID);
+			}
+
+<span class="nc bnc" id="L71" title="All 2 branches missed.">			if (contractID == null) {</span>
+				// ======== Create public contract with namespace provided ======
+
+<span class="nc" id="L74">				final Map&lt;MetaClassID, MetaClass&gt; registeredClasses = ClientManagementLib.getClassesInfoInNamespace(applicantID, applicantCredential, nspaceID);</span>
+
+				// Parse info of metaclasses
+<span class="nc" id="L77">				final List&lt;InterfaceInContract&gt; ifacesInContract = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">				for (final MetaClass currentMclassInfo : registeredClasses.values()) {</span>
+<span class="nc" id="L79">					final Set&lt;String&gt; operationsSignatures = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L80">					final Set&lt;OpImplementations&gt; opImpls = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L81">					final Map&lt;OperationID, OpImplementations&gt; actualOpImpls = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">					for (final Operation op : currentMclassInfo.getOperations()) {</span>
+<span class="nc" id="L83">						operationsSignatures.add(op.getNameAndDescriptor());</span>
+<span class="nc" id="L84">						final OpImplementations opImplem = new OpImplementations(op.getNameAndDescriptor(), 0, 0);</span>
+<span class="nc" id="L85">						opImpls.add(opImplem);</span>
+<span class="nc" id="L86">						final ImplementationID implID = op.getImplementations().get(0).getDataClayID();</span>
+<span class="nc" id="L87">						opImplem.setLocalImplementationID(implID);</span>
+<span class="nc" id="L88">						opImplem.setRemoteImplementationID(implID);</span>
+<span class="nc" id="L89">						actualOpImpls.put(op.getDataClayID(), opImplem);</span>
+<span class="nc" id="L90">					}</span>
+
+<span class="nc" id="L92">					final Set&lt;String&gt; propNames = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">					for (final Property prop : currentMclassInfo.getProperties()) {</span>
+<span class="nc" id="L94">						propNames.add(prop.getName());</span>
+<span class="nc" id="L95">					}</span>
+
+					// Create a new Interface for the class
+<span class="nc" id="L98">					final Interface newInterface = new Interface(applicantName, namespace, namespace, currentMclassInfo.getName(),</span>
+							propNames, operationsSignatures);
+
+<span class="nc" id="L101">					final InterfaceID newIfaceID = ClientManagementLib.newInterface(applicantID, applicantCredential, newInterface);</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">					if (newIfaceID != null) {</span>
+						// Update the interfaces in contract
+<span class="nc" id="L104">						final InterfaceInContract interfaceInContract = new InterfaceInContract(newInterface, opImpls);</span>
+<span class="nc" id="L105">						interfaceInContract.setAccessibleImplementations(actualOpImpls);</span>
+<span class="nc" id="L106">						ifacesInContract.add(interfaceInContract);</span>
+					}
+<span class="nc" id="L108">				}</span>
+
+				// Create public contract
+<span class="nc" id="L111">				final Calendar beginDate = Calendar.getInstance();</span>
+<span class="nc" id="L112">				final Calendar endDate = Calendar.getInstance();</span>
+<span class="nc" id="L113">				beginDate.add(Calendar.YEAR, -1);</span>
+<span class="nc" id="L114">				endDate.add(Calendar.YEAR, 10);</span>
+<span class="nc" id="L115">				final Contract newContract = new Contract(namespace, applicantName, ifacesInContract, beginDate, endDate);</span>
+<span class="nc" id="L116">				ClientManagementLib.newPublicContract(applicantID, applicantCredential, newContract);</span>
+
+				// Register to public contract of the namespace
+<span class="nc" id="L119">				contractID = ClientManagementLib.registerToPublicContractOfNamespace(applicantID, applicantCredential,</span>
+						nspaceID);
+			}
+
+			// TODO Notice that break line is needed for the global tool to &quot;tail&quot; the contract ID
+<span class="nc" id="L124">			System.out.println(&quot;User &quot; + applicantName + &quot; registered in data model of namespace: &quot; + namespace</span>
+<span class="nc" id="L125">					+ &quot; with contract ID: \n&quot; + contractID.toString());</span>
+<span class="nc" id="L126">		} catch (final Exception ex) {</span>
+<span class="nc" id="L127">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L128">		}</span>
+<span class="nc" id="L129">		System.exit(0); // Call this to finish logging threads</span>
+
+<span class="nc" id="L131">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

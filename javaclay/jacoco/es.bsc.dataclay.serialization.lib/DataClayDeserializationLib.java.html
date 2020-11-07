@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayDeserializationLib.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.lib</a> &gt; <span class="el_source">DataClayDeserializationLib.java</span></div><h1>DataClayDeserializationLib.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.lib;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.google.protobuf.ByteString;
+import com.google.protobuf.InvalidProtocolBufferException;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.commonruntime.DataServiceRuntime;
+import es.bsc.dataclay.communication.grpc.Utils;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages;
+import es.bsc.dataclay.serialization.DataClaySerializable;
+import es.bsc.dataclay.serialization.buffer.DataClayByteArray;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.java.DataClayJavaWrapper;
+import es.bsc.dataclay.serialization.java.lang.BooleanWrapper;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.ids.SessionID;
+
+/**
+ * Serialization library for communications.
+ *
+ */
+public final class DataClayDeserializationLib {
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L40">	public static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Logger. */
+<span class="fc" id="L43">	public static final Logger LOGGER = LogManager.getLogger(&quot;DataClayDeserializationLib&quot;);</span>
+	
+	/**
+	 * Constructor
+	 */
+	private DataClayDeserializationLib() {
+
+	}
+
+	/**
+	 * Create buffer and deserialize
+	 * 
+	 * @param byteArray
+	 *            Byte array
+	 * @param instance
+	 *            instance Instance to deserialize
+	 * @param ifaceBitMaps
+	 *            Map of bitmaps representing the interfaces to use
+	 * @param metadata
+	 *            Object metadata (e.g. for language objects)
+	 * @param curDeserializedJavaObjs
+	 *            Currently deserialized Java objects
+	 * @return
+	 */
+	public static void createBufferAndDeserialize(final DataClayByteArray byteArray,
+			final DataClaySerializable instance, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata, final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+<span class="nc" id="L70">		final DataClayByteBuffer dcBuffer = SerializationLibUtils.newByteBuffer(byteArray);</span>
+		// Serialize object values
+		try {
+<span class="nc" id="L73">			instance.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L75">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Deserialization FINISHED: readerIndex=&quot; + dcBuffer.readerIndex());</span>
+			}
+		} finally {
+<span class="nc" id="L78">			dcBuffer.release();</span>
+		}
+<span class="nc" id="L80">	}</span>
+
+	/**
+	 * Deserialize grpc message in DB
+	 * 
+	 * @param objectBytes
+	 *            Object bytes
+	 * @return Deserialized grpc message
+	 */
+	public static CommonMessages.PersistentObjectInDB deserializeMessageFromDB(final byte[] objectBytes) {
+		// Here means that object is not loaded! (Execution Environment)
+		// === LOAD OBJECT === //
+		final CommonMessages.PersistentObjectInDB persObjInDB;
+		try {
+<span class="nc" id="L94">			persObjInDB = CommonMessages.PersistentObjectInDB.parseFrom(objectBytes);</span>
+<span class="nc" id="L95">		} catch (final InvalidProtocolBufferException e) {</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L97">				e.printStackTrace();</span>
+			}
+<span class="nc" id="L99">			throw new RuntimeException(e);</span>
+<span class="nc" id="L100">		}</span>
+<span class="nc" id="L101">		return persObjInDB;</span>
+	}
+
+	/**
+	 * Deserialize object from bytes into ObjectWithDataParamOrReturn
+	 * 
+	 * @param objectID
+	 *            ID of object
+	 * @param objectBytes
+	 *            Object bytes
+	 * @param theLib
+	 *            Library to use
+	 * @return ObjectWithDataParamOrReturn serialized.
+	 */
+	public static ObjectWithDataParamOrReturn deserializeObjectFromDBBytesIntoObjectData(final ObjectID objectID,
+			final byte[] objectBytes, final DataClayRuntime theLib) {
+
+		final CommonMessages.PersistentObjectInDB persObjInDB;
+		try {
+<span class="nc" id="L120">			persObjInDB = CommonMessages.PersistentObjectInDB.parseFrom(objectBytes);</span>
+<span class="nc" id="L121">		} catch (final InvalidProtocolBufferException e) {</span>
+<span class="nc" id="L122">			e.printStackTrace();</span>
+<span class="nc" id="L123">			throw new RuntimeException(e);</span>
+<span class="nc" id="L124">		}</span>
+<span class="nc" id="L125">		final DataClayObjectMetaData metadata = Utils.getMetaData(persObjInDB.getMetadata());</span>
+<span class="nc" id="L126">		final DataClayByteArray byteArray = new DataClayByteArray(persObjInDB.getData());</span>
+
+<span class="nc" id="L128">		final ObjectWithDataParamOrReturn serializedObject = new ObjectWithDataParamOrReturn(objectID,</span>
+<span class="nc" id="L129">				metadata.getMetaClassID(0), metadata, byteArray);</span>
+
+<span class="nc" id="L131">		return serializedObject;</span>
+	}
+
+	/**
+	 * Deserialize object from bytes
+	 * 
+	 * @param objectToFill
+	 *            Object to fill
+	 * @param objectBytes
+	 *            Object bytes
+	 * @param theLib
+	 *            Library to use
+	 */
+	public static void deserializeObjectFromDBBytes(final DataClayExecutionObject objectToFill,
+			final byte[] objectBytes, final DataServiceRuntime theLib) {
+		// Here means that object is not loaded! (Execution Environment)
+<span class="nc" id="L147">		final CommonMessages.PersistentObjectInDB persObjInDB = deserializeMessageFromDB(objectBytes);</span>
+<span class="nc" id="L148">		final DataClayObjectMetaData metadata = Utils.getMetaData(persObjInDB.getMetadata());</span>
+<span class="nc" id="L149">		deserializeObjectFromDBBytesAux(objectToFill, metadata, persObjInDB.getData(), theLib);</span>
+<span class="nc" id="L150">	}</span>
+
+	/**
+	 * Given metadata and data, deserialize into instance. This function is used if no class id is provided.
+	 * 
+	 * @param instance
+	 *            Instance where object is deserialized
+	 * @param metadata
+	 *            Object metadata
+	 * @param data
+	 *            Object data
+	 * @param theLib
+	 *            Library to use
+	 */
+	public static void deserializeObjectFromDBBytesAux(final DataClayExecutionObject instance,
+			final DataClayObjectMetaData metadata, final ByteString data, final DataServiceRuntime theLib) {
+
+<span class="nc" id="L167">		final Map&lt;Integer, Object&gt; curDeSerJavaObjs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L168">		final DataClayByteArray byteArray = new DataClayByteArray(data);</span>
+<span class="nc" id="L169">		DataClayDeserializationLib.createBufferAndDeserialize(byteArray, instance, null, metadata, curDeSerJavaObjs);</span>
+<span class="nc" id="L170">		instance.setLoaded(true);</span>
+<span class="nc" id="L171">		instance.setIsPersistent(true);</span>
+
+		// GARBAGE COLLECTOR RACE CONDITION
+		// ================================
+		// If some object was cleaned and removed from GC retained refs, it does NOT
+		// mean it was removed
+		// from Weak references map (Heap) because we will ONLY remove an entry in Heap
+		// if it is
+		// pointing to NULL, i.e. the Java GC removed it.
+		// So, if some execution is requested after we remove an entry from retained
+		// refs (we cleaned and send
+		// the object to disk), we check if the
+		// object is in Heap (see executeImplementation in DS) and therefore, we created
+		// a new reference
+		// making impossible for Java GC to clean the reference. We will add the object
+		// to retained references
+		// again once it is deserialized from DB.
+<span class="nc" id="L188">		theLib.retainInHeap(instance); // Force object to be in heap.</span>
+
+<span class="nc" id="L190">	}</span>
+
+	/**
+	 * Deserialize MetaData of object from database
+	 * 
+	 * @param objectBytes
+	 *            Object bytes
+	 * @return Deserialized metadata
+	 */
+	public static DataClayObjectMetaData deserializeMetaDataFromDB(final byte[] objectBytes) {
+		// Here means that object is not loaded! (Execution Environment)
+		// === LOAD OBJECT === //
+<span class="nc" id="L202">		final CommonMessages.PersistentObjectInDB persObjInDB = deserializeMessageFromDB(objectBytes);</span>
+<span class="nc" id="L203">		final DataClayObjectMetaData metadata = Utils.getMetaData(persObjInDB.getMetadata());</span>
+<span class="nc" id="L204">		return metadata;</span>
+	}
+
+	/**
+	 * Special method for deserializing boolean return of a Filter method.
+	 * 
+	 * @param serializedObjs
+	 *            Return of filter method
+	 * @return TRUE if filter method returns TRUE, FALSE otherwise.
+	 */
+	public static boolean deserializeReturnFilterMethod(final SerializedParametersOrReturn serializedObjs) {
+<span class="nc" id="L215">		final ImmutableParamOrReturn immReturn = serializedObjs.getImmObjs().get(0);</span>
+
+<span class="nc" id="L217">		immReturn.setWrapper(new BooleanWrapper());</span>
+<span class="nc" id="L218">		DataClayDeserializationLib.createBufferAndDeserialize(immReturn.getSerializedBytes(), immReturn, null, null,</span>
+				null);
+<span class="nc" id="L220">		return (boolean) immReturn.getWrapper().getJavaObject();</span>
+	}
+
+	/**
+	 * Deserialize object into a memory instance. ALSO called from executeImplementation in case of 'executions during
+	 * deserialization'. THIS FUNCTION SHOULD NEVER BE CALLED FROM CLIENT SIDE.
+	 * 
+	 * @param paramOrRet
+	 *            Param/return bytes and metadata
+	 * @param object
+	 *            Object in which to deserialize data.
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps
+	 * @param theLib
+	 *            The client lib
+	 * @param ownerSessionID
+	 *            Can be null. ID of owner session of the object. Used for volatiles pending to register.
+	 * @param forceDeserialization
+	 *            Check if the object is loaded or not. If FALSE and loaded, then no deserialization is happening. If TRUE, then
+	 *            deserialization is forced.
+	 * 
+	 */
+	public static void deserializeObjectWithData(final ObjectWithDataParamOrReturn paramOrRet,
+			final DataClayExecutionObject object, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayRuntime theLib, final SessionID ownerSessionID, final boolean forceDeserialization) {
+
+		// FORCE DESERIALIZATION NOTE.
+		// Volatiles in server can be created in two ways: received from client or in
+		// some execution.
+		// If created during execution, flag loaded = true, but if received, flag loaded
+		// should be false until
+		// the object is properly loaded. In order to control the first case,
+		// constructor of the object is
+		// setting loaded to true and here we set it to false. Therefore we need to
+		// &quot;force&quot; deserialization sometimes.
+		// Also happening in update of objects and cleaning in GC.
+
+		// Lock object until deserialization in case another instance is waiting for
+		// using it so much.
+<span class="nc" id="L259">		theLib.lock(object.getObjectID());</span>
+		try {
+<span class="nc bnc" id="L261" title="All 4 branches missed.">			if (forceDeserialization || !object.isLoaded()) { // Double check to avoid race-conditions</span>
+<span class="nc" id="L262">				final Map&lt;Integer, Object&gt; curDeSerJavaObjs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L263">				final DataClayObjectMetaData metadata = paramOrRet.getMetaData();</span>
+<span class="nc" id="L264">				DataClayDeserializationLib.createBufferAndDeserialize(paramOrRet.getSerializedBytes(), object, null,</span>
+						metadata, curDeSerJavaObjs);
+				// Now object is loaded
+<span class="nc" id="L267">				object.setLoaded(true);</span>
+<span class="nc" id="L268">				object.setIsPersistent(true);</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">				if (ownerSessionID != null) {</span>
+<span class="nc" id="L270">					object.setOwnerSessionIDforVolatiles(ownerSessionID);</span>
+				}
+			}
+
+		} finally {
+<span class="nc" id="L275">			theLib.unlock(object.getObjectID());</span>
+		}
+<span class="nc" id="L277">	}</span>
+
+	/**
+	 * Deserialize object into a non-persistent memory instance IN CLIENT It ensures the object is not marked as persistent.
+	 * 
+	 * @param paramOrRet
+	 *            Param/return bytes and metadata
+	 * @param object
+	 *            Object in which to deserialize data.
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps
+	 * @param theLib
+	 *            The client lib
+	 * @param ownerSessionID
+	 *            Can be null. ID of owner session of the object. Used for volatiles pending to register.
+	 */
+	public static void deserializeObjectWithDataInClient(final ObjectWithDataParamOrReturn paramOrRet,
+			final DataClayObject object, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final DataClayRuntime theLib,
+			final SessionID ownerSessionID) {
+
+		// Lock object until deserialization in case another instance is waiting for
+		// using it so much.
+<span class="nc" id="L299">		theLib.lock(object.getObjectID());</span>
+		try {
+<span class="nc" id="L301">			final Map&lt;Integer, Object&gt; curDeSerJavaObjs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L302">			final DataClayObjectMetaData metadata = paramOrRet.getMetaData();</span>
+<span class="nc" id="L303">			DataClayDeserializationLib.createBufferAndDeserialize(paramOrRet.getSerializedBytes(), object, null,</span>
+					metadata, curDeSerJavaObjs);
+
+			// Since deserialize association is creating associations as persistent, we
+			// force the deserialization to set this flag to false (and hint to null)
+<span class="nc" id="L308">			object.setIsPersistent(false);</span>
+<span class="nc" id="L309">			object.setHint(null);</span>
+
+		} finally {
+<span class="nc" id="L312">			theLib.unlock(object.getObjectID());</span>
+		}
+<span class="nc" id="L314">	}</span>
+
+	/**
+	 * Deserialize parameters of an execution
+	 * 
+	 * @param serializedParamsOrReturn
+	 *            Parameters or return to deserialize
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps (for Client - DS communication)
+	 * @param theLib
+	 *            DataClayLib to use
+	 * @return Parameters
+	 */
+	public static Object[] deserializeParamsOrReturn(final SerializedParametersOrReturn serializedParamsOrReturn,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final DataClayRuntime theLib) {
+
+<span class="nc" id="L330">		final int numParams = serializedParamsOrReturn.getNumParams();</span>
+<span class="nc" id="L331">		final Object[] deserializedParams = new Object[numParams];</span>
+
+		// ============================ VOLATILES ============================ //
+
+		// Deserialize all volatiles first (ONLY FOR EXECUTION ENVIRONMENTS)
+<span class="nc" id="L336">		final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volatiles = serializedParamsOrReturn.getVolatileObjs();</span>
+<span class="nc" id="L337">		boolean firstDeserialization = true;</span>
+		// All volatiles are DataClayObjects
+<span class="nc bnc" id="L339" title="All 2 branches missed.">		for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; volatileEntry : volatiles.entrySet()) {</span>
+			// TODO: move this to a private function only for EE
+			// CLIENTS CANNOT DESERIALIZE VOLATILES
+<span class="nc bnc" id="L342" title="All 2 branches missed.">			if (firstDeserialization) {</span>
+				// Any method execution run during deserialization should use this map of
+				// volatiles to seek
+				// for the values needed.
+<span class="nc" id="L346">				theLib.addVolatileUnderDeserialization(volatiles);</span>
+<span class="nc" id="L347">				firstDeserialization = false;</span>
+			}
+<span class="nc" id="L349">			final Integer paramIdx = volatileEntry.getKey();</span>
+<span class="nc" id="L350">			final ObjectWithDataParamOrReturn volatileParamOrRet = volatileEntry.getValue();</span>
+<span class="nc" id="L351">			final ObjectID volatileObjID = volatileParamOrRet.getObjectID();</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L353">				DataClayRuntime.LOGGER.debug(&quot;[##Deserialization##] Deserializing volatile server param idx = &quot;</span>
+						+ paramIdx + &quot; oid = &quot; + volatileObjID);
+			}
+
+<span class="nc" id="L357">			final DataClayObject volatileObj = theLib.getOrNewAndLoadVolatile(volatileParamOrRet.getClassID(),</span>
+<span class="nc" id="L358">					volatileObjID, theLib.getHint(), volatileParamOrRet, ifaceBitMaps);</span>
+
+			// For makePersistent or federate methods, we must know that there is a session using the object which
+			// is the one that persisted/federated. Normally, we know a client is using an object if we serialize
+			// it to send to him but in that case client has created/federated the object.
+<span class="nc" id="L363">			theLib.addSessionReference(volatileObj.getObjectID());</span>
+
+<span class="nc bnc" id="L365" title="All 2 branches missed.">			if (paramIdx &lt; numParams) {</span>
+<span class="nc" id="L366">				deserializedParams[paramIdx] = volatileObj;</span>
+			}
+
+<span class="nc" id="L369">		}</span>
+
+		// ============================ LANGUAGE ============================ //
+
+		// Language objects can only be Language parameters and NOT sub-objects of
+		// DataClayObjects
+		// since all language objectes are 'embedded' and 'copied'.
+<span class="nc" id="L376">		final Map&lt;Integer, LanguageParamOrReturn&gt; langObjs = serializedParamsOrReturn.getLangObjs();</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">		for (final Entry&lt;Integer, LanguageParamOrReturn&gt; languageEntry : langObjs.entrySet()) {</span>
+<span class="nc" id="L378">			final Integer paramIdx = languageEntry.getKey();</span>
+<span class="nc" id="L379">			final LanguageParamOrReturn langObj = languageEntry.getValue();</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L381">				DataClayRuntime.LOGGER</span>
+<span class="nc" id="L382">						.debug(&quot;[##Deserialization##] Deserializing language param or return &quot; + paramIdx);</span>
+			}
+
+<span class="nc" id="L385">			final DataClayByteArray bytes = langObj.getSerializedBytes();</span>
+
+<span class="nc" id="L387">			final Map&lt;Integer, Object&gt; curDeserializedJavaObjs = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L389">			DataClayDeserializationLib.createBufferAndDeserialize(bytes, langObj, ifaceBitMaps, langObj.getMetaData(),</span>
+					curDeserializedJavaObjs);
+<span class="nc bnc" id="L391" title="All 2 branches missed.">			if (paramIdx &lt; numParams) {</span>
+<span class="nc" id="L392">				deserializedParams[paramIdx] = langObj.getWrapper().getJavaObject();</span>
+			}
+<span class="nc" id="L394">		}</span>
+
+		// ============================ IMMUTABLE ============================ //
+
+<span class="nc" id="L398">		final Map&lt;Integer, ImmutableParamOrReturn&gt; immObjs = serializedParamsOrReturn.getImmObjs();</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">		for (final Entry&lt;Integer, ImmutableParamOrReturn&gt; immEntry : immObjs.entrySet()) {</span>
+<span class="nc" id="L400">			final Integer paramIdx = immEntry.getKey();</span>
+<span class="nc" id="L401">			final ImmutableParamOrReturn immObj = immEntry.getValue();</span>
+<span class="nc" id="L402">			final DataClayByteArray bytes = immObj.getSerializedBytes();</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L404">				DataClayRuntime.LOGGER</span>
+<span class="nc" id="L405">						.debug(&quot;[##Deserialization##] Deserializing immutable param or return &quot; + paramIdx);</span>
+			}
+<span class="nc" id="L407">			DataClayDeserializationLib.createBufferAndDeserialize(bytes, immObj, ifaceBitMaps, null, null);</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">			if (paramIdx &lt; numParams) {</span>
+<span class="nc" id="L409">				deserializedParams[paramIdx] = immObj.getWrapper().getJavaObject();</span>
+			}
+<span class="nc" id="L411">		}</span>
+
+		// ============================ PERSISTENT PARAMS ============================
+		// //
+<span class="nc" id="L415">		final Map&lt;Integer, PersistentParamOrReturn&gt; persObjs = serializedParamsOrReturn.getPersistentRefs();</span>
+<span class="nc bnc" id="L416" title="All 2 branches missed.">		for (final Entry&lt;Integer, PersistentParamOrReturn&gt; persEntry : persObjs.entrySet()) {</span>
+<span class="nc" id="L417">			final Integer paramIdx = persEntry.getKey();</span>
+<span class="nc" id="L418">			final PersistentParamOrReturn persParamOrReturn = persEntry.getValue();</span>
+<span class="nc" id="L419">			final ObjectID persObjID = persParamOrReturn.getObjectID();</span>
+<span class="nc bnc" id="L420" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L421">				DataClayRuntime.LOGGER.debug(&quot;[##Deserialization##] Deserializing persistent param or return idx = &quot;</span>
+						+ paramIdx + &quot; oid = &quot; + persObjID);
+			}
+
+			// Get hint if present in Message.
+<span class="nc" id="L426">			ExecutionEnvironmentID hint = null;</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">			if (persParamOrReturn.getHint() != null) {</span>
+<span class="nc bnc" id="L428" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L429">					DataClayRuntime.LOGGER.debug(&quot;[==Hint==] On deserialize persistent param or return instance &quot;</span>
+<span class="nc" id="L430">							+ persObjID + &quot; setting the hint : &quot; + persParamOrReturn.getHint());</span>
+				}
+<span class="nc" id="L432">				hint = persParamOrReturn.getHint();</span>
+			}
+<span class="nc" id="L434">			DataClayInstanceID extDataClayID = null;</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">			if (persParamOrReturn.getExtDataClayID() != null) {</span>
+<span class="nc bnc" id="L436" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L437">					DataClayRuntime.LOGGER</span>
+<span class="nc" id="L438">							.debug(&quot;[==ExtDataClayID==] On deserialize persistent param or return instance &quot; + persObjID</span>
+									+ &quot; setting the extDataClayID : &quot; + extDataClayID);
+				}
+<span class="nc" id="L441">				extDataClayID = persParamOrReturn.getExtDataClayID();</span>
+			}
+
+<span class="nc bnc" id="L444" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L445">				DataClayRuntime.LOGGER</span>
+<span class="nc" id="L446">						.debug(&quot;== Getting/Creating persistent instance from deserialization of params or return.&quot;);</span>
+			}
+
+<span class="nc" id="L449">			final DataClayObject persObj = theLib.getOrNewPersistentInstance(persParamOrReturn.getClassID(), persObjID,</span>
+					hint);
+
+			// Important: getOrNewInstance might need the ClassID in case it is the first
+			// time we
+			// deserialize the object. In that case, getOrNewInstance is asking MetaData
+			// cache or LM for
+			// information which is more updated than the HINT in the message. So, if there
+			// is no hint
+			// set in the object, we can set the HINT in the message. If there is a hint in
+			// the object,
+			// it means it was obtaiend from metadata and it is more accurate.
+			/*
+			 * if (persObj.getHint() == null) { persObj.setHint(hint); }
+			 */
+
+			// ==== FLAGS ==== //
+<span class="nc" id="L466">			persObj.setIsPersistent(true);</span>
+
+<span class="nc bnc" id="L468" title="All 2 branches missed.">			if (paramIdx &lt; numParams) {</span>
+<span class="nc" id="L469">				deserializedParams[paramIdx] = persObj;</span>
+			}
+<span class="nc" id="L471">		}</span>
+
+<span class="nc bnc" id="L473" title="All 2 branches missed.">		if (!firstDeserialization) {</span>
+			// remove volatiles under deserialization if exists. TODO: move this to a
+			// private function only for EE
+<span class="nc" id="L476">			theLib.removeVolatilesUnderDeserialization();</span>
+		}
+
+<span class="nc bnc" id="L479" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L480">			DataClayRuntime.LOGGER.debug(&quot;[##Deserialization##] Deserializing of params/return finished&quot;);</span>
+		}
+
+<span class="nc" id="L483">		return deserializedParams;</span>
+
+	}
+
+	/**
+	 * Deserialize java field
+	 * 
+	 * @param wrapper
+	 *            Wrapper used for deserialization
+	 * @param dcBuffer
+	 *            Buffer from which to read
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps
+	 * @param metadata
+	 *            DataClay object metadata
+	 * @param curDeserializedObjs
+	 *            Current deserialized objects
+	 * @return Deserialized java object
+	 */
+	public static Object deserializeJavaField(final DataClayJavaWrapper wrapper, final DataClayByteBuffer dcBuffer,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedObjs) {
+
+<span class="pc bpc" id="L506" title="1 of 2 branches missed.">		if (wrapper.isImmutable()) {</span>
+			// ======= IMMUTABLE PARAMETERS ===== //
+<span class="nc" id="L508">			wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="nc" id="L509">			return wrapper.getJavaObject();</span>
+
+		}
+		// ====== LANGUAGE PARAMETERS ===== //
+
+<span class="fc" id="L514">		final Integer tag = dcBuffer.readVLQInt();</span>
+<span class="pc bpc" id="L515" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L516">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Association tag deserialized: data=&quot;+  tag + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+<span class="fc" id="L518">		Object javaObject = curDeserializedObjs.get(tag);</span>
+<span class="pc bpc" id="L519" title="1 of 2 branches missed.">		if (javaObject == null) {</span>
+<span class="fc" id="L520">			wrapper.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedObjs);</span>
+<span class="fc" id="L521">			javaObject = wrapper.getJavaObject();</span>
+		} else { 
+<span class="nc bnc" id="L523" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L524">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Found obj with identity =&quot; + System.identityHashCode(javaObject));</span>
+			}
+		}
+<span class="fc" id="L527">		return javaObject;</span>
+	}
+
+	/**
+	 * 
+	 * @param dcBuffer
+	 *            Buffer from which to read
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps
+	 * @param metadata
+	 *            DataClay object metadata
+	 * @param curDeserializedObjs
+	 *            Current deserialized objects
+	 * @param theLib
+	 *            Library to use
+	 * @return Deserialized association
+	 */
+	public static DataClayObject deserializeAssociation(final DataClayByteBuffer dcBuffer,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedObjs, final DataClayRuntime theLib) {
+<span class="nc" id="L547">		final Integer tag = new Integer(dcBuffer.readVLQInt());</span>
+<span class="nc bnc" id="L548" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L549">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Association tag deserialized: data=&quot;+  tag + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+<span class="nc" id="L551">		final ObjectID theObjectID = metadata.getObjectID(tag);</span>
+<span class="nc" id="L552">		final MetaClassID localMetaClassID = metadata.getMetaClassID(tag);</span>
+<span class="nc" id="L553">		final ExecutionEnvironmentID hint = metadata.getHint(tag);</span>
+<span class="nc" id="L554">		DataClayObject obj = null;</span>
+
+		// GET INSTANCE
+<span class="nc bnc" id="L557" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L558">			DataClayRuntime.LOGGER.debug(&quot;== Getting/Creating persistent instance from deserialization of assoc. &quot;</span>
+<span class="nc" id="L559">					+ System.identityHashCode(obj));</span>
+		}
+<span class="nc" id="L561">		obj = theLib.getOrNewPersistentInstance(localMetaClassID, theObjectID, hint); // Associations are always</span>
+																						// persistent
+
+		/*
+		 * if (hint != null) { if (DEBUG_ENABLED) { theLib.logger.debug(&quot;[==Hint==] Setting hint (deserialize association)&quot; +
+		 * &quot; for tag &quot; + tag + &quot; on instance &quot; + obj.getObjectID() + &quot; the hint : &quot; + theLib.getDSNameOfHint(hint)); }
+		 * obj.setHint(hint); }
+		 */
+<span class="nc" id="L569">		curDeserializedObjs.put(tag, obj);</span>
+<span class="nc bnc" id="L570" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L571">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Added obj with identity =&quot; + System.identityHashCode(obj));</span>
+		}
+<span class="nc" id="L573">		return obj;</span>
+	}
+
+	/**
+	 * Extract bytes representing the reference counting without deserializing it. @see DataClayDiskGC:queueReferenceCounting
+	 * 
+	 * @param objectBytes
+	 *            Bytes of the object
+	 * @return Bytes representing the reference counting.
+	 */
+	public static byte[] extractReferenceCounting(final byte[] objectBytes) {
+<span class="nc" id="L584">		final CommonMessages.PersistentObjectInDB persObjInDB = deserializeMessageFromDB(objectBytes);</span>
+<span class="nc" id="L585">		final byte[] bytes = persObjInDB.getData().toByteArray();</span>
+<span class="nc" id="L586">		final DataClayByteArray byteArray = new DataClayByteArray(bytes);</span>
+<span class="nc" id="L587">		final DataClayByteBuffer dcBuffer = SerializationLibUtils.newByteBuffer(byteArray);</span>
+		try {
+<span class="nc" id="L589">			final int indx = dcBuffer.readInt();</span>
+<span class="nc" id="L590">			dcBuffer.setReaderIndex(indx);</span>
+<span class="nc" id="L591">			final int length = bytes.length - indx;</span>
+<span class="nc" id="L592">			return dcBuffer.readBytes(length);</span>
+		} finally {
+<span class="nc" id="L594">			dcBuffer.release();</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

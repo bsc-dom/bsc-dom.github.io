@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NewDataContract.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">NewDataContract.java</span></div><h1>NewDataContract.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import java.util.Calendar;
+import java.util.HashSet;
+import java.util.Set;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.tool.Util.ERRCODE;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.ids.DataSetID;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.datacontractmgr.DataContract;
+import es.bsc.dataclay.util.management.datasetmgr.DataSet;
+
+<span class="nc" id="L17">public class NewDataContract {</span>
+
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L20" title="All 2 branches missed.">		if (args.length != 4) {</span>
+<span class="nc" id="L21">			Util.finishErr(&quot;Bad arguments. Usage: \n\n &quot; + NewDataContract.class.getSimpleName()</span>
+					+ &quot; &lt;owner_name&gt; &lt;owner_pass&gt; &lt;dataset_name&gt; &lt;benef_name&gt; \n&quot;, ERRCODE.ERROR);
+<span class="nc" id="L23">			return;</span>
+		}
+		try {
+<span class="nc" id="L26">			Util.init();</span>
+
+<span class="nc" id="L28">			final String ownerName = args[0];</span>
+<span class="nc" id="L29">			final String ownerPass = args[1];</span>
+<span class="nc" id="L30">			final String datasetName = args[2];</span>
+<span class="nc" id="L31">			final String benefName = args[3];</span>
+
+<span class="nc" id="L33">			final AccountID ownerID = ClientManagementLib.getAccountID(ownerName);</span>
+<span class="nc bnc" id="L34" title="All 2 branches missed.">			if (ownerID == null) {</span>
+<span class="nc" id="L35">				Util.finishErr(&quot;Invalid account&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L36">				return;</span>
+			}
+
+<span class="nc" id="L39">			final PasswordCredential ownerCredential = new PasswordCredential(ownerPass);</span>
+<span class="nc" id="L40">			DataSetID datasetID = ClientManagementLib.getDatasetID(ownerID, ownerCredential, datasetName);</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">			if (datasetID == null) {</span>
+<span class="nc" id="L42">				final DataSet newDataSet = new DataSet(datasetName, ownerName, false);</span>
+<span class="nc" id="L43">				datasetID = ClientManagementLib.newDataSet(ownerID, ownerCredential, newDataSet);</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">				if (datasetID == null) {</span>
+<span class="nc" id="L45">					Util.finishErr(&quot;Dataset &quot; + datasetName + &quot; is required but cannot be created.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L46">					return;</span>
+				}
+			}
+
+<span class="nc" id="L50">			final AccountID benefID = ClientManagementLib.getAccountID(benefName);</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">			if (benefID == null) {</span>
+<span class="nc" id="L52">				Util.finishErr(&quot;Invalid beneficiary account&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L53">				return;</span>
+			}
+
+<span class="nc" id="L56">			final Set&lt;AccountID&gt; applicantIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L57">			applicantIDs.add(benefID);</span>
+<span class="nc" id="L58">			final Calendar beginDate = Calendar.getInstance();</span>
+<span class="nc" id="L59">			beginDate.add(Calendar.YEAR, -1);</span>
+<span class="nc" id="L60">			final Calendar endDate = Calendar.getInstance();</span>
+<span class="nc" id="L61">			endDate.add(Calendar.YEAR, 100);</span>
+<span class="nc" id="L62">			final DataContract dContract = new DataContract(datasetID, ownerID, applicantIDs, beginDate, endDate);</span>
+
+			// Create a new contract for the benef to access it
+<span class="nc" id="L65">			final DataContractID dContractID = ClientManagementLib.newPrivateDataContract(ownerID, ownerCredential, dContract);</span>
+
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			if (dContractID != null) {</span>
+<span class="nc" id="L68">				Util.finishOut(&quot;User &quot; + benefName + &quot; is granted access to dataset &quot; + datasetName);</span>
+			} else {
+<span class="nc" id="L70">				Util.finishErr(&quot;User &quot; + benefName + &quot; probably has already granted access to dataset &quot; + datasetName,</span>
+						ERRCODE.WARNING);
+			}
+<span class="nc" id="L73">		} catch (final Exception ex) {</span>
+<span class="nc" id="L74">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L75">		}</span>
+<span class="nc" id="L76">		System.exit(0); // Call this to finish logging threads</span>
+
+<span class="nc" id="L78">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

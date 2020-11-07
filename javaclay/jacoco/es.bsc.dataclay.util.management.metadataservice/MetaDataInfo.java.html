@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MetaDataInfo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.metadataservice</a> &gt; <span class="el_source">MetaDataInfo.java</span></div><h1>MetaDataInfo.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.metadataservice;
+
+import java.util.Map;
+
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.DataSetID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * Class used to retrieve object metadata info.
+ */
+public final class MetaDataInfo
+		extends MgrObject&lt;ObjectID&gt; {
+
+	/** Whether the object is read only or not. */
+	private boolean isReadOnly;
+
+	/** DataSetID of the object. */
+	private DataSetID datasetID;
+
+	/** MetaClassID of the object. */
+	private MetaClassID metaclassID;
+
+	/** Info of [execution] environments of the object. */
+	private Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; locations;
+
+	/** User Aliases for the object. */
+	private String alias;
+
+	/** Owner account ID. */
+	private AccountID ownerID;
+
+	/**
+	 * Emtpy constructor for serialization
+	 */
+<span class="nc" id="L40">	public MetaDataInfo() {</span>
+
+<span class="nc" id="L42">	}</span>
+
+	/**
+	 * Basic constructor
+	 * @param newdatasetID
+	 *            the dataset ID of the object
+	 * @param newmetaClassID
+	 *            the class ID of the object
+	 * @param readOnly
+	 *            whether the object is readonly or not
+	 * @param newlocations
+	 *            locations of the object
+	 * @param newenvironments
+	 *            execution environments of object
+	 * @param newAliases
+	 *            aliases of the object
+	 * @param newownerID
+	 *            New owner id
+	 */
+	public MetaDataInfo(final ObjectID newdataClayID, final DataSetID newdatasetID, final MetaClassID newmetaClassID, final boolean readOnly,
+<span class="fc" id="L62">			final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; newlocations, final String newAlias, final AccountID newownerID) {</span>
+<span class="fc" id="L63">		this.setDataClayID(newdataClayID);</span>
+<span class="fc" id="L64">		this.setDatasetID(newdatasetID);</span>
+<span class="fc" id="L65">		this.setMetaclassID(newmetaClassID);</span>
+<span class="fc" id="L66">		this.setIsReadOnly(readOnly);</span>
+<span class="fc" id="L67">		this.setLocations(newlocations);</span>
+<span class="fc" id="L68">		this.setAlias(newAlias);</span>
+<span class="fc" id="L69">		this.setOwnerID(newownerID);</span>
+<span class="fc" id="L70">	}</span>
+
+	/**
+	 * Get the MetaDataInfo::isReadOnly
+	 * @return the isReadOnly
+	 */
+	public boolean getIsReadOnly() {
+<span class="nc" id="L77">		return isReadOnly;</span>
+	}
+
+	/**
+	 * Set the MetaDataInfo::isReadOnly
+	 * @param newisReadOnly
+	 *            the isReadOnly to set
+	 */
+	public void setIsReadOnly(final boolean newisReadOnly) {
+<span class="fc" id="L86">		this.isReadOnly = newisReadOnly;</span>
+<span class="fc" id="L87">	}</span>
+
+	/**
+	 * Get the MetaDataInfo::datasetID
+	 * @return the datasetID
+	 */
+	public DataSetID getDatasetID() {
+<span class="nc" id="L94">		return datasetID;</span>
+	}
+
+	/**
+	 * Set the MetaDataInfo::datasetID
+	 * @param newdatasetID
+	 *            the datasetID to set
+	 */
+	public void setDatasetID(final DataSetID newdatasetID) {
+<span class="fc" id="L103">		this.datasetID = newdatasetID;</span>
+<span class="fc" id="L104">	}</span>
+
+	/**
+	 * Get the MetaDataInfo::metaclassID
+	 * @return the metaclassID
+	 */
+	public MetaClassID getMetaclassID() {
+<span class="nc" id="L111">		return metaclassID;</span>
+	}
+
+	/**
+	 * Set the MetaDataInfo::metaclassID
+	 * @param newmetaclassID
+	 *            the metaclassID to set
+	 */
+	public void setMetaclassID(final MetaClassID newmetaclassID) {
+<span class="fc" id="L120">		this.metaclassID = newmetaclassID;</span>
+<span class="fc" id="L121">	}</span>
+
+	/**
+	 * Get the MetaDataInfo::environments
+	 * @return the environments
+	 */
+	public Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getLocations() {
+<span class="nc" id="L128">		return locations;</span>
+	}
+
+	/**
+	 * Set the MetaDataInfo::environments
+	 * @param newlocations
+	 *            the locations to set
+	 */
+	public void setLocations(final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; newlocations) {
+<span class="fc" id="L137">		this.locations = newlocations;</span>
+<span class="fc" id="L138">	}</span>
+
+	/**
+	 * Get the MetaDataInfo::aliases
+	 * @return the aliases
+	 */
+	public String getAlias() {
+<span class="nc" id="L145">		return alias;</span>
+	}
+
+	/**
+	 * Set the MetaDataInfo::aliases
+	 * @param newaliases
+	 *            the aliases to set
+	 */
+	public void setAlias(final String newAlias) {
+<span class="fc" id="L154">		this.alias = newAlias;</span>
+<span class="fc" id="L155">	}</span>
+
+	/**
+	 * Get the MetaDataInfo::ownerID
+	 * @return the ownerID
+	 */
+	public AccountID getOwnerID() {
+<span class="nc" id="L162">		return ownerID;</span>
+	}
+
+	/**
+	 * Set the MetaDataInfo::ownerID
+	 * @param theOwnerID
+	 *            the ownerID to set
+	 */
+	public void setOwnerID(final AccountID theOwnerID) {
+<span class="fc" id="L171">		this.ownerID = theOwnerID;</span>
+<span class="fc" id="L172">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

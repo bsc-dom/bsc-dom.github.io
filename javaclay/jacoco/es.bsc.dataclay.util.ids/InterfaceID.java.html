@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InterfaceID.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.ids</a> &gt; <span class="el_source">InterfaceID.java</span></div><h1>InterfaceID.java</h1><pre class="source lang-java linenums">
+/**
+ * @file InterfaceID.java
+ * @date Sep 21, 2012
+ */
+
+package es.bsc.dataclay.util.ids;
+
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.UUID;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+
+/**
+ * This class represents the identification of an Interface.
+ * 
+ */
+@SuppressWarnings(&quot;serial&quot;)
+public final class InterfaceID extends ID {
+
+	/** InterfaceID constructor. */
+<span class="fc" id="L27">	public InterfaceID() {</span>
+<span class="fc" id="L28">		super.setId(UUID.randomUUID());</span>
+<span class="fc" id="L29">	}</span>
+
+	/**
+	 * Constructs a new InterfaceID with the UUID provided
+	 * @param uuid
+	 *            Universal ID of the new InterfaceID
+	 * @see ID(UUID)
+	 */
+<span class="fc" id="L37">	public InterfaceID(final UUID uuid) {</span>
+<span class="fc" id="L38">		super.setId(uuid);</span>
+<span class="fc" id="L39">	}</span>
+
+	/**
+	 * Constructs a new *ID from a UUID string.
+	 * @param uuidStr
+	 *            Universal ID for the new *ID, string representation.
+	 * @detail This function is used for the implicit parsing from YAML sources.
+	 */
+<span class="nc" id="L47">	public InterfaceID(final String uuidStr) {</span>
+<span class="nc bnc" id="L48" title="All 2 branches missed.">		if (uuidStr == null) {</span>
+<span class="nc" id="L49">			super.setId(UUID.randomUUID());</span>
+		} else {
+<span class="nc" id="L51">			super.setId(UUID.fromString(uuidStr));</span>
+		}
+<span class="nc" id="L53">	}</span>
+
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+<span class="nc" id="L59">		super.deserializeIDBase(dcBuffer);</span>
+<span class="nc" id="L60">	}</span>
+
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer,
+			final boolean ignoreUserTypes, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+<span class="nc" id="L67">		super.serializeBase(dcBuffer);</span>
+<span class="nc" id="L68">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

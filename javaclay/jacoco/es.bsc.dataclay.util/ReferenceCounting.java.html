@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReferenceCounting.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util</a> &gt; <span class="el_source">ReferenceCounting.java</span></div><h1>ReferenceCounting.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import es.bsc.dataclay.api.BackendID;
+import es.bsc.dataclay.serialization.buffer.DataClayByteArray;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.lib.SerializationLibUtils;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+public class ReferenceCounting {
+
+	/** Pointed references. */
+<span class="fc" id="L18">	private final Map&lt;BackendID, Map&lt;ObjectID, Integer&gt;&gt; referenceCounting = new HashMap&lt;&gt;();</span>
+
+	/**
+	 * Reference counting constructor
+	 */
+<span class="fc" id="L23">	public ReferenceCounting() {</span>
+
+<span class="fc" id="L25">	}</span>
+
+	/**
+	 * Add +1 to reference counting
+	 * 
+	 * @param objectID
+	 *            Object id to increment counter
+	 * @param hint
+	 *            If not null, is added to proper reference counting, otherwise to Null entry (GlobalGC need to ask LM)
+	 */
+	public void incrementReferenceCounting(
+			final ObjectID objectID, final BackendID hint) {
+<span class="nc" id="L37">		Map&lt;ObjectID, Integer&gt; referenceCountingPerLocation = referenceCounting.get(hint);</span>
+<span class="nc bnc" id="L38" title="All 2 branches missed.">		if (referenceCountingPerLocation == null) {</span>
+			// if hint is null, key is NULL, means no location specified.
+<span class="nc" id="L40">			referenceCountingPerLocation = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L41">			referenceCounting.put(hint, referenceCountingPerLocation);</span>
+		}
+<span class="nc" id="L43">		final Integer numReferences = referenceCountingPerLocation.get(objectID);</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">		if (numReferences == null) {</span>
+<span class="nc" id="L45">			referenceCountingPerLocation.put(objectID, 1);</span>
+		} else {
+<span class="nc" id="L47">			referenceCountingPerLocation.put(objectID, numReferences + 1);</span>
+		}
+<span class="nc" id="L49">	}</span>
+
+	/**
+	 * Serialize reference counting
+	 * 
+	 * @param dcBuffer
+	 *            Buffer in which to write bytes.
+	 * @param referenceCounting
+	 *            Reference counting from this object.
+	 */
+	public void serializeReferenceCounting(final DataClayByteBuffer dcBuffer) {
+
+		// TODO: IMPORTANT: this should be removed in new serialization by using paddings to directly access reference counters
+		// inside
+		// metadata.
+<span class="nc" id="L64">		dcBuffer.writeInt(referenceCounting.size()); // size of map</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		for (final Entry&lt;BackendID, Map&lt;ObjectID, Integer&gt;&gt; curCounting : referenceCounting.entrySet()) {</span>
+<span class="nc" id="L66">			final ExecutionEnvironmentID hint = (ExecutionEnvironmentID) curCounting.getKey();</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">			if (hint == null) {</span>
+<span class="nc" id="L68">				dcBuffer.writeBoolean(true); // is null, null key means no hint for this reference counting.</span>
+			} else {
+<span class="nc" id="L70">				dcBuffer.writeBoolean(false);</span>
+				// TODO: use string for Python parsing. should we use string for all UUIDs? New serialization.
+<span class="nc" id="L72">				dcBuffer.writeString(hint.getId().toString());</span>
+			}
+<span class="nc" id="L74">			final Map&lt;ObjectID, Integer&gt; referenceCountingPerHint = curCounting.getValue();</span>
+<span class="nc" id="L75">			dcBuffer.writeInt(referenceCountingPerHint.size()); // size of map</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, Integer&gt; curEntry : referenceCountingPerHint.entrySet()) {</span>
+<span class="nc" id="L77">				final ObjectID associatedOID = curEntry.getKey();</span>
+<span class="nc" id="L78">				final Integer numRefs = curEntry.getValue();</span>
+				// TODO: use string for Python parsing. should we use string for all UUIDs? New serialization.
+<span class="nc" id="L80">				dcBuffer.writeString(associatedOID.getId().toString());</span>
+<span class="nc" id="L81">				dcBuffer.writeInt(numRefs);</span>
+<span class="nc" id="L82">			}</span>
+<span class="nc" id="L83">		}</span>
+
+<span class="nc" id="L85">	}</span>
+
+	/**
+	 * Deserialize reference counting
+	 * 
+	 * @param referrerObjectID
+	 *            ID of referrer object.
+	 * @param bytes
+	 *            Bytes representing the reference counting
+	 * @return Deserialized map.
+	 */
+	public void deserializeReferenceCounting(
+			final ObjectID referrerObjectID, final byte[] bytes) {
+<span class="nc" id="L98">		final DataClayByteArray byteArray = new DataClayByteArray(bytes);</span>
+<span class="nc" id="L99">		final DataClayByteBuffer dcBuffer = SerializationLibUtils.newByteBuffer(byteArray);</span>
+
+		try {
+<span class="nc" id="L102">			final int mapSize = dcBuffer.readInt();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			for (int i = 0; i &lt; mapSize; i++) {</span>
+<span class="nc" id="L104">				ExecutionEnvironmentID hint = null;</span>
+				// is null key?
+<span class="nc" id="L106">				final boolean isNull = dcBuffer.readBoolean();</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">				if (!isNull) {</span>
+<span class="nc" id="L108">					final String hintUUID = dcBuffer.readString();</span>
+<span class="nc" id="L109">					hint = new ExecutionEnvironmentID(hintUUID);</span>
+				}
+<span class="nc" id="L111">				final Map&lt;ObjectID, Integer&gt; refCounting = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L112">				referenceCounting.put(hint, refCounting);</span>
+<span class="nc" id="L113">				final int refCountingSize = dcBuffer.readInt();</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">				for (int j = 0; j &lt; refCountingSize; j++) {</span>
+<span class="nc" id="L115">					final String oidUUID = dcBuffer.readString();</span>
+<span class="nc" id="L116">					final ObjectID oid = new ObjectID(oidUUID);</span>
+<span class="nc" id="L117">					final Integer counting = dcBuffer.readInt();</span>
+<span class="nc" id="L118">					refCounting.put(oid, counting);</span>
+				}
+			}
+
+		} finally {
+<span class="nc" id="L123">			dcBuffer.release();</span>
+		}
+<span class="nc" id="L125">	}</span>
+
+	/**
+	 * Get ref. counting
+	 * 
+	 * @return Ref. counting
+	 */
+	public Map&lt;BackendID, Map&lt;ObjectID, Integer&gt;&gt; getReferenceCounting() {
+<span class="nc" id="L133">		return referenceCounting;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

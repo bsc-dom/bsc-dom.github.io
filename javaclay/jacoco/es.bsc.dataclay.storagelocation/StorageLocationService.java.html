@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StorageLocationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.storagelocation</a> &gt; <span class="el_source">StorageLocationService.java</span></div><h1>StorageLocationService.java</h1><pre class="source lang-java linenums">
+/**
+ * @file DataService.java
+ * @date Oct 23, 2012
+ */
+package es.bsc.dataclay.storagelocation;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.commonruntime.DataServiceRuntime;
+import es.bsc.dataclay.dataservice.api.DataServiceAPI;
+import es.bsc.dataclay.dbhandler.DBHandler;
+import es.bsc.dataclay.dbhandler.DBHandlerConf;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+// CHECKSTYLE:ON
+
+/**
+ * This class is responsible to manage data of the objects stored in the system.
+ * 
+ */
+public final class StorageLocationService {
+
+	/** Logger. */
+<span class="nc" id="L33">	private static final Logger LOGGER = LogManager.getLogger(&quot;StorageLocation&quot;);</span>
+
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L36">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Databases of objects. */
+<span class="nc" id="L39">	private final Map&lt;ExecutionEnvironmentID, DBHandler&gt; objectDBs = new ConcurrentHashMap&lt;&gt;();</span>
+
+	/** Database basic configuration. */
+	private final DBHandlerConf dbBaseConf;
+
+	/** Disk Garbage collector. */
+	private DataClayDiskGC diskGC;
+	
+	/** Runtime used to connect to other EE, SL or LM. */
+	private DataServiceRuntime runtime;
+	
+	/** Associated execution environment IDs. */
+<span class="nc" id="L51">	private final Set&lt;ExecutionEnvironmentID&gt; associatedExecutionEnvironmentIDs = new HashSet&lt;&gt;();</span>
+
+	/**
+	 * Constructor
+	 * 
+	 * @param dbHandlerconf
+	 *            Configuration for the db handler
+	 */
+<span class="nc" id="L59">	public StorageLocationService(final DBHandlerConf dbHandlerconf) {</span>
+<span class="nc" id="L60">		this.dbBaseConf = dbHandlerconf;</span>
+<span class="nc" id="L61">	}</span>
+
+	/**
+	 * Get DBHandler for execution environment ID provided
+	 * 
+	 * @param executionEnvID
+	 *            ID of EE
+	 * @return DBHandler
+	 */
+	private DBHandler getDBHandler(final ExecutionEnvironmentID executionEnvID) {
+<span class="nc" id="L71">		DBHandler dbHandler = this.objectDBs.get(executionEnvID);</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">		if (dbHandler == null) {</span>
+<span class="nc" id="L73">			synchronized (this) {</span>
+<span class="nc" id="L74">				dbHandler = this.objectDBs.get(executionEnvID);</span>
+<span class="nc bnc" id="L75" title="All 2 branches missed.">				if (dbHandler == null) {</span>
+<span class="nc" id="L76">					dbBaseConf.setDbname(executionEnvID.toString());</span>
+<span class="nc" id="L77">					dbHandler = dbBaseConf.getDBHandler();</span>
+<span class="nc" id="L78">					dbHandler.open();</span>
+<span class="nc" id="L79">					this.objectDBs.put(executionEnvID, dbHandler);</span>
+				}
+<span class="nc" id="L81">			}</span>
+		}
+<span class="nc" id="L83">		return dbHandler;</span>
+	}
+
+	/**
+	 * Initialize
+	 * 
+	 * @param theruntime
+	 *            Runtime to be used in Storage Location.
+	 * @param associatedEEID
+	 *            Associated EE ID.
+	 */
+	public void initialize(final DataServiceRuntime theruntime, final ExecutionEnvironmentID associatedEEID) {
+<span class="nc" id="L95">		associateExecutionEnvironment(associatedEEID);</span>
+<span class="nc" id="L96">		runtime = theruntime;</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L98">			diskGC = new DataClayDiskGC(this, theruntime, associatedEEID);</span>
+		}
+<span class="nc" id="L100">	}</span>
+
+	/**
+	 * Store the object.
+	 * 
+	 * @param eeID
+	 *            ID of the EE triggering the call
+	 * @param objectID
+	 *            ID of the object
+	 * @param bytes
+	 *            Bytes of the object
+	 */
+	public void store(final ExecutionEnvironmentID eeID, final ObjectID objectID, final byte[] bytes) {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L114">			LOGGER.debug(&quot;[StorageLocation] Storing object {} into {} &quot;, objectID, eeID);</span>
+		}
+<span class="nc" id="L116">		getDBHandler(eeID).store(objectID, bytes);</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L118">			this.diskGC.addToQueueReferenceCounting(eeID, objectID, bytes, false, true);</span>
+		}
+<span class="nc" id="L120">	}</span>
+
+	/**
+	 * Get from DB
+	 * 
+	 * @param eeID
+	 *            ID of the EE triggering the call
+	 * @param objectID
+	 *            ID of the object
+	 * @return Bytes of object
+	 */
+	public byte[] get(final ExecutionEnvironmentID eeID, final ObjectID objectID) {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L133">			LOGGER.debug(&quot;[StorageLocation] Getting object {} from {} &quot;, objectID, eeID);</span>
+		}
+<span class="nc" id="L135">		final byte[] bytes = getDBHandler(eeID).get(objectID);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L137">			this.diskGC.addToQueueReferenceCounting(eeID, objectID, bytes, true, false);</span>
+		}
+
+<span class="nc" id="L140">		return bytes;</span>
+	}
+
+	/**
+	 * Check if object exists in DB
+	 * 
+	 * @param eeID
+	 *            ID of the EE triggering the call
+	 * @param objectID
+	 *            ID of the object
+	 * @return TRUE if object exists. FALSE otherwise.
+	 */
+	public boolean exists(final ExecutionEnvironmentID eeID, final ObjectID objectID) {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L154">			LOGGER.debug(&quot;[StorageLocation] Checking if exists the object {} in {} &quot;, objectID, eeID);</span>
+		}
+<span class="nc" id="L156">		return getDBHandler(eeID).exists(objectID);</span>
+	}
+
+	/**
+	 * Updates an object identified by the ID provided with the new values provided.
+	 * 
+	 * @param eeID
+	 *            ID of the EE triggering the call
+	 * @param objectID
+	 *            ID of the object.
+	 * @param newbytes
+	 *            New byte values
+	 * @param dirty
+	 *            Indicates object has been modified. If false, it means that bytes only contains reference counting
+	 *            information. DESIGN NOTE: in order to be able to find out which references where removed in complex objects
+	 *            (arrays, collections) GlobalGc decreases all pointed references in a Get procedure and increase them again
+	 *            (except removed ones) during update. While in EE, objects have memory references so they cannot be removed
+	 *            neither.
+	 * 
+	 */
+	public void update(final ExecutionEnvironmentID eeID, final ObjectID objectID, final byte[] newbytes, final boolean dirty) {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L178">			LOGGER.debug(&quot;[StorageLocation] Updating object &quot; + objectID + &quot;. Dirty: &quot; + dirty);</span>
+		}
+<span class="nc bnc" id="L180" title="All 2 branches missed.">		if (dirty) {</span>
+<span class="nc" id="L181">			getDBHandler(eeID).update(objectID, newbytes);</span>
+		}
+<span class="nc bnc" id="L183" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L184">			this.diskGC.addToQueueReferenceCounting(eeID, objectID, newbytes, false, dirty);</span>
+		}
+<span class="nc" id="L186">	}</span>
+
+	/**
+	 * Deletes and object from the database.
+	 * 
+	 * @param eeID
+	 *            ID of the EE triggering the call
+	 * @param objectID
+	 *            ID of the object to delete
+	 */
+	public void delete(final ExecutionEnvironmentID eeID, final ObjectID objectID) {
+<span class="nc bnc" id="L197" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L198">			LOGGER.debug(&quot;[StorageLocation] Deleting object {} from  {} &quot;, objectID, eeID);</span>
+		}
+<span class="nc" id="L200">		getDBHandler(eeID).delete(objectID);</span>
+<span class="nc" id="L201">	}</span>
+
+	/**
+	 * Update counters of references.
+	 * 
+	 * @param updateCounterRefs
+	 *            Update counter of references.
+	 */
+	public void updateRefs(final Map&lt;ObjectID, Integer&gt; updateCounterRefs) {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L211">			LOGGER.debug(&quot;[StorageLocation] Updating references with &quot; + updateCounterRefs.toString());</span>
+		}
+<span class="nc bnc" id="L213" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L214">			this.diskGC.updateRefs(updateCounterRefs);</span>
+		}
+<span class="nc" id="L216">	}</span>
+
+	/**
+	 * Get DbHandler. Used for testing purposes.
+	 * 
+	 * @param eeID
+	 *            ID of EE
+	 * @return DbHandler.
+	 */
+	public DBHandler getDbHandler(final ExecutionEnvironmentID eeID) {
+<span class="nc" id="L226">		return getDBHandler(eeID);</span>
+	}
+
+	/**
+	 * Associate execution environment id to this SL
+	 * 
+	 * @param executionEnvironmentID
+	 *            ID to associate
+	 */
+	public void associateExecutionEnvironment(final ExecutionEnvironmentID executionEnvironmentID) {
+<span class="nc" id="L236">		this.associatedExecutionEnvironmentIDs.add(executionEnvironmentID);</span>
+<span class="nc" id="L237">	}</span>
+
+	/**
+	 * Get associated execution environments id to this SL
+	 * 
+	 * @return associated execution environments
+	 */
+	public Set&lt;ExecutionEnvironmentID&gt; getAssociateExecutionEnvironments() {
+<span class="nc" id="L245">		return this.associatedExecutionEnvironmentIDs;</span>
+	}
+
+	/**
+	 * Close DbHandler
+	 */
+	public void closeDbHandler(final ExecutionEnvironmentID eeID) {
+<span class="nc bnc" id="L252" title="All 2 branches missed.">		if (!getDBHandler(eeID).isClosed()) {</span>
+<span class="nc" id="L253">			getDBHandler(eeID).close();</span>
+		}
+<span class="nc" id="L255">	}</span>
+
+	/**
+	 * Shutdown storage location
+	 */
+	public void shutDownGarbageCollector() {
+		// WARNING: due to design of GlobalGC, shutdown of SL should be always being done before EE shutdown i.e. Java always
+		// closed
+		// before
+		// EE. TODO: check what happens if we close Java SL and Python EE still available and doing things.
+<span class="nc bnc" id="L265" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L266">			this.diskGC.shutDown();</span>
+		}
+<span class="nc" id="L268">	}</span>
+
+	/**
+	 * Return number of references pointing to object.
+	 * 
+	 * @param objectID
+	 *            ID of object
+	 * @return Number of references pointing to object
+	 */
+	public int getNumReferencesTo(final ObjectID objectID) {
+<span class="nc bnc" id="L278" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L279">			return this.diskGC.getNumReferencesTo(objectID);</span>
+		}
+<span class="nc" id="L281">		return 0;</span>
+	}
+
+	/**
+	 * Check if the object exists in SL or in any EE memory associated to current SL 
+	 * @param objectID ID of the object to check
+	 * @return TRUE if the object either exists in SL disk or in EE memory.
+	 */
+	public boolean exists(final ObjectID objectID) {
+				
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : getAssociateExecutionEnvironments()) {</span>
+			
+			// Check if object exists in disk
+<span class="nc bnc" id="L294" title="All 2 branches missed.">			if (this.getDbHandler(associatedExecutionEnvironmentID).exists(objectID)) { </span>
+<span class="nc" id="L295">				return true;</span>
+			}
+
+			// Check if object exists in EE memory
+<span class="nc" id="L299">			final DataServiceAPI dsAPI = runtime.getRemoteExecutionEnvironmentForDS(associatedExecutionEnvironmentID);</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">			if (dsAPI.existsInEE(objectID)) { </span>
+<span class="nc" id="L301">				return true;</span>
+			}
+<span class="nc" id="L303">		}</span>
+<span class="nc" id="L304">		return false;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

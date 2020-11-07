@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>VersionInfo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.info</a> &gt; <span class="el_source">VersionInfo.java</span></div><h1>VersionInfo.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.info;
+
+/**
+ * @file VersionInfo.java
+ * 
+ * @date Apr 23, 2014
+ * 
+ */
+
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
+
+/**
+ * This class contains the info created for a version. It will be used to consolidate the version.
+ */
+<span class="nc" id="L23">public final class VersionInfo implements Serializable {</span>
+	/** Serial version UID. */
+	private static final long serialVersionUID = 4863984800761279859L;
+
+	/** ObjectID of the main versioned object. */
+	private ObjectID versionOID;
+
+	/** location ID in which the version is located. */
+	private ExecutionEnvironmentID locID;
+
+	/**
+	 * Correspondence between the versionOIDs (key) and the originalOIDs (value) of the versioned object and its subobjects.
+	 */
+<span class="nc" id="L36">	private final Map&lt;ObjectID, ObjectID&gt; versionsMapping = new LinkedHashMap&lt;&gt;();</span>
+	/**
+	 * Metadata of the original object. Needed in consolidate (to allow the app to delete original object before consolidating)
+	 */
+<span class="nc" id="L40">	private final Map&lt;ObjectID, MetaDataInfo&gt; originalMD = new HashMap&lt;&gt;();</span>
+
+	/**
+	 * Get the objectID of the main versioned object
+	 * 
+	 * @return versionOID
+	 */
+	public ObjectID getVersionOID() {
+<span class="nc" id="L48">		return this.versionOID;</span>
+	}
+
+	/**
+	 * Set the objectID of the main versioned object
+	 * 
+	 * @param newOID
+	 *            OID to be set
+	 */
+	public void setVersionOID(final ObjectID newOID) {
+<span class="nc" id="L58">		this.versionOID = newOID;</span>
+<span class="nc" id="L59">	}</span>
+
+	/**
+	 * Add a new pair versionOID-originalOID to the mapping
+	 * 
+	 * @param newOID
+	 *            The OID of the version
+	 * @param originalOID
+	 *            The original OID corresponding to versionOID
+	 */
+	public void addVersionedObject(final ObjectID newOID, final ObjectID originalOID) {
+<span class="nc" id="L70">		this.versionsMapping.put(newOID, originalOID);</span>
+<span class="nc" id="L71">	}</span>
+
+	/**
+	 * Set the versionOID-originalOID mapping
+	 * 
+	 * @param versionToOriginal
+	 *            A map containing a set of versionOIDs and their correspondence to original OIDs
+	 */
+	public void setVersionsMapping(final Map&lt;ObjectID, ObjectID&gt; versionToOriginal) {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		if (!versionToOriginal.isEmpty()) {</span>
+<span class="nc" id="L81">			this.versionsMapping.putAll(versionToOriginal);</span>
+		}
+<span class="nc" id="L83">	}</span>
+
+	/**
+	 * Get the versionOID-originalOID mapping
+	 * 
+	 * @return The mapping of the versionInfo
+	 */
+	public Map&lt;ObjectID, ObjectID&gt; getVersionsMapping() {
+<span class="nc" id="L91">		return this.versionsMapping;</span>
+	}
+
+	/**
+	 * Set the objectID-metadata mapping
+	 * 
+	 * @param newOriginalMD
+	 *            A map containing the metadata of each ObjectID
+	 */
+	public void setOriginalMD(final Map&lt;ObjectID, MetaDataInfo&gt; newOriginalMD) {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		if (!newOriginalMD.isEmpty()) {</span>
+<span class="nc" id="L102">			this.originalMD.putAll(newOriginalMD);</span>
+		}
+<span class="nc" id="L104">	}</span>
+
+	/**
+	 * Get the objectID-metadata mapping
+	 * 
+	 * @return A map containing the metadata of each ObjectID
+	 */
+	public Map&lt;ObjectID, MetaDataInfo&gt; getOriginalMD() {
+<span class="nc" id="L112">		return this.originalMD;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L117">		return versionsMapping.toString();</span>
+	}
+
+	/**
+	 * @return the locID
+	 */
+	public ExecutionEnvironmentID getLocID() {
+<span class="nc" id="L124">		return locID;</span>
+	}
+
+	/**
+	 * @param theLocID
+	 *            the locID to set
+	 */
+	public void setLocID(final ExecutionEnvironmentID theLocID) {
+<span class="nc" id="L132">		this.locID = theLocID;</span>
+<span class="nc" id="L133">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

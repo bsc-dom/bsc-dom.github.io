@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PersistentReferenceCounters.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.storagelocation</a> &gt; <span class="el_source">PersistentReferenceCounters.java</span></div><h1>PersistentReferenceCounters.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.storagelocation;
+
+import java.io.Serializable;
+import java.util.Map;
+import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import es.bsc.dataclay.api.BackendID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/** Class containing DiskGC caches. */
+public class PersistentReferenceCounters implements Serializable {
+
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -4244299627338569938L;
+
+	/**
+	 * Reference counting to add/subtract for each object.
+	 */
+	private final Map&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; countersPerNode;
+
+	/**
+	 * Objects in quarantine.
+	 */
+	private final Map&lt;ObjectID, Long&gt; quarantine;
+
+	/**
+	 * Candidates list of objects to be removed.
+	 */
+	private final Queue&lt;ObjectID&gt; candidates;
+
+	/**
+	 * Constructor
+	 * @param thecountersPerNode
+	 *            counters per node
+	 * @param thequarantine
+	 *            quarantine objs
+	 * @param thecandidates
+	 *            candidate objs
+	 */
+	public PersistentReferenceCounters(final Map&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; thecountersPerNode,
+<span class="nc" id="L45">			final Map&lt;ObjectID, Long&gt; thequarantine, final Queue&lt;ObjectID&gt; thecandidates) {</span>
+<span class="nc" id="L46">		this.countersPerNode = thecountersPerNode;</span>
+<span class="nc" id="L47">		this.quarantine = thequarantine;</span>
+<span class="nc" id="L48">		this.candidates = thecandidates;</span>
+
+<span class="nc" id="L50">	}</span>
+
+	/**
+	 * @return the countersPerNode
+	 */
+	public Map&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; getCountersPerNode() {
+<span class="nc" id="L56">		return countersPerNode;</span>
+	}
+
+	/**
+	 * @return the quarantine
+	 */
+	public Map&lt;ObjectID, Long&gt; getQuarantine() {
+<span class="nc" id="L63">		return quarantine;</span>
+	}
+
+	/**
+	 * @return the candidates
+	 */
+	public Queue&lt;ObjectID&gt; getCandidates() {
+<span class="nc" id="L70">		return candidates;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayClassVisitor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.tools.java</a> &gt; <span class="el_source">DataClayClassVisitor.java</span></div><h1>DataClayClassVisitor.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.tools.java;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.signature.SignatureReader;
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.SerializationCodeGenerator;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.events.listeners.ECA;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.classmgr.Property;
+import es.bsc.dataclay.util.management.classmgr.Type;
+import es.bsc.dataclay.util.management.classmgr.UserType;
+import es.bsc.dataclay.util.management.classmgr.java.JavaOperationInfo;
+import es.bsc.dataclay.util.management.classmgr.java.JavaPropertyInfo;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.reflection.Reflector;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+import storage.StorageObject;
+
+/**
+ * DataClay class analyzer.
+ */
+public final class DataClayClassVisitor extends ClassVisitor {
+
+	/** ECA signature used during the analysis. */
+<span class="nc" id="L45">	public static final String ECA_SIGNATURE = Reflector.getSignatureFromTypeName(ECA.class.getName());</span>
+
+	/** MetaClass representing the analyzed class. */
+	private final MetaClass metaClass;
+
+	/** Name of class file being analyzed. */
+	private final String classFileName;
+
+	/** Destination class name. */
+	private final String destClassName;
+
+	/** Dependencies found while analyzing this class. */
+<span class="nc" id="L57">	private final Set&lt;String&gt; dependencies = new HashSet&lt;&gt;();</span>
+
+	/** Class loader containing the class to analyze. */
+	private final ClassLoader classLoader;
+
+	/** Current property position. */
+<span class="nc" id="L63">	private int curPropertyPosition = 0;</span>
+
+	/** Indicates if class being analyzed is for an enrichment. */
+	private final boolean isEnrichment;
+
+	/** Signature of java interface methods to control enrichments of interface methods. */
+	private List&lt;String&gt; interfaceMethodDesc;
+
+	/**
+	 * DataClay Class analyzer constructor
+	 * 
+	 * @param themetaClass
+	 *            MetaClass in which to store information analyzed.
+	 * @param newclassFileName
+	 *            Name of class file being analyzed.
+	 * @param newdestClassName
+	 *            Destination class name (can be different from original in case of enrichment)
+	 * @param userClassLoader
+	 *            Class loader containing the class to analyze.
+	 * @param newisEnrichment
+	 *            Indicates if class being analyzed is for an enrichment.
+	 */
+	public DataClayClassVisitor(final MetaClass themetaClass,
+			final String newclassFileName,
+			final String newdestClassName,
+			final ClassLoader userClassLoader,
+			final boolean newisEnrichment) {
+<span class="nc" id="L90">		super(Opcodes.ASM5);</span>
+<span class="nc" id="L91">		this.classFileName = newclassFileName;</span>
+<span class="nc" id="L92">		this.destClassName = newdestClassName;</span>
+<span class="nc" id="L93">		this.classLoader = userClassLoader;</span>
+<span class="nc" id="L94">		this.isEnrichment = newisEnrichment;</span>
+<span class="nc" id="L95">		this.metaClass = themetaClass;</span>
+
+<span class="nc" id="L97">		curPropertyPosition++;</span>
+<span class="nc" id="L98">	}</span>
+
+	/**
+	 * Analyze signature and return dependencies (internal names).
+	 * 
+	 * @param desc
+	 *            Descriptor to analyze
+	 * @param signature
+	 *            Signature to analyze.
+	 * @return Dependencies internal names found.
+	 */
+	private List&lt;String&gt; getDependenciesInternalNamesFromSignature(final String desc,
+			final String signature) {
+<span class="nc" id="L111">		String signatureToAnalyze = signature;</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">		if (signature == null) {</span>
+<span class="nc" id="L113">			signatureToAnalyze = desc;</span>
+		}
+<span class="nc" id="L115">		final DataClaySignatureVisitor sv = new DataClaySignatureVisitor();</span>
+<span class="nc" id="L116">		final SignatureReader sr = new SignatureReader(signatureToAnalyze);</span>
+<span class="nc" id="L117">		sr.accept(sv);</span>
+<span class="nc" id="L118">		return sv.getDependencies();</span>
+	}
+
+	/**
+	 * Get class namespace
+	 * 
+	 * @param className
+	 *            Name of class
+	 * @return Namespace of class
+	 */
+	public String getClassNamespace(final String className) {
+<span class="nc" id="L129">		final boolean isStub = Reflector.isStub(className, classLoader);</span>
+<span class="nc" id="L130">		String typeNamespace = metaClass.getNamespace(); // If not stub, new class will be in same</span>
+		// namespace than the class being registered.
+<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (isStub) {</span>
+			try {
+				// final StubInfo stubInfoSpec = DataClayObject.getStubInfoFromClass(className);
+				final Class&lt;?&gt; currentClass;
+				try {
+<span class="nc" id="L137">					currentClass = classLoader.loadClass(className);</span>
+<span class="nc" id="L138">				} catch (final ClassNotFoundException e) {</span>
+<span class="nc" id="L139">					e.printStackTrace();</span>
+<span class="nc" id="L140">					throw new RuntimeException(e);</span>
+<span class="nc" id="L141">				}</span>
+
+<span class="nc" id="L143">				final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L144">				final URL classURL = currentClass.getProtectionDomain().getCodeSource().getLocation();</span>
+<span class="nc" id="L145">				final String path = className.replace(&quot;.&quot;, &quot;/&quot;) + &quot;Yaml.yaml&quot;;</span>
+<span class="nc" id="L146">				final String fileName = classURL.getPath() + path;</span>
+<span class="nc" id="L147">				final InputStream ios = new FileInputStream(new File(fileName));</span>
+<span class="nc" id="L148">				final StubInfo stubInfoSpec = (StubInfo) yaml.load(ios);</span>
+<span class="nc" id="L149">				typeNamespace = stubInfoSpec.getNamespace();</span>
+<span class="nc" id="L150">			} catch (final Exception e) {</span>
+<span class="nc" id="L151">				e.printStackTrace();</span>
+<span class="nc" id="L152">			}</span>
+		}
+<span class="nc" id="L154">		return typeNamespace;</span>
+	}
+
+	/**
+	 * Get type specification from signature and descriptor
+	 * 
+	 * @param descriptor
+	 *            Descriptor of the type (main type in the signature i.e. without generics!)
+	 * @param signature
+	 *            Signature of the type being analyzed
+	 * @return Type specification. NOTE: The namespace of the type is the same as the class being registered until a later
+	 *         analysis modifies it.
+	 */
+	private Type getTypeSpec(final String descriptor, final String signature) {
+
+		// ===== ANALYZE DEPENDENCIES ==== //
+<span class="nc" id="L170">		final List&lt;String&gt; dependenciesOfType = this.getDependenciesInternalNamesFromSignature(descriptor, signature);</span>
+<span class="nc" id="L171">		final Type result = getTypeSpecGivenDependencies(descriptor, signature, dependenciesOfType);</span>
+<span class="nc" id="L172">		return result;</span>
+	}
+
+	/**
+	 * Get type specification from signature and descriptor and given dependencies found. This function is used from parameter
+	 * analysis and getTypeSpec.
+	 * 
+	 * @param descriptor
+	 *            Descriptor of the type
+	 * @param signature
+	 *            Signature of the type
+	 * @param thedependencies
+	 *            Dependencies of the signature
+	 * @return Type specification. NOTE: The namespace of the type is the same as the class being registered until a later
+	 *         analysis modifies it.
+	 */
+	private Type getTypeSpecGivenDependencies(final String descriptor, final String signature,
+			final List&lt;String&gt; thedependencies) {
+<span class="nc" id="L190">		final Set&lt;Type&gt; subIncludes = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">		for (final String dependencyInternalName : thedependencies) {</span>
+			// Get signature
+<span class="nc" id="L193">			final String subSignature = Reflector.getSignatureFromInternalName(dependencyInternalName);</span>
+
+			// We do not want to include as sub-includes the main type and not subtypes with same signature
+<span class="nc bnc" id="L196" title="All 4 branches missed.">			if (subSignature.equals(signature) || subSignature.equals(descriptor)) {</span>
+<span class="nc" id="L197">				continue;</span>
+			}
+
+			// since we already analyzed the signature, we should call 'givenDependencies' function
+<span class="nc" id="L201">			final Type subInclude = getTypeSpecGivenDependencies(subSignature, subSignature, new ArrayList&lt;String&gt;());</span>
+<span class="nc" id="L202">			subIncludes.add(subInclude);</span>
+<span class="nc" id="L203">		}</span>
+
+		// Get type
+<span class="nc" id="L206">		Type typeSpec = null;</span>
+
+		// Uses descriptor to check since we want to check if 'main type' is java, array or primitive.
+<span class="nc bnc" id="L209" title="All 2 branches missed.">		if (JavaSpecGenerator.DC_CLASSES.contains(Reflector.getTypeNameFromSignatureOrDescriptor(descriptor))</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">				|| Reflector.isJavaPrimitiveOrArraySignature(descriptor)) {</span>
+			// ====== LANGUAGE OR DATACLAY TYPE ===== //
+<span class="nc" id="L212">			typeSpec = new Type(descriptor, signature, Reflector.getTypeNameFromSignatureOrDescriptor(descriptor),</span>
+					new ArrayList&lt;&gt;(subIncludes));
+		} else {
+			// ====== USER TYPE ===== //
+
+			// Check if class is an stub (uses old signature to check files in class loader)
+			// uses descriptor since we want the type name and generics in signature will not allow us to
+			// extract the main type name.
+<span class="nc" id="L220">			final String typeName = Reflector.getTypeNameFromSignatureOrDescriptor(descriptor);</span>
+<span class="nc" id="L221">			final String typeNamespace = getClassNamespace(typeName);</span>
+
+			// Generate spec
+<span class="nc" id="L224">			typeSpec = new UserType(typeNamespace, typeName, descriptor, signature,</span>
+					new ArrayList&lt;&gt;(subIncludes));
+
+			// Add dependency
+<span class="nc" id="L228">			dependencies.add(typeName);</span>
+		}
+
+<span class="nc" id="L231">		return typeSpec;</span>
+
+	}
+
+	@Override
+	public void visit(final int version, final int access, final String name,
+			final String signature, final String superName, final String[] interfaces) {
+<span class="nc" id="L238">		final String superTypeName = Reflector.getTypeNameFromInternalName(superName);</span>
+
+		// ==== PARENT TYPE ==== //
+		// No parent if class extends DataClayObject since it is useful for registering DataClay functionalities.
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		if (!superTypeName.equals(DataClayObject.class.getName())</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">				&amp;&amp; !superTypeName.equals(Object.class.getName())</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">				&amp;&amp; !superTypeName.equals(StorageObject.class.getName())) {</span>
+			// Parent class will be analyzed later
+<span class="nc" id="L246">			dependencies.add(superTypeName);</span>
+			// Get signature from parent name
+<span class="nc" id="L248">			final String parentSignature = Reflector.getSignatureFromTypeName(superTypeName);</span>
+<span class="nc" id="L249">			final String parentNamespace = this.getClassNamespace(superTypeName);</span>
+<span class="nc" id="L250">			final UserType parentSpec = new UserType(parentNamespace, superTypeName,</span>
+					parentSignature, parentSignature, null);
+<span class="nc" id="L252">			metaClass.setParentType(parentSpec);</span>
+		}
+
+		// == JAVA INTEFACES == //
+<span class="nc" id="L256">		final List&lt;String&gt; javaIfaces = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L257">		final List&lt;Type&gt; ifaceIncludes = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">		for (final String ifaceName : interfaces) {</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">			if (Reflector.isJavaTypeName(ifaceName)) {</span>
+<span class="nc" id="L260">				javaIfaces.add(ifaceName);</span>
+			} else { 
+<span class="nc" id="L262">				final String ifaceTypeName = Reflector.getTypeNameFromInternalName(ifaceName);</span>
+<span class="nc bnc" id="L263" title="All 2 branches missed.">				if (!JavaSpecGenerator.DC_CLASSES.contains(ifaceTypeName)) { </span>
+<span class="nc" id="L264">					final String ifaceNamespace = this.getClassNamespace(ifaceTypeName);</span>
+<span class="nc" id="L265">					final String ifaceSignature = Reflector.getSignatureFromTypeName(ifaceTypeName);</span>
+<span class="nc" id="L266">					final UserType ifaceSpec = new UserType(ifaceNamespace, ifaceTypeName,</span>
+							ifaceSignature, ifaceSignature, null);
+<span class="nc" id="L268">					ifaceIncludes.add(ifaceSpec);</span>
+
+				}
+				
+			}
+		}
+<span class="nc" id="L274">		final String[] finalJavaIfaces = javaIfaces.toArray(new String[] {});</span>
+<span class="nc" id="L275">		metaClass.getJavaClassInfo().setJavaParentInterfaces(finalJavaIfaces);</span>
+<span class="nc" id="L276">		metaClass.getJavaClassInfo().setModifier(access);</span>
+<span class="nc" id="L277">		metaClass.getJavaClassInfo().setIncludes(ifaceIncludes);</span>
+
+		
+		// Save java interface methods so they cannot be enriched
+<span class="nc" id="L281">		interfaceMethodDesc = new ArrayList&lt;&gt;();</span>
+		try {
+<span class="nc bnc" id="L283" title="All 2 branches missed.">			for (final String ifaceInternalName : interfaces) {</span>
+<span class="nc" id="L284">				final String ifaceName = Reflector.getTypeNameFromInternalName(ifaceInternalName);</span>
+<span class="nc" id="L285">				final Class&lt;?&gt; interfaceClass = classLoader.loadClass(ifaceName);</span>
+<span class="nc bnc" id="L286" title="All 2 branches missed.">				for (final Method m : interfaceClass.getMethods()) {</span>
+<span class="nc" id="L287">					final String ifaceSignature = Reflector.getSignatureFromMethod(m);</span>
+<span class="nc" id="L288">					interfaceMethodDesc.add(m.getName() + ifaceSignature);</span>
+				}
+			}
+<span class="nc" id="L291">		} catch (final ClassNotFoundException e1) {</span>
+<span class="nc" id="L292">			e1.printStackTrace();</span>
+<span class="nc" id="L293">		}</span>
+<span class="nc" id="L294">	}</span>
+
+	@Override
+	public FieldVisitor visitField(final int access, final String name, final String desc,
+			final String signature, final Object value) {
+
+		// ==== ECA Fields ===== //
+<span class="nc bnc" id="L301" title="All 2 branches missed.">		if (desc.equals(ECA_SIGNATURE)) {</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">			if (!Configuration.Flags.NOTIFICATION_MANAGER_ACTIVE.getBooleanValue()) {</span>
+<span class="nc" id="L303">				return null; // do nothing</span>
+			}
+<span class="nc bnc" id="L305" title="All 4 branches missed.">			if (!Modifier.isStatic(access) || !Modifier.isFinal(access)) {</span>
+<span class="nc" id="L306">				throw new UnsupportedOperationException(&quot;Aborting. &quot; + metaClass.getName() + &quot;.&quot; + name</span>
+						+ &quot; field is an ECA field that is not static final.&quot;
+						+ &quot;. All ECAs defined should be static final fields.&quot;);
+			}
+
+			// Read ECA field and add it to list of ecas.
+			try {
+<span class="nc" id="L313">				final Class&lt;?&gt; javaClass = classLoader.loadClass(classFileName);</span>
+<span class="nc" id="L314">				final Field f = javaClass.getField(name);</span>
+<span class="nc" id="L315">				f.setAccessible(true);</span>
+<span class="nc" id="L316">				final ECA eca = (ECA) f.get(null);</span>
+
+				// Add eca
+<span class="nc" id="L319">				metaClass.getEcas().add(eca);</span>
+<span class="nc" id="L320">			} catch (final Exception e) {</span>
+<span class="nc" id="L321">				e.printStackTrace();</span>
+<span class="nc" id="L322">			}</span>
+
+<span class="nc" id="L324">			return null;</span>
+		} else {
+			// ==== Normal Fields ===== //
+<span class="nc bnc" id="L327" title="All 4 branches missed.">			if (Modifier.isStatic(access) &amp;&amp; !Modifier.isFinal(access)) {</span>
+<span class="nc" id="L328">				throw new UnsupportedOperationException(&quot;Aborting. &quot; + metaClass.getName() + &quot;.&quot; + name</span>
+						+ &quot; is a non-final static field. Currently only static final fields are supported.&quot;);
+
+			}
+
+<span class="nc" id="L333">			final Type propertyTypeSpec = getTypeSpec(desc, signature);</span>
+			// Note that &lt;K&gt; type or any generic type is included in the signature of the Type
+
+<span class="nc" id="L336">			final Property prop = new Property(curPropertyPosition, name, propertyTypeSpec,</span>
+<span class="nc" id="L337">					metaClass.getNamespace(), destClassName);</span>
+<span class="nc" id="L338">			final JavaPropertyInfo javaPropInfo = new JavaPropertyInfo(access);</span>
+<span class="nc" id="L339">			prop.addLanguageDepInfo(javaPropInfo);</span>
+<span class="nc" id="L340">			metaClass.addProperty(prop, curPropertyPosition);</span>
+<span class="nc" id="L341">			curPropertyPosition++;</span>
+
+<span class="nc" id="L343">			return new DataClayFieldVisitor(prop);</span>
+		}
+	}
+
+	@Override
+	public MethodVisitor visitMethod(final int access, final String name,
+			final String desc, final String signature, final String[] exceptions) {
+
+		// Enrichments of constructors are not allowed.
+<span class="nc bnc" id="L352" title="All 6 branches missed.">		if ((name.equals(&quot;&lt;init&gt;&quot;) || name.equals(&quot;&lt;clinit&gt;&quot;)) &amp;&amp; isEnrichment) {</span>
+<span class="nc" id="L353">			return null;</span>
+		}
+
+		// Static methods are not suported
+		/*
+		 * if (Modifier.isStatic(access)) { if (!name.equals(&quot;&lt;clinit&gt;&quot;)) { throw new UnsupportedOperationException(&quot;Aborting. &quot;
+		 * + name + &quot; is static. Static methods &quot; + &quot;are currently not supported&quot;); } }
+		 */
+
+		// Check if method has same serialize signature
+<span class="nc bnc" id="L363" title="All 2 branches missed.">		if (name.equals(SerializationCodeGenerator.SERIALIZE_NAME)) {</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">			if (!desc.equals(SerializationCodeGenerator.SERIALIZE_DESCRIPTOR)) {</span>
+<span class="nc" id="L365">				System.err.println(&quot;[dataClay] Warning: Found 'serialize' method that does not match &quot;</span>
+						+ &quot; the arguments of a DataClay user-defined serialization. This method is being &quot;
+						+ &quot; registered as a normal method. &quot;);
+			}
+		}
+
+		// Check if method has same deserialize signature
+<span class="nc bnc" id="L372" title="All 2 branches missed.">		if (name.equals(SerializationCodeGenerator.DESERIALIZE_NAME)) {</span>
+<span class="nc bnc" id="L373" title="All 2 branches missed.">			if (!desc.equals(SerializationCodeGenerator.DESERIALIZE_DESCRIPTOR)) {</span>
+<span class="nc" id="L374">				System.err.println(&quot;[dataClay] Warning: Found 'deserialize' method that does not match &quot;</span>
+						+ &quot; the arguments of a DataClay user-defined deserialization. This method is being &quot;
+						+ &quot; registered as a normal method. &quot;);
+			}
+		}
+
+		// Enrichment of interface methods are not allowed.
+<span class="nc" id="L381">		final String methodNameAndDesc = name + desc;</span>
+<span class="nc bnc" id="L382" title="All 4 branches missed.">		if (interfaceMethodDesc.contains(methodNameAndDesc) &amp;&amp; isEnrichment) {</span>
+<span class="nc" id="L383">			throw new UnsupportedOperationException(&quot;Aborting. &quot; + name + &quot; implements an interface method. &quot;</span>
+					+ &quot; Enrichment of interface methods are currently not supported.&quot;);
+		}
+
+		// Enrichment of abstract methods not allowed
+<span class="nc bnc" id="L388" title="All 4 branches missed.">		if (isEnrichment &amp;&amp; Modifier.isAbstract(access)) {</span>
+<span class="nc" id="L389">			throw new UnsupportedOperationException(&quot;Aborting. Cannot use an abstract method for enrichment &quot;</span>
+					+ name);
+		}
+
+		// Operation
+<span class="nc" id="L394">		final boolean isAbstract = Modifier.isAbstract(access);</span>
+<span class="nc" id="L395">		final Operation operation = new Operation(name, desc, signature,</span>
+				methodNameAndDesc,
+<span class="nc" id="L397">				metaClass.getNamespace(), destClassName, isAbstract);</span>
+<span class="nc" id="L398">		metaClass.addOperation(operation);</span>
+
+		// Add java operation information
+<span class="nc" id="L401">		final JavaOperationInfo javaOpInfo = new JavaOperationInfo(access);</span>
+<span class="nc" id="L402">		operation.addLanguageDepInfo(javaOpInfo);</span>
+
+		// Get parameter's type and order (parameter name is modified during method analysis)
+<span class="nc" id="L405">		final org.objectweb.asm.Type[] argumentTypes = org.objectweb.asm.Type.getArgumentTypes(desc);</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">		for (int i = 0; i &lt; argumentTypes.length; ++i) {</span>
+<span class="nc" id="L407">			final Type type = this.getTypeSpec(argumentTypes[i].getDescriptor(), null);</span>
+<span class="nc" id="L408">			operation.addParam(&quot;param&quot; + i, type);</span>
+		}
+
+<span class="nc" id="L411">		final org.objectweb.asm.Type returnType = org.objectweb.asm.Type.getReturnType(desc);</span>
+<span class="nc" id="L412">		final Type type = this.getTypeSpec(returnType.getDescriptor(), null);</span>
+<span class="nc" id="L413">		operation.setReturnType(type);</span>
+
+		// Rename method
+<span class="nc" id="L416">		final DataClayMethodVisitor methodVisitor = new DataClayMethodVisitor(this, operation,</span>
+				classLoader);
+
+		// Analyze code
+<span class="nc" id="L420">		return methodVisitor;</span>
+	}
+
+	/**
+	 * Get metaClass
+	 * 
+	 * @return the metaClass
+	 */
+	public MetaClass getMetaClass() {
+<span class="nc" id="L429">		return metaClass;</span>
+	}
+
+	/**
+	 * Get classFileName
+	 * 
+	 * @return the classFileName
+	 */
+	public String getClassFileName() {
+<span class="nc" id="L438">		return classFileName;</span>
+	}
+
+	/**
+	 * Get destClassName
+	 * 
+	 * @return the destClassName
+	 */
+	public String getDestClassName() {
+<span class="nc" id="L447">		return destClassName;</span>
+	}
+
+	/**
+	 * Get dependencies
+	 * 
+	 * @return the dependencies
+	 */
+	public Set&lt;String&gt; getDependencies() {
+<span class="nc" id="L456">		return dependencies;</span>
+	}
+
+	/**
+	 * Get classLoader
+	 * 
+	 * @return the classLoader
+	 */
+	public ClassLoader getClassLoader() {
+<span class="nc" id="L465">		return classLoader;</span>
+	}
+
+	/**
+	 * Get isEnrichment
+	 * 
+	 * @return the isEnrichment
+	 */
+	public boolean isEnrichment() {
+<span class="nc" id="L474">		return isEnrichment;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

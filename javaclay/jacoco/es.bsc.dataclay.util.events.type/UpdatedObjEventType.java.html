@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UpdatedObjEventType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.events.type</a> &gt; <span class="el_source">UpdatedObjEventType.java</span></div><h1>UpdatedObjEventType.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.events.type;
+
+import java.util.Objects;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.logic.api.LogicModuleAPI;
+import es.bsc.dataclay.util.events.EventTypeOuter.EventTypeEnum;
+import es.bsc.dataclay.util.events.message.EventMessage;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+
+/** This class represents an event type an object was updated. */
+public final class UpdatedObjEventType extends EventType {
+
+	/** Class ID. */
+	private MetaClassID classID;
+
+	/** Namespace. */
+	private String namespace;
+
+	/** Class name. */
+	private String className;
+
+	/**
+	 * Constructor used for deserialization.
+	 */
+<span class="nc" id="L31">	public UpdatedObjEventType() {</span>
+
+<span class="nc" id="L33">	}</span>
+
+	/**
+	 * Constructor
+	 * @param newnamespace
+	 *            Namespace of class
+	 * @param newclassName
+	 *            Class name of class
+	 */
+	public UpdatedObjEventType(final String newnamespace, final String newclassName) {
+<span class="nc" id="L43">		super(EventTypeEnum.UPDATED_OBJ);</span>
+<span class="nc" id="L44">		this.setNamespace(newnamespace);</span>
+<span class="nc" id="L45">		this.setClassName(newclassName);</span>
+<span class="nc" id="L46">	}</span>
+
+	/**
+	 * Constructor
+	 * @param newclassID
+	 *            Class ID of condition.
+	 */
+	public UpdatedObjEventType(final MetaClassID newclassID) {
+<span class="nc" id="L54">		super(EventTypeEnum.UPDATED_OBJ);</span>
+<span class="nc" id="L55">		this.setClassID(newclassID);</span>
+<span class="nc" id="L56">	}</span>
+
+	/**
+	 * Constructor
+	 * @param stubClazz
+	 *            Stub of class being used. If it is a class being registered, only the name will be set.
+	 */
+	public UpdatedObjEventType(final Class&lt;?&gt; stubClazz) {
+<span class="nc" id="L64">		super(EventTypeEnum.UPDATED_OBJ);</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		if (DataClayObject.isStub(stubClazz)) {</span>
+<span class="nc" id="L66">			final StubInfo stubInfo = DataClayObject.getStubInfoFromClass(stubClazz.getName());</span>
+<span class="nc" id="L67">			this.setNamespace(stubInfo.getNamespace());</span>
+		}
+<span class="nc" id="L69">		this.setClassName(stubClazz.getName());</span>
+<span class="nc" id="L70">	}</span>
+
+	@Override
+	public void init(final AccountID accountID, final PasswordCredential credential, final String newnamespace, final LogicModuleAPI lm) {
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (this.getNamespace() == null) {</span>
+			// uses the one provided.
+<span class="nc" id="L76">			this.setNamespace(newnamespace);</span>
+		}
+<span class="nc" id="L78">		final NamespaceID namespaceID = lm.getNamespaceID(accountID, credential, this.getNamespace());</span>
+<span class="nc" id="L79">		final MetaClassID mclassID = lm.getClassID(accountID, credential, namespaceID, this.getClassName());</span>
+<span class="nc" id="L80">		this.setClassID(mclassID);</span>
+<span class="nc" id="L81">	}</span>
+
+	/**
+	 * Get the DeletedObjEventCondition::classID
+	 * @return the classID
+	 */
+	public MetaClassID getClassID() {
+<span class="nc" id="L88">		return classID;</span>
+	}
+
+	/**
+	 * Set the DeletedObjEventCondition::classID
+	 * @param newclassID
+	 *            the classID to set
+	 */
+	public void setClassID(final MetaClassID newclassID) {
+<span class="nc" id="L97">		this.classID = newclassID;</span>
+<span class="nc" id="L98">	}</span>
+
+	@Override
+	public int hashCode() {
+		// Used in map of Notification Manager
+<span class="nc" id="L103">		return Objects.hash(this.classID);</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">		if (obj instanceof UpdatedObjEventType) {</span>
+<span class="nc" id="L109">			final UpdatedObjEventType pEv = (UpdatedObjEventType) obj;</span>
+<span class="nc" id="L110">			return this.classID.equals(pEv.getClassID());</span>
+		}
+<span class="nc" id="L112">		return false;</span>
+	}
+
+	@Override
+	public boolean checkIsEventType(final EventMessage message) {
+		// Remember: this function is called to check if a certain message accomplishes a certain condition.
+
+		// Any 'persistence' of the class provided accomplishes this condition.
+<span class="nc" id="L120">		final EventType evCondition = message.getEventType();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (evCondition instanceof UpdatedObjEventType) {</span>
+<span class="nc" id="L122">			final UpdatedObjEventType persistedCondition = (UpdatedObjEventType) evCondition;</span>
+<span class="nc" id="L123">			return persistedCondition.getClassID().equals(this.getClassID());</span>
+		}
+<span class="nc" id="L125">		return false;</span>
+	}
+
+	/**
+	 * @return the namespace
+	 */
+	public String getNamespace() {
+<span class="nc" id="L132">		return namespace;</span>
+	}
+
+	/**
+	 * @param newnamespace
+	 *            the namespace to set
+	 */
+	public void setNamespace(final String newnamespace) {
+<span class="nc" id="L140">		this.namespace = newnamespace;</span>
+<span class="nc" id="L141">	}</span>
+
+	/**
+	 * @return the className
+	 */
+	public String getClassName() {
+<span class="nc" id="L147">		return className;</span>
+	}
+
+	/**
+	 * @param newclassName
+	 *            the className to set
+	 */
+	public void setClassName(final String newclassName) {
+<span class="nc" id="L155">		this.className = newclassName;</span>
+<span class="nc" id="L156">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

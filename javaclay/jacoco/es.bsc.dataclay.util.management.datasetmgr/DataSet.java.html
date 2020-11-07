@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataSet.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.datasetmgr</a> &gt; <span class="el_source">DataSet.java</span></div><h1>DataSet.java</h1><pre class="source lang-java linenums">
+/**
+ * @file DataSet.java
+ * @date Mar 3, 2014
+ */
+package es.bsc.dataclay.util.management.datasetmgr;
+
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.DataSetID;
+
+/**
+ * This class represents a dataset.
+ * 
+ */
+public final class DataSet extends MgrObject&lt;DataSetID&gt; {
+
+	// === YAML SPECIFICATION === // 
+	// Properties must be public for YAML parsing.
+	//CHECKSTYLE:OFF
+	/** DataSet name. */
+	private String name;
+	/** Is it public or not */
+	private boolean isPublic;
+	
+	// ==== DYNAMIC FIELDS ==== //
+	/** DataSet responsible. */
+	private AccountID providerAccountID;
+	//CHECKSTYLE:ON
+	
+	/**
+	 * Creates an empty dataset
+	 */
+<span class="fc" id="L34">	public DataSet() {</span>
+
+<span class="fc" id="L36">	}</span>
+
+	/**
+	 * DataSet constructor with name and responsible
+	 * @param newname
+	 *            Name to be set
+	 * @param newproviderAccountName
+	 *            Provider account to be set
+	 * @post Creates a new dataset with provided name and responsible and generates a new DataSetID.
+	 */
+	@Deprecated
+<span class="fc" id="L47">	public DataSet(final String newname, final String newproviderAccountName, final boolean setAsPublic) {</span>
+<span class="fc" id="L48">		this.setDataClayID(new DataSetID());</span>
+<span class="fc" id="L49">		this.setName(newname);</span>
+<span class="fc" id="L50">		this.setIsPublic(setAsPublic);</span>
+<span class="fc" id="L51">	}</span>
+
+	/**
+	 * DataSet constructor with name and responsible
+	 * @param newname
+	 *            Name of the dataset
+	 * @param providerAccountID
+	 *            ID of the responsible provider
+	 * @post Creates a new dataset with provided name and responsible and generates a new DataSetID.
+	 */
+<span class="nc" id="L61">	public DataSet(final String name, final AccountID providerAccountID, final boolean setAsPublic) {</span>
+<span class="nc" id="L62">		this.setDataClayID(new DataSetID());</span>
+<span class="nc" id="L63">		this.setName(name);</span>
+<span class="nc" id="L64">		this.setProviderAccountID(providerAccountID);</span>
+<span class="nc" id="L65">		this.setIsPublic(setAsPublic);</span>
+<span class="nc" id="L66">	}</span>
+
+	public void setIsPublic(boolean setAsPublic) {
+<span class="fc" id="L69">		this.isPublic = setAsPublic;</span>
+<span class="fc" id="L70">	}</span>
+	
+	public boolean getIsPublic() {
+<span class="fc" id="L73">		return this.isPublic;</span>
+	}
+
+	/**
+	 * Get the name of this DataSet
+	 * @return DataSet::name of container DataSet.
+	 */
+	public String getName() {
+<span class="fc" id="L81">		return this.name;</span>
+	}
+
+	/**
+	 * Set the DataSet::name of this DataSet
+	 * @param newname
+	 *            New name to be set
+	 */
+	public void setName(final String newname) {
+<span class="fc" id="L90">		this.name = newname;</span>
+<span class="fc" id="L91">	}</span>
+
+	/**
+	 * Get the responsible of this DataSet
+	 * @return DataSet::responsible of container DataSet.
+	 */
+	public AccountID getProviderAccountID() {
+<span class="fc" id="L98">		return this.providerAccountID;</span>
+	}
+
+	/**
+	 * Set the DataSet::responsible of this DataSet.
+	 * @param newResponsible
+	 *            Responsible account to set
+	 */
+	public void setProviderAccountID(final AccountID newResponsible) {
+<span class="fc" id="L107">		this.providerAccountID = newResponsible;</span>
+<span class="fc" id="L108">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

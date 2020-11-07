@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GetStubs.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">GetStubs.java</span></div><h1>GetStubs.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import java.util.LinkedList;
+import java.util.Map;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.tool.Util.ERRCODE;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.contractmgr.Contract;
+
+<span class="nc" id="L15">public class GetStubs {</span>
+
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L18" title="All 2 branches missed.">		if (args.length != 4) {</span>
+<span class="nc" id="L19">			Util.finishErr(&quot;Bad arguments. Usage: \n\n &quot; + GetStubs.class.getSimpleName()</span>
+					+ &quot; &lt;user_name&gt; &lt;user_pass&gt; &lt;namespace_name&gt; &lt;stubs_path&gt; \n&quot;, ERRCODE.ERROR);
+<span class="nc" id="L21">			return;</span>
+		}
+		try {
+<span class="nc" id="L24">			Util.init();</span>
+
+<span class="nc" id="L26">			final String userName = args[0];</span>
+<span class="nc" id="L27">			final String userPass = args[1];</span>
+<span class="nc" id="L28">			final String namespace = args[2];</span>
+<span class="nc" id="L29">			final String userStubsPath = args[3];</span>
+
+			// Get account info
+<span class="nc" id="L32">			final AccountID accountID = ClientManagementLib.getAccountID(userName);</span>
+<span class="nc bnc" id="L33" title="All 2 branches missed.">			if (accountID == null) {</span>
+<span class="nc" id="L34">				Util.finishErr(&quot;Invalid account&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L35">				return;</span>
+			}
+<span class="nc" id="L37">			final PasswordCredential userCredential = new PasswordCredential(userPass);</span>
+
+			// Check namespace
+<span class="nc" id="L40">			final NamespaceID nspaceID = ClientManagementLib.getNamespaceID(accountID, userCredential, namespace);</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">			if (nspaceID == null) {</span>
+<span class="nc" id="L42">				Util.finishErr(&quot;Namespace &quot; + namespace + &quot; does not exist.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L43">				return;</span>
+			}
+
+			// Check if already registered
+<span class="nc" id="L47">			ContractID contractID = null;</span>
+<span class="nc" id="L48">			final Map&lt;ContractID, Contract&gt; curContracts = ClientManagementLib.getContractsOfApplicant(accountID, userCredential,</span>
+					nspaceID);
+<span class="nc bnc" id="L50" title="All 4 branches missed.">			if (curContracts != null &amp;&amp; curContracts.size() != 0) {</span>
+<span class="nc" id="L51">				contractID = curContracts.keySet().iterator().next();</span>
+			}
+<span class="nc bnc" id="L53" title="All 2 branches missed.">			if (contractID == null) {</span>
+<span class="nc" id="L54">				Util.finishErr(&quot;User &quot; + userName + &quot; is not registered to data model of namespace &quot; + namespace,</span>
+						ERRCODE.ERROR);
+<span class="nc" id="L56">				return;</span>
+			}
+<span class="nc" id="L58">			final LinkedList&lt;ContractID&gt; contractsIDs = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L59">			contractsIDs.add(contractID);</span>
+
+			// Get and store stubs
+<span class="nc" id="L62">			ClientManagementLib.getAndStoreStubs(accountID, userCredential, contractsIDs, userStubsPath);</span>
+
+			// finish
+<span class="nc" id="L65">			Util.finishOut(&quot;Stubs stored in: &quot; + userStubsPath);</span>
+<span class="nc" id="L66">		} catch (final Exception ex) {</span>
+<span class="nc" id="L67">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L68">		}</span>
+<span class="nc" id="L69">		System.exit(0); // Call this to finish logging threads</span>
+<span class="nc" id="L70">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

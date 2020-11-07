@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OpImplementations.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.contractmgr</a> &gt; <span class="el_source">OpImplementations.java</span></div><h1>OpImplementations.java</h1><pre class="source lang-java linenums">
+/**
+ * @file OpImplementations.java
+ * @date Jun 10, 2013
+ */
+
+package es.bsc.dataclay.util.management.contractmgr;
+
+import java.util.Objects;
+import java.util.UUID;
+
+import es.bsc.dataclay.util.ids.ImplementationID;
+
+/**
+ * Struct to keep information about the accessible implementations of an operation.
+ * 
+ */
+public final class OpImplementations {
+
+	/** ID. */
+	private UUID id;
+
+	// === YAML SPECIFICATION === //
+	// Properties must be public for YAML parsing.
+	// CHECKSTYLE:OFF
+	/** Operation signature. */
+	private String operationSignature;
+	/** Local implementation number. */
+	private int numLocalImpl;
+	/** Remote implementation number. */
+	private int numRemoteImpl;
+
+	// ==== DYNAMIC FIELDS ==== //
+	/** Local implementation ID. */
+	private ImplementationID localImplementationID;
+	/** Remove implementation ID. */
+	private ImplementationID remoteImplementationID;
+	// CHECKSTYLE:ON
+
+	/**
+	 * OpImplementations empty constructor
+	 * @details Used in YAML construction.
+	 */
+<span class="fc" id="L44">	public OpImplementations() {</span>
+
+<span class="fc" id="L46">	}</span>
+
+	/**
+	 * OpImplementations constructor
+	 * @param newopSignature
+	 *            Operation signature
+	 * @param localImpl
+	 *            Local implementation position.
+	 * @param remoteImpl
+	 *            Remove implementation position.
+	 */
+<span class="fc" id="L57">	public OpImplementations(final String newopSignature, final int localImpl, final int remoteImpl) {</span>
+<span class="fc" id="L58">		this.setOperationSignature(newopSignature);</span>
+<span class="fc" id="L59">		this.setNumLocalImpl(localImpl);</span>
+<span class="fc" id="L60">		this.setNumRemoteImpl(remoteImpl);</span>
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Get the OpImplementations::operationSignature
+	 * @return the operationSignature
+	 */
+	public String getOperationSignature() {
+<span class="fc" id="L68">		return this.operationSignature;</span>
+	}
+
+	/**
+	 * Set the OpImplementations::operationSignature
+	 * @param newoperationSignature
+	 *            the operationSignature to set
+	 */
+	public void setOperationSignature(final String newoperationSignature) {
+<span class="fc" id="L77">		this.operationSignature = newoperationSignature;</span>
+<span class="fc" id="L78">	}</span>
+
+	/**
+	 * Get the OpImplementations::localImplementationID
+	 * @return the local implementation ID
+	 */
+	public ImplementationID getLocalImplementationID() {
+<span class="fc" id="L85">		return localImplementationID;</span>
+	}
+
+	/**
+	 * Sets OpImplementations::localImplementationID
+	 * @param localImplID
+	 *            Local implementation ID to set
+	 */
+	public void setLocalImplementationID(final ImplementationID localImplID) {
+<span class="fc" id="L94">		this.localImplementationID = localImplID;</span>
+<span class="fc" id="L95">	}</span>
+
+	/**
+	 * Get OpImplementations::remoteImplementationID
+	 * @return the remote implementation ID
+	 */
+	public ImplementationID getRemoteImplementationID() {
+<span class="fc" id="L102">		return remoteImplementationID;</span>
+	}
+
+	/**
+	 * Set OpImplementations::remoteImplementationID
+	 * @param remoteImplID
+	 *            the remote implementation ID to set
+	 */
+	public void setRemoteImplementationID(final ImplementationID remoteImplID) {
+<span class="fc" id="L111">		this.remoteImplementationID = remoteImplID;</span>
+<span class="fc" id="L112">	}</span>
+
+	/**
+	 * Get the OpImplementations::numLocalImpl
+	 * @return the numLocalImpl
+	 */
+	public int getNumLocalImpl() {
+<span class="fc" id="L119">		return this.numLocalImpl;</span>
+	}
+
+	/**
+	 * Set the OpImplementations::numLocalImpl
+	 * @param newnumLocalImpl
+	 *            the numLocalImpl to set
+	 */
+	public void setNumLocalImpl(final int newnumLocalImpl) {
+<span class="fc" id="L128">		this.numLocalImpl = newnumLocalImpl;</span>
+<span class="fc" id="L129">	}</span>
+
+	/**
+	 * Get the OpImplementations::numRemoteImpl
+	 * @return the numRemoteImpl
+	 */
+	public int getNumRemoteImpl() {
+<span class="fc" id="L136">		return this.numRemoteImpl;</span>
+	}
+
+	/**
+	 * Set the OpImplementations::numRemoteImpl
+	 * @param newnumRemoteImpl
+	 *            the numRemoteImpl to set
+	 */
+	public void setNumRemoteImpl(final int newnumRemoteImpl) {
+<span class="fc" id="L145">		this.numRemoteImpl = newnumRemoteImpl;</span>
+<span class="fc" id="L146">	}</span>
+
+	/**
+	 * This operation allows to compare this object with other object.
+	 * @param t
+	 *            to compare
+	 * @return If the object has the same implementations, returns TRUE. FALSE, otherwise.
+	 */
+	@Override
+	public boolean equals(final Object t) {
+<span class="nc bnc" id="L156" title="All 2 branches missed.">		if (t instanceof OpImplementations) {</span>
+<span class="nc" id="L157">			final OpImplementations other = (OpImplementations) t;</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">			if (other.getLocalImplementationID() == null) {</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">				if (other.getRemoteImplementationID() == null) {</span>
+<span class="nc bnc" id="L160" title="All 4 branches missed.">					return this.remoteImplementationID == null</span>
+							&amp;&amp; this.localImplementationID == null;
+				} else {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">					return this.localImplementationID == null</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">							&amp;&amp; other.getRemoteImplementationID().equals(this.remoteImplementationID);</span>
+				}
+			}
+<span class="nc bnc" id="L167" title="All 2 branches missed.">			if (other.getRemoteImplementationID() == null) {</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">				if (other.getLocalImplementationID() == null) {</span>
+<span class="nc bnc" id="L169" title="All 4 branches missed.">					return this.localImplementationID == null</span>
+							&amp;&amp; this.remoteImplementationID == null;
+				} else {
+<span class="nc bnc" id="L172" title="All 2 branches missed.">					return this.remoteImplementationID == null</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">							&amp;&amp; other.getLocalImplementationID().equals(this.localImplementationID);</span>
+				}
+			}
+<span class="nc bnc" id="L176" title="All 2 branches missed.">			return other.getLocalImplementationID().equals(this.localImplementationID)</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">					&amp;&amp; other.getRemoteImplementationID().equals(this.remoteImplementationID);</span>
+		}
+<span class="nc" id="L179">		return false;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L184">		return Objects.hash(this.operationSignature, this.numLocalImpl, this.numRemoteImpl);</span>
+	}
+
+	/**
+	 * get id
+	 * @return id
+	 */
+	public UUID getId() {
+<span class="nc" id="L192">		return id;</span>
+	}
+
+	/**
+	 * Set id
+	 * @param newid
+	 *            the id
+	 */
+	public void setId(final UUID newid) {
+<span class="fc" id="L201">		this.id = newid;</span>
+<span class="fc" id="L202">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

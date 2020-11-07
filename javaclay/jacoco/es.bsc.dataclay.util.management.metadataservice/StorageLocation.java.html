@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>StorageLocation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.metadataservice</a> &gt; <span class="el_source">StorageLocation.java</span></div><h1>StorageLocation.java</h1><pre class="source lang-java linenums">
+/**
+ * @file StorageLocation.java
+ * @date May 23, 2013
+ */
+package es.bsc.dataclay.util.management.metadataservice;
+
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.StorageLocationID;
+
+/**
+ * This class represents the information of a StorageLocation.
+ */
+public final class StorageLocation extends MgrObject&lt;StorageLocationID&gt; {
+
+	/** Host name of the Storage Location. */
+	private String hostname;
+	/** Name of the DataService (shared with the ExecutionEnvironments). */
+	private String name;
+	/** Port of the StorageLocation. */
+	private int storageTCPPort;
+
+	/**
+	 * Empty constructor of the StorageLocation
+	 */
+<span class="nc" id="L26">	public StorageLocation() {</span>
+
+<span class="nc" id="L28">	}</span>
+
+	/**
+	 * StorageLocation specification constructor
+	 * 
+	 * @param newhostname
+	 *            Host name of the Storage Location
+	 * @param newname
+	 *            Name of the Storage Location
+	 * @param newtcpport
+	 *            TCP Port of the Storage Location
+	 * @warning Beware! This function auto-initializes the internal ID field (just
+	 *          like all MgrObject). If you require it to be null, either use the
+	 *          zero-parameter constructor or proceed with a setDataClayID(null).
+	 */
+<span class="fc" id="L43">	public StorageLocation(final String newhostname, final String newname, final int newtcpport) {</span>
+<span class="fc" id="L44">		this.setDataClayID(new StorageLocationID());</span>
+<span class="fc" id="L45">		this.setHostname(newhostname);</span>
+<span class="fc" id="L46">		this.setName(newname);</span>
+<span class="fc" id="L47">		this.setStorageTCPPort(newtcpport);</span>
+<span class="fc" id="L48">	}</span>
+
+	/**
+	 * Get the StorageLocation::hostname
+	 * 
+	 * @return the hostname
+	 */
+	public String getHostname() {
+<span class="fc" id="L56">		return hostname;</span>
+	}
+
+	/**
+	 * Set the StorageLocation::hostname
+	 * 
+	 * @param newhostname
+	 *            the hostname to set
+	 */
+	public void setHostname(final String newhostname) {
+<span class="fc" id="L66">		this.hostname = newhostname;</span>
+<span class="fc" id="L67">	}</span>
+
+	/**
+	 * Get the StorageLocation::name
+	 * 
+	 * @return the name
+	 */
+	public String getName() {
+<span class="fc" id="L75">		return name;</span>
+	}
+
+	/**
+	 * Set the StorageLocation::name
+	 * 
+	 * @param newname
+	 *            the name to set
+	 */
+	public void setName(final String newname) {
+<span class="fc" id="L85">		this.name = newname;</span>
+<span class="fc" id="L86">	}</span>
+
+	/**
+	 * Get the StorageLocation::storageTCPPort
+	 * 
+	 * @return the port
+	 */
+
+	public int getStorageTCPPort() {
+<span class="fc" id="L95">		return storageTCPPort;</span>
+	}
+
+	/**
+	 * Set the StorageLocation::storageTCPPort
+	 * 
+	 * @param newstoragePort
+	 *            the port to set
+	 */
+	public void setStorageTCPPort(final int newstoragePort) {
+<span class="fc" id="L105">		this.storageTCPPort = newstoragePort;</span>
+<span class="fc" id="L106">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L110">		return &quot;[SL/&quot; + name + &quot;/&quot; + hostname + &quot;:&quot; + storageTCPPort + &quot;]&quot;;</span>
+
+	}
+
+	/**
+	 * This operation allows to compare this object with other object.
+	 * 
+	 * @param t
+	 *            Object to compare
+	 * @return If the object is the same, returns TRUE. FALSE, otherwise.
+	 */
+	@Override
+	public boolean equals(final Object t) {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (t instanceof StorageLocation) {</span>
+<span class="nc" id="L124">			final StorageLocation other = (StorageLocation) t;</span>
+<span class="nc bnc" id="L125" title="All 4 branches missed.">			return other.getHostname().equals(this.getHostname()) &amp;&amp; other.getName().equals(this.getName())</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">					&amp;&amp; other.getStorageTCPPort() == this.getStorageTCPPort();</span>
+		}
+<span class="nc" id="L128">		return false;</span>
+	}
+
+	/**
+	 * This operation allows to compare with other Object by setting its Java
+	 * default Hashcode to a constant. It is necessary to override the equality
+	 * function.
+	 * 
+	 * @return the hashcode
+	 */
+	@Override
+	public int hashCode() {
+<span class="nc" id="L140">		return this.name.hashCode();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

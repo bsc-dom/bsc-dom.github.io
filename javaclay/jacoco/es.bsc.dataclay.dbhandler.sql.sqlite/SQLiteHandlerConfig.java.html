@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SQLiteHandlerConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dbhandler.sql.sqlite</a> &gt; <span class="el_source">SQLiteHandlerConfig.java</span></div><h1>SQLiteHandlerConfig.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.dbhandler.sql.sqlite;
+
+import java.io.File;
+
+import es.bsc.dataclay.dbhandler.DBHandler;
+import es.bsc.dataclay.dbhandler.DBHandlerConf;
+import es.bsc.dataclay.util.Configuration;
+
+public class SQLiteHandlerConfig extends DBHandlerConf {
+
+	private static final long serialVersionUID = -2609239598328535411L;
+
+<span class="pc" id="L14">	private final String folder = Configuration.Flags.STORAGE_PATH.getStringValue();</span>
+
+<span class="pc" id="L16">	private boolean inMemory = false;</span>
+
+	private String dbName;
+
+<span class="nc" id="L20">	public SQLiteHandlerConfig() {}</span>
+
+<span class="fc" id="L22">	public SQLiteHandlerConfig(final String newdbname) {</span>
+<span class="fc" id="L23">		this.dbName = newdbname;</span>
+<span class="fc" id="L24">	}</span>
+
+	public SQLiteHandlerConfig(final String newdbname, boolean inMemory) {
+<span class="fc" id="L27">		this(newdbname);</span>
+<span class="fc" id="L28">		this.inMemory = inMemory;</span>
+<span class="fc" id="L29">	}</span>
+
+	/**
+	 * Gets folder.
+	 * 
+	 * @return the folder
+	 */
+	public String getFolder() {
+<span class="fc" id="L37">		return folder;</span>
+	}
+
+	@Override
+	public DBHandler getDBHandler() {
+		// create directory
+<span class="fc" id="L43">		new File(getFolder()).mkdirs();</span>
+<span class="fc" id="L44">		return new SQLiteHandler(this);</span>
+	}
+
+	public String getDbPath() {
+<span class="fc" id="L48">		return folder + '/' + dbName;</span>
+	}
+
+	public boolean isInMemory() {
+<span class="fc" id="L52">		return inMemory;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L57">		return &quot;SQLiteHandlerConfig [dbPath = &quot; + getDbPath() + &quot;]&quot;;</span>
+	}
+
+	/**
+	 * @param newdbname
+	 *            the dbname to set
+	 */
+	@Override
+	public void setDbname(final String newdbname) {
+<span class="nc" id="L66">		this.dbName = newdbname;</span>
+<span class="nc" id="L67">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

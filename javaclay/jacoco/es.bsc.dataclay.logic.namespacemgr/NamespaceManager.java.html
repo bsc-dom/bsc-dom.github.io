@@ -1,0 +1,1047 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NamespaceManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.namespacemgr</a> &gt; <span class="el_source">NamespaceManager.java</span></div><h1>NamespaceManager.java</h1><pre class="source lang-java linenums">
+/**
+ * @file NamespaceManager.java
+ * @date Sep 5, 2012
+ */
+
+package es.bsc.dataclay.logic.namespacemgr;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.namespacemgr.AccountNotResponsibleOfNamespace;
+import es.bsc.dataclay.exceptions.logicmodule.namespacemgr.ImportedInterfaceInUseException;
+import es.bsc.dataclay.exceptions.logicmodule.namespacemgr.InterfaceAlreadyImportedException;
+import es.bsc.dataclay.exceptions.logicmodule.namespacemgr.InterfaceNotImportedException;
+import es.bsc.dataclay.exceptions.logicmodule.namespacemgr.NamespaceDoesNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.namespacemgr.NamespaceExistsException;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.management.AbstractManager;
+import es.bsc.dataclay.util.management.namespacemgr.ImportedInterface;
+import es.bsc.dataclay.util.management.namespacemgr.Namespace;
+import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.util.structs.Tuple;
+
+/**
+ * This class is responsible for managing namespaces (add and remove).
+ * 
+ */
+
+public final class NamespaceManager extends AbstractManager {
+
+	/** Logger. */
+<span class="fc" id="L52">	private static final Logger logger = LogManager.getLogger(&quot;managers.NamespaceManager&quot;);</span>
+
+	/** DbHandler for the management of Database. */
+	private final NamespaceManagerDB namespaceDB;
+	/** Namespace cache. */
+	private final LruCache&lt;NamespaceID, Namespace&gt; namespaceCache;
+	/** Namespaces of the cache indexed by name. */
+	private final Map&lt;String, NamespaceID&gt; namespacesInCacheIndexedByName;
+
+	/**
+	 * Instantiates a Namespace Manager that uses the Namespace DB in the provided path.
+	 * 
+	 * @param managerName
+	 *            Manager/service name.
+	 * @post Creates a Namespace manager and initializes the namespaceDB in the path provided.
+	 */
+	public NamespaceManager(final BasicDataSource dataSource) {
+<span class="fc" id="L69">		super(dataSource);</span>
+<span class="fc" id="L70">		this.namespaceDB = new NamespaceManagerDB(dataSource);</span>
+<span class="fc" id="L71">		this.namespaceDB.createTables();</span>
+
+		// Init cache
+<span class="fc" id="L74">		this.namespaceCache = new LruCache&lt;&gt;(</span>
+<span class="fc" id="L75">				Configuration.Flags.MAX_ENTRIES_NAMESPACE_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L76">		this.namespacesInCacheIndexedByName = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L77">	}</span>
+
+	/**
+	 * This operation creates a new namespace.
+	 * 
+	 * @param newNamespace
+	 *            Namespace to create
+	 * @post A namespace with the provided name and responsible is created
+	 * @return namespaceID of the new namespace if the it was successfully created.
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceExistsException if the namespace already exists
+	 */
+	public NamespaceID newNamespace(final Namespace newNamespace) {
+		// Check that it does not already exist
+		// (there is not another namespace with the same name, according
+		// to the use case specification).
+<span class="fc bfc" id="L94" title="All 2 branches covered.">		if (namespaceDB.getNamespaceByName(newNamespace.getName()) != null) {</span>
+<span class="fc" id="L95">			throw new NamespaceExistsException(newNamespace.getName());</span>
+		}
+
+<span class="fc" id="L98">		namespaceDB.store(newNamespace);</span>
+<span class="fc" id="L99">		final NamespaceID namespaceID = newNamespace.getDataClayID();</span>
+
+		// Update cache
+<span class="fc" id="L102">		namespaceCache.put(namespaceID, newNamespace);</span>
+<span class="fc" id="L103">		namespacesInCacheIndexedByName.put(newNamespace.getName(), namespaceID);</span>
+
+<span class="fc" id="L105">		logger.info(&quot;Registered namespace {} with ID {}&quot;, newNamespace.getName(), namespaceID);</span>
+
+<span class="fc" id="L107">		return namespaceID;</span>
+	}
+
+	/**
+	 * Returns the language of the specified namespace name
+	 * 
+	 * @param namespaceName
+	 *            the name of the namespace
+	 * @return the language of the namespace
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public Langs getNamespaceLang(final String namespaceName) {
+<span class="nc" id="L121">		final NamespaceID namespaceID = namespacesInCacheIndexedByName.get(namespaceName);</span>
+		final Namespace namespace;
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		if (namespaceID == null) {</span>
+<span class="nc" id="L124">			namespace = namespaceDB.getNamespaceByName(namespaceName);</span>
+			// Update cache
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			if (namespace != null) {</span>
+<span class="nc" id="L127">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="nc" id="L128">				namespacesInCacheIndexedByName.put(namespaceName, namespaceID);</span>
+			}
+		} else {
+<span class="nc" id="L131">			namespace = namespaceCache.get(namespaceID);</span>
+		}
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		if (namespace == null) {</span>
+<span class="nc" id="L134">			throw new NamespaceDoesNotExistException(namespaceName);</span>
+		}
+<span class="nc" id="L136">		return namespace.getLanguage();</span>
+	}
+
+	/**
+	 * Returns the namespaceID of the specified namespace name
+	 * 
+	 * @param namespaceName
+	 *            the name of the namespace
+	 * @return the id of the namespace
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public NamespaceID getNamespaceID(final String namespaceName) {
+<span class="fc" id="L150">		NamespaceID namespaceID = namespacesInCacheIndexedByName.get(namespaceName);</span>
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">		if (namespaceID == null) {</span>
+<span class="fc" id="L152">			final Namespace curNamespace = namespaceDB.getNamespaceByName(namespaceName);</span>
+<span class="pc bpc" id="L153" title="1 of 2 branches missed.">			if (curNamespace == null) {</span>
+<span class="nc" id="L154">				throw new NamespaceDoesNotExistException(namespaceName);</span>
+			}
+
+			// Prepare result
+<span class="fc" id="L158">			namespaceID = curNamespace.getDataClayID();</span>
+
+			// Update cache
+<span class="fc" id="L161">			namespaceCache.put(namespaceID, curNamespace);</span>
+<span class="fc" id="L162">			namespacesInCacheIndexedByName.put(namespaceName, namespaceID);</span>
+		}
+
+<span class="fc" id="L165">		return namespaceID;</span>
+	}
+
+	/**
+	 * This operation removes the indicated namespace
+	 * 
+	 * @param namespaceID
+	 *            NamespaceID of the namespace to be removed
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 * 
+	 */
+	public void removeNamespace(final NamespaceID namespaceID) {
+<span class="fc" id="L179">		final Namespace namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">		if (namespace == null) {</span>
+<span class="fc" id="L181">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+		}
+<span class="fc" id="L183">		namespace.setProviderAccountID(null); // Set the responsible to null in order to avoid removing it</span>
+<span class="fc" id="L184">		namespaceDB.deleteNamespaceByID(namespace.getDataClayID());</span>
+
+		// Update cache
+<span class="fc" id="L187">		namespaceCache.remove(namespaceID);</span>
+<span class="fc" id="L188">		namespacesInCacheIndexedByName.remove(namespace.getName());</span>
+<span class="fc" id="L189">	}</span>
+
+	/**
+	 * This operation retrieves the info of the given namespace
+	 * 
+	 * @param namespacesIDs
+	 *            IDs of the namespaces to be retrieved
+	 * @return the info of the namespaces
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public Map&lt;NamespaceID, Namespace&gt; getNamespacesInfo(final Set&lt;NamespaceID&gt; namespacesIDs) {
+<span class="fc" id="L202">		final Map&lt;NamespaceID, Namespace&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L203" title="All 2 branches covered.">		for (final NamespaceID namespaceID : namespacesIDs) {</span>
+<span class="fc" id="L204">			final Namespace namespace = getNamespaceInfo(namespaceID);</span>
+
+			// Update result
+<span class="fc" id="L207">			result.put(namespaceID, namespace);</span>
+
+<span class="fc" id="L209">		}</span>
+<span class="fc" id="L210">		return result;</span>
+	}
+
+	/**
+	 * This operation retrieves the info of the given namespace
+	 * 
+	 * @param namespaceID
+	 *            IDs of the namespace to be retrieved
+	 * @return the info of the namespace
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public Namespace getNamespaceInfo(final NamespaceID namespaceID) {
+<span class="fc" id="L224">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+
+<span class="pc bpc" id="L226" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L227">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+
+<span class="fc bfc" id="L229" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L230">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+
+			// Update cache
+<span class="fc" id="L234">			namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L235">			namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+		}
+
+<span class="fc" id="L238">		return namespace;</span>
+	}
+
+	/**
+	 * This operation checks whether an account is responsible for a namespace
+	 * 
+	 * @param responsible
+	 *            AccountID of the responsible to be checked
+	 * @param namespaceID
+	 *            ID of the namespace to be checked
+	 * @return true if accountID is responsible for namespaceID, false if not. &lt;br&gt;
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public Namespace checkNamespaceResponsibleAndGetInfo(final NamespaceID namespaceID, final AccountID responsible) {
+<span class="fc" id="L254">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="fc bfc" id="L255" title="All 2 branches covered.">		if (namespace == null) {</span>
+<span class="fc" id="L256">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="pc bpc" id="L257" title="1 of 2 branches missed.">			if (namespace == null) {</span>
+<span class="fc" id="L258">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+
+			// Update cache
+<span class="nc" id="L262">			namespaceCache.put(namespaceID, namespace);</span>
+<span class="nc" id="L263">			namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+		}
+
+<span class="fc bfc" id="L266" title="All 2 branches covered.">		if (Configuration.Flags.CHECK_NAMESPACE.getBooleanValue()) {</span>
+<span class="pc bpc" id="L267" title="1 of 2 branches missed.">			if (!namespace.getProviderAccountID().equals(responsible)) {</span>
+<span class="fc" id="L268">				throw new AccountNotResponsibleOfNamespace(namespaceID, responsible);</span>
+			}
+		}
+
+<span class="fc" id="L272">		return namespace;</span>
+	}
+
+	/**
+	 * Register a set of new imported interfaces in the namespace
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace in which the interface is imported
+	 * @param newImportedInterfaces
+	 *            Improted interfaces to register
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             InterfaceAlreadyImportedException: If interface was already imported
+	 */
+	public void importInterfaces(final NamespaceID namespaceID,
+			final Set&lt;ImportedInterface&gt; newImportedInterfaces) {
+		// Check namespace exists
+<span class="fc" id="L290">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="fc bfc" id="L291" title="All 2 branches covered.">		if (namespace == null) {</span>
+<span class="fc" id="L292">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="fc bfc" id="L293" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L294">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+		// For each imported interface
+<span class="fc bfc" id="L299" title="All 2 branches covered.">		for (final ImportedInterface newImportedInterface : newImportedInterfaces) {</span>
+
+			// Verify the interface was not already imported
+<span class="fc bfc" id="L302" title="All 2 branches covered.">			if (namespace.existsImportedInterface(newImportedInterface.getInterfaceID(),</span>
+<span class="fc" id="L303">					newImportedInterface.getContractID())) {</span>
+<span class="fc" id="L304">				throw new InterfaceAlreadyImportedException(namespace.getName(), newImportedInterface.getInterfaceID(),</span>
+<span class="fc" id="L305">						newImportedInterface.getContractID());</span>
+			}
+
+<span class="fc" id="L308">			namespace.addImportedInterface(newImportedInterface);</span>
+<span class="fc" id="L309">		}</span>
+		// Update the imported interfaces
+		try {
+
+<span class="fc bfc" id="L313" title="All 2 branches covered.">			for (final ImportedInterface newImportedInterface : newImportedInterfaces) {</span>
+<span class="fc" id="L314">				namespaceDB.updateNamespaceAddImport(namespaceID, newImportedInterface);</span>
+<span class="fc" id="L315">			}</span>
+
+			// Update cache
+<span class="pc bpc" id="L318" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L319">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L321">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L322">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+
+<span class="nc" id="L325">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L326">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L327">		}</span>
+<span class="fc" id="L328">	}</span>
+
+	/**
+	 * Removes the imported interface in contract with IDs provided in the Namespace with ID specified.
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace containing the import
+	 * @param importedInterfaces
+	 *            the imported interfaces to be removed
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             InterfaceNotImportedException: If interface with Name provided does not exist
+	 */
+	public void removeImportedInterfaces(final NamespaceID namespaceID,
+			final Set&lt;ImportedInterface&gt; importedInterfaces) {
+		// Check namespace exists
+<span class="fc" id="L345">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L346" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L347">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="fc bfc" id="L348" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L349">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L353" title="All 2 branches covered.">		for (final ImportedInterface curImport : importedInterfaces) {</span>
+<span class="fc" id="L354">			final InterfaceID interfaceID = curImport.getInterfaceID();</span>
+<span class="fc" id="L355">			final ContractID contractID = curImport.getContractID();</span>
+			// Remove the interface and check it exists
+<span class="fc bfc" id="L357" title="All 2 branches covered.">			if (namespace.removeImportedInterface(interfaceID, contractID) == null) {</span>
+<span class="fc" id="L358">				throw new InterfaceNotImportedException(namespace.getName(), interfaceID, contractID);</span>
+			}
+<span class="fc" id="L360">		}</span>
+
+		// Update the imported interfaces
+		try {
+
+<span class="fc bfc" id="L365" title="All 2 branches covered.">			for (final ImportedInterface curImport : importedInterfaces) {</span>
+<span class="fc" id="L366">				namespaceDB.updateNamespaceRemoveImport(namespaceID, curImport.getInterfaceID(), curImport.getContractID());</span>
+<span class="fc" id="L367">			}</span>
+
+			// Update cache
+<span class="pc bpc" id="L370" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L371">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L373">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L374">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+
+<span class="nc" id="L377">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L378">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L379">		}</span>
+
+<span class="fc" id="L381">	}</span>
+
+	/**
+	 * Verify that there is an imported interface in contract with IDs provided and it is not used by any property, operation or
+	 * implementation and is not the parent class of any other class.
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param className
+	 *            name of the class
+	 * @return The info of the imports of the class in namespace, which are not in use
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             ImportedInterfaceInUseException: If an imported interface of the classname in namespace is in use
+	 */
+	public HashSet&lt;ImportedInterface&gt; checkImportsOfClassAreNotUsedAndGet(final NamespaceID namespaceID,
+			final String className) {
+		// Check namespace exists
+<span class="fc" id="L400">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L401" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L402">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+
+<span class="fc bfc" id="L404" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L405">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+
+			// Update cache
+<span class="fc" id="L409">			namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L410">			namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+		}
+
+		// Seek for the imported interfaces
+<span class="fc" id="L414">		final HashSet&lt;ImportedInterface&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L415">		final Map&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; importedInterfaces = namespace.getImportedInterfaces();</span>
+<span class="fc bfc" id="L416" title="All 2 branches covered.">		for (final ImportedInterface importedInterface : importedInterfaces.values()) {</span>
+<span class="pc bpc" id="L417" title="1 of 2 branches missed.">			if (importedInterface.getImportedClassName().equals(className)) {</span>
+<span class="fc" id="L418">				final InterfaceID interfaceID = importedInterface.getInterfaceID();</span>
+<span class="fc" id="L419">				final ContractID contractID = importedInterface.getContractID();</span>
+				// Verify there is no property, operation, implementation or subclass using the import
+<span class="fc bfc" id="L421" title="All 2 branches covered.">				if (importedInterface.inUse()) {</span>
+<span class="fc" id="L422">					throw new ImportedInterfaceInUseException(namespace.getName(), interfaceID, contractID);</span>
+				} else {
+<span class="fc" id="L424">					result.add(importedInterface);</span>
+				}
+			}
+<span class="fc" id="L427">		}</span>
+
+<span class="fc" id="L429">		return result;</span>
+	}
+
+	/**
+	 * This operation gets information of the imported interfaces for a specific class in a specific namespace
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param className
+	 *            the class to be checked
+	 * @return The information of the imported interfaces
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public HashSet&lt;ImportedInterface&gt; getImportedInterfaces(final NamespaceID namespaceID, final String className) {
+		// Check namespace exists
+<span class="fc" id="L446">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L447" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L448">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+
+<span class="fc bfc" id="L450" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L451">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+
+			// Update cache
+<span class="fc" id="L455">			namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L456">			namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+		}
+
+		// Seek for the imported interfaces
+<span class="fc" id="L460">		final HashSet&lt;ImportedInterface&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L461">		final Map&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; importedInterfaces = namespace.getImportedInterfaces();</span>
+<span class="pc bpc" id="L462" title="1 of 2 branches missed.">		if (importedInterfaces != null) {</span>
+<span class="fc bfc" id="L463" title="All 2 branches covered.">			for (final ImportedInterface importedInterface : importedInterfaces.values()) {</span>
+<span class="fc bfc" id="L464" title="All 2 branches covered.">				if (importedInterface.getImportedClassName().equals(className)) {</span>
+<span class="fc" id="L465">					result.add(importedInterface);</span>
+				}
+<span class="fc" id="L467">			}</span>
+		}
+
+<span class="fc" id="L470">		return result;</span>
+	}
+
+	/**
+	 * This operation gets information of the imported interfaces in the namespace specified for the given metaclasses
+	 * 
+	 * @param namespaceID
+	 *            the id of the namespace
+	 * @param metaClassIDs
+	 *            the ids of the metaclasses
+	 * @return indexed table of the import information for every class
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             ClassNotImportedException: if the class is not imported in namespace provided
+	 */
+	public Map&lt;MetaClassID, Set&lt;ImportedInterface&gt;&gt; getImportedInterfacesForMetaclasses(final NamespaceID namespaceID,
+			final Set&lt;MetaClassID&gt; metaClassIDs) {
+		// Check namespace exists
+<span class="fc" id="L489">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L490" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L491">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+
+<span class="pc bpc" id="L493" title="1 of 2 branches missed.">			if (namespace == null) {</span>
+<span class="nc" id="L494">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+
+			// Update cache
+<span class="fc" id="L498">			namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L499">			namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+		}
+
+		// Seek for the imported interfaces
+<span class="fc" id="L503">		final Map&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; importedInterfaces = namespace.getImportedInterfaces();</span>
+
+		// Prepare result
+<span class="fc" id="L506">		final Map&lt;MetaClassID, Set&lt;ImportedInterface&gt;&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L507" title="All 2 branches covered.">		for (final ImportedInterface importedInterface : importedInterfaces.values()) {</span>
+<span class="fc" id="L508">			final MetaClassID metaClassIDofImport = importedInterface.getClassOfImportID();</span>
+<span class="pc bpc" id="L509" title="1 of 2 branches missed.">			if (metaClassIDs.contains(metaClassIDofImport)) {</span>
+<span class="pc bpc" id="L510" title="1 of 2 branches missed.">				if (!result.containsKey(metaClassIDofImport)) {</span>
+<span class="fc" id="L511">					result.put(metaClassIDofImport, new HashSet&lt;ImportedInterface&gt;());</span>
+				}
+<span class="fc" id="L513">				result.get(metaClassIDofImport).add(importedInterface);</span>
+			}
+<span class="fc" id="L515">		}</span>
+<span class="fc" id="L516">		return result;</span>
+	}
+
+	/**
+	 * Get all the information of all the imports in the namespaces of the account with ID provided
+	 * 
+	 * @param accountID
+	 *            ID of the account
+	 * @return A set of import specifications of the imports in the namespaces of the account with ID provided. It can be empty.
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public HashSet&lt;ImportedInterface&gt; getImportsOfAccount(final AccountID accountID) {
+
+		// Prepare result
+<span class="fc" id="L531">		final HashSet&lt;ImportedInterface&gt; result = new HashSet&lt;&gt;();</span>
+
+		// First get all the namespaces of the account
+<span class="fc" id="L534">		final ArrayList&lt;Namespace&gt; namespacesOfAccount = (ArrayList&lt;Namespace&gt;) namespaceDB.getNamespacesWithProvider(accountID);</span>
+
+		// Now for each Namespace obtained get its imports
+<span class="fc bfc" id="L537" title="All 2 branches covered.">		for (int i = 0; i &lt; namespacesOfAccount.size(); ++i) {</span>
+<span class="fc" id="L538">			final Map&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; importsOfNamespace = namespacesOfAccount.get(i)</span>
+<span class="fc" id="L539">					.getImportedInterfaces();</span>
+<span class="fc bfc" id="L540" title="All 2 branches covered.">			for (final Entry&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; entry : importsOfNamespace.entrySet()) {</span>
+<span class="fc" id="L541">				final ImportedInterface importIface = entry.getValue();</span>
+<span class="fc" id="L542">				result.add(importIface); // If already present, not added</span>
+<span class="fc" id="L543">			}</span>
+		}
+<span class="fc" id="L545">		return result;</span>
+	}
+
+	/**
+	 * Get namespace names that import the metaclass with id provided
+	 * 
+	 * @param classID
+	 *            ID of the class
+	 * @return Set of names of namespaces that import the metaclass with id provided
+	 * @throws Exception
+	 *             if some exception occurs.
+	 */
+	public Set&lt;String&gt; getNamespaceNamesThatImportsMetaClass(final MetaClassID classID) {
+
+<span class="nc" id="L559">		final List&lt;Namespace&gt; namespacesOfAccount = namespaceDB.getAllNamespacesImportingClass(classID);</span>
+
+<span class="nc" id="L561">		final Set&lt;String&gt; result = new HashSet&lt;&gt;();</span>
+		// Now for each Namespace obtained get its imports
+<span class="nc bnc" id="L563" title="All 2 branches missed.">		for (final Namespace dom : namespacesOfAccount) {</span>
+<span class="nc" id="L564">			result.add(dom.getName());</span>
+<span class="nc" id="L565">		}</span>
+<span class="nc" id="L566">		return result;</span>
+	}
+
+	/**
+	 * Get all names of namespaces
+	 * 
+	 * @return set of namespaces names
+	 */
+	public Set&lt;String&gt; getNamespacesNames() {
+<span class="fc" id="L575">		return namespaceDB.getNamespacesNames();</span>
+	}
+
+	/**
+	 * Get all the information of the imports in the given namespace of the account with ID provided
+	 * 
+	 * @param accountID
+	 *            ID of the account
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @return A set of import specifications of the imports in the namespace of the account with ID provided. It can be empty.
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public HashSet&lt;ImportedInterface&gt; getImportsOfAccountInNamespace(final AccountID accountID,
+			final NamespaceID namespaceID) {
+<span class="nc" id="L591">		final List&lt;Namespace&gt; namespacesOfAccount = namespaceDB.getNamespacesWithProvider(accountID);</span>
+<span class="nc" id="L592">		final HashSet&lt;ImportedInterface&gt; result = new HashSet&lt;&gt;();</span>
+
+		// Now for each Namespace obtained get its imports
+<span class="nc bnc" id="L595" title="All 2 branches missed.">		for (int i = 0; i &lt; namespacesOfAccount.size(); ++i) {</span>
+<span class="nc" id="L596">			final Map&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; importsOfNamespace = namespacesOfAccount.get(i)</span>
+<span class="nc" id="L597">					.getImportedInterfaces();</span>
+<span class="nc bnc" id="L598" title="All 2 branches missed.">			for (final Entry&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; entry : importsOfNamespace.entrySet()) {</span>
+<span class="nc" id="L599">				final ImportedInterface importIface = entry.getValue();</span>
+<span class="nc" id="L600">				result.add(importIface); // If already present, not added</span>
+<span class="nc" id="L601">			}</span>
+		}
+<span class="nc" id="L603">		return result;</span>
+	}
+
+	/**
+	 * Registers the properties with IDs provided as using an imported class
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param propertiesIDs
+	 *            IDs of the properties using the import
+	 * @param interfacesInContractOfImportedClass
+	 *            the interfaces in contract of imported class
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             InterfaceNotImportedException: If interface was not imported
+	 */
+	public void registerPropertiesUsingImportedClass(final NamespaceID namespaceID, final Set&lt;PropertyID&gt; propertiesIDs,
+			final Map&lt;ContractID, InterfaceID&gt; interfacesInContractOfImportedClass) {
+
+		// Check namespace exists
+<span class="fc" id="L624">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L625" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L626">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="fc bfc" id="L627" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L628">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L632" title="All 2 branches covered.">		for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L633">			final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L634">			final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+
+			// Verify the imported interface exists
+<span class="fc bfc" id="L637" title="All 2 branches covered.">			if (!namespace.existsImportedInterface(interfaceID, contractID)) {</span>
+<span class="fc" id="L638">				throw new InterfaceNotImportedException(namespace.getName(), interfaceID, contractID);</span>
+			}
+
+			// For each property ID
+<span class="fc bfc" id="L642" title="All 2 branches covered.">			for (final PropertyID propertyID : propertiesIDs) {</span>
+				// Register the property
+<span class="fc" id="L644">				namespace.registerPropertyUsingImport(propertyID, interfaceID, contractID);</span>
+<span class="fc" id="L645">			}</span>
+<span class="fc" id="L646">		}</span>
+
+		// Update
+		try {
+<span class="fc bfc" id="L650" title="All 2 branches covered.">			for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L651">				final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L652">				final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+<span class="fc bfc" id="L653" title="All 2 branches covered.">				for (final PropertyID propertyID : propertiesIDs) {</span>
+<span class="fc" id="L654">					namespaceDB.updateImportedInterfaceAddProperty(namespaceID, interfaceID, contractID, propertyID);</span>
+<span class="fc" id="L655">				}</span>
+<span class="fc" id="L656">			}</span>
+
+			// Update cache
+<span class="pc bpc" id="L659" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L660">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L662">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L663">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+<span class="nc" id="L665">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L666">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L667">		}</span>
+<span class="fc" id="L668">	}</span>
+
+	/**
+	 * Registers the operations with IDs provided as using an imported class
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param operationsIDs
+	 *            IDs of the operations using the import
+	 * @param interfacesInContractOfImportedClass
+	 *            the interfaces in contract of imported class
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             InterfaceNotImportedException: If interface was not imported
+	 */
+	public void registerOperationsUsingImportedClass(final NamespaceID namespaceID, final Set&lt;OperationID&gt; operationsIDs,
+			final Map&lt;ContractID, InterfaceID&gt; interfacesInContractOfImportedClass) {
+
+		// Check namespace exists
+<span class="fc" id="L688">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L689" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L690">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="fc bfc" id="L691" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L692">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L696" title="All 2 branches covered.">		for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L697">			final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L698">			final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+
+			// Verify the imported interface exists
+<span class="fc bfc" id="L701" title="All 2 branches covered.">			if (!namespace.existsImportedInterface(interfaceID, contractID)) {</span>
+<span class="fc" id="L702">				throw new InterfaceNotImportedException(namespace.getName(), interfaceID, contractID);</span>
+			}
+
+			// For each operation ID
+<span class="fc bfc" id="L706" title="All 2 branches covered.">			for (final OperationID operationID : operationsIDs) {</span>
+				// Register the operation using import
+<span class="fc" id="L708">				namespace.registerOperationUsingImport(operationID, interfaceID, contractID);</span>
+<span class="fc" id="L709">			}</span>
+<span class="fc" id="L710">		}</span>
+
+		// Update
+		try {
+
+<span class="fc bfc" id="L715" title="All 2 branches covered.">			for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L716">				final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L717">				final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+<span class="fc bfc" id="L718" title="All 2 branches covered.">				for (final OperationID operationID : operationsIDs) {</span>
+<span class="fc" id="L719">					namespaceDB.updateImportedInterfaceAddOperation(namespaceID, interfaceID, contractID, operationID);</span>
+<span class="fc" id="L720">				}</span>
+<span class="fc" id="L721">			}</span>
+
+			// Update cache
+<span class="pc bpc" id="L724" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L725">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L727">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L728">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+<span class="nc" id="L730">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L731">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L732">		}</span>
+<span class="fc" id="L733">	}</span>
+
+	/**
+	 * Registers the implementations with IDs provided as using an imported class
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param implementationsIDs
+	 *            IDs of the implementations using the import
+	 * @param interfacesInContractOfImportedClass
+	 *            the interfaces in contract of imported class
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             InterfaceNotImportedException: If interface was not imported
+	 */
+	public void registerImplementationsUsingImportedClass(final NamespaceID namespaceID,
+			final Set&lt;ImplementationID&gt; implementationsIDs,
+			final Map&lt;ContractID, InterfaceID&gt; interfacesInContractOfImportedClass) {
+
+		// Check namespace exists
+<span class="fc" id="L754">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L755" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L756">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="fc bfc" id="L757" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L758">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L762" title="All 2 branches covered.">		for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L763">			final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L764">			final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+
+			// Verify the imported interface exists
+<span class="fc bfc" id="L767" title="All 2 branches covered.">			if (!namespace.existsImportedInterface(interfaceID, contractID)) {</span>
+<span class="fc" id="L768">				throw new InterfaceNotImportedException(namespace.getName(), interfaceID, contractID);</span>
+			}
+
+			// For each implementation ID
+<span class="fc bfc" id="L772" title="All 2 branches covered.">			for (final ImplementationID implID : implementationsIDs) {</span>
+				// Register the implementation
+<span class="fc" id="L774">				namespace.registerImplementationUsingImport(implID, interfaceID, contractID);</span>
+<span class="fc" id="L775">			}</span>
+<span class="fc" id="L776">		}</span>
+
+		// Update
+		try {
+
+<span class="fc bfc" id="L781" title="All 2 branches covered.">			for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L782">				final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L783">				final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+<span class="fc bfc" id="L784" title="All 2 branches covered.">				for (final ImplementationID implID : implementationsIDs) {</span>
+<span class="fc" id="L785">					namespaceDB.updateImportedInterfaceAddImplementation(namespaceID, interfaceID, contractID, implID);</span>
+<span class="fc" id="L786">				}</span>
+<span class="fc" id="L787">			}</span>
+
+			// Update cache
+<span class="pc bpc" id="L790" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L791">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L793">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L794">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+<span class="nc" id="L796">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L797">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L798">		}</span>
+<span class="fc" id="L799">	}</span>
+
+	/**
+	 * Registers the classes with IDs provided as extending from an imported class
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param metaClassesIDs
+	 *            IDs of the classes extending the import
+	 * @param interfacesInContractOfImportedClass
+	 *            the interfaces in contract of imported class
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist &lt;br&gt;
+	 *             InterfaceNotImportedException: If interface was not imported
+	 */
+	public void registerSubClassesUsingImportedClass(final NamespaceID namespaceID, final Set&lt;MetaClassID&gt; metaClassesIDs,
+			final Map&lt;ContractID, InterfaceID&gt; interfacesInContractOfImportedClass) {
+
+		// Check namespace exists
+<span class="fc" id="L819">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L820" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L821">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="fc bfc" id="L822" title="All 2 branches covered.">			if (namespace == null) {</span>
+<span class="fc" id="L823">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L827" title="All 2 branches covered.">		for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L828">			final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L829">			final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+
+			// Verify the imported interface exists
+<span class="fc bfc" id="L832" title="All 2 branches covered.">			if (!namespace.existsImportedInterface(interfaceID, contractID)) {</span>
+<span class="fc" id="L833">				throw new InterfaceNotImportedException(namespace.getName(), interfaceID, contractID);</span>
+			}
+
+			// For each class ID
+<span class="fc bfc" id="L837" title="All 2 branches covered.">			for (final MetaClassID metaClassID : metaClassesIDs) {</span>
+				// Register the class
+<span class="fc" id="L839">				namespace.registerSubClassUsingImport(metaClassID, interfaceID, contractID);</span>
+<span class="fc" id="L840">			}</span>
+<span class="fc" id="L841">		}</span>
+
+		// Update
+		try {
+<span class="fc bfc" id="L845" title="All 2 branches covered.">			for (final Entry&lt;ContractID, InterfaceID&gt; interfaceInContract : interfacesInContractOfImportedClass.entrySet()) {</span>
+<span class="fc" id="L846">				final ContractID contractID = interfaceInContract.getKey();</span>
+<span class="fc" id="L847">				final InterfaceID interfaceID = interfaceInContract.getValue();</span>
+<span class="fc bfc" id="L848" title="All 2 branches covered.">				for (final MetaClassID metaClassID : metaClassesIDs) {</span>
+<span class="fc" id="L849">					namespaceDB.updateImportedInterfaceAddSubClass(namespaceID, interfaceID, contractID, metaClassID);</span>
+<span class="fc" id="L850">				}</span>
+<span class="fc" id="L851">			}</span>
+			// Update cache
+<span class="pc bpc" id="L853" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L854">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L856">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L857">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+<span class="nc" id="L859">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L860">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L861">		}</span>
+<span class="fc" id="L862">	}</span>
+
+	/**
+	 * Unregisters the operations with IDs provided from using any imports of the specified namespace
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param operationsIDs
+	 *            IDs of the operations using the import
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public void unregisterOperationsFromUsingAnyImportedClassInNamespace(final NamespaceID namespaceID,
+			final Set&lt;OperationID&gt; operationsIDs) {
+		// Check namespace exists
+<span class="fc" id="L878">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L879" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L880">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="pc bpc" id="L881" title="1 of 2 branches missed.">			if (namespace == null) {</span>
+<span class="nc" id="L882">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L886" title="All 2 branches covered.">		for (final Tuple&lt;InterfaceID, ContractID&gt; interfaceInContract : namespace.getImportedInterfaces().keySet()) {</span>
+<span class="fc" id="L887">			final InterfaceID interfaceID = interfaceInContract.getFirst();</span>
+<span class="fc" id="L888">			final ContractID contractID = interfaceInContract.getSecond();</span>
+
+			// For each property ID
+<span class="fc bfc" id="L891" title="All 2 branches covered.">			for (final OperationID operationID : operationsIDs) {</span>
+				// Unregister the property
+<span class="fc" id="L893">				namespace.unregisterOperationUsingImport(operationID, interfaceID, contractID);</span>
+<span class="fc" id="L894">			}</span>
+<span class="fc" id="L895">		}</span>
+
+		// Update
+		try {
+
+<span class="fc bfc" id="L900" title="All 2 branches covered.">			for (final Tuple&lt;InterfaceID, ContractID&gt; interfaceInContract : namespace.getImportedInterfaces().keySet()) {</span>
+<span class="fc" id="L901">				final InterfaceID interfaceID = interfaceInContract.getFirst();</span>
+<span class="fc" id="L902">				final ContractID contractID = interfaceInContract.getSecond();</span>
+<span class="fc bfc" id="L903" title="All 2 branches covered.">				for (final OperationID operationID : operationsIDs) {</span>
+<span class="fc" id="L904">					namespaceDB.updateImportedInterfaceRemoveOperation(namespaceID, interfaceID, contractID, operationID);</span>
+<span class="fc" id="L905">				}</span>
+<span class="fc" id="L906">			}</span>
+
+			// Update cache
+<span class="pc bpc" id="L909" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L910">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L912">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L913">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+<span class="nc" id="L915">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L916">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L917">		}</span>
+<span class="fc" id="L918">	}</span>
+
+	/**
+	 * Unregisters the implementations with IDs provided from using any imports of the specified namespace
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param implementationsIDs
+	 *            IDs of the implementations using the import
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public void unregisterImplementationsFromUsingAnyImportedClassInNamespace(final NamespaceID namespaceID,
+			final Set&lt;ImplementationID&gt; implementationsIDs) {
+		// Check namespace exists
+<span class="fc" id="L934">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L935" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L936">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="pc bpc" id="L937" title="1 of 2 branches missed.">			if (namespace == null) {</span>
+<span class="nc" id="L938">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L942" title="All 2 branches covered.">		for (final Tuple&lt;InterfaceID, ContractID&gt; interfaceInContract : namespace.getImportedInterfaces().keySet()) {</span>
+<span class="fc" id="L943">			final InterfaceID interfaceID = interfaceInContract.getFirst();</span>
+<span class="fc" id="L944">			final ContractID contractID = interfaceInContract.getSecond();</span>
+
+			// For each property ID
+<span class="fc bfc" id="L947" title="All 2 branches covered.">			for (final ImplementationID implementationID : implementationsIDs) {</span>
+				// Unregister the property
+<span class="fc" id="L949">				namespace.unregisterImplementationUsingImport(implementationID, interfaceID, contractID);</span>
+<span class="fc" id="L950">			}</span>
+<span class="fc" id="L951">		}</span>
+
+		// Update
+		try {
+
+<span class="fc bfc" id="L956" title="All 2 branches covered.">			for (final Tuple&lt;InterfaceID, ContractID&gt; interfaceInContract : namespace.getImportedInterfaces().keySet()) {</span>
+<span class="fc" id="L957">				final InterfaceID interfaceID = interfaceInContract.getFirst();</span>
+<span class="fc" id="L958">				final ContractID contractID = interfaceInContract.getSecond();</span>
+<span class="fc bfc" id="L959" title="All 2 branches covered.">				for (final ImplementationID implementationID : implementationsIDs) {</span>
+<span class="fc" id="L960">					namespaceDB.updateImportedInterfaceRemoveImplementation(namespaceID, interfaceID, contractID, implementationID);</span>
+<span class="fc" id="L961">				}</span>
+<span class="fc" id="L962">			}</span>
+
+			// Update cache
+<span class="pc bpc" id="L965" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L966">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L968">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L969">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+<span class="nc" id="L971">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L972">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L973">		}</span>
+<span class="fc" id="L974">	}</span>
+
+	/**
+	 * Unregisters the classes with IDs provided as using (by extension) from any imports of the specified namespace
+	 * 
+	 * @param namespaceID
+	 *            ID of the namespace that imports
+	 * @param metaClassesIDs
+	 *            IDs of the classes extending the import
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             NamespaceDoesNotExistException: if the namespace does not exist
+	 */
+	public void unregisterSubClassesFromUsingAnyImportedClassInNamespace(final NamespaceID namespaceID,
+			final Set&lt;MetaClassID&gt; metaClassesIDs) {
+		// Check namespace exists
+<span class="fc" id="L990">		Namespace namespace = namespaceCache.get(namespaceID);</span>
+<span class="pc bpc" id="L991" title="1 of 2 branches missed.">		if (namespace == null) {</span>
+<span class="fc" id="L992">			namespace = namespaceDB.getNamespaceByID(namespaceID);</span>
+<span class="pc bpc" id="L993" title="1 of 2 branches missed.">			if (namespace == null) {</span>
+<span class="nc" id="L994">				throw new NamespaceDoesNotExistException(namespaceID);</span>
+			}
+		}
+
+<span class="fc bfc" id="L998" title="All 2 branches covered.">		for (final Tuple&lt;InterfaceID, ContractID&gt; interfaceInContract : namespace.getImportedInterfaces().keySet()) {</span>
+<span class="fc" id="L999">			final InterfaceID interfaceID = interfaceInContract.getFirst();</span>
+<span class="fc" id="L1000">			final ContractID contractID = interfaceInContract.getSecond();</span>
+
+			// For each property ID
+<span class="fc bfc" id="L1003" title="All 2 branches covered.">			for (final MetaClassID metaClassID : metaClassesIDs) {</span>
+				// Unregister the property
+<span class="fc" id="L1005">				namespace.unregisterSubClassUsingImport(metaClassID, interfaceID, contractID);</span>
+<span class="fc" id="L1006">			}</span>
+<span class="fc" id="L1007">		}</span>
+
+		// Update
+		try {
+<span class="fc bfc" id="L1011" title="All 2 branches covered.">			for (final Tuple&lt;InterfaceID, ContractID&gt; interfaceInContract : namespace.getImportedInterfaces().keySet()) {</span>
+<span class="fc" id="L1012">				final InterfaceID interfaceID = interfaceInContract.getFirst();</span>
+<span class="fc" id="L1013">				final ContractID contractID = interfaceInContract.getSecond();</span>
+<span class="fc bfc" id="L1014" title="All 2 branches covered.">				for (final MetaClassID metaClassID : metaClassesIDs) {</span>
+<span class="fc" id="L1015">					namespaceDB.updateImportedInterfaceRemoveSubClass(namespaceID, interfaceID, contractID, metaClassID);</span>
+<span class="fc" id="L1016">				}</span>
+<span class="fc" id="L1017">			}</span>
+			// Update cache
+<span class="pc bpc" id="L1019" title="1 of 2 branches missed.">			if (namespaceCache.containsKey(namespaceID)) {</span>
+<span class="nc" id="L1020">				namespaceCache.get(namespaceID).setImportedInterfaces(namespace.getImportedInterfaces());</span>
+			} else {
+<span class="fc" id="L1022">				namespaceCache.put(namespaceID, namespace);</span>
+<span class="fc" id="L1023">				namespacesInCacheIndexedByName.put(namespace.getName(), namespaceID);</span>
+			}
+<span class="nc" id="L1025">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L1026">			throw new NamespaceDoesNotExistException(namespaceID);</span>
+<span class="fc" id="L1027">		}</span>
+<span class="fc" id="L1028">	}</span>
+
+	// ========= OTHER ========= //
+
+	/**
+	 * Method used for unit testing.
+	 * 
+	 * @return The db handler reference of this manager.
+	 */
+	public NamespaceManagerDB getDbHandler() {
+<span class="fc" id="L1038">		return namespaceDB;</span>
+	}
+
+	@Override
+	public void cleanCaches() {
+<span class="nc" id="L1043">		this.namespaceCache.clear();</span>
+<span class="nc" id="L1044">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

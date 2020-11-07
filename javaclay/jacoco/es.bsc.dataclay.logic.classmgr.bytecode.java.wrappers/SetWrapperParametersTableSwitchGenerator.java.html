@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SetWrapperParametersTableSwitchGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers</a> &gt; <span class="el_source">SetWrapperParametersTableSwitchGenerator.java</span></div><h1>SetWrapperParametersTableSwitchGenerator.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers;
+
+import java.util.Collection;
+
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.InstructionAdapter;
+
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.reflection.Reflector;
+
+/**
+ * Run table switch for wrapping parameters.
+ */
+public final class SetWrapperParametersTableSwitchGenerator extends SetWrapperParametersAndReturnSwitchGenerator {
+
+	/**
+	 * Constructor
+	 * @param themetaClass
+	 *            Information of class.
+	 * @param thestubInfo
+	 *            Stub info
+	 * @param theisExecClass
+	 *            isExec class
+	 * @param thegn
+	 *            Method generator.
+	 * @param theia
+	 *            Instruction adapter
+	 */
+	public SetWrapperParametersTableSwitchGenerator(
+			final MetaClass themetaClass,
+			final StubInfo thestubInfo, final boolean theisExecClass,
+			final GeneratorAdapter thegn, final InstructionAdapter theia) {
+<span class="nc" id="L41">		super(themetaClass, thestubInfo, theisExecClass, thegn, theia);</span>
+<span class="nc" id="L42">	}</span>
+
+	@Override
+	protected Collection&lt;es.bsc.dataclay.util.management.classmgr.Type&gt; getTypesToWrap(final Operation operation) {
+<span class="nc" id="L46">		return operation.getParams().values();</span>
+	}
+
+	@Override
+	public void generateCallToParentCase() {
+<span class="nc" id="L51">		gn.loadThis();</span>
+<span class="nc" id="L52">		gn.loadArg(0);</span>
+<span class="nc" id="L53">		gn.loadArg(1);</span>
+<span class="nc" id="L54">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL,</span>
+<span class="nc" id="L55">				Reflector.getInternalNameFromTypeName(metaClass.getParentType().getTypeName()),</span>
+<span class="nc" id="L56">				ByteCodeMethods.SET_WRAP_PARAMETERS.getName(),</span>
+<span class="nc" id="L57">				ByteCodeMethods.SET_WRAP_PARAMETERS.getDescriptor(), false);</span>
+<span class="nc" id="L58">		gn.returnValue();</span>
+<span class="nc" id="L59">	}</span>
+
+	@Override
+	protected boolean checkIfNothingToSerialize(final Operation operation) {
+<span class="nc" id="L63">		return false;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

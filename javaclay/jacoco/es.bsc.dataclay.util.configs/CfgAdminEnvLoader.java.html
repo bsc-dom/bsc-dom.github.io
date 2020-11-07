@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CfgAdminEnvLoader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.configs</a> &gt; <span class="el_source">CfgAdminEnvLoader.java</span></div><h1>CfgAdminEnvLoader.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.configs;
+
+import es.bsc.dataclay.util.ProcessEnvironment;
+import es.bsc.dataclay.util.management.accountmgr.Account;
+import es.bsc.dataclay.util.management.accountmgr.AccountRole;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+
+/**
+ * This class parses the information of the admin superuser from environment variables.
+ */
+public final class CfgAdminEnvLoader {
+
+	/**
+	 * Constructor
+	 * 
+	 * @throws IllegalAccessException
+	 *             Prevent instantiation
+	 */
+<span class="nc" id="L20">	private CfgAdminEnvLoader() throws IllegalAccessException {</span>
+<span class="nc" id="L21">		throw new IllegalAccessException(&quot;This class cannot be instantiated&quot;);</span>
+	}
+
+	/**
+	 * Parse account admin user
+	 * 
+	 * @return Account admin
+	 */
+	public static Account parseAdminUser() {
+<span class="nc" id="L30">		final String userName = ProcessEnvironment.getInstance().get(&quot;DATACLAY_ADMIN_USER&quot;);</span>
+<span class="nc" id="L31">		final String userPassword = ProcessEnvironment.getInstance().get(&quot;DATACLAY_ADMIN_PASSWORD&quot;);</span>
+
+<span class="nc bnc" id="L33" title="All 8 branches missed.">		if (userName != null &amp;&amp; !userName.isEmpty() &amp;&amp; userPassword != null &amp;&amp; !userPassword.isEmpty()) {</span>
+<span class="nc" id="L34">			final Account adminAccount = new Account(userName,</span>
+					AccountRole.ADMIN_ROLE, new PasswordCredential(userPassword));
+<span class="nc" id="L36">			return adminAccount;</span>
+		} else {
+<span class="nc" id="L38">			return null;</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

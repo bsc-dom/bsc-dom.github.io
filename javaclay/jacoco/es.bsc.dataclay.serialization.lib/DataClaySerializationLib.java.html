@@ -1,0 +1,655 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClaySerializationLib.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.lib</a> &gt; <span class="el_source">DataClaySerializationLib.java</span></div><h1>DataClaySerializationLib.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.lib;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.api.BackendID;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.communication.grpc.Utils;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages;
+import es.bsc.dataclay.serialization.DataClaySerializable;
+import es.bsc.dataclay.serialization.buffer.DataClayByteArray;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.java.DataClayJavaWrapper;
+import es.bsc.dataclay.serialization.java.LanguageTypes;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+/**
+ * Serialization library.
+ *
+ */
+public final class DataClaySerializationLib {
+
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L42">	public static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Logger. */
+<span class="fc" id="L45">	public static final Logger LOGGER = LogManager.getLogger(&quot;DataClaySerializationLib&quot;);</span>
+	
+	/**
+	 * Constructor
+	 */
+	private DataClaySerializationLib() {
+
+	}
+
+	/**
+	 * Create buffer and serialize
+	 * 
+	 * @param instance
+	 *            Instance to serialize
+	 * @param ignoreUserTypes
+	 *            Indicates if user types found during serialization must be ignored
+	 *            or not (for instance, non recursive make persistent)
+	 * @param ifaceBitMaps
+	 *            Map of bitmaps representing the interfaces to use
+	 * @param curSerializedObjs
+	 *            Current serialized objects Object -&gt; OID tag. This structure must
+	 *            be different during each serialization since OID tags are not
+	 *            shared.
+	 * @param pendingObjs
+	 *            Pending objs.
+	 * @param returnNullIfNoRefCounting
+	 *            If true, return null if object does not reference any other object
+	 *            except language object. This is useful during GC of not dirty
+	 *            objects without references.
+	 * @return Byte array.
+	 */
+	public static DataClayByteArray createBufferAndSerialize(final DataClaySerializable instance,
+			final boolean ignoreUserTypes, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs, final ListIterator&lt;DataClayObject&gt; pendingObjs,
+			final boolean returnNullIfNoRefCounting) {
+<span class="nc" id="L80">		final DataClayByteBuffer dcBuffer = SerializationLibUtils.newByteBuffer();</span>
+		// Serialize object values
+<span class="nc" id="L82">		DataClayByteArray byteArray = null;</span>
+		try {
+<span class="nc" id="L84">			final ReferenceCounting referenceCounting = new ReferenceCounting();</span>
+
+<span class="nc" id="L86">			instance.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs,</span>
+					referenceCounting);
+<span class="nc bnc" id="L88" title="All 2 branches missed.">			if (returnNullIfNoRefCounting) {</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">				if (referenceCounting.getReferenceCounting().isEmpty()) {</span>
+<span class="nc" id="L90">					return null;</span>
+				}
+			}
+<span class="nc bnc" id="L93" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L94">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialization FINISHED: writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="nc" id="L96">			final byte[] serializeObj = dcBuffer.getArray();</span>
+<span class="nc" id="L97">			byteArray = new DataClayByteArray(serializeObj);</span>
+<span class="nc" id="L98">		} catch (final Exception e) {</span>
+<span class="nc" id="L99">			e.printStackTrace();</span>
+		} finally {
+<span class="nc" id="L101">			dcBuffer.release();</span>
+		}
+<span class="nc" id="L103">		return byteArray;</span>
+	}
+
+	/**
+	 * Serialize parameter or return
+	 * 
+	 * @param paramReturn
+	 *            parameter or return
+	 * @param it
+	 *            Iterator in which to add found objects
+	 * @return Byte array containing serialization.
+	 */
+	public static DataClayByteArray serializeParameterOrReturn(final DataClaySerializable paramReturn,
+			final ListIterator&lt;DataClayObject&gt; it) {
+<span class="nc" id="L117">		final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs = new IdentityHashMap&lt;&gt;();</span>
+
+<span class="nc" id="L119">		curSerializedObjs.put(paramReturn, 0); // Add &quot;this&quot;</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L121">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Added obj with identity =&quot; + System.identityHashCode(paramReturn));</span>
+		}
+<span class="nc" id="L123">		final DataClayByteArray byteArray = createBufferAndSerialize(paramReturn, false, null, curSerializedObjs, it,</span>
+				false);
+
+<span class="nc" id="L126">		return byteArray;</span>
+	}
+
+	/**
+	 * Serialize DataClayObject with data.
+	 * 
+	 * @param dcObject
+	 *            DCObject
+	 * @param clientLib
+	 *            Client lib
+	 * @param ignoreUserTypes
+	 *            Indicates if user types inside the instance must be ignored or not
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps.
+	 * @param curIt
+	 *            Pending objects
+	 * @param forUpdate
+	 *            Indicates whether this serialization is for an update or not
+	 * @param hint
+	 *            Hint to set
+	 * @param forcePendingToRegister
+	 *            If TRUE, object is going to be set as pending to register. Take
+	 *            into account that this function is also called to serialize
+	 *            objects in 'moves','replicas',... and in that case this parameter
+	 *            must be FALSE to avoid overriding the actual value of the instance
+	 *            (actual pending or not).
+	 * @return The serialization of the given object
+	 */
+	public static ObjectWithDataParamOrReturn serializeDataClayObjectWithData(final DataClayObject dcObject,
+			final DataClayRuntime clientLib, final boolean ignoreUserTypes, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final ListIterator&lt;DataClayObject&gt; curIt, final boolean forUpdate, final BackendID hint,
+			final boolean forcePendingToRegister) {
+
+<span class="nc" id="L159">		ObjectWithDataParamOrReturn volatileParamReturn = null;</span>
+<span class="nc" id="L160">		clientLib.lock(dcObject.getObjectID());</span>
+		try {
+<span class="nc" id="L162">			volatileParamReturn = new ObjectWithDataParamOrReturn(dcObject);</span>
+<span class="nc" id="L163">			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs = new IdentityHashMap&lt;&gt;();</span>
+<span class="nc" id="L164">			curSerializedObjs.put(dcObject, 0); // Add &quot;this&quot;</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L166">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Added obj with identity =&quot; + System.identityHashCode(dcObject));</span>
+			}
+<span class="nc" id="L168">			final DataClayByteArray byteArray = createBufferAndSerialize(volatileParamReturn, false, null,</span>
+					curSerializedObjs, curIt, false);
+
+			// === SETTING FLAGS === //
+<span class="nc bnc" id="L172" title="All 2 branches missed.">			if (!forUpdate) {</span>
+<span class="nc" id="L173">				dcObject.setIsPersistent(true);</span>
+<span class="nc" id="L174">				dcObject.setHint(hint);</span>
+			}
+
+			// A persistent object with hint means that is pending to register (always?)
+<span class="nc bnc" id="L178" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L179">				DataClayRuntime.LOGGER.debug(</span>
+<span class="nc" id="L180">						&quot;[==Hint==] Setting hint on instance &quot; + dcObject.getObjectID()</span>
+<span class="nc" id="L181">								+ &quot; the hint : &quot; + clientLib.getDSNameOfHint(hint));</span>
+			}
+<span class="nc bnc" id="L183" title="All 4 branches missed.">			if (dcObject instanceof DataClayExecutionObject &amp;&amp; forcePendingToRegister) {</span>
+<span class="nc" id="L184">				final DataClayExecutionObject execObject = (DataClayExecutionObject) dcObject;</span>
+<span class="nc" id="L185">				execObject.setPendingToRegister(true);</span>
+			}
+
+<span class="nc" id="L188">			volatileParamReturn.setSerializedBytes(byteArray);</span>
+
+<span class="nc bnc" id="L190" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L191">				DataClayRuntime.LOGGER.debug(&quot;[##Serialization##] Unlocking &quot; + dcObject.getObjectID());</span>
+			}
+
+		} finally {
+<span class="nc" id="L195">			clientLib.unlock(dcObject.getObjectID());</span>
+		}
+<span class="nc" id="L197">		return volatileParamReturn;</span>
+	}
+
+	/**
+	 * Serialize language parameter or return
+	 * 
+	 * @param wrapper
+	 *            Language object
+	 * @param clientLib
+	 *            Client lib
+	 * @param langParams
+	 *            [out] All language params
+	 * @param volatileParams
+	 *            [out] All DCObject params
+	 * @param immParams
+	 *            [out] All immutable params
+	 * @param persParams
+	 *            [out] All persistent params
+	 * @param alreadySerializedParams
+	 *            Current serialized params
+	 * @param it
+	 *            Pending objects
+	 * @param idx
+	 *            Parameter index
+	 * @param forUpdate
+	 *            Indicates whether this serialization is for an update operation
+	 * @param hint
+	 *            Hint to add
+	 * @param ifaceBitMaps
+	 *            bitmap of accessible properties (interface) per class
+	 */
+	private static void serializeLangParameterOrReturn(final DataClayJavaWrapper wrapper,
+			final DataClayRuntime clientLib, final Map&lt;Integer, LanguageParamOrReturn&gt; langParams,
+			final Map&lt;Integer, ImmutableParamOrReturn&gt; immParams,
+			final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volatileParams,
+			final Map&lt;Integer, PersistentParamOrReturn&gt; persParams, final Set&lt;ObjectID&gt; alreadySerializedParams,
+			final ListIterator&lt;DataClayObject&gt; it, final int idx, final boolean forUpdate, final BackendID hint,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps) {
+
+<span class="nc bnc" id="L236" title="All 2 branches missed.">		if (wrapper.isImmutable()) {</span>
+			// ======= IMMUTABLE PARAMETERS ===== //
+<span class="nc bnc" id="L238" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L239">				DataClayRuntime.LOGGER.debug(&quot;[##Serialization##] Serializing immutable param idx = &quot; + idx);</span>
+			}
+
+<span class="nc" id="L242">			final ImmutableParamOrReturn immParamReturn = new ImmutableParamOrReturn(wrapper);</span>
+<span class="nc" id="L243">			final DataClayByteArray byteArray = serializeParameterOrReturn(immParamReturn, it);</span>
+<span class="nc" id="L244">			immParamReturn.setSerializedBytes(byteArray);</span>
+
+<span class="nc" id="L246">			immParams.put(idx, immParamReturn);</span>
+<span class="nc" id="L247">			return;</span>
+
+		}
+
+<span class="nc bnc" id="L251" title="All 2 branches missed.">		if (wrapper.getJavaObject() instanceof DataClayObject) {</span>
+			// ====== DCOBJECT PARAMETERS ===== //
+<span class="nc bnc" id="L253" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L254">				DataClayRuntime.LOGGER.debug(&quot;[##Serialization##] Serializing generic param idx = &quot; + idx);</span>
+			}
+
+<span class="nc" id="L257">			final DataClayObject dcObject = (DataClayObject) wrapper.getJavaObject();</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">			if (dcObject.isPersistent()) {</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L260">					DataClayRuntime.LOGGER</span>
+<span class="nc" id="L261">							.debug(&quot;[##Serialization##] Serializing PERSISTENT DataClayObject param idx = &quot; + idx</span>
+<span class="nc" id="L262">									+ &quot; oid = &quot; + dcObject.getObjectID() + &quot; with hint &quot;</span>
+<span class="nc" id="L263">									+ clientLib.getDSNameOfHint(dcObject.getHint()));</span>
+				}
+				// ======= PERSISTENT PARAMETERS ===== //
+<span class="nc" id="L266">				final PersistentParamOrReturn persParamOrReturn = new PersistentParamOrReturn(dcObject);</span>
+<span class="nc" id="L267">				persParams.put(idx, persParamOrReturn);</span>
+<span class="nc" id="L268">			} else {</span>
+<span class="nc" id="L269">				final ObjectWithDataParamOrReturn volatileParamReturn = serializeDataClayObjectWithData(</span>
+<span class="nc" id="L270">						(DataClayObject) wrapper.getJavaObject(), clientLib, false, ifaceBitMaps, it, forUpdate, hint, true);</span>
+<span class="nc" id="L271">				volatileParams.put(idx, volatileParamReturn);</span>
+<span class="nc" id="L272">				alreadySerializedParams.add(volatileParamReturn.getObjectID());</span>
+			}
+
+<span class="nc" id="L275">			return;</span>
+		}
+
+		// ====== LANGUAGE PARAMETERS ===== //
+<span class="nc bnc" id="L279" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L280">			DataClayRuntime.LOGGER.debug(&quot;[##Serialization##] Serializing language param idx = &quot; + idx);</span>
+		}
+
+<span class="nc" id="L283">		final LanguageParamOrReturn langParamReturn = new LanguageParamOrReturn(wrapper);</span>
+<span class="nc" id="L284">		final DataClayByteArray byteArray = serializeParameterOrReturn(langParamReturn, it);</span>
+
+<span class="nc" id="L286">		langParamReturn.setSerializedBytes(byteArray);</span>
+
+<span class="nc" id="L288">		langParams.put(idx, langParamReturn);</span>
+
+<span class="nc" id="L290">	}</span>
+
+	/**
+	 * Serialize parameters or return of an execution
+	 * 
+	 * @param wrappedParamsOrRet
+	 *            Parameters or return to serialize in wrappers
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps (for Client - DS communication)
+	 * @param runtime
+	 *            Runtime, to lock serialization of volatiles and find new
+	 *            volatiles.
+	 * @param forUpdate
+	 *            Indicates whether this serialization is for an update operation
+	 * @param hint
+	 *            Hint to set in volatiles
+	 * @param ignoreSubObjects
+	 *            Indicates if sub-objects must be ignored. Only for make
+	 *            persistent.
+	 * @return Serialized parameters or return
+	 */
+	public static SerializedParametersOrReturn serializeParamsOrReturn(
+			final List&lt;DataClaySerializable&gt; wrappedParamsOrRet, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayRuntime runtime, final boolean forUpdate, final BackendID hint,
+			final boolean ignoreSubObjects) {
+
+<span class="nc bnc" id="L316" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L317">			DataClayRuntime.LOGGER.debug(&quot;[##Serialization##] Serializing params or returns&quot;);</span>
+		}
+
+<span class="nc" id="L320">		final Set&lt;ObjectID&gt; alreadySerializedParams = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L321">		final List&lt;DataClayObject&gt; pendingObjs = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L322">		final ListIterator&lt;DataClayObject&gt; it = pendingObjs.listIterator();</span>
+<span class="nc" id="L323">		final Map&lt;Integer, LanguageParamOrReturn&gt; langParams = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L324">		final Map&lt;Integer, ImmutableParamOrReturn&gt; immParams = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L325">		final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volatileParams = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L326">		final Map&lt;Integer, PersistentParamOrReturn&gt; persParams = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L328">		int curIdx = 0;</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">		for (final DataClaySerializable wrappedParamOrRet : wrappedParamsOrRet) {</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">			if (wrappedParamOrRet == null) {</span>
+<span class="nc" id="L331">				continue; // DCobjs are null</span>
+			}
+<span class="nc bnc" id="L333" title="All 2 branches missed.">			if (wrappedParamOrRet instanceof DataClayJavaWrapper) {</span>
+<span class="nc" id="L334">				final DataClayJavaWrapper javaWrapper = (DataClayJavaWrapper) wrappedParamOrRet;</span>
+<span class="nc bnc" id="L335" title="All 2 branches missed.">				if (javaWrapper.isNull()) {</span>
+<span class="nc" id="L336">					continue;</span>
+				}
+				// ====== LANGUAGE/IMMUTABLE/GENERIC PARAMETERS ===== //
+<span class="nc bnc" id="L339" title="All 2 branches missed.">				if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L340">					DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serializing language or immutable object with identity &quot; +  System.identityHashCode(javaWrapper));</span>
+				}
+<span class="nc" id="L342">				serializeLangParameterOrReturn(javaWrapper, runtime, langParams, immParams, volatileParams, persParams,</span>
+						alreadySerializedParams, it, curIdx, forUpdate, hint, ifaceBitMaps);
+<span class="nc" id="L344">			} else {</span>
+
+<span class="nc" id="L346">				final DataClayObject dcObject = (DataClayObject) wrappedParamOrRet;</span>
+				// ====== DCOBJECT PARAMETERS / RETURN ===== //
+
+				// ==== session counting design ==== //
+				// every time we send a dataclayobject (to client or to other node) we annotate
+				// that the object is being used by
+				// the sending
+				// session
+				// this is done to avoid gc to clean objects being used by clients (and no one
+				// else).
+				// why during serialization? it is done here to control all kind of
+				// communications: execute, get, replica, ...
+				// the idea is to only add information about objects used by sessions here.
+				// Also, here we know all associations
+				// from the object.
+				// moreover: adding session counting here and not only cliend - ee solves a race
+				// condition (explained during
+				// close session in
+				// EE)
+				// this function is not going to do anything in case of client's runtime
+				// if object is volatile or language collection, associations are also added
+<span class="nc" id="L367">				runtime.addSessionReference(dcObject.getObjectID());</span>
+
+<span class="nc bnc" id="L369" title="All 2 branches missed.">				if (dcObject.isPersistent()) {</span>
+<span class="nc bnc" id="L370" title="All 2 branches missed.">					if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L371">						DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serializing persistent object with identity &quot; +  System.identityHashCode(dcObject));</span>
+					}
+					// ======= PERSISTENT PARAMETERS ===== //
+<span class="nc" id="L374">					final PersistentParamOrReturn persParamOrReturn = new PersistentParamOrReturn(dcObject);</span>
+<span class="nc" id="L375">					persParams.put(curIdx, persParamOrReturn);</span>
+<span class="nc" id="L376">				} else {</span>
+<span class="nc bnc" id="L377" title="All 2 branches missed.">					if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L378">						DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serializing volatile object with identity &quot; +  System.identityHashCode(dcObject));</span>
+					}
+<span class="nc" id="L380">					final ObjectWithDataParamOrReturn volatileParamReturn = serializeDataClayObjectWithData(dcObject,</span>
+							runtime, false, ifaceBitMaps, it, forUpdate, hint, true);
+<span class="nc" id="L382">					volatileParams.put(curIdx, volatileParamReturn);</span>
+<span class="nc" id="L383">					alreadySerializedParams.add(volatileParamReturn.getObjectID());</span>
+				}
+			}
+<span class="nc" id="L386">			curIdx++;</span>
+<span class="nc" id="L387">		}</span>
+
+		// ======= SUB OBJECTS ===== //
+		// Serialize pending objects (They are only DataClay Objects) found in
+		// &quot;serializeAssociation&quot;.
+		// Verify they were not already serialized
+<span class="nc bnc" id="L393" title="All 2 branches missed.">		if (!ignoreSubObjects) {</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L395">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serializing sub-objects, size = &quot; + pendingObjs.size());</span>
+			}
+<span class="nc bnc" id="L397" title="All 2 branches missed.">			while (it.hasPrevious()) {</span>
+<span class="nc" id="L398">				final DataClayObject pendingObj = it.previous();</span>
+<span class="nc" id="L399">				it.remove();</span>
+
+				// Avoid serializing same object many times.
+<span class="nc bnc" id="L402" title="All 2 branches missed.">				if (alreadySerializedParams.contains(pendingObj.getObjectID())) {</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">					if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L404">						DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Found sub-object already serialized with identity &quot; + System.identityHashCode(pendingObj));</span>
+					}
+					continue;
+				}
+
+				// if object is volatile or language collection, associations are also added
+<span class="nc" id="L410">				runtime.addSessionReference(pendingObj.getObjectID());</span>
+
+<span class="nc bnc" id="L412" title="All 2 branches missed.">				if (pendingObj.isPersistent()) {</span>
+<span class="nc bnc" id="L413" title="All 2 branches missed.">					if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L414">						DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Object already persistent with id = &quot; + System.identityHashCode(pendingObj));</span>
+					}
+					// ======= PERSISTENT PARAMETERS ===== //
+<span class="nc" id="L417">					final PersistentParamOrReturn persParamOrReturn = new PersistentParamOrReturn(pendingObj);</span>
+<span class="nc" id="L418">					persParams.put(curIdx, persParamOrReturn);</span>
+<span class="nc" id="L419">				} else {</span>
+<span class="nc bnc" id="L420" title="All 2 branches missed.">					if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L421">						DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serializing volatile sub-object with id = &quot; + System.identityHashCode(pendingObj));</span>
+					}
+<span class="nc" id="L423">					final ObjectWithDataParamOrReturn volatileParamReturn = serializeDataClayObjectWithData(pendingObj,</span>
+							runtime, false, ifaceBitMaps, it, forUpdate, hint, true);
+<span class="nc" id="L425">					volatileParams.put(curIdx, volatileParamReturn);</span>
+<span class="nc" id="L426">					alreadySerializedParams.add(volatileParamReturn.getObjectID());</span>
+				}
+
+				// If param was serialized, add it to already serialized, to avoid serializing
+				// same object
+				// many times.
+<span class="nc bnc" id="L432" title="All 2 branches missed.">				if (!alreadySerializedParams.contains(pendingObj.getObjectID())) {</span>
+<span class="nc" id="L433">					alreadySerializedParams.add(pendingObj.getObjectID());</span>
+				}
+<span class="nc" id="L435">				curIdx++;</span>
+<span class="nc" id="L436">			}</span>
+		} else { 
+<span class="nc bnc" id="L438" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L439">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; NOT serializing sub-objects, size = &quot; + pendingObjs.size());</span>
+			}
+		}
+<span class="nc bnc" id="L442" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L443">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialization finished&quot;);</span>
+		}
+
+<span class="nc" id="L446">		return new SerializedParametersOrReturn(wrappedParamsOrRet.size(), immParams, langParams, volatileParams,</span>
+				persParams);
+	}
+
+	/**
+	 * Serialize for DB
+	 * 
+	 * @param objectID
+	 *            ID of object to store/update
+	 * @param objectMetaData
+	 *            Object metadata
+	 * @param theBytes
+	 *            Serialized bytes
+	 * @param isStore
+	 *            Serializing for a store (not update) or not.
+	 * @return Serialized bytes
+	 */
+	public static byte[] serializeForDB(final ObjectID objectID, final DataClayObjectMetaData objectMetaData,
+			final DataClayByteArray theBytes, final boolean isStore) {
+<span class="nc" id="L465">		final CommonMessages.PersistentObjectInDB.Builder builder = CommonMessages.PersistentObjectInDB.newBuilder();</span>
+<span class="nc" id="L466">		builder.setData(theBytes.getByteString());</span>
+<span class="nc" id="L467">		builder.setMetadata(Utils.getMetaData(objectMetaData));</span>
+<span class="nc" id="L468">		final CommonMessages.PersistentObjectInDB msg = builder.build();</span>
+<span class="nc bnc" id="L469" title="All 2 branches missed.">		if (Configuration.Flags.PRETTY_PRINT_MESSAGES.getBooleanValue()) {</span>
+<span class="nc" id="L470">			Utils.printMsg(msg);</span>
+		}
+<span class="nc" id="L472">		return msg.toByteArray();</span>
+	}
+
+	/**
+	 * Serialize for DB
+	 * 
+	 * @param instance
+	 *            Object to serialize
+	 * @param ignoreUserTypes
+	 *            Indicates if user types must be ignored
+	 * @param ifaceBitMaps
+	 *            Iface bitmaps
+	 * @param returnNullIfNoRefCounting
+	 *            If true, return null if object does not reference any other object
+	 *            except language object. This is useful during GC of not dirty
+	 *            objects without references.
+	 * @return Serialized bytes
+	 */
+	public static byte[] serializeForDBGarbageCollection(final DataClayExecutionObject instance,
+			final boolean ignoreUserTypes, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final boolean returnNullIfNoRefCounting) {
+
+<span class="nc" id="L494">		final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs = new IdentityHashMap&lt;&gt;();</span>
+<span class="nc" id="L495">		final List&lt;DataClayObject&gt; curPendingObjs = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L496">		final ListIterator&lt;DataClayObject&gt; curIt = curPendingObjs.listIterator();</span>
+
+<span class="nc" id="L498">		curSerializedObjs.put(instance, 0); // Add &quot;this&quot;</span>
+<span class="nc bnc" id="L499" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L500">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Added obj with identity =&quot; + System.identityHashCode(instance));</span>
+		}
+<span class="nc" id="L502">		final DataClayByteArray byteArray = createBufferAndSerialize(instance, ignoreUserTypes, ifaceBitMaps,</span>
+				curSerializedObjs, curIt, returnNullIfNoRefCounting);
+<span class="nc bnc" id="L504" title="All 4 branches missed.">		if (returnNullIfNoRefCounting &amp;&amp; byteArray == null) {</span>
+<span class="nc" id="L505">			return null;</span>
+		}
+
+		// Prepare metaData structures
+<span class="nc" id="L509">		final DataClayObjectMetaData mdata = SerializationLibUtils.createMetaData(curSerializedObjs, null, 0);</span>
+<span class="nc" id="L510">		return serializeForDB(instance.getObjectID(), mdata, byteArray, false);</span>
+	}
+
+	/**
+	 * Modify refs (oids) in metadata
+	 * 
+	 * @param objWithData
+	 *            Obj with data
+	 * @param originalToVersion
+	 *            Oids to modify
+	 * @param hintsMap
+	 *            Hint of objects.
+	 */
+	public static void modifyMetadataOIDs(final ObjectWithDataParamOrReturn objWithData,
+			final Map&lt;ObjectID, ObjectID&gt; originalToVersion, final Map&lt;ObjectID, ExecutionEnvironmentID&gt; hintsMap) {
+		// Here means that object is not loaded! (Execution Environment)
+		// === LOAD OBJECT === //
+<span class="nc" id="L527">		final DataClayObjectMetaData metadata = objWithData.getMetaData();</span>
+<span class="nc" id="L528">		metadata.modifyOids(originalToVersion, hintsMap);</span>
+<span class="nc" id="L529">	}</span>
+
+	/**
+	 * Serialize association to another user type.
+	 * 
+	 * @param element
+	 *            Element association.
+	 * @param dcBuffer
+	 *            Buffer in which to write bytes.
+	 * @param ignoreUserTypes
+	 *            IgnoreUserTypes flag.
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps.
+	 * @param curSerializedObjs
+	 *            Current serialized objects (see Serialization mechanism doc.)
+	 * @param pendingObjs
+	 *            Pending objects (see Serialization mechanism doc.)
+	 * @param referenceCounting
+	 *            Reference counting from this object.
+	 */
+	public static void serializeAssociation(final DataClayObject element, final DataClayByteBuffer dcBuffer,
+			final boolean ignoreUserTypes, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs, final ListIterator&lt;DataClayObject&gt; pendingObjs,
+			final ReferenceCounting referenceCounting) {
+
+<span class="nc" id="L554">		Integer tag = curSerializedObjs.get(element);</span>
+<span class="nc bnc" id="L555" title="All 2 branches missed.">		if (tag == null) {</span>
+<span class="nc" id="L556">			pendingObjs.add(element);</span>
+<span class="nc" id="L557">			tag = new Integer(curSerializedObjs.size());</span>
+<span class="nc" id="L558">			curSerializedObjs.put(element, tag);</span>
+<span class="nc bnc" id="L559" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L560">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Added obj with identity =&quot; + System.identityHashCode(element));</span>
+			}
+		} else { 
+<span class="nc bnc" id="L563" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L564">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Found obj with identity =&quot; + System.identityHashCode(element));</span>
+			}
+		}
+<span class="nc" id="L567">		dcBuffer.writeVLQInt(tag.intValue());</span>
+<span class="nc bnc" id="L568" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L569">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized association tag: data=&quot; + tag + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+		}
+		// update reference counting
+<span class="nc" id="L572">		final ObjectID associationObjectID = element.getObjectID();</span>
+<span class="nc" id="L573">		final ExecutionEnvironmentID hint = (ExecutionEnvironmentID) element.getHint();</span>
+<span class="nc" id="L574">		referenceCounting.incrementReferenceCounting(associationObjectID, hint);</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L576">			DataClayObject.getLib();</span>
+<span class="nc" id="L577">			DataClayRuntime.LOGGER.debug(&quot;[##Serialization##] &quot; + &quot; Serializing association to &quot; + element.getObjectID()</span>
+					+ &quot; with tag &quot; + tag);
+		}
+
+<span class="nc" id="L581">	}</span>
+
+	/**
+	 * Serialize java field.
+	 * 
+	 * @param wrapper
+	 *            Java type inside a DataClayObject wrapper
+	 * @param dcBuffer
+	 *            Buffer in which to write bytes.
+	 * @param ignoreUserTypes
+	 *            IgnoreUserTypes flag.
+	 * @param ifaceBitMaps
+	 *            Interface bitmaps.
+	 * @param curSerializedObjs
+	 *            Current serialized objects (see Serialization mechanism doc.)
+	 * @param pendingObjs
+	 *            Pending objects (see Serialization mechanism doc.)
+	 * @param referenceCounting
+	 *            Reference counting from this object.
+	 */
+	public static void serializeJavaField(final DataClayJavaWrapper wrapper, final DataClayByteBuffer dcBuffer,
+			final boolean ignoreUserTypes, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs, final ListIterator&lt;DataClayObject&gt; pendingObjs,
+			final ReferenceCounting referenceCounting) {
+<span class="pc bpc" id="L605" title="1 of 2 branches missed.">		if (wrapper.isImmutable()) {</span>
+			// ======= IMMUTABLE PARAMETERS ===== //
+<span class="nc" id="L607">			wrapper.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs,</span>
+					referenceCounting);
+<span class="nc" id="L609">			return;</span>
+
+		}
+		// ====== LANGUAGE PARAMETERS ===== //
+
+		// Check if was already serialized
+<span class="fc" id="L615">		final Object javaObject = wrapper.getJavaObject();</span>
+<span class="fc" id="L616">		Integer tag = curSerializedObjs.get(javaObject);</span>
+<span class="pc bpc" id="L617" title="1 of 2 branches missed.">		if (tag == null) {</span>
+<span class="fc" id="L618">			tag = new Integer(curSerializedObjs.size());</span>
+<span class="fc" id="L619">			dcBuffer.writeVLQInt(tag.intValue());</span>
+<span class="pc bpc" id="L620" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L621">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized NEW association tag: data=&quot; + tag + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+<span class="fc" id="L623">			curSerializedObjs.put(javaObject, tag);</span>
+<span class="pc bpc" id="L624" title="1 of 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L625">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Added obj with identity =&quot; + System.identityHashCode(javaObject));</span>
+			}
+<span class="fc" id="L627">			wrapper.serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps, curSerializedObjs, pendingObjs,</span>
+					referenceCounting);
+		} else {
+<span class="nc bnc" id="L630" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L631">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Found obj with identity =&quot; + System.identityHashCode(javaObject));</span>
+			}
+<span class="nc" id="L633">			dcBuffer.writeVLQInt(tag.intValue());</span>
+<span class="nc bnc" id="L634" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L635">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized association tag: data=&quot; + tag + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
+			}
+		}
+
+<span class="fc" id="L639">	}</span>
+
+	/**
+	 * Serialize reference counting
+	 * 
+	 * @param dcBuffer
+	 *            Buffer in which to write bytes.
+	 * @param referenceCounting
+	 *            Reference counting from this object.
+	 */
+	public static void serializeReferenceCounting(final DataClayByteBuffer dcBuffer,
+			final ReferenceCounting referenceCounting) {
+<span class="nc" id="L651">		referenceCounting.serializeReferenceCounting(dcBuffer);</span>
+<span class="nc" id="L652">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

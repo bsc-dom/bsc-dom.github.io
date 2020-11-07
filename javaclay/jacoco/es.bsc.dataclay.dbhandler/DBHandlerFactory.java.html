@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DBHandlerFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dbhandler</a> &gt; <span class="el_source">DBHandlerFactory.java</span></div><h1>DBHandlerFactory.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.dbhandler;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteHandler;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteHandlerConfig;
+
+/**
+ * Factory to return instances of specific DBHandlers, according to the provided type.
+ */
+<span class="nc" id="L13">public class DBHandlerFactory {</span>
+	private static final String NVRAM_HANDLER_CLASS_NAME = &quot;es.bsc.dataclay.dbhandler.nvram.NVRAMHandler&quot;;
+	
+	/**	All the supported DBHandler subtypes. */
+<span class="fc" id="L17">	public enum DBHandlerType {</span>
+<span class="fc" id="L18">			POSTGRES,</span>
+<span class="fc" id="L19">			SQLITE,</span>
+<span class="fc" id="L20">			NVRAM</span>
+	}
+
+	/**
+	 * Get the handler for a specific database.
+	 * 
+	 * @param type The desired type for the return DBHandler instance. 
+	 * @return A DBHandler instance.
+	 */
+	public static DBHandler getDBHandler(DBHandlerType type) {
+<span class="nc bnc" id="L30" title="All 3 branches missed.">		switch(type){</span>
+			case SQLITE:
+<span class="nc" id="L32">				return new SQLiteHandler(new SQLiteHandlerConfig(&quot;test.db&quot;));</span>
+			case NVRAM:
+				try {
+<span class="nc" id="L35">					final Class&lt;?&gt; nvramHandlerClass = Class.forName(NVRAM_HANDLER_CLASS_NAME);</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">					if (DBHandler.class.isAssignableFrom(nvramHandlerClass)) {</span>
+<span class="nc" id="L37">						final Constructor&lt;?&gt; constructor = nvramHandlerClass.getConstructor();</span>
+<span class="nc" id="L38">						return (DBHandler) constructor.newInstance();</span>
+					} else {
+<span class="nc" id="L40">						throw new IllegalArgumentException(&quot;Class NVRAMHandlerClass is not a DBHandler&quot;);</span>
+					}
+<span class="nc" id="L42">				} catch (final ClassNotFoundException ex) {</span>
+<span class="nc" id="L43">					throw new IllegalArgumentException(&quot;Could not import class for NVRAMHandler, dependencies error&quot;);</span>
+<span class="nc" id="L44">				} catch (final NoSuchMethodException ex) {</span>
+<span class="nc" id="L45">					throw new IllegalArgumentException(&quot;Could not call NVRAMHandler constructor&quot;);</span>
+<span class="nc" id="L46">				} catch (final InstantiationException ex) {</span>
+<span class="nc" id="L47">					throw new IllegalArgumentException(&quot;Could not instantiate a NVRAMHandler instance&quot;);</span>
+<span class="nc" id="L48">				} catch (final InvocationTargetException ex) {</span>
+<span class="nc" id="L49">					throw new IllegalArgumentException(&quot;Could not invocate the NVRAMHandler constructor&quot;);</span>
+<span class="nc" id="L50">				} catch (final IllegalAccessException ex) {</span>
+<span class="nc" id="L51">					throw new IllegalArgumentException(&quot;Could not legally access and call the NVRAMHandler constructor&quot;);</span>
+				}
+			default:
+<span class="nc" id="L54">				throw new IllegalArgumentException(type + &quot;is not currently a supported DBHandler&quot;);</span>
+		}
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

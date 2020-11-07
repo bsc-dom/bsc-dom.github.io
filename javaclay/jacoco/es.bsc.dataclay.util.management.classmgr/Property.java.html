@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Property.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr</a> &gt; <span class="el_source">Property.java</span></div><h1>Property.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.classmgr;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.PropertyDepInfoAlreadyRegisteredException;
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.management.classmgr.java.JavaPropertyInfo;
+import es.bsc.dataclay.util.management.classmgr.python.PythonPropertyInfo;
+import es.bsc.dataclay.util.replication.Replication;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents a Property.
+ * 
+ */
+public final class Property extends MgrObject&lt;PropertyID&gt; implements Comparable&lt;Property&gt; {
+
+	// === YAML SPECIFICATION === //
+	// Properties must be public for YAML parsing.
+	// CHECKSTYLE:OFF
+	/** Name of namespace of the class of the property. */
+	private String namespace;
+	/** Name of the class of the property. */
+	private String className;
+	/** Name of the property. */
+	private String name;
+	/** Position of the property in class. */
+	private int position;
+	/** Type of the Property. */
+	private Type type;
+
+	// CHECKSTYLE:ON
+	// ==== DYNAMIC FIELDS ==== //
+	/** ID of the Getter operation of the Property. */
+	private OperationID getterOperationID;
+	/** ID of the Getter Implementation of the Property. */
+	private ImplementationID getterImplementationID;
+	/** ID of the Setter Implementation of the Property. */
+	private ImplementationID setterImplementationID;
+	/** ID of the Setter operation of the Property. */
+	private OperationID setterOperationID;
+	/** ID of the namespace in which the property has been created. */
+	private NamespaceID namespaceID;
+	/** ID of the MetaClass containing the Property. */
+	private MetaClassID metaClassID;
+	/** Language dependant property information. */
+	private Map&lt;Langs, LanguageDependantPropertyInfo&gt; languageDepInfos;
+	/** Property's annotations */
+	private List&lt;Annotation&gt; annotations;
+
+	/** ID of the Setter Implementation of the Property. */
+	private ImplementationID updateImplementationID;
+	/** ID of the Setter operation of the Property. */
+	private OperationID updateOperationID;
+
+	private String beforeUpdate, afterUpdate;
+
+	private boolean inMaster;
+
+	private boolean isReplicated;
+
+	/**
+	 * Creates an empty Property
+	 */
+<span class="fc" id="L78">	public Property() {</span>
+
+<span class="fc" id="L80">	}</span>
+
+	/**
+	 * Property constructor
+	 * @param newposition
+	 *            Position of the property
+	 * @param newname
+	 *            Name of the property
+	 * @param newtype
+	 *            Type of the property
+	 * @param newclassName
+	 *            Name of the MetaClass containing the Property
+	 * @param newnamespace
+	 *            Name of the namespace in which the property has been created
+	 * @post Creates a new Property with provided name and type and generates a new PropertyID.
+	 */
+	public Property(final int newposition, final String newname, final Type newtype,
+<span class="fc" id="L97">			final String newnamespace, final String newclassName) {</span>
+<span class="fc" id="L98">		this.setNamespace(newnamespace);</span>
+<span class="fc" id="L99">		this.setClassName(newclassName);</span>
+<span class="fc" id="L100">		this.setPosition(newposition);</span>
+<span class="fc" id="L101">		this.setName(newname);</span>
+<span class="fc" id="L102">		this.setType(newtype);</span>
+<span class="fc" id="L103">		this.setLanguageDepInfos(new HashMap&lt;Langs, LanguageDependantPropertyInfo&gt;());</span>
+<span class="fc" id="L104">		this.setAnnotations(new ArrayList&lt;Annotation&gt;());</span>
+<span class="fc" id="L105">	}</span>
+
+	/**
+	 * Get the name of this Property
+	 * @return Property::name of container Property.
+	 */
+	public String getName() {
+<span class="fc" id="L112">		return this.name;</span>
+	}
+
+	/**
+	 * Set the Property::name of this Property
+	 * @param newname
+	 *            New name to be set
+	 */
+	public void setName(final String newname) {
+<span class="fc" id="L121">		this.name = newname;</span>
+<span class="fc" id="L122">	}</span>
+
+	/**
+	 * Get the TypeID of this Property
+	 * @return Property::typeID of container Property.
+	 */
+	public Type getType() {
+<span class="fc" id="L129">		return this.type;</span>
+	}
+
+	/**
+	 * Set the Property::type
+	 * @param newtype
+	 *            New Type to set of this Property.
+	 */
+	public void setType(final Type newtype) {
+<span class="fc" id="L138">		this.type = newtype;</span>
+<span class="fc" id="L139">	}</span>
+
+	/**
+	 * Get the Property::getterOperationID
+	 * @return the getterOperationID
+	 */
+
+	public OperationID getGetterOperationID() {
+<span class="fc" id="L147">		return getterOperationID;</span>
+	}
+
+	/**
+	 * Set the Property::getterOperationID
+	 * @param newgetterOperationID
+	 *            the getterOperationID to set
+	 */
+	public void setGetterOperationID(final OperationID newgetterOperationID) {
+<span class="fc" id="L156">		this.getterOperationID = newgetterOperationID;</span>
+<span class="fc" id="L157">	}</span>
+
+	/**
+	 * Get the Property::setterOperationID
+	 * @return the setterOperationID
+	 */
+
+	public OperationID getSetterOperationID() {
+<span class="fc" id="L165">		return setterOperationID;</span>
+	}
+
+	/**
+	 * Set the Property::setterOperationID
+	 * @param newsetterOperationID
+	 *            the setterOperationID to set
+	 */
+	public void setSetterOperationID(final OperationID newsetterOperationID) {
+<span class="fc" id="L174">		this.setterOperationID = newsetterOperationID;</span>
+<span class="fc" id="L175">	}</span>
+
+	/********** RTOUMA: GETTER IMPLEMENTATION ID **********/
+	/**
+	 * Get the Property::getterImplementationID
+	 * @return the getterImplementationID
+	 */
+
+	public ImplementationID getGetterImplementationID() {
+<span class="fc" id="L184">		return getterImplementationID;</span>
+	}
+
+	/**
+	 * Set the Property::getterImplementationID
+	 * @param newGetterImplementationID
+	 *            the getterImplementationID to set
+	 */
+	public void setGetterImplementationID(final ImplementationID newGetterImplementationID) {
+<span class="fc" id="L193">		this.getterImplementationID = newGetterImplementationID;</span>
+<span class="fc" id="L194">	}</span>
+
+	/******************************************************/
+
+	/**
+	 * Get the Property::metaClassID
+	 * @return the metaClassID
+	 */
+
+	public MetaClassID getMetaClassID() {
+<span class="fc" id="L204">		return metaClassID;</span>
+	}
+
+	/**
+	 * Set the Property::metaClassID
+	 * @param newmetaClassID
+	 *            the metaClassID to set
+	 */
+	public void setMetaClassID(final MetaClassID newmetaClassID) {
+<span class="fc" id="L213">		this.metaClassID = newmetaClassID;</span>
+<span class="fc" id="L214">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L218">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L219">		return yaml.dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L224">		return Objects.hash(this.namespace, this.className, this.name);</span>
+	}
+
+	@Override
+	public boolean equals(final Object t) {
+<span class="nc bnc" id="L229" title="All 2 branches missed.">		if (t instanceof Property) {</span>
+<span class="nc" id="L230">			final Property other = (Property) t;</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">			return this.name.equals(other.getName())</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">					&amp;&amp; this.className.equals(other.getClassName())</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">					&amp;&amp; this.namespace.equals(other.getNamespace());</span>
+		}
+<span class="nc" id="L235">		return false;</span>
+	}
+
+	/**
+	 * Get the Property::position
+	 * @return The position of the property
+	 */
+	public int getPosition() {
+<span class="fc" id="L243">		return position;</span>
+	}
+
+	/**
+	 * Sets the Property::position
+	 * @param newPosition
+	 *            the position to be set
+	 */
+	public void setPosition(final int newPosition) {
+<span class="fc" id="L252">		this.position = newPosition;</span>
+<span class="fc" id="L253">	}</span>
+
+	@Override
+	public int compareTo(final Property other) {
+<span class="fc" id="L257">		return this.getPosition() - other.getPosition();</span>
+	}
+
+	/**
+	 * Get the Property::languageDepInfos
+	 * @return the languageDepInfos
+	 */
+	public Map&lt;Langs, LanguageDependantPropertyInfo&gt; getLanguageDepInfos() {
+<span class="fc" id="L265">		return languageDepInfos;</span>
+	}
+
+	/**
+	 * Get Java language-dependant information of the property
+	 * @return Java language-dependant information of the property
+	 */
+	public JavaPropertyInfo getJavaPropertyInfo() {
+<span class="nc" id="L273">		return (JavaPropertyInfo) languageDepInfos.get(Langs.LANG_JAVA);</span>
+	}
+
+	/**
+	 * Get Python language-dependant information of the property
+	 * @return Python language-dependant information of the property
+	 */
+	public PythonPropertyInfo getPythonPropertyInfo() {
+<span class="nc" id="L281">		return (PythonPropertyInfo) languageDepInfos.get(Langs.LANG_PYTHON);</span>
+	}
+
+	/**
+	 * Set the Property::languageDepInfos
+	 * @param newlanguageDepInfos
+	 *            the languageDepInfos to set
+	 */
+	public void setLanguageDepInfos(final Map&lt;Langs, LanguageDependantPropertyInfo&gt; newlanguageDepInfos) {
+<span class="fc" id="L290">		this.languageDepInfos = newlanguageDepInfos;</span>
+<span class="fc" id="L291">	}</span>
+
+	/**
+	 * Add language dependant information
+	 * @param langInfo
+	 *            Language information
+	 */
+	public void addLanguageDepInfo(final LanguageDependantPropertyInfo langInfo) {
+<span class="pc bpc" id="L299" title="1 of 2 branches missed.">		if (langInfo instanceof JavaPropertyInfo) {</span>
+<span class="pc bpc" id="L300" title="1 of 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_JAVA) != null) {</span>
+<span class="nc" id="L301">				throw new PropertyDepInfoAlreadyRegisteredException(Langs.LANG_JAVA.name());</span>
+			} else {
+<span class="fc" id="L303">				this.languageDepInfos.put(Langs.LANG_JAVA, langInfo);</span>
+			}
+<span class="nc bnc" id="L305" title="All 2 branches missed.">		} else if (langInfo instanceof PythonPropertyInfo) {</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_PYTHON) != null) {</span>
+<span class="nc" id="L307">				throw new PropertyDepInfoAlreadyRegisteredException(Langs.LANG_PYTHON.name());</span>
+			} else {
+<span class="nc" id="L309">				this.languageDepInfos.put(Langs.LANG_PYTHON, langInfo);</span>
+			}
+		}
+<span class="fc" id="L312">	}</span>
+
+	/**
+	 * Get the Property::namespaceID
+	 * @return the namespaceID
+	 */
+	public NamespaceID getNamespaceID() {
+<span class="fc" id="L319">		return namespaceID;</span>
+	}
+
+	/**
+	 * Set the Property::namespaceID
+	 * @param newnamespaceID
+	 *            the namespaceID to set
+	 */
+	public void setNamespaceID(final NamespaceID newnamespaceID) {
+<span class="fc" id="L328">		this.namespaceID = newnamespaceID;</span>
+<span class="fc" id="L329">	}</span>
+
+	/**
+	 * Get namespace
+	 * @return the namespace
+	 */
+	public String getNamespace() {
+<span class="fc" id="L336">		return namespace;</span>
+	}
+
+	/**
+	 * Set namespace
+	 * @param newnamespace
+	 *            the namespace to set
+	 */
+	public void setNamespace(final String newnamespace) {
+<span class="fc" id="L345">		this.namespace = newnamespace;</span>
+<span class="fc" id="L346">	}</span>
+
+	/**
+	 * Get className
+	 * @return the className
+	 */
+	public String getClassName() {
+<span class="fc" id="L353">		return className;</span>
+	}
+
+	/**
+	 * Set className
+	 * @param newclassName
+	 *            the className to set
+	 */
+	public void setClassName(final String newclassName) {
+<span class="fc" id="L362">		this.className = newclassName;</span>
+<span class="fc" id="L363">	}</span>
+
+	/**
+	 * Get setterImplementationID
+	 * @return the setterImplementationID
+	 */
+	public ImplementationID getSetterImplementationID() {
+<span class="fc" id="L370">		return setterImplementationID;</span>
+	}
+
+	/**
+	 * Set setterImplementationID
+	 * @param newsetterImplementationID
+	 *            the setterImplementationID to set
+	 */
+	public void setSetterImplementationID(final ImplementationID newsetterImplementationID) {
+<span class="fc" id="L379">		this.setterImplementationID = newsetterImplementationID;</span>
+<span class="fc" id="L380">	}</span>
+
+	/**
+	 * Get the Property::updateOperationID
+	 * @return the updateOperationID
+	 */
+
+	public OperationID getUpdateOperationID() {
+<span class="fc" id="L388">		return updateOperationID;</span>
+	}
+
+	/**
+	 * Set the Property::updateOperationID
+	 * @param newUpdateOperationID
+	 *            the setterOperationID to set
+	 */
+	public void setUpdateOperationID(final OperationID newUpdateOperationID) {
+<span class="fc" id="L397">		this.updateOperationID = newUpdateOperationID;</span>
+<span class="fc" id="L398">	}</span>
+
+	/**
+	 * Get updateImplementationID
+	 * @return the updateImplementationID
+	 */
+	public ImplementationID getUpdateImplementationID() {
+<span class="fc" id="L405">		return updateImplementationID;</span>
+	}
+
+	/**
+	 * Set updateImplementationID
+	 * @param newUpdateImplementationID
+	 *            the setterImplementationID to set
+	 */
+	public void setUpdateImplementationID(final ImplementationID newUpdateImplementationID) {
+<span class="fc" id="L414">		this.updateImplementationID = newUpdateImplementationID;</span>
+<span class="fc" id="L415">	}</span>
+
+	/**
+	 * Get annotations
+	 * @return List of property's annotations
+	 */
+	public List&lt;Annotation&gt; getAnnotations() {
+<span class="fc" id="L422">		return annotations;</span>
+	}
+
+	/**
+	 * Set annotations
+	 * @param annotations
+	 *            the list of annotations to set
+	 */
+	public void setAnnotations(final List&lt;Annotation&gt; annotations) {
+<span class="fc" id="L431">		this.annotations = annotations;</span>
+<span class="pc bpc" id="L432" title="1 of 2 branches missed.">		for(Annotation a: annotations) {</span>
+<span class="nc bnc" id="L433" title="All 2 branches missed.">			if(a.getDescr().contains(Replication.class.getCanonicalName().replace('.', '/'))) {</span>
+<span class="nc" id="L434">				isReplicated = true;</span>
+<span class="nc" id="L435">				break;</span>
+			}
+<span class="nc" id="L437">		}</span>
+<span class="fc" id="L438">	}</span>
+
+	/**
+	 * Add an annotation to the property
+	 * @param annotation
+	 *            the annotation to add
+	 */
+	public void addAnnotation(final Annotation annotation) {
+<span class="nc" id="L446">		annotations.add(annotation);</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">		if(annotation.getDescr().contains(Replication.class.getCanonicalName().replace('.', '/'))) {</span>
+<span class="nc" id="L448">			isReplicated = true;</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">			if(annotation.getDescr().contains(&quot;InMaster&quot;)) {</span>
+<span class="nc" id="L450">				inMaster = true;</span>
+			}
+		}
+<span class="nc" id="L453">	}</span>
+
+	public String getAfterUpdate() {
+<span class="fc" id="L456">		return afterUpdate;</span>
+	}
+
+	public void setAfterUpdate(String afterUpdate) {
+<span class="fc" id="L460">		this.afterUpdate = afterUpdate;</span>
+<span class="fc" id="L461">	}</span>
+
+	public String getBeforeUpdate() {
+<span class="fc" id="L464">		return beforeUpdate;</span>
+	}
+
+	public void setBeforeUpdate(String beforeUpdate) {
+<span class="fc" id="L468">		this.beforeUpdate = beforeUpdate;</span>
+<span class="fc" id="L469">	}</span>
+
+	public boolean getInMaster() {
+<span class="fc" id="L472">		return inMaster;</span>
+	}
+
+	public void setInMaster(boolean inMaster) {
+<span class="fc" id="L476">		this.inMaster = inMaster;</span>
+<span class="fc" id="L477">	}</span>
+
+	public boolean isReplicated() {
+<span class="fc" id="L480">		return this.isReplicated;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

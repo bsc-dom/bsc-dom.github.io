@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JarUtils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util</a> &gt; <span class="el_source">JarUtils.java</span></div><h1>JarUtils.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
+
+import es.bsc.dataclay.exceptions.DataClayRuntimeException;
+import es.bsc.dataclay.exceptions.ErrorDefs.ERRORCODE;
+
+/** Jar utilites. */
+public final class JarUtils {
+
+	/** Max bytes in buffer. */
+	private static final int MAX_BYTES = 1024;
+
+	/**
+	 * Utility classes should have a private constructor.
+	 */
+	private JarUtils() {
+
+	}
+
+	/**
+	 * Read Jar file into byte array
+	 * @param path
+	 *            Path of the Jar file
+	 * @return Byte array representation of the Jar file
+	 */
+	public static byte[] readJar(final String path) {
+<span class="nc" id="L36">		byte[] result = null;</span>
+		try {
+<span class="nc" id="L38">			final FileInputStream fis = new FileInputStream(path);</span>
+			// System.out.println(file.exists() + &quot;!!&quot;);
+			// InputStream in = resource.openStream();
+<span class="nc" id="L41">			final ByteArrayOutputStream bos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L42">			final byte[] buf = new byte[MAX_BYTES];</span>
+<span class="nc" id="L43">			int totalbytes = 0;</span>
+<span class="nc" id="L44">			int readNum = fis.read(buf);</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">			while (readNum != -1) {</span>
+<span class="nc" id="L46">				bos.write(buf, 0, readNum); // no doubt here is 0</span>
+				// Writes len bytes from the specified byte array starting at offset off to this byte array output stream.
+<span class="nc" id="L48">				totalbytes += readNum;</span>
+<span class="nc" id="L49">				readNum = fis.read(buf);</span>
+			}
+<span class="nc" id="L51">			System.out.println(&quot;[DATACLAY] Library serialized: &quot; + totalbytes + &quot; bytes&quot;);</span>
+<span class="nc" id="L52">			result = bos.toByteArray();</span>
+<span class="nc" id="L53">			fis.close();</span>
+<span class="nc" id="L54">		} catch (Exception e) {</span>
+<span class="nc" id="L55">			e.printStackTrace();</span>
+<span class="nc" id="L56">			throw new DataClayRuntimeException(ERRORCODE.ERROR_DEPLOYING_LIB, &quot;Error while reading Jar&quot;, true);</span>
+<span class="nc" id="L57">		}</span>
+<span class="nc" id="L58">		return result;</span>
+	}
+
+	/**
+	 * Write jar into disk from bytes
+	 * @param jarPath
+	 *            Path of jar
+	 * @param jarBytes
+	 *            Bytes of jar
+	 */
+	public static void writeJar(final String jarPath, final byte[] jarBytes) {
+		try {
+<span class="nc" id="L70">			final File newFile = new File(jarPath);</span>
+<span class="nc" id="L71">			newFile.getParentFile().mkdirs();</span>
+<span class="nc" id="L72">			newFile.createNewFile();</span>
+<span class="nc" id="L73">			final FileOutputStream fos = new FileOutputStream(newFile);</span>
+<span class="nc" id="L74">			fos.write(jarBytes);</span>
+<span class="nc" id="L75">			fos.flush();</span>
+<span class="nc" id="L76">			fos.close();</span>
+<span class="nc" id="L77">		} catch (Exception e) {</span>
+<span class="nc" id="L78">			e.printStackTrace();</span>
+<span class="nc" id="L79">			throw new DataClayRuntimeException(ERRORCODE.ERROR_DEPLOYING_LIB, &quot;Error while writing Jar&quot;, true);</span>
+<span class="nc" id="L80">		}</span>
+<span class="nc" id="L81">	}</span>
+
+	/**
+	 * Get all class names in JAR
+	 * @param jarPath
+	 *            Path to JAR
+	 * @return List of class names in JAR
+	 * @throws Exception
+	 *             if some exception occurs.
+	 */
+	public static List&lt;String&gt; getAllClassesInJar(final String jarPath) throws Exception {
+<span class="nc" id="L92">		final List&lt;String&gt; classNames = new ArrayList&lt;String&gt;();</span>
+<span class="nc" id="L93">		ZipInputStream zip = null;</span>
+		try {
+<span class="nc" id="L95">			zip = new ZipInputStream(new FileInputStream(jarPath));</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">			for (ZipEntry entry = zip.getNextEntry(); entry != null; entry = zip.getNextEntry()) {</span>
+<span class="nc bnc" id="L97" title="All 4 branches missed.">				if (!entry.isDirectory() &amp;&amp; entry.getName().endsWith(&quot;.class&quot;)) {</span>
+					// This ZipEntry represents a class. Now, what class does it represent?
+<span class="nc" id="L99">					final String className = entry.getName().replace('/', '.'); // including &quot;.class&quot;</span>
+<span class="nc" id="L100">					classNames.add(className.substring(0, className.length() - &quot;.class&quot;.length()));</span>
+				}
+			}
+<span class="nc" id="L103">		} catch (Exception e) {</span>
+<span class="nc" id="L104">			e.printStackTrace();</span>
+<span class="nc" id="L105">			throw new Exception(&quot;Error while listing classes in Jar &quot; + jarPath);</span>
+		} finally {
+<span class="nc" id="L107">			zip.close();</span>
+		}
+<span class="nc" id="L109">		return classNames;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayClassesFileGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.tools.java</a> &gt; <span class="el_source">DataClayClassesFileGenerator.java</span></div><h1>DataClayClassesFileGenerator.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.util.tools.java;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
+
+import org.reflections.Reflections;
+import org.reflections.scanners.ResourcesScanner;
+import org.reflections.scanners.SubTypesScanner;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
+import org.reflections.util.FilterBuilder;
+
+/**
+ * This class generates/updates a file with names of all dataClay classes for SpecGenerator to ignore.
+ *
+ */
+<span class="nc" id="L21">public class DataClayClassesFileGenerator {</span>
+
+	/**
+	 * Main method.
+	 * @param args No arguments
+	 * @throws IOException if cannot write into file
+	 */
+	public static void main(final String[] args) throws IOException {
+<span class="nc" id="L29">		System.out.println(&quot;** Welcome **&quot;);</span>
+
+<span class="nc" id="L31">		final List&lt;ClassLoader&gt; classLoadersList = new LinkedList&lt;&gt;();</span>
+<span class="nc" id="L32">		classLoadersList.add(ClasspathHelper.contextClassLoader());</span>
+<span class="nc" id="L33">		classLoadersList.add(ClasspathHelper.staticClassLoader());</span>
+
+<span class="nc" id="L35">		final Reflections reflections = new Reflections(new ConfigurationBuilder()</span>
+<span class="nc" id="L36">		    .setScanners(new SubTypesScanner(false /* don't exclude Object.class */), new ResourcesScanner())</span>
+<span class="nc" id="L37">		    .setUrls(ClasspathHelper.forClassLoader(classLoadersList.toArray(new ClassLoader[0])))</span>
+<span class="nc" id="L38">		    .filterInputsBy(new FilterBuilder()</span>
+<span class="nc" id="L39">    				.includePackage(&quot;es.bsc.dataclay&quot;).includePackage(&quot;storage&quot;))</span>
+				);
+<span class="nc" id="L41">		final Set&lt;Class&lt;?&gt;&gt; allClasses = reflections.getSubTypesOf(Object.class);</span>
+<span class="nc" id="L42">		final Properties prop = new Properties();</span>
+<span class="nc" id="L43">		int i = 0;</span>
+<span class="nc bnc" id="L44" title="All 2 branches missed.">		for (final Class&lt;?&gt; cl : allClasses) { </span>
+<span class="nc" id="L45">			prop.setProperty(cl.getName(), String.valueOf(i));</span>
+<span class="nc" id="L46">			i++;</span>
+			
+<span class="nc" id="L48">		}</span>
+<span class="nc" id="L49">		System.out.println(&quot;Done! Found &quot; + allClasses.size() + &quot; classes!&quot;);</span>
+<span class="nc" id="L50">		try (FileWriter writer = new FileWriter(&quot;./dataclay_classnames.properties&quot;)) {</span>
+<span class="nc" id="L51">			prop.store(writer, &quot;DataClay classes&quot;);</span>
+		}
+<span class="nc" id="L53">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

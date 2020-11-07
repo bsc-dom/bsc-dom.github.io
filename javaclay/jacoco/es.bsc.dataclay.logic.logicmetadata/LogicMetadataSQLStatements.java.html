@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogicMetadataSQLStatements.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.logicmetadata</a> &gt; <span class="el_source">LogicMetadataSQLStatements.java</span></div><h1>LogicMetadataSQLStatements.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.logicmetadata;
+
+import java.util.ResourceBundle;
+
+/**
+ * This class represents SQL statements.
+ */
+public final class LogicMetadataSQLStatements {
+
+	/** Properties. */
+<span class="nc" id="L12">	private static ResourceBundle props = null;</span>
+
+	/**
+	 * Utility classes should have private constructor.
+	 */
+	private LogicMetadataSQLStatements() {
+
+	}
+
+	/**
+	 * Init properties of the properties file
+	 */
+	static {
+<span class="nc bnc" id="L25" title="All 2 branches missed.">		if (props == null) {</span>
+<span class="nc" id="L26">			props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.logicmodule_metadata_sql&quot;);</span>
+		}
+<span class="nc" id="L28">	}</span>
+
+	/**
+	 * This enumeration represent all possible SQL statements.
+	 */
+<span class="nc" id="L33">	public enum SqlStatements {</span>
+
+		/** Create table. */
+<span class="nc" id="L36">		CREATE_TABLE_LOGICMODULE,</span>
+
+		/** Drop table. */
+<span class="nc" id="L39">		DROP_TABLE_LOGICMODULE,</span>
+
+		/** Insert. */
+<span class="nc" id="L42">		INSERT_LOGICMODULE,</span>
+
+		/** Exists. */
+<span class="nc" id="L45">		EXISTS_LOGICMODULE_BY_ID,</span>
+
+		/** Select. */
+<span class="nc" id="L48">		SELECT_LOGICMODULE;</span>
+
+		/** SQL statement. */
+		private String sqlStatement;
+
+		/**
+		 * Init properties of the properties file
+		 */
+		private void init() {
+<span class="nc" id="L57">			final String sqlSt = props.getString(this.name());</span>
+<span class="nc" id="L58">			setSqlStatement(sqlSt);</span>
+<span class="nc" id="L59">		}</span>
+
+		/**
+		 * Get the sqlStatement
+		 * @return the sqlStatement
+		 */
+		public String getSqlStatement() {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">			if (sqlStatement == null) {</span>
+<span class="nc" id="L67">				init();</span>
+			}
+<span class="nc" id="L69">			return sqlStatement;</span>
+		}
+
+		/**
+		 * Set the sqlStatement
+		 * @param newsqlStatement
+		 *            the sqlStatement
+		 */
+		public void setSqlStatement(final String newsqlStatement) {
+<span class="nc" id="L78">			sqlStatement = newsqlStatement;</span>
+<span class="nc" id="L79">		}</span>
+
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

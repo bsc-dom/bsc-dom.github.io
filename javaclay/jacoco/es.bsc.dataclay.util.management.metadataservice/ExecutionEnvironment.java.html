@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExecutionEnvironment.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.metadataservice</a> &gt; <span class="el_source">ExecutionEnvironment.java</span></div><h1>ExecutionEnvironment.java</h1><pre class="source lang-java linenums">
+/**
+ * @file ExecutionEnvironment.java
+ * @date Nov 26, 2015
+ */
+package es.bsc.dataclay.util.management.metadataservice;
+
+import es.bsc.dataclay.api.Backend;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+
+/**
+ * This class represents the information of a ExecutionEnvironment.
+ */
+public final class ExecutionEnvironment extends MgrObject&lt;ExecutionEnvironmentID&gt; implements Backend {
+
+	/** Name of the DataService (shared with the StorageLocation). */
+	private String name;
+	/** Host name of the Execution environment. */
+	private String hostname;
+	/** Port of the Execution Environment. */
+	private int port;
+	/** Language for the Execution Environment. */
+	private Langs lang;
+
+	/**
+	 * Empty constructor of the ExecutionEnvironment
+	 */
+<span class="nc" id="L30">	public ExecutionEnvironment() {</span>
+
+<span class="nc" id="L32">	}</span>
+
+	/**
+	 * ExecutionEnvironment specification constructor
+	 * 
+	 * @param newhostname
+	 *            Host name of the Execution Environment
+	 * @param newname
+	 *            Name of the Execution Environment
+	 * @param newtcpport
+	 *            TCP Port of the Execution Environment
+	 * @param newlang
+	 *            Language for this Execution Environment
+	 */
+	public ExecutionEnvironment(final String newhostname, final String newname,
+<span class="fc" id="L47">			final int newtcpport, final Langs newlang) {</span>
+<span class="fc" id="L48">		this.setDataClayID(new ExecutionEnvironmentID());</span>
+<span class="fc" id="L49">		this.setHostname(newhostname);</span>
+<span class="fc" id="L50">		this.setName(newname);</span>
+<span class="fc" id="L51">		this.setPort(newtcpport);</span>
+<span class="fc" id="L52">		this.setLang(newlang);</span>
+<span class="fc" id="L53">	}</span>
+
+	/**
+	 * Get the ExecutionEnvironment::hostname
+	 * 
+	 * @return the hostname
+	 */
+	@Override
+	public String getHostname() {
+<span class="fc" id="L62">		return hostname;</span>
+	}
+
+	/**
+	 * Set the ExecutionEnvironment::hostname
+	 * 
+	 * @param newhostname
+	 *            the hostname to set
+	 */
+	@Override
+	public void setHostname(final String newhostname) {
+<span class="fc" id="L73">		this.hostname = newhostname;</span>
+<span class="fc" id="L74">	}</span>
+
+	/**
+	 * Get the ExecutionEnvironment::name
+	 * 
+	 * @return the name
+	 */
+	@Override
+	public String getName() {
+<span class="fc" id="L83">		return name;</span>
+	}
+
+	/**
+	 * Set the ExecutionEnvironment::name
+	 * 
+	 * @param newname
+	 *            the name to set
+	 */
+	@Override
+	public void setName(final String newname) {
+<span class="fc" id="L94">		this.name = newname;</span>
+<span class="fc" id="L95">	}</span>
+
+	/**
+	 * Get the ExecutionEnvironment::storageTCPPort
+	 * 
+	 * @return the port
+	 */
+
+	@Override
+	public int getPort() {
+<span class="fc" id="L105">		return port;</span>
+	}
+
+	/**
+	 * Set the ExecutionEnvironment::port
+	 * 
+	 * @param newport
+	 *            the port to set
+	 */
+	@Override
+	public void setPort(final int newport) {
+<span class="fc" id="L116">		this.port = newport;</span>
+<span class="fc" id="L117">	}</span>
+
+	/**
+	 * Set the ExecutionEnvironment::storageTCPPort
+	 * 
+	 * @return the language of this Execution Environment
+	 */
+	@Override
+	public Langs getLang() {
+<span class="fc" id="L126">		return lang;</span>
+	}
+
+	/**
+	 * Set the ExecutionEnvironment::lang
+	 * 
+	 * @param newlang
+	 *            the Language for this Execution Environment
+	 */
+	@Override
+	public void setLang(final Langs newlang) {
+<span class="fc" id="L137">		this.lang = newlang;</span>
+<span class="fc" id="L138">	}</span>
+
+	/**
+	 * Get addrees of this EE.
+	 * 
+	 * @return Address.
+	 */
+	public String getAddress() {
+<span class="fc" id="L146">		return this.hostname + &quot;:&quot; + this.port;</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L151">		return &quot;[EE/&quot; + name + &quot;/&quot; + this.getAddress() + &quot;]&quot;;</span>
+	}
+
+	/**
+	 * This operation allows to compare this object with other object.
+	 * 
+	 * @param t
+	 *            Object to compare
+	 * @return If the object is the same, returns TRUE. FALSE, otherwise.
+	 */
+	@Override
+	public boolean equals(final Object t) {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">		if (t instanceof ExecutionEnvironment) {</span>
+<span class="nc" id="L164">			final ExecutionEnvironment other = (ExecutionEnvironment) t;</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">			return other.getHostname().equals(this.getHostname())</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">					&amp;&amp; other.getLang().equals(this.getLang())</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">					&amp;&amp; other.getName().equals(this.getName())</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">					&amp;&amp; other.getPort() == this.getPort();</span>
+		}
+<span class="nc" id="L170">		return false;</span>
+	}
+
+	/**
+	 * This operation allows to compare with other Object by setting its Java default Hashcode to a constant. It is necessary to
+	 * override the equality function.
+	 * 
+	 * @return the hashcode
+	 * @see equals(Object)
+	 */
+	@Override
+	public int hashCode() {
+<span class="nc" id="L182">		return this.name.hashCode();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

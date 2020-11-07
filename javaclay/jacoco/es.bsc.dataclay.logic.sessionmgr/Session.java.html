@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Session.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.sessionmgr</a> &gt; <span class="el_source">Session.java</span></div><h1>Session.java</h1><pre class="source lang-java linenums">
+/**
+ * @file Session.java
+ * @date May 31, 2013
+ */
+package es.bsc.dataclay.logic.sessionmgr;
+
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.ids.SessionID;
+import es.bsc.dataclay.util.management.sessionmgr.SessionContract;
+import es.bsc.dataclay.util.management.sessionmgr.SessionDataContract;
+import es.bsc.dataclay.util.management.sessionmgr.SessionInterface;
+import es.bsc.dataclay.util.management.sessionmgr.SessionProperty;
+
+/**
+ * This class represents a Session.
+ * 
+ */
+public final class Session extends MgrObject&lt;SessionID&gt; {
+	
+	// === YAML SPECIFICATION === // 
+	// Properties must be public for YAML parsing.
+	//CHECKSTYLE:OFF
+
+	
+	//CHECKSTYLE:ON
+	// ==== DYNAMIC FIELDS ==== //
+	/** Account ID of the Session. */
+	private AccountID accountID;
+	/** Visible properties per class. */
+	private Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; propertiesOfClasses;
+	/** Session contracts. */
+	private Map&lt;ContractID, SessionContract&gt; sessionContracts;
+	/** Session contracts. */
+	private Map&lt;DataContractID, SessionDataContract&gt; sessionDataContracts;
+	/** Data Contract of store. */
+	private DataContractID dataContractIDofStore;
+	/** End date of the session. */
+	private Calendar endDate;
+	/** Programming language for the session. */
+	private Langs language;
+	
+	/** id of the external dataClayID */
+	private DataClayInstanceID extDataClayID;
+
+	/** Struct to store stub interface bitmaps. */
+	private Map&lt;MetaClassID, byte[]&gt; ifaceBitmaps;
+
+	/**
+	 * Empty constructor
+	 */
+<span class="fc" id="L65">	public Session() {</span>
+
+<span class="fc" id="L67">	}</span>
+	
+	/**
+	 * minimal session for external dataClay acting on shared objects
+	 * @param newExtDataClayID id of the external dataClay instance
+	 * @param newendDate 
+	 * @param newlanguage 
+	 * @param newaccountID 
+	 */
+<span class="nc" id="L76">	public Session(final DataClayInstanceID newExtDataClayID, AccountID newaccountID, Langs newlanguage, Calendar newEndDate) {</span>
+<span class="nc" id="L77">		setExtDataClayID(newExtDataClayID);</span>
+<span class="nc" id="L78">		setAccountID(newaccountID);</span>
+<span class="nc" id="L79">		setLanguage(newlanguage);</span>
+<span class="nc" id="L80">		setEndDate(newEndDate);</span>
+<span class="nc" id="L81">	}</span>
+
+	/**
+	 * Session constructor
+	 * @param newaccountID
+	 *            ID of the Account of the session
+	 * @param newsessionContracts
+	 *            Session contracts
+	 * @param newsessionDataContracts
+	 *            Session data contracts
+	 * @param newdataContractIDofStore
+	 *            DataContract ID where objects will be stored using this session
+	 * @param newEndDate
+	 *            Ende date of the session.
+	 * @param newlanguage
+	 *            Programming language for the session (datasets and namespaces of contracts).
+	 * @param newifaceBitmaps
+	 *            interface bitmaps for the session.
+	 */
+	public Session(final AccountID newaccountID, final Map&lt;ContractID, SessionContract&gt; newsessionContracts,
+			final Map&lt;DataContractID, SessionDataContract&gt; newsessionDataContracts,
+			final DataContractID newdataContractIDofStore, final Calendar newEndDate, final Langs newlanguage,
+<span class="fc" id="L103">			final Map&lt;MetaClassID, byte[]&gt; newifaceBitmaps) {		</span>
+<span class="fc" id="L104">		this.setAccountID(newaccountID);</span>
+<span class="fc" id="L105">		this.setSessionContracts(newsessionContracts);</span>
+<span class="fc" id="L106">		this.setSessionDataContracts(newsessionDataContracts);</span>
+<span class="fc" id="L107">		this.setDataContractIDofStore(newdataContractIDofStore);</span>
+<span class="fc" id="L108">		this.setEndDate(newEndDate);</span>
+<span class="fc" id="L109">		this.setLanguage(newlanguage);</span>
+<span class="fc" id="L110">		this.setIfaceBitmaps(newifaceBitmaps);</span>
+		
+		// Set the dataClayID for the MgrObject
+<span class="fc" id="L113">		this.setDataClayID(new SessionID());</span>
+
+<span class="fc" id="L115">		final Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; classProperties = new HashMap&lt;MetaClassID, Set&lt;PropertyID&gt;&gt;();</span>
+<span class="fc bfc" id="L116" title="All 2 branches covered.">		for (SessionContract sessionContract : newsessionContracts.values()) {</span>
+<span class="fc bfc" id="L117" title="All 2 branches covered.">			for (SessionInterface sessionInterface : sessionContract.getSessionInterfaces().values()) {</span>
+<span class="fc" id="L118">				final MetaClassID classID = sessionInterface.getClassOfInterface();</span>
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">				if (!classProperties.containsKey(classID)) {</span>
+<span class="fc" id="L120">					classProperties.put(classID, new HashSet&lt;PropertyID&gt;());</span>
+				}
+<span class="fc" id="L122">				final Set&lt;PropertyID&gt; propsOfClass = new HashSet&lt;PropertyID&gt;();</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">				if (sessionInterface.getSessionProperties() != null) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">					for (SessionProperty sessionProperty : sessionInterface.getSessionProperties().values()) {</span>
+<span class="nc" id="L125">						final PropertyID propID = sessionProperty.getPropertyID();</span>
+<span class="nc" id="L126">						propsOfClass.add(propID);</span>
+<span class="nc" id="L127">					}</span>
+<span class="nc" id="L128">					classProperties.get(classID).addAll(propsOfClass);</span>
+				}
+<span class="fc" id="L130">			}</span>
+<span class="fc" id="L131">		}</span>
+<span class="fc" id="L132">		this.setPropertiesOfClasses(classProperties);</span>
+<span class="fc" id="L133">	}</span>
+
+	/**
+	 * Get the Session::accountID
+	 * @return the accountID
+	 */
+
+	public AccountID getAccountID() {
+<span class="fc" id="L141">		return accountID;</span>
+	}
+
+	/**
+	 * Set the Session::accountID
+	 * @param newaccountID
+	 *            the accountID to set
+	 */
+	public void setAccountID(final AccountID newaccountID) {
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">		if (newaccountID == null) {</span>
+<span class="nc" id="L151">			throw new IllegalArgumentException(&quot;AccountID cannot be null&quot;);</span>
+		}
+<span class="fc" id="L153">		this.accountID = newaccountID;</span>
+<span class="fc" id="L154">	}</span>
+
+	/**
+	 * Get the Session::sessionContracts
+	 * @return the sessionContracts
+	 */
+
+	public Map&lt;ContractID, SessionContract&gt; getSessionContracts() {
+<span class="fc" id="L162">		return sessionContracts;</span>
+	}
+
+	/**
+	 * Set the Session::sessionContracts
+	 * @param newsessionContracts
+	 *            the sessionContracts to set
+	 */
+	public void setSessionContracts(final Map&lt;ContractID, SessionContract&gt; newsessionContracts) {
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">		if (newsessionContracts == null) {</span>
+<span class="nc" id="L172">			throw new IllegalArgumentException(&quot;Session contracts cannot be null&quot;);</span>
+		}
+<span class="fc" id="L174">		this.sessionContracts = newsessionContracts;</span>
+<span class="fc" id="L175">	}</span>
+
+	/**
+	 * Get the Session::sessionDataContracts
+	 * @return the sessionDataContracts
+	 */
+	public Map&lt;DataContractID, SessionDataContract&gt; getSessionDataContracts() {
+<span class="fc" id="L182">		return sessionDataContracts;</span>
+	}
+
+	/**
+	 * Set the Session::sessionDataContracts
+	 * @param newsessionDataContracts
+	 *            the sessionDataContracts to set
+	 */
+	public void setSessionDataContracts(final Map&lt;DataContractID, SessionDataContract&gt; newsessionDataContracts) {
+<span class="pc bpc" id="L191" title="1 of 2 branches missed.">		if (newsessionDataContracts == null) {</span>
+<span class="nc" id="L192">			throw new IllegalArgumentException(&quot;sessionDataContracts cannot be null&quot;);</span>
+		}
+<span class="fc" id="L194">		this.sessionDataContracts = newsessionDataContracts;</span>
+<span class="fc" id="L195">	}</span>
+
+	/**
+	 * Get the Session::isActive
+	 * @return the isActive
+	 */
+
+	public boolean isActive() {
+<span class="fc" id="L203">		return this.endDate.after(Calendar.getInstance());</span>
+	}
+
+	/**
+	 * Get the Session::maxEndDate
+	 * @return the maxEndDate
+	 */
+	public Calendar getEndDate() {
+<span class="fc" id="L211">		return this.endDate;</span>
+	}
+
+	/**
+	 * Set the Session::endDate
+	 * @param newEndDate
+	 *            the endDate to set
+	 */
+	public void setEndDate(final Calendar newEndDate) {
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">		if (newEndDate == null) {</span>
+<span class="nc" id="L221">			throw new IllegalArgumentException(&quot;newEndDate cannot be null&quot;);</span>
+		}
+<span class="fc" id="L223">		this.endDate = newEndDate;</span>
+
+		// When calling getTimeInMillis, the current calendar sets the field time needed
+		// to be stored and compared afterwards
+<span class="fc" id="L227">		this.endDate.getTimeInMillis();</span>
+<span class="fc" id="L228">	}</span>
+
+	/**
+	 * Get the Session::dataContractIDofStore
+	 * @return the dataContractIDofStore
+	 */
+	public DataContractID getDataContractIDofStore() {
+<span class="fc" id="L235">		return dataContractIDofStore;</span>
+	}
+
+	/**
+	 * Set the Session::dataContractIDofStore
+	 * @param newdataContractIDofStore
+	 *            the dataContractIDofStore to set
+	 */
+	public void setDataContractIDofStore(final DataContractID newdataContractIDofStore) {
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">		if (newdataContractIDofStore == null) {</span>
+<span class="nc" id="L245">			throw new IllegalArgumentException(&quot;dataContractIDofStore cannot be null&quot;);</span>
+		}
+<span class="fc" id="L247">		this.dataContractIDofStore = newdataContractIDofStore;</span>
+<span class="fc" id="L248">	}</span>
+
+	/**
+	 * Get the Session::language
+	 * @return the language
+	 */
+	public Langs getLanguage() {
+<span class="fc" id="L255">		return language;</span>
+	}
+
+	/**
+	 * Set the Session::language
+	 * @param newlanguage
+	 *            the language to set
+	 */
+	public void setLanguage(final Langs newlanguage) {
+<span class="pc bpc" id="L264" title="1 of 2 branches missed.">		if (newlanguage == null) {</span>
+<span class="nc" id="L265">			throw new IllegalArgumentException(&quot;language cannot be null&quot;);</span>
+		}
+<span class="fc" id="L267">		this.language = newlanguage;</span>
+<span class="fc" id="L268">	}</span>
+
+	/**
+	 * Get the Session::propertiesOfClasses
+	 * @return the propertiesOfClasses
+	 */
+	public Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; getPropertiesOfClasses() {
+<span class="fc" id="L275">		return propertiesOfClasses;</span>
+	}
+
+	/**
+	 * Set the Session::propertiesOfClasses
+	 * @param newpropertiesOfClasses
+	 *            the propertiesOfClasses to set
+	 */
+	public void setPropertiesOfClasses(final Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; newpropertiesOfClasses) {
+<span class="pc bpc" id="L284" title="1 of 2 branches missed.">		if (newpropertiesOfClasses == null) {</span>
+<span class="nc" id="L285">			throw new IllegalArgumentException(&quot;propertiesOfClasses cannot be null&quot;);</span>
+		}
+<span class="fc" id="L287">		this.propertiesOfClasses = newpropertiesOfClasses;</span>
+<span class="fc" id="L288">	}</span>
+
+	/**
+	 * Get the Session::ifaceBitmaps
+	 * @return the ifaceBitmaps
+	 */
+	public Map&lt;MetaClassID, byte[]&gt; getIfaceBitmaps() {
+<span class="fc" id="L295">		return ifaceBitmaps;</span>
+	}
+
+	/**
+	 * Set the Session::ifaceBitmaps
+	 * @param newifaceBitmaps
+	 *            the ifaceBitmaps to set
+	 */
+	public void setIfaceBitmaps(final Map&lt;MetaClassID, byte[]&gt; newifaceBitmaps) {
+<span class="pc bpc" id="L304" title="1 of 2 branches missed.">		if (newifaceBitmaps == null) {</span>
+<span class="nc" id="L305">			throw new IllegalArgumentException(&quot;ifaceBitmaps cannot be null&quot;);</span>
+		}
+<span class="fc" id="L307">		this.ifaceBitmaps = newifaceBitmaps;</span>
+<span class="fc" id="L308">	}</span>
+	
+	/**
+	 * Set the Session::extDataClayID
+	 * @param newextDataClayID id to set
+	 */
+	public void setExtDataClayID(final DataClayInstanceID newextDataClayID) {
+<span class="nc" id="L315">		this.extDataClayID = newextDataClayID;</span>
+<span class="nc" id="L316">	}</span>
+	
+	/**
+	 * Get the Session::extDataClayID
+	 * @return the extDataClayID
+	 */
+	public DataClayInstanceID getExtDataClayID() {
+<span class="nc" id="L323">		return this.extDataClayID;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

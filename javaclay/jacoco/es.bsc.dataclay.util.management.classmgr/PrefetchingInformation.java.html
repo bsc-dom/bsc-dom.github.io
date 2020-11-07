@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PrefetchingInformation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr</a> &gt; <span class="el_source">PrefetchingInformation.java</span></div><h1>PrefetchingInformation.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.classmgr;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class presents the information obtained through static source code analysis.
+ * 
+ *
+ */
+public final class PrefetchingInformation {
+
+	/** ID. */
+	private UUID id;
+	/**
+	 * Flag indicating whether the implementation should be monitored at runtime or not (i.e. whether the static prefetching
+	 * results are final or not).
+	 **/
+	private boolean disableDynamicPrefetching;
+
+	/** List of &quot;access chains&quot; containing properties to prefetch. **/
+	private List&lt;List&lt;Property&gt;&gt; propertiesToPrefetch;
+
+	/** Flag to determine whether this implementation needs an inject to a prefetching method. **/
+	private boolean injectPrefetchingCall;
+
+	/** Namespace of the prefetching class. **/
+	private String prefetchingNameSpace;
+
+	/** Name of the prefetching class. **/
+	private String prefetchingClassName;
+
+	/** Signature of the prefetching method. **/
+	private String prefetchingMethodSignature;
+
+	/** ID of the implementation to call in a prefetching method. NULL until set inside dataClay. */
+	public ImplementationID prefetchingImplementationID;
+
+	/** ID of the class to call in a prefetching method. NULL until set inside dataClay. */
+	public MetaClassID prefetchingClassID;
+
+	/**
+	 * Creates an empty PrefetchingInformation.
+	 */
+<span class="fc" id="L54">	public PrefetchingInformation() {</span>
+<span class="fc" id="L55">		this.propertiesToPrefetch = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L56">		this.disableDynamicPrefetching = false;</span>
+<span class="fc" id="L57">		this.injectPrefetchingCall = false;</span>
+<span class="fc" id="L58">		this.prefetchingNameSpace = &quot;&quot;;</span>
+<span class="fc" id="L59">		this.prefetchingClassName = &quot;&quot;;</span>
+<span class="fc" id="L60">		this.prefetchingMethodSignature = &quot;&quot;;</span>
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Get PrefetchingInformation::propertiesToPrefetch.
+	 * 
+	 * @return propertiesToPrefetch
+	 */
+	public List&lt;List&lt;Property&gt;&gt; getPropertiesToPrefetch() {
+<span class="fc" id="L69">		return propertiesToPrefetch;</span>
+	}
+
+	/**
+	 * Set PrefetchingInformation::propertiesToPrefetch.
+	 * 
+	 * @param newPropertiesToPrefetch
+	 *            the propertiesToPrefetch to set
+	 */
+	public void setPropertiesToPrefetch(final List&lt;List&lt;Property&gt;&gt; newPropertiesToPrefetch) {
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">		if (newPropertiesToPrefetch == null) {</span>
+<span class="nc" id="L80">			throw new IllegalArgumentException(&quot;propertiesToPrefetch cannot be null&quot;);</span>
+		}
+<span class="fc" id="L82">		this.propertiesToPrefetch = newPropertiesToPrefetch;</span>
+<span class="fc" id="L83">	}</span>
+
+	/**
+	 * Get PrefetchingInformation::disableDynamicPrefetching.
+	 * 
+	 * @return disableDynamicPrefetching
+	 */
+	public boolean getDisableDynamicPrefetching() {
+<span class="fc" id="L91">		return disableDynamicPrefetching;</span>
+	}
+
+	/**
+	 * Set PrefetchingInformation::disableDynamicPrefetching.
+	 * 
+	 * @param newDisableDynamicPrefetching
+	 *            the disableDynamicPrefetching to set
+	 */
+	public void setDisableDynamicPrefetching(final boolean newDisableDynamicPrefetching) {
+<span class="fc" id="L101">		this.disableDynamicPrefetching = newDisableDynamicPrefetching;</span>
+<span class="fc" id="L102">	}</span>
+
+	/**
+	 * Get PrefetchingInformation::injectPrefetchingCall.
+	 * 
+	 * @return injectPrefetchingCall
+	 */
+	public boolean getInjectPrefetchingCall() {
+<span class="fc" id="L110">		return injectPrefetchingCall;</span>
+	}
+
+	/**
+	 * Set PrefetchingInformation::injectPrefetchingCall.
+	 * 
+	 * @param newInjectPrefetchingCall
+	 *            the injectPrefetchingCall to set
+	 */
+	public void setInjectPrefetchingCall(final boolean newInjectPrefetchingCall) {
+<span class="fc" id="L120">		this.injectPrefetchingCall = newInjectPrefetchingCall;</span>
+<span class="fc" id="L121">	}</span>
+
+	/**
+	 * Get PrefetchingInformation::prefetchingNameSpace.
+	 * 
+	 * @return prefetchingNameSpace
+	 */
+	public String getPrefetchingNameSpace() {
+<span class="fc" id="L129">		return prefetchingNameSpace;</span>
+	}
+
+	/**
+	 * Set PrefetchingInformation::prefetchingNameSpace.
+	 * 
+	 * @param newPrefetchingNameSpace
+	 *            the prefetchingNameSpace to set
+	 */
+	public void setPrefetchingNameSpace(final String newPrefetchingNameSpace) {
+<span class="fc" id="L139">		this.prefetchingNameSpace = newPrefetchingNameSpace;</span>
+<span class="fc" id="L140">	}</span>
+
+	/**
+	 * Get PrefetchingInformation::prefetchingClassName.
+	 * 
+	 * @return prefetchingClassName
+	 */
+	public String getPrefetchingClassName() {
+<span class="fc" id="L148">		return prefetchingClassName;</span>
+	}
+
+	/**
+	 * Set PrefetchingInformation::prefetchingClassName.
+	 * 
+	 * @param newPrefetchingClassName
+	 *            the prefetchingClassName to set
+	 */
+	public void setPrefetchingClassName(final String newPrefetchingClassName) {
+<span class="fc" id="L158">		this.prefetchingClassName = newPrefetchingClassName;</span>
+<span class="fc" id="L159">	}</span>
+
+	/**
+	 * Get PrefetchingInformation::prefetchingMethodName.
+	 * 
+	 * @return prefetchingMethodName
+	 */
+	public String getPrefetchingMethodSignature() {
+<span class="fc" id="L167">		return prefetchingMethodSignature;</span>
+	}
+
+	/**
+	 * Set PrefetchingInformation::prefetchingMethodSignature.
+	 * 
+	 * @param newPrefetchingMethodSignature
+	 *            the prefetchingMethodSignature to set
+	 */
+
+	public void setPrefetchingMethodSignature(final String newPrefetchingMethodSignature) {
+<span class="fc" id="L178">		this.prefetchingMethodSignature = newPrefetchingMethodSignature;</span>
+<span class="fc" id="L179">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L183">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L184">		return yaml.dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L189">		return Objects.hashCode(this.propertiesToPrefetch);</span>
+
+	}
+
+	/**
+	 * @return the id
+	 */
+	public UUID getId() {
+<span class="fc" id="L197">		return id;</span>
+	}
+
+	/**
+	 * @param newid
+	 *            the id to set
+	 */
+	public void setId(final UUID newid) {
+<span class="fc" id="L205">		this.id = newid;</span>
+<span class="fc" id="L206">	}</span>
+
+	/**
+	 * @return the prefetchingImplementationID
+	 */
+	public ImplementationID getPrefetchingImplementationID() {
+<span class="fc" id="L212">		return prefetchingImplementationID;</span>
+	}
+
+	/**
+	 * @param theprefetchingImplementationID
+	 *            the prefetchingImplementationID to set
+	 */
+	public void setPrefetchingImplementationID(final ImplementationID theprefetchingImplementationID) {
+<span class="fc" id="L220">		this.prefetchingImplementationID = theprefetchingImplementationID;</span>
+<span class="fc" id="L221">	}</span>
+
+	/**
+	 * @return the prefetchingClassID
+	 */
+	public MetaClassID getPrefetchingClassID() {
+<span class="fc" id="L227">		return prefetchingClassID;</span>
+	}
+
+	/**
+	 * @param theprefetchingClassID
+	 *            the prefetchingClassID to set
+	 */
+	public void setPrefetchingClassID(final MetaClassID theprefetchingClassID) {
+<span class="fc" id="L235">		this.prefetchingClassID = theprefetchingClassID;</span>
+<span class="fc" id="L236">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

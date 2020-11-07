@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SignatureHeaderTransformer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.headers</a> &gt; <span class="el_source">SignatureHeaderTransformer.java</span></div><h1>SignatureHeaderTransformer.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.java.headers;
+
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.signature.SignatureVisitor;
+import org.objectweb.asm.signature.SignatureWriter;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.util.reflection.Reflector;
+
+/** Signature visitor for renaming super class. */
+public final class SignatureHeaderTransformer extends SignatureVisitor {
+
+	/** Indicates it is a super type. */
+<span class="nc" id="L15">	private boolean isSuperType = false;</span>
+
+	/** Signature next. */
+	private final SignatureVisitor sw;
+
+	/**
+	 * DataClaySignatureVisitor constructor.
+	 * @param nextVs
+	 *            Next visitor
+	 */
+	public SignatureHeaderTransformer(final SignatureVisitor nextVs) {
+<span class="nc" id="L26">		super(Opcodes.ASM7);</span>
+<span class="nc" id="L27">		sw = nextVs;</span>
+<span class="nc" id="L28">	}</span>
+
+	@Override
+	public void visitClassType(final String name) {
+<span class="nc bnc" id="L32" title="All 2 branches missed.">		if (isSuperType) {</span>
+<span class="nc bnc" id="L33" title="All 2 branches missed.">			if (name.equals(&quot;java/lang/Object&quot;)) {</span>
+<span class="nc" id="L34">				sw.visitClassType(Reflector.getInternalNameFromTypeName(DataClayObject.class.getName()));</span>
+			} else {
+<span class="nc" id="L36">				sw.visitClassType(name);</span>
+			}
+<span class="nc" id="L38">			isSuperType = false;</span>
+		} else {
+<span class="nc" id="L40">			sw.visitClassType(name);</span>
+		}
+<span class="nc" id="L42">	}</span>
+
+	@Override
+	public SignatureVisitor visitSuperclass() {
+<span class="nc" id="L46">		isSuperType = true;</span>
+<span class="nc" id="L47">		sw.visitSuperclass();</span>
+<span class="nc" id="L48">		return super.visitSuperclass();</span>
+	}
+
+	/**
+	 * Visits a formal type parameter.
+	 * 
+	 * @param name
+	 *            the name of the formal parameter.
+	 */
+	@Override
+	public void visitFormalTypeParameter(final String name) {
+<span class="nc" id="L59">		sw.visitFormalTypeParameter(name);</span>
+<span class="nc" id="L60">	}</span>
+
+	/**
+	 * Visits the class bound of the last visited formal type parameter.
+	 * 
+	 * @return a non null visitor to visit the signature of the class bound.
+	 */
+	@Override
+	public SignatureVisitor visitClassBound() {
+<span class="nc" id="L69">		sw.visitClassBound();</span>
+<span class="nc" id="L70">		return super.visitClassBound();</span>
+	}
+
+	/**
+	 * Visits an interface bound of the last visited formal type parameter.
+	 * 
+	 * @return a non null visitor to visit the signature of the interface bound.
+	 */
+	@Override
+	public SignatureVisitor visitInterfaceBound() {
+<span class="nc" id="L80">		sw.visitInterfaceBound();</span>
+<span class="nc" id="L81">		return super.visitInterfaceBound();</span>
+	}
+
+	/**
+	 * Visits the type of an interface implemented by the class.
+	 * 
+	 * @return a non null visitor to visit the signature of the interface type.
+	 */
+	@Override
+	public SignatureVisitor visitInterface() {
+<span class="nc" id="L91">		sw.visitInterface();</span>
+<span class="nc" id="L92">		return super.visitInterface();</span>
+	}
+
+	/**
+	 * Visits the type of a method parameter.
+	 * 
+	 * @return a non null visitor to visit the signature of the parameter type.
+	 */
+	@Override
+	public SignatureVisitor visitParameterType() {
+<span class="nc" id="L102">		sw.visitParameterType();</span>
+<span class="nc" id="L103">		return super.visitParameterType();</span>
+	}
+
+	/**
+	 * Visits the return type of the method.
+	 * 
+	 * @return a non null visitor to visit the signature of the return type.
+	 */
+	@Override
+	public SignatureVisitor visitReturnType() {
+<span class="nc" id="L113">		sw.visitReturnType();</span>
+<span class="nc" id="L114">		return super.visitReturnType();</span>
+	}
+
+	/**
+	 * Visits the type of a method exception.
+	 * 
+	 * @return a non null visitor to visit the signature of the exception type.
+	 */
+	@Override
+	public SignatureVisitor visitExceptionType() {
+<span class="nc" id="L124">		sw.visitExceptionType();</span>
+<span class="nc" id="L125">		return super.visitExceptionType();</span>
+	}
+
+	/**
+	 * Visits a signature corresponding to a primitive type.
+	 * 
+	 * @param descriptor
+	 *            the descriptor of the primitive type, or 'V' for &lt;tt&gt;void&lt;/tt&gt; .
+	 */
+	@Override
+	public void visitBaseType(final char descriptor) {
+<span class="nc" id="L136">		sw.visitBaseType(descriptor);</span>
+<span class="nc" id="L137">		super.visitBaseType(descriptor);</span>
+<span class="nc" id="L138">	}</span>
+
+	/**
+	 * Visits a signature corresponding to a type variable.
+	 * 
+	 * @param name
+	 *            the name of the type variable.
+	 */
+	@Override
+	public void visitTypeVariable(final String name) {
+<span class="nc" id="L148">		sw.visitTypeVariable(name);</span>
+<span class="nc" id="L149">		super.visitTypeVariable(name);</span>
+<span class="nc" id="L150">	}</span>
+
+	/**
+	 * Visits a signature corresponding to an array type.
+	 * 
+	 * @return a non null visitor to visit the signature of the array element type.
+	 */
+	@Override
+	public SignatureVisitor visitArrayType() {
+<span class="nc" id="L159">		sw.visitArrayType();</span>
+<span class="nc" id="L160">		return super.visitArrayType();</span>
+	}
+
+	/**
+	 * Visits an inner class.
+	 * 
+	 * @param name
+	 *            the local name of the inner class in its enclosing class.
+	 */
+	@Override
+	public void visitInnerClassType(final String name) {
+<span class="nc" id="L171">		sw.visitInnerClassType(name);</span>
+<span class="nc" id="L172">		super.visitInnerClassType(name);</span>
+<span class="nc" id="L173">	}</span>
+
+	/**
+	 * Visits an unbounded type argument of the last visited class or inner class type.
+	 */
+	@Override
+	public void visitTypeArgument() {
+<span class="nc" id="L180">		sw.visitTypeArgument();</span>
+<span class="nc" id="L181">		super.visitTypeArgument();</span>
+<span class="nc" id="L182">	}</span>
+
+	/**
+	 * Visits a type argument of the last visited class or inner class type.
+	 * 
+	 * @param wildcard
+	 *            '+', '-' or '='.
+	 * @return a non null visitor to visit the signature of the type argument.
+	 */
+	@Override
+	public SignatureVisitor visitTypeArgument(final char wildcard) {
+<span class="nc" id="L193">		sw.visitTypeArgument(wildcard);</span>
+<span class="nc" id="L194">		return super.visitTypeArgument(wildcard);</span>
+	}
+
+	/**
+	 * Ends the visit of a signature corresponding to a class or interface type.
+	 */
+	@Override
+	public void visitEnd() {
+<span class="nc" id="L202">		sw.visitEnd();</span>
+<span class="nc" id="L203">		super.visitEnd();</span>
+<span class="nc" id="L204">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

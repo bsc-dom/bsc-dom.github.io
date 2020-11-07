@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayPredicate.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.filtering</a> &gt; <span class="el_source">DataClayPredicate.java</span></div><h1>DataClayPredicate.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.filtering;
+
+import java.lang.reflect.Method;
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.function.Predicate;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.logic.classmgr.ClassManager;
+import es.bsc.dataclay.serialization.DataClaySerializable;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.filtering.Condition.ConditionOp;
+import es.bsc.dataclay.util.ids.MetaClassID;
+
+@SuppressWarnings(&quot;rawtypes&quot;)
+public class DataClayPredicate implements Predicate, DataClaySerializable {
+	private String att;
+	private String op;
+	private String val;
+
+<span class="nc" id="L25">	public DataClayPredicate(final String attribute, final String operator, final String value) {</span>
+<span class="nc" id="L26">		att = attribute;</span>
+<span class="nc" id="L27">		op = operator;</span>
+<span class="nc" id="L28">		val = value;</span>
+<span class="nc" id="L29">	}</span>
+
+	public static Predicate build(final String attribute, final String operator, final String value) {
+<span class="nc" id="L32">		return new DataClayPredicate(attribute, operator, value);</span>
+	}
+
+	@SuppressWarnings(&quot;unchecked&quot;)
+	@Override
+	public boolean test(Object t) {
+		try {
+<span class="nc" id="L39">			final Method getter = t.getClass().getMethod(ClassManager.GETTER_PREFIX + this.att);</span>
+<span class="nc" id="L40">			final Comparable fieldValue = (Comparable) getter.invoke(t);</span>
+<span class="nc" id="L41">			final Comparable valueTyped = (Comparable) t.getClass().getConstructor(String.class).newInstance(this.val);</span>
+<span class="nc" id="L42">			final ConditionOp condOp = ConditionOp.fromString(this.op);</span>
+<span class="nc bnc" id="L43" title="All 7 branches missed.">			switch (condOp) {</span>
+			case DIFFERENT:
+<span class="nc bnc" id="L45" title="All 2 branches missed.">				return fieldValue.compareTo(valueTyped) != 0;</span>
+			case EQUALS:
+<span class="nc bnc" id="L47" title="All 2 branches missed.">				return fieldValue.compareTo(valueTyped) == 0;</span>
+			case GREATER:
+<span class="nc bnc" id="L49" title="All 2 branches missed.">				return fieldValue.compareTo(valueTyped) &gt; 0;</span>
+			case GREATER_EQUALS:
+<span class="nc bnc" id="L51" title="All 2 branches missed.">				return fieldValue.compareTo(valueTyped) &gt;= 0;</span>
+			case LESS:
+<span class="nc bnc" id="L53" title="All 2 branches missed.">				return fieldValue.compareTo(valueTyped) &lt; 0;</span>
+			case LESS_EQUALS:
+<span class="nc bnc" id="L55" title="All 2 branches missed.">				return fieldValue.compareTo(valueTyped) &lt;= 0;</span>
+			default:
+<span class="nc" id="L57">				return false;</span>
+			}
+<span class="nc" id="L59">		} catch (Exception e) {</span>
+<span class="nc" id="L60">			return false;</span>
+		}
+	}
+
+	@Override
+	public DataClayPredicate and(Predicate other) {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">		if (other instanceof DataClayPredicate) {</span>
+<span class="nc" id="L67">			return this.and(other);</span>
+		} else {
+<span class="nc" id="L69">			return null;</span>
+		}
+	}
+
+	public String toString() {
+<span class="nc" id="L74">		return att + op + val;</span>
+	}
+
+	@Override
+	public void serialize(DataClayByteBuffer dcBuffer, boolean ignoreUserTypes, Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+<span class="nc" id="L80">		dcBuffer.writeString(att);</span>
+<span class="nc" id="L81">		dcBuffer.writeString(op);</span>
+<span class="nc" id="L82">		dcBuffer.writeString(val);</span>
+<span class="nc" id="L83">	}</span>
+
+	@Override
+	public void deserialize(DataClayByteBuffer dcBuffer, Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, DataClayObjectMetaData metadata, Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+<span class="nc" id="L87">		att = dcBuffer.readString();</span>
+<span class="nc" id="L88">		op = dcBuffer.readString();</span>
+<span class="nc" id="L89">		val = dcBuffer.readString();</span>
+<span class="nc" id="L90">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

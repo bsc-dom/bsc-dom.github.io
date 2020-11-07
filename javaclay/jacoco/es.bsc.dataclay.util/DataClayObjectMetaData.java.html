@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayObjectMetaData.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util</a> &gt; <span class="el_source">DataClayObjectMetaData.java</span></div><h1>DataClayObjectMetaData.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util;
+
+import java.util.Map;
+import java.util.Map.Entry;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+
+import java.util.Objects;
+
+/** This class represents all metadata (tags) of an object. */
+public final class DataClayObjectMetaData {
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L20">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/**
+	 * @pierlauro sept. 2018 TODO eliminte this creepy, anti-OO and inefficient design with plenty of maps: create a class Tag
+	 *            containing ObjectID, MetaClassID, ExecutionEnvironmentID, etc. and just keep a set/map of Tag here
+	 */
+
+	/** Map tag to OID. */
+	private Map&lt;Integer, ObjectID&gt; oids;
+
+	/** Map tag to class id. */
+	private Map&lt;Integer, MetaClassID&gt; classIDs;
+
+	/** Map tag to hint id. */
+	private Map&lt;Integer, ExecutionEnvironmentID&gt; hints;
+
+	/** Map tag to external dataClay ID */
+	private Map&lt;Integer, DataClayInstanceID&gt; extDataClayIDs;
+
+	/** Number of references pointing to object. */
+	private int numRefs;
+
+	/**
+	 * Empty constructor for deserialization.
+	 */
+<span class="fc" id="L45">	public DataClayObjectMetaData() {</span>
+
+<span class="fc" id="L47">	}</span>
+
+	/**
+	 * Constructor
+	 * 
+	 * @param newmapOids
+	 *            Map tag to OID.
+	 * @param newmapClassIDs
+	 *            Map tag to class id.
+	 * @param newmapHints
+	 *            Map tag to hint id.
+	 * @param newextDataClayIDs
+	 *            Map tag to external dataClay id.
+	 * @param newnumRefs
+	 *            Number of references pointing to object.
+	 */
+	public DataClayObjectMetaData(final Map&lt;Integer, ObjectID&gt; newmapOids,
+			final Map&lt;Integer, MetaClassID&gt; newmapClassIDs, final Map&lt;Integer, ExecutionEnvironmentID&gt; newmapHints,
+<span class="nc" id="L65">			final Map&lt;Integer, DataClayInstanceID&gt; newextDataClayIDs, final int newnumRefs) {</span>
+<span class="nc" id="L66">		this.setOids(newmapOids);</span>
+<span class="nc" id="L67">		this.setClassIDs(newmapClassIDs);</span>
+<span class="nc" id="L68">		this.setHints(newmapHints);</span>
+<span class="nc" id="L69">		this.setNumRefs(newnumRefs);</span>
+<span class="nc" id="L70">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L74">		return Objects.hash(oids, classIDs, hints);</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (obj instanceof DataClayObjectMetaData) {</span>
+
+<span class="nc" id="L81">			final DataClayObjectMetaData candidate = (DataClayObjectMetaData) obj;</span>
+<span class="nc bnc" id="L82" title="All 4 branches missed.">			return oids.equals(candidate.getOids()) &amp;&amp; classIDs.equals(candidate.getClassIDs())</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">					&amp;&amp; hints.equals(candidate.getHints());</span>
+		} else {
+<span class="nc" id="L85">			return false;</span>
+		}
+	}
+
+	/**
+	 * @return the oids
+	 */
+	public Map&lt;Integer, ObjectID&gt; getOids() {
+<span class="nc" id="L93">		return oids;</span>
+	}
+
+	/**
+	 * @param theoids
+	 *            the oids to set
+	 */
+	public void setOids(final Map&lt;Integer, ObjectID&gt; theoids) {
+<span class="nc" id="L101">		this.oids = theoids;</span>
+<span class="nc" id="L102">	}</span>
+
+	/**
+	 * @return the classIDs
+	 */
+	public Map&lt;Integer, MetaClassID&gt; getClassIDs() {
+<span class="nc" id="L108">		return classIDs;</span>
+	}
+
+	/**
+	 * @param theclassIDs
+	 *            the classIDs to set
+	 */
+	public void setClassIDs(final Map&lt;Integer, MetaClassID&gt; theclassIDs) {
+<span class="nc" id="L116">		this.classIDs = theclassIDs;</span>
+<span class="nc" id="L117">	}</span>
+
+	/**
+	 * @return the hints
+	 */
+	public Map&lt;Integer, ExecutionEnvironmentID&gt; getHints() {
+<span class="nc" id="L123">		return hints;</span>
+	}
+
+	/**
+	 * @param thehints
+	 *            the hints to set
+	 */
+	public void setHints(final Map&lt;Integer, ExecutionEnvironmentID&gt; thehints) {
+<span class="nc" id="L131">		this.hints = thehints;</span>
+<span class="nc" id="L132">	}</span>
+
+	/**
+	 * @param tag
+	 *            the tag to update
+	 * @param hint
+	 *            the new tag's hint
+	 */
+	public void setHint(final Integer tag, final ExecutionEnvironmentID hint) {
+<span class="nc" id="L141">		this.hints.put(tag, hint);</span>
+<span class="nc" id="L142">	}</span>
+
+	/**
+	 * Get object id from tag
+	 * 
+	 * @param tag
+	 *            tag
+	 * @return Object id
+	 */
+	public ObjectID getObjectID(final Integer tag) {
+<span class="nc" id="L152">		return this.oids.get(tag);</span>
+	}
+
+	/**
+	 * Get class id from tag
+	 * 
+	 * @param tag
+	 *            tag
+	 * @return Class id
+	 */
+	public MetaClassID getMetaClassID(final Integer tag) {
+<span class="nc" id="L163">		return this.classIDs.get(tag);</span>
+	}
+
+	/**
+	 * Get hint from tag
+	 * 
+	 * @param tag
+	 *            tag
+	 * @return hint
+	 */
+	public ExecutionEnvironmentID getHint(final Integer tag) {
+<span class="nc" id="L174">		return this.hints.get(tag);</span>
+	}
+
+	/**
+	 * Get a specific dataClayID for a tag
+	 * 
+	 * @param tag
+	 *            the tag of the dataClayID to be retrieved
+	 * @return dataClayID corresponding to given tag
+	 */
+	public DataClayInstanceID getDataClayID(final Integer tag) {
+<span class="nc" id="L185">		return this.extDataClayIDs.get(tag);</span>
+	}
+
+	/**
+	 * Modify oids
+	 * 
+	 * @param oidsMapping
+	 *            Oids mapping
+	 * @param hintsMapping
+	 *            Hints of objects
+	 */
+	public void modifyOids(final Map&lt;ObjectID, ObjectID&gt; oidsMapping,
+			final Map&lt;ObjectID, ExecutionEnvironmentID&gt; hintsMapping) {
+<span class="nc bnc" id="L198" title="All 2 branches missed.">		for (final Entry&lt;Integer, ObjectID&gt; curTagEntry : this.oids.entrySet()) {</span>
+<span class="nc" id="L199">			final Integer tag = curTagEntry.getKey();</span>
+<span class="nc" id="L200">			final ObjectID oldOID = curTagEntry.getValue();</span>
+<span class="nc" id="L201">			final ObjectID newOID = oidsMapping.get(oldOID);</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">			if (newOID != null) {</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L204">					DataClayObject.getLib();</span>
+<span class="nc" id="L205">					DataClayRuntime.LOGGER</span>
+<span class="nc" id="L206">							.debug(&quot;[==ModifyIDs==] Setting objectID &quot; + newOID + &quot; instead of &quot; + oldOID);</span>
+				}
+<span class="nc" id="L208">				this.oids.put(tag, newOID);</span>
+<span class="nc" id="L209">				final ExecutionEnvironmentID newHint = hintsMapping.get(newOID);</span>
+
+<span class="nc bnc" id="L211" title="All 2 branches missed.">				if (newHint != null) {</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L213">						DataClayObject.getLib();</span>
+<span class="nc" id="L214">						DataClayRuntime.LOGGER.debug(&quot;[==ModifyIDs==] Setting Hint &quot;</span>
+<span class="nc" id="L215">								+ DataClayObject.getLib().getDSNameOfHint(newHint) + &quot; with oid &quot; + newOID);</span>
+					}
+
+<span class="nc" id="L218">					this.hints.put(tag, newHint);</span>
+				}
+			}
+<span class="nc" id="L221">		}</span>
+
+<span class="nc" id="L223">	}</span>
+
+	/**
+	 * @return the numRefs
+	 */
+	public int getNumRefs() {
+<span class="nc" id="L229">		return numRefs;</span>
+	}
+
+	/**
+	 * @param thenumRefs
+	 *            the numRefs to set
+	 */
+	public void setNumRefs(final int thenumRefs) {
+<span class="nc" id="L237">		this.numRefs = thenumRefs;</span>
+<span class="nc" id="L238">	}</span>
+
+	public String toString() { 
+<span class="nc" id="L241">		StringBuilder strb = new StringBuilder();</span>
+<span class="nc" id="L242">		strb.append(&quot;{\n&quot;);</span>
+<span class="nc" id="L243">		strb.append(&quot;numRefs = &quot; + this.numRefs + &quot;\n&quot;);</span>
+<span class="nc" id="L244">		strb.append(&quot;oids = &quot; + this.oids + &quot;\n&quot;);</span>
+<span class="nc" id="L245">		strb.append(&quot;classIDs = &quot; + this.classIDs + &quot;\n&quot;);</span>
+<span class="nc" id="L246">		strb.append(&quot;hints = &quot; + this.hints + &quot;\n&quot;);</span>
+<span class="nc" id="L247">		strb.append(&quot;extDataClayIDs = &quot; + this.extDataClayIDs + &quot;\n&quot;);</span>
+<span class="nc" id="L248">		strb.append(&quot;}\n&quot;);</span>
+<span class="nc" id="L249">		return strb.toString();</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

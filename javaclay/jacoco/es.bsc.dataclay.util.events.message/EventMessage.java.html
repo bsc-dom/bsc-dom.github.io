@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EventMessage.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.events.message</a> &gt; <span class="el_source">EventMessage.java</span></div><h1>EventMessage.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.events.message;
+
+import es.bsc.dataclay.serialization.lib.SerializedParametersOrReturn;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.events.EventMessageStateOuter.EventState;
+import es.bsc.dataclay.util.events.type.EventType;
+import es.bsc.dataclay.util.ids.EventMessageID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This event indicates that an object was persisted.
+ */
+public final class EventMessage implements Comparable&lt;EventMessage&gt; {
+
+	/** Event message ID. */
+	private EventMessageID id;
+
+	/** ID of the object that produced the event. */
+	private ObjectID producerObjectID;
+
+	/** Accomplished event type. */
+	private EventType eventType;
+
+	/** Event message parameters. */
+	private SerializedParametersOrReturn params;
+
+	/** Event message state. */
+	private EventState eventState;
+
+	/**
+	 * Current age for messages. Used to avoid messages that are never read due to low priority. When NotificationManager
+	 * receives a message, an age is set. The age of an object is the current time in millis.
+	 */
+	private long messagePriorityAge;
+
+	/**
+	 * Constructor
+	 * @param newproducerObjectID
+	 *            ID of the object that produced the event
+	 * @param neweventType
+	 *            Event type accomplished by this event.
+	 * @param newparams
+	 *            the event message parameters (serialized)
+	 */
+	public EventMessage(
+			final ObjectID newproducerObjectID, 
+			final EventType neweventType,
+<span class="nc" id="L50">			final SerializedParametersOrReturn newparams) {</span>
+<span class="nc" id="L51">		this.setId(new EventMessageID());</span>
+<span class="nc" id="L52">		this.setProducerObjectID(newproducerObjectID);</span>
+		/**
+		 * Notification manager has a map of EventType -&gt; Set of implementations to execute Every time an event arrives, this
+		 * map is used and the function 'getEventType' is used to seek for impls.
+		 */
+<span class="nc" id="L57">		this.setEventType(neweventType);</span>
+<span class="nc" id="L58">		this.params = newparams;</span>
+<span class="nc" id="L59">		this.setEventState(EventState.SEND);</span>
+<span class="nc" id="L60">		this.setMessagePriorityAge(System.currentTimeMillis());</span>
+<span class="nc" id="L61">	}</span>
+
+	/**
+	 * Used for deserialization
+	 */
+<span class="nc" id="L66">	public EventMessage() {</span>
+
+<span class="nc" id="L68">	}</span>
+
+	/**
+	 * Get Event type
+	 * @return Event type
+	 */
+	public EventType getEventType() {
+<span class="nc" id="L75">		return eventType;</span>
+	}
+
+	/**
+	 * Set event type
+	 * @param theEventType
+	 *            Event type
+	 */
+	public void setEventType(final EventType theEventType) {
+<span class="nc" id="L84">		this.eventType = theEventType;</span>
+<span class="nc" id="L85">	}</span>
+
+	/**
+	 * Get the EventMessage::id
+	 * @return the id
+	 */
+	public EventMessageID getId() {
+<span class="nc" id="L92">		return id;</span>
+	}
+
+	/**
+	 * Set the EventMessage::id
+	 * @param newid
+	 *            the id to set
+	 */
+	public void setId(final EventMessageID newid) {
+<span class="nc" id="L101">		this.id = newid;</span>
+<span class="nc" id="L102">	}</span>
+
+	@Override
+	public String toString() {
+<span class="nc" id="L106">		return CommonYAML.getYamlObject().dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+		// Hashcode of this event is combination of event condition and message itself.
+		// Actually not used since compareTo is implemented. But it's a good practice to have one.
+<span class="nc" id="L113">		return new Long(this.messagePriorityAge).hashCode();</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		/**
+		 * Two messages are equals IF: 1 - They accomplish same conditions 2 - Parameters are equals
+		 */
+<span class="nc bnc" id="L121" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L122">			return false;</span>
+		}
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (obj instanceof EventMessage) {</span>
+<span class="nc" id="L125">			final EventMessage candidate = (EventMessage) obj;</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			return candidate.getEventType().equals(this.getEventType())</span>
+					// &amp;&amp; candidate.getParams().keySet().equals(this.getParams().keySet())
+<span class="nc bnc" id="L128" title="All 2 branches missed.">					&amp;&amp; candidate.getProducerObjectID().equals(this.getProducerObjectID());</span>
+		}
+<span class="nc" id="L130">		return false;</span>
+	}
+
+	@Override
+	public int compareTo(final EventMessage other) {
+
+		// return (int) (this.messagePriorityAge - other.getMessagePriorityAge());
+
+		/**
+		 * The natural ordering for a class C is said to be consistent with equals if and only if e1.compareTo(e2) == 0 has the
+		 * same boolean value as e1.equals(e2) for every e1 and e2 of class C. Note that null is not an instance of any class,
+		 * and e.compareTo(null) should throw a NullPointerException even though e.equals(null) returns false.
+		 */
+
+<span class="nc bnc" id="L144" title="All 2 branches missed.">		if (other == null) {</span>
+<span class="nc" id="L145">			throw new NullPointerException();</span>
+		}
+
+		// Return of this function, according to Java standars, are:
+		// Positive integer: I have less priority than other
+		// Negative integer: I have more priority than other
+		// Zero: same priority or same object.
+
+		// The Event Type has a priority
+<span class="nc" id="L154">		int priorityDifference = this.getEventType().getPriority()</span>
+<span class="nc" id="L155">				- other.getEventType().getPriority();</span>
+
+		// If same priority then insertion-order
+<span class="nc bnc" id="L158" title="All 2 branches missed.">		if (priorityDifference == 0) {</span>
+<span class="nc" id="L159">			priorityDifference = (int) (this.messagePriorityAge - other.getMessagePriorityAge());</span>
+		}
+
+		// If this object has LESS priority check if it's too old.
+<span class="nc bnc" id="L163" title="All 2 branches missed.">		if (priorityDifference &gt; 0) {</span>
+			// Check if i'm too old
+			// We consider a message is TOO old if it was received after a certain time.
+<span class="nc" id="L166">			final long elapsedTime = System.currentTimeMillis() - this.messagePriorityAge;</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">			if (elapsedTime &gt; Configuration.Flags.MAX_TIME_OLD_EVENT_MSGS.getLongValue()) {</span>
+				// I have a little bit more priority than the other.
+<span class="nc" id="L169">				priorityDifference = other.getEventType().getPriority() - 1;</span>
+			}
+		}
+
+<span class="nc" id="L173">		return priorityDifference;</span>
+
+	}
+
+	/**
+	 * Get the EventMessage::params
+	 * @return the params
+	 */
+	public SerializedParametersOrReturn getParams() {
+<span class="nc" id="L182">		return this.params;</span>
+	}
+
+	/**
+	 * Set the EventMessage::params
+	 * @param newparams
+	 *            the params to set
+	 */
+	public void setParams(final SerializedParametersOrReturn newparams) {
+<span class="nc" id="L191">		this.params = newparams;</span>
+<span class="nc" id="L192">	}</span>
+
+	/**
+	 * Get the EventMessage::messagePriorityAge
+	 * @return the messagePriorityAge
+	 */
+	public long getMessagePriorityAge() {
+<span class="nc" id="L199">		return messagePriorityAge;</span>
+	}
+
+	/**
+	 * Set the EventMessage::messagePriorityAge
+	 * @param newmessagePriorityAge
+	 *            the messagePriorityAge to set
+	 */
+	public void setMessagePriorityAge(final long newmessagePriorityAge) {
+<span class="nc" id="L208">		this.messagePriorityAge = newmessagePriorityAge;</span>
+<span class="nc" id="L209">	}</span>
+
+	/**
+	 * Get the EventMessage::producerObjectID
+	 * @return the producerObjectID
+	 */
+	public ObjectID getProducerObjectID() {
+<span class="nc" id="L216">		return producerObjectID;</span>
+	}
+
+	/**
+	 * Set the EventMessage::producerObjectID
+	 * @param newproducerObjectID
+	 *            the producerObjectID to set
+	 */
+	public void setProducerObjectID(final ObjectID newproducerObjectID) {
+<span class="nc" id="L225">		this.producerObjectID = newproducerObjectID;</span>
+<span class="nc" id="L226">	}</span>
+
+	/**
+	 * Get the EventMessage::eventState
+	 * @return the eventState
+	 */
+	public EventState getEventState() {
+<span class="nc" id="L233">		return eventState;</span>
+	}
+
+	/**
+	 * Set the EventMessage::eventState
+	 * @param neweventState
+	 *            the eventState to set
+	 */
+	public void setEventState(final EventState neweventState) {
+<span class="nc" id="L242">		this.eventState = neweventState;</span>
+<span class="nc" id="L243">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

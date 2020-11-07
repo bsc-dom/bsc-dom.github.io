@@ -1,0 +1,902 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Reflector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.reflection</a> &gt; <span class="el_source">Reflector.java</span></div><h1>Reflector.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.reflection;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeFieldNames;
+
+/**
+ * This class contains useful functions when Java Reflection is necessary.
+ * 
+ * 
+ */
+public final class Reflector {
+
+	/** Bootstrap class loader. */
+<span class="fc" id="L24">	public static final ClassLoader BOOTSTRAP_CLASSLOADER = ClassLoader.getSystemClassLoader().getParent();</span>
+
+	/**
+	 * Default constructor for this Utility Class.
+	 */
+	private Reflector() {
+
+	}
+
+	/**
+	 * This function gets the value of the field with name specified in the object instance provided. The field must exists
+	 *        in the class of the instance and must be accessible.
+	 * @param instance
+	 *            Instance from which to get the field value
+	 * @param fieldName
+	 *            Name of the field
+	 * @return The value of the field with name specified in the instance provided
+	 * @throws NoSuchFieldException
+	 *             If field not exists
+	 * @throws IllegalAccessException
+	 *             If field is not accessible
+	 */
+	public static Object getField(final Object instance, final String fieldName) throws NoSuchFieldException,
+			IllegalAccessException {
+
+<span class="nc" id="L49">		Class&lt;?&gt; instanceClass = instance.getClass();</span>
+<span class="nc" id="L50">		Field field = null;</span>
+<span class="nc bnc" id="L51" title="All 2 branches missed.">		while (field == null) {</span>
+			try {
+<span class="nc" id="L53">				field = instanceClass.getDeclaredField(fieldName);</span>
+<span class="nc" id="L54">			} catch (final NoSuchFieldException e) {</span>
+<span class="nc bnc" id="L55" title="All 2 branches missed.">				if (instanceClass.getSuperclass().equals(Object.class)) {</span>
+<span class="nc" id="L56">					throw new NoSuchFieldException(fieldName);</span>
+				}
+<span class="nc" id="L58">			}</span>
+<span class="nc" id="L59">			instanceClass = instanceClass.getSuperclass();</span>
+		}
+<span class="nc" id="L61">		field.setAccessible(true);</span>
+<span class="nc" id="L62">		return field.get(instance);</span>
+
+	}
+
+	/**
+	 * This function gets the value of the static field with name specified in the object instance provided. The field must
+	 *        exists in the class and must be static and accessible.
+	 * @param staticClass
+	 *            Class from which to get the field value
+	 * @param fieldName
+	 *            Name of the field
+	 * @return The value of the static field with name specified in the instance provided
+	 * @throws NoSuchFieldException
+	 *             If field not exists
+	 * @throws IllegalAccessException
+	 *             If field is not accessible
+	 */
+	public static Object getStaticField(final Class&lt;?&gt; staticClass, final String fieldName) throws NoSuchFieldException,
+			IllegalAccessException {
+
+<span class="nc" id="L82">		Class&lt;?&gt; instanceClass = staticClass;</span>
+<span class="nc" id="L83">		Field field = null;</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">		while (field == null) {</span>
+			try {
+<span class="nc" id="L86">				field = instanceClass.getDeclaredField(fieldName);</span>
+<span class="nc" id="L87">			} catch (final Exception e) {</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">				if (instanceClass.getSuperclass().equals(Object.class)) {</span>
+<span class="nc" id="L89">					throw new NoSuchFieldException(fieldName);</span>
+				}
+<span class="nc" id="L91">			}</span>
+<span class="nc" id="L92">			instanceClass = instanceClass.getSuperclass();</span>
+		}
+
+<span class="nc" id="L95">		field.setAccessible(true);</span>
+<span class="nc" id="L96">		return field.get(null);</span>
+
+	}
+
+	/**
+	 * Sets the value of the field of instance provided with field name specified
+	 * @param instance
+	 *            Instance to modify
+	 * @param fieldName
+	 *            Name of the field to set
+	 * @param fieldValue
+	 *            Value to set
+	 * @throws NoSuchFieldException
+	 *             If the field does not exist.
+	 * @throws IllegalAccessException
+	 *             If the field is not accessible.
+	 */
+	public static void setField(final Object instance, final String fieldName, final Object fieldValue)
+			throws NoSuchFieldException, IllegalAccessException {
+
+<span class="nc" id="L116">		Class&lt;?&gt; instanceClass = instance.getClass();</span>
+<span class="nc" id="L117">		Field field = null;</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		while (field == null) {</span>
+			try {
+<span class="nc" id="L120">				field = instanceClass.getDeclaredField(fieldName);</span>
+<span class="nc" id="L121">			} catch (final NoSuchFieldException e) {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">				if (instanceClass.getSuperclass().equals(Object.class)) {</span>
+<span class="nc" id="L123">					throw new NoSuchFieldException(fieldName);</span>
+				}
+<span class="nc" id="L125">			}</span>
+<span class="nc" id="L126">			instanceClass = instanceClass.getSuperclass();</span>
+		}
+
+<span class="nc" id="L129">		field.setAccessible(true);</span>
+<span class="nc" id="L130">		Object castObject = null;</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		if (fieldValue != null) {</span>
+			// For retrieving object since it receives always lang types instead of primitive types
+<span class="nc" id="L133">			final Class&lt;?&gt; fieldType = field.getType();</span>
+<span class="nc" id="L134">			castObject = cast(fieldType, fieldValue);</span>
+		}
+<span class="nc" id="L136">		field.set(instance, castObject);</span>
+
+<span class="nc" id="L138">	}</span>
+
+	/**
+	 * Since field values, for instance, can be Integer and the field type 'int', we must cast it. This should happen usually
+	 *        in Reflection.
+	 * @param classToCast
+	 *            Class that the object should have
+	 * @param objectToCast
+	 *            Object to cast
+	 * @return Casted object
+	 */
+	private static Object cast(final Class&lt;?&gt; classToCast, final Object objectToCast) {
+
+<span class="nc bnc" id="L151" title="All 2 branches missed.">		if (objectToCast == null) {</span>
+<span class="nc" id="L152">			return null;</span>
+		}
+
+<span class="nc" id="L155">		Object castObject = null;</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">		if (classToCast.isPrimitive()) {</span>
+
+<span class="nc" id="L158">			final Class&lt;?&gt; fieldValueClass = objectToCast.getClass();</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">			if (fieldValueClass.equals(Integer.class)) {</span>
+<span class="nc" id="L160">				castObject = ((Integer) objectToCast).intValue();</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">			} else if (fieldValueClass.equals(Float.class)) {</span>
+<span class="nc" id="L162">				castObject = ((Float) objectToCast).floatValue();</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">			} else if (fieldValueClass.equals(Double.class)) {</span>
+<span class="nc" id="L164">				castObject = ((Double) objectToCast).doubleValue();</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">			} else if (fieldValueClass.equals(Boolean.class)) {</span>
+<span class="nc" id="L166">				castObject = ((Boolean) objectToCast).booleanValue();</span>
+<span class="nc bnc" id="L167" title="All 2 branches missed.">			} else if (fieldValueClass.equals(Character.class)) {</span>
+<span class="nc" id="L168">				castObject = ((Character) objectToCast).charValue();</span>
+<span class="nc bnc" id="L169" title="All 2 branches missed.">			} else if (fieldValueClass.equals(Long.class)) {</span>
+<span class="nc" id="L170">				castObject = ((Long) objectToCast).longValue();</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">			} else if (fieldValueClass.equals(Short.class)) {</span>
+<span class="nc" id="L172">				castObject = ((Short) objectToCast).shortValue();</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">			} else if (fieldValueClass.equals(Byte.class)) {</span>
+<span class="nc" id="L174">				castObject = ((Byte) objectToCast).byteValue();</span>
+			}
+
+<span class="nc bnc" id="L177" title="All 2 branches missed.">		} else if (classToCast.isArray()) {</span>
+<span class="nc" id="L178">			final String signature = classToCast.getName();</span>
+<span class="nc" id="L179">			final Class&lt;?&gt; componentType = classToCast.getComponentType();</span>
+<span class="nc" id="L180">			final int length = Array.getLength(objectToCast);</span>
+<span class="nc" id="L181">			final int[] dimensions = new int[countOccurrences(signature, &quot;[&quot;)];</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">			for (int i = 0; i &lt; dimensions.length; ++i) {</span>
+<span class="nc" id="L183">				dimensions[i] = length;</span>
+			}
+
+<span class="nc" id="L186">			castObject = Array.newInstance(componentType, length);</span>
+<span class="nc bnc" id="L187" title="All 2 branches missed.">			for (int i = 0; i &lt; length; ++i) {</span>
+<span class="nc" id="L188">				final Object subArrayToCast = Array.get(objectToCast, i);</span>
+<span class="nc" id="L189">				final Object castSubArray = cast(componentType, subArrayToCast);</span>
+<span class="nc" id="L190">				Array.set(castObject, i, castSubArray);</span>
+			}
+
+<span class="nc" id="L193">		} else {</span>
+<span class="nc" id="L194">			castObject = classToCast.cast(objectToCast);</span>
+		}
+
+<span class="nc" id="L197">		return castObject;</span>
+	}
+
+	/**
+	 * Count the occurrences of some string into another
+	 * @param str
+	 *            String to analyze
+	 * @param findStr
+	 *            String to count
+	 * @return Number of occurrences of 'findStr' into 'str'.
+	 */
+	public static int countOccurrences(final String str, final String findStr) {
+<span class="nc" id="L209">		int lastIndex = 0;</span>
+<span class="nc" id="L210">		int count = 0;</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">		while (lastIndex != -1) {</span>
+<span class="nc" id="L212">			lastIndex = str.indexOf(findStr, lastIndex);</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">			if (lastIndex != -1) {</span>
+<span class="nc" id="L214">				count++;</span>
+<span class="nc" id="L215">				lastIndex += findStr.length();</span>
+			}
+		}
+<span class="nc" id="L218">		return count;</span>
+	}
+
+	/**
+	 * Get sub types
+	 * @param signature
+	 *            Signature from which to get subtypes
+	 * @return List of sub types found
+	 */
+	public static List&lt;String&gt; getSubtypes(final String signature) {
+<span class="fc" id="L228">		final String cursignature = signature.replace(&quot;&gt;&quot;, &quot;&quot;).replace(&quot;(&quot;, &quot;&quot;).replace(&quot;[&quot;, &quot;&quot;).replace(&quot;)&quot;, &quot;&quot;);</span>
+<span class="fc" id="L229">		final String[] tmpSplit = cursignature.split(&quot;&lt;&quot;);</span>
+<span class="fc" id="L230">		final HashSet&lt;String&gt; splitted = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L231" title="All 2 branches covered.">		for (final String tmp : tmpSplit) {</span>
+<span class="fc" id="L232">			final String[] tmpSplit2 = tmp.split(&quot;;&quot;);</span>
+<span class="fc bfc" id="L233" title="All 2 branches covered.">			for (final String tmp2 : tmpSplit2) {</span>
+<span class="fc" id="L234">				splitted.add(tmp2);</span>
+			}
+		}
+<span class="fc" id="L237">		final ArrayList&lt;String&gt; signatures = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L238" title="All 2 branches covered.">		for (final String splitt : splitted) {</span>
+<span class="fc bfc" id="L239" title="All 2 branches covered.">			if (splitt.trim().isEmpty()) {</span>
+<span class="fc" id="L240">				continue;</span>
+			}
+<span class="fc" id="L242">			String temp = splitt;</span>
+<span class="fc bfc" id="L243" title="All 2 branches covered.">			if (temp.contains(&quot;L&quot;)) {</span>
+<span class="fc" id="L244">				int lIndex = temp.indexOf(&quot;L&quot;);</span>
+<span class="fc bfc" id="L245" title="All 2 branches covered.">				while (lIndex != 0) {</span>
+					// Get primitive types
+<span class="fc" id="L247">					signatures.add(String.valueOf(temp.charAt(0)));</span>
+<span class="fc" id="L248">					temp = temp.substring(1, temp.length());</span>
+<span class="fc" id="L249">					lIndex = temp.indexOf(&quot;L&quot;);</span>
+				}
+<span class="fc" id="L251">				signatures.add(temp + &quot;;&quot;);</span>
+			}
+<span class="fc" id="L253">		}</span>
+<span class="fc" id="L254">		return signatures;</span>
+	}
+
+	/**
+	 * Check if a name/signature is a Primitive type (quite close to Java primitives, but agnostic).
+	 * @param typeName
+	 *            type name to check.
+	 * @return TRUE if the signature provided belongs to a Primitive type. FALSE otherwise.
+	 */
+	public static boolean isPrimitiveTypeName(final String typeName) {
+<span class="nc bnc" id="L264" title="All 10 branches missed.">		switch (typeName) {</span>
+		case &quot;boolean&quot;:
+<span class="nc" id="L266">			return true;</span>
+		case &quot;int&quot;:
+<span class="nc" id="L268">			return true;</span>
+		case &quot;float&quot;:
+<span class="nc" id="L270">			return true;</span>
+		case &quot;long&quot;:
+<span class="nc" id="L272">			return true;</span>
+		case &quot;short&quot;:
+<span class="nc" id="L274">			return true;</span>
+		case &quot;char&quot;:
+<span class="nc" id="L276">			return true;</span>
+		case &quot;byte&quot;:
+<span class="nc" id="L278">			return true;</span>
+		case &quot;double&quot;:
+<span class="nc" id="L280">			return true;</span>
+		case &quot;void&quot;:
+<span class="nc" id="L282">			return true;</span>
+		default:
+<span class="nc" id="L284">			return false;</span>
+		}
+	}
+
+	/**
+	 * Indicates if type name is an array type.
+	 * @param typeName
+	 *            Type name
+	 * @return TRUE if type name is array type.
+	 */
+	public static boolean isArrayTypeName(final String typeName) {
+<span class="nc" id="L295">		return typeName.contains(&quot;[&quot;);</span>
+	}
+
+	/**
+	 * This function verifies if there is a Java type with the name provided
+	 * @param className
+	 *            name of the class
+	 * @return TRUE if there is a java type with name provided. FALSE otherwise.
+	 */
+	public static boolean isJavaTypeName(final String className) {
+		try {
+<span class="nc" id="L306">			BOOTSTRAP_CLASSLOADER.loadClass(className);</span>
+<span class="nc" id="L307">		} catch (final ClassNotFoundException e) {</span>
+<span class="nc" id="L308">			return false;</span>
+<span class="nc" id="L309">		}</span>
+<span class="nc" id="L310">		return true;</span>
+	}
+
+	/**
+	 * This function verifies if type name is java, array or primitive.
+	 * @param typeName
+	 *            Type name.
+	 * @return TRUE if type name is java, array or primitive.
+	 */
+	public static boolean isJavaPrimitiveOrArrayTypeName(final String typeName) {
+<span class="nc bnc" id="L320" title="All 6 branches missed.">		return isPrimitiveTypeName(typeName) || isArrayTypeName(typeName) || isJavaTypeName(typeName);</span>
+	}
+
+	/**
+	 * This function verifies if there is a lang type with the name provided.
+	 * @param typeName
+	 *            name of the type
+	 * @return TRUE if there is a lang type with name provided. FALSE otherwise.
+	 */
+	public static boolean isImmutableTypeName(final String typeName) {
+<span class="nc bnc" id="L330" title="All 10 branches missed.">		switch (typeName) {</span>
+		default:
+<span class="nc" id="L332">			return false;</span>
+		case &quot;java.lang.Boolean&quot;:
+<span class="nc" id="L334">			return true;</span>
+		case &quot;java.lang.Integer&quot;:
+<span class="nc" id="L336">			return true;</span>
+		case &quot;java.lang.String&quot;:
+<span class="nc" id="L338">			return true;</span>
+		case &quot;java.lang.Double&quot;:
+<span class="nc" id="L340">			return true;</span>
+		case &quot;java.lang.Float&quot;:
+<span class="nc" id="L342">			return true;</span>
+		case &quot;java.lang.Long&quot;:
+<span class="nc" id="L344">			return true;</span>
+		case &quot;java.lang.Short&quot;:
+<span class="nc" id="L346">			return true;</span>
+		case &quot;java.lang.Character&quot;:
+<span class="nc" id="L348">			return true;</span>
+		case &quot;java.lang.Byte&quot;:
+<span class="nc" id="L350">			return true;</span>
+		}
+	}
+
+	/**
+	 * This function returns the primitive type name from immutable type name. WARNING: this function return &quot;string&quot; for
+	 *        immutable &quot;java.lang.String&quot;. Used in ByteCode generation.
+	 * @param typeName
+	 *            name of the type
+	 * @return the primitive type name from immutable type name or the same type name if not immutable.
+	 */
+	public static String getPrimitiveTypeNameFromImmutableTypeName(final String typeName) {
+<span class="nc bnc" id="L362" title="All 9 branches missed.">		switch (typeName) {</span>
+		default:
+<span class="nc" id="L364">			return typeName;</span>
+		case &quot;java.lang.Boolean&quot;:
+<span class="nc" id="L366">			return &quot;boolean&quot;;</span>
+		case &quot;java.lang.Integer&quot;:
+<span class="nc" id="L368">			return &quot;int&quot;;</span>
+		case &quot;java.lang.Double&quot;:
+<span class="nc" id="L370">			return &quot;double&quot;;</span>
+		case &quot;java.lang.Float&quot;:
+<span class="nc" id="L372">			return &quot;float&quot;;</span>
+		case &quot;java.lang.Long&quot;:
+<span class="nc" id="L374">			return &quot;long&quot;;</span>
+		case &quot;java.lang.Short&quot;:
+<span class="nc" id="L376">			return &quot;short&quot;;</span>
+		case &quot;java.lang.Character&quot;:
+<span class="nc" id="L378">			return &quot;char&quot;;</span>
+		case &quot;java.lang.Byte&quot;:
+<span class="nc" id="L380">			return &quot;byte&quot;;</span>
+		}
+	}
+
+	/**
+	 * This function returns the primitive type name from immutable type name. WARNING: this function return &quot;string&quot; for
+	 *        immutable &quot;java.lang.String&quot;. Used in ByteCode generation.
+	 * @param typeName
+	 *            name of the type
+	 * @return the primitive type name from immutable type name or the same type name if not immutable.
+	 */
+	public static String getImmutableTypeNameFromPrimitiveTypeName(final String typeName) {
+<span class="nc bnc" id="L392" title="All 9 branches missed.">		switch (typeName) {</span>
+		default:
+<span class="nc" id="L394">			return typeName;</span>
+		case &quot;boolean&quot;:
+<span class="nc" id="L396">			return &quot;java.lang.Boolean&quot;;</span>
+		case &quot;int&quot;:
+<span class="nc" id="L398">			return &quot;java.lang.Integer&quot;;</span>
+		case &quot;double&quot;:
+<span class="nc" id="L400">			return &quot;java.lang.Double&quot;;</span>
+		case &quot;float&quot;:
+<span class="nc" id="L402">			return &quot;java.lang.Float&quot;;</span>
+		case &quot;long&quot;:
+<span class="nc" id="L404">			return &quot;java.lang.Long&quot;;</span>
+		case &quot;short&quot;:
+<span class="nc" id="L406">			return &quot;java.lang.Short&quot;;</span>
+		case &quot;char&quot;:
+<span class="nc" id="L408">			return &quot;java.lang.Character&quot;;</span>
+		case &quot;byte&quot;:
+<span class="nc" id="L410">			return &quot;java.lang.Byte&quot;;</span>
+		}
+	}
+
+	/**
+	 * Check if the signature provided belongs to a Java type or to a Primitive type.
+	 * @param signature
+	 *            Signature to check.
+	 * @return TRUE if the signature provided belongs to a Java type or to a Primitive type. FALSE otherwise.
+	 */
+	public static boolean isJavaPrimitiveOrArraySignature(final String signature) {
+<span class="nc bnc" id="L421" title="All 6 branches missed.">		return isPrimitiveSignature(signature) || isArraySignature(signature) || isJavaSignature(signature);</span>
+	}
+
+	/**
+	 * Check if signature is an array type
+	 * @param signature
+	 *            Signature to check
+	 * @return TRUE if signature belongs to array type.
+	 */
+	private static boolean isArraySignature(final String signature) {
+<span class="nc" id="L431">		return signature.contains(&quot;[&quot;);</span>
+	}
+
+	/**
+	 * Indicates signature is a Java type
+	 * @param signature
+	 *            Signature to check
+	 * @return TRUE if java type, false otherwise.
+	 */
+	private static boolean isJavaSignature(final String signature) {
+<span class="nc" id="L441">		return isJavaTypeName(getTypeNameFromSignatureOrDescriptor(signature));</span>
+	}
+
+	/**
+	 * This function verifies if there is a primitive type with the signature provided
+	 * @param signature
+	 *            signature of the type
+	 * @return TRUE if there is a primitive type with signature provided. FALSE otherwise.
+	 */
+	public static boolean isPrimitiveSignature(final String signature) {
+<span class="nc bnc" id="L451" title="All 10 branches missed.">		switch (signature) {</span>
+		default:
+<span class="nc" id="L453">			return false;</span>
+		case &quot;Z&quot;:
+<span class="nc" id="L455">			return true;</span>
+		case &quot;I&quot;:
+<span class="nc" id="L457">			return true;</span>
+		case &quot;F&quot;:
+<span class="nc" id="L459">			return true;</span>
+		case &quot;J&quot;:
+<span class="nc" id="L461">			return true;</span>
+		case &quot;S&quot;:
+<span class="nc" id="L463">			return true;</span>
+		case &quot;C&quot;:
+<span class="nc" id="L465">			return true;</span>
+		case &quot;B&quot;:
+<span class="nc" id="L467">			return true;</span>
+		case &quot;D&quot;:
+<span class="nc" id="L469">			return true;</span>
+		case &quot;V&quot;:
+<span class="nc" id="L471">			return true;</span>
+		}
+	}
+
+	/**
+	 * This function verifies if there is a immutable type with the signature provided
+	 * @param signature
+	 *            signature of the type
+	 * @return TRUE if there is a immutable type with signature provided. FALSE otherwise.
+	 */
+	public static boolean isImmutableSignature(final String signature) {
+<span class="nc bnc" id="L482" title="All 10 branches missed.">		switch (signature) {</span>
+		default:
+<span class="nc" id="L484">			return false;</span>
+		case &quot;Ljava/lang/Boolean;&quot;:
+<span class="nc" id="L486">			return true;</span>
+		case &quot;Ljava/lang/Integer;&quot;:
+<span class="nc" id="L488">			return true;</span>
+		case &quot;Ljava/lang/Float;&quot;:
+<span class="nc" id="L490">			return true;</span>
+		case &quot;Ljava/lang/Long;&quot;:
+<span class="nc" id="L492">			return true;</span>
+		case &quot;Ljava/lang/Short;&quot;:
+<span class="nc" id="L494">			return true;</span>
+		case &quot;Ljava/lang/Character;&quot;:
+<span class="nc" id="L496">			return true;</span>
+		case &quot;Ljava/lang/Byte;&quot;:
+<span class="nc" id="L498">			return true;</span>
+		case &quot;Ljava/lang/Double;&quot;:
+<span class="nc" id="L500">			return true;</span>
+		case &quot;Ljava/lang/String;&quot;:
+<span class="nc" id="L502">			return true;</span>
+		}
+	}
+
+	/**
+	 * Get the descriptor from of the type with name provided
+	 * @param typeName
+	 *            Name of the type
+	 * @return The descriptor of the type with name provided
+	 */
+	public static String getDescriptorFromTypeName(final String typeName) {
+<span class="nc" id="L513">		return getSignatureFromTypeName(typeName);</span>
+	}
+
+	/**
+	 * Get the signature from of the type with name provided
+	 * @param typeName
+	 *            Name of the type
+	 * @return The signature of the type with name provided
+	 */
+	public static String getSignatureFromTypeName(final String typeName) {
+<span class="nc bnc" id="L523" title="All 10 branches missed.">		switch (typeName) {</span>
+		default:
+<span class="nc" id="L525">			return &quot;L&quot; + typeName.replace(&quot;.&quot;, &quot;/&quot;) + &quot;;&quot;;</span>
+		case &quot;boolean&quot;:
+<span class="nc" id="L527">			return &quot;Z&quot;;</span>
+		case &quot;int&quot;:
+<span class="nc" id="L529">			return &quot;I&quot;;</span>
+		case &quot;float&quot;:
+<span class="nc" id="L531">			return &quot;F&quot;;</span>
+		case &quot;double&quot;:
+<span class="nc" id="L533">			return &quot;D&quot;;</span>
+		case &quot;long&quot;:
+<span class="nc" id="L535">			return &quot;J&quot;;</span>
+		case &quot;short&quot;:
+<span class="nc" id="L537">			return &quot;S&quot;;</span>
+		case &quot;char&quot;:
+<span class="nc" id="L539">			return &quot;C&quot;;</span>
+		case &quot;byte&quot;:
+<span class="nc" id="L541">			return &quot;B&quot;;</span>
+		case &quot;void&quot;:
+<span class="nc" id="L543">			return &quot;V&quot;;</span>
+		}
+	}
+
+	/**
+	 * Get the signature from of the fully qualified type name (internal name) provided
+	 * @param internalName
+	 *            Internal Name of the type
+	 * @return The signature from of the fully qualified type name (internal name) provided
+	 */
+	public static String getSignatureFromInternalName(final String internalName) {
+<span class="nc" id="L554">		final int arrayDimension = countOccurrences(internalName, &quot;[&quot;);</span>
+<span class="nc" id="L555">		String finalTypeName = internalName.replace(&quot;[&quot;, &quot;&quot;);</span>
+<span class="nc bnc" id="L556" title="All 2 branches missed.">		if (!isPrimitiveSignature(finalTypeName)) {</span>
+<span class="nc" id="L557">			finalTypeName = &quot;L&quot; + finalTypeName.replace(&quot;.&quot;, &quot;/&quot;) + &quot;;&quot;;</span>
+		}
+<span class="nc" id="L559">		String prefix = &quot;&quot;;</span>
+<span class="nc bnc" id="L560" title="All 2 branches missed.">		for (int i = 0; i &lt; arrayDimension; ++i) {</span>
+<span class="nc" id="L561">			prefix += &quot;[&quot;;</span>
+		}
+<span class="nc" id="L563">		return prefix + finalTypeName;</span>
+	}
+
+	/**
+	 * Get internal name from type name
+	 * @param typeName
+	 *            Type name
+	 * @return Internal name.
+	 */
+	public static String getInternalNameFromTypeName(final String typeName) {
+<span class="nc" id="L573">		return typeName.replace(&quot;.&quot;, &quot;/&quot;);</span>
+	}
+
+	/**
+	 * Get type name from internal name
+	 * @param internalName
+	 *            Internal name
+	 * @return Type name
+	 */
+	public static String getTypeNameFromInternalName(final String internalName) {
+<span class="nc" id="L583">		return getTypeNameFromSignatureOrDescriptor(getSignatureFromInternalName(internalName));</span>
+	}
+
+	/**
+	 * Get the name of the type corresponding to the provided signature.
+	 * @param signature
+	 *            Signature to analyze
+	 * @return The name of the type corresponding to the provided signature.
+	 */
+	public static String getTypeNameFromSignatureOrDescriptor(final String signature) {
+<span class="nc" id="L593">		final int arrayDimension = countOccurrences(signature, &quot;[&quot;);</span>
+<span class="nc" id="L594">		String typeName = signature.replace(&quot;[&quot;, &quot;&quot;);</span>
+<span class="nc bnc" id="L595" title="All 10 branches missed.">		switch (typeName) {</span>
+		default:
+<span class="nc" id="L597">			typeName = typeName.substring(1, typeName.length() - 1).replace(&quot;/&quot;, &quot;.&quot;);</span>
+<span class="nc" id="L598">			break;</span>
+		case &quot;Z&quot;:
+<span class="nc" id="L600">			typeName = &quot;boolean&quot;;</span>
+<span class="nc" id="L601">			break;</span>
+		case &quot;I&quot;:
+<span class="nc" id="L603">			typeName = &quot;int&quot;;</span>
+<span class="nc" id="L604">			break;</span>
+		case &quot;F&quot;:
+<span class="nc" id="L606">			typeName = &quot;float&quot;;</span>
+<span class="nc" id="L607">			break;</span>
+		case &quot;J&quot;:
+<span class="nc" id="L609">			typeName = &quot;long&quot;;</span>
+<span class="nc" id="L610">			break;</span>
+		case &quot;S&quot;:
+<span class="nc" id="L612">			typeName = &quot;short&quot;;</span>
+<span class="nc" id="L613">			break;</span>
+		case &quot;C&quot;:
+<span class="nc" id="L615">			typeName = &quot;char&quot;;</span>
+<span class="nc" id="L616">			break;</span>
+		case &quot;B&quot;:
+<span class="nc" id="L618">			typeName = &quot;byte&quot;;</span>
+<span class="nc" id="L619">			break;</span>
+		case &quot;D&quot;:
+<span class="nc" id="L621">			typeName = &quot;double&quot;;</span>
+<span class="nc" id="L622">			break;</span>
+		case &quot;V&quot;:
+<span class="nc" id="L624">			typeName = &quot;void&quot;;</span>
+			break;
+		}
+<span class="nc bnc" id="L627" title="All 2 branches missed.">		for (int i = 0; i &lt; arrayDimension; ++i) {</span>
+<span class="nc" id="L628">			typeName += &quot;[]&quot;;</span>
+		}
+<span class="nc" id="L630">		return typeName;</span>
+
+	}
+
+	/**
+	 * Get the name of the type corresponding to the provided signature and also get the [] array representation.
+	 * @param signature
+	 *            Signature to analyze
+	 * @return The name of the type corresponding to the provided signature.
+	 */
+	public static String getCanonicalTypeNameFromSignature(final String signature) {
+<span class="nc" id="L641">		final int arrayDimension = countOccurrences(signature, &quot;[&quot;);</span>
+<span class="nc" id="L642">		String typeName = signature.replace(&quot;[&quot;, &quot;&quot;).replace(&quot;/&quot;, &quot;.&quot;);</span>
+<span class="nc bnc" id="L643" title="All 10 branches missed.">		switch (typeName) {</span>
+		default:
+<span class="nc bnc" id="L645" title="All 2 branches missed.">			if (typeName.contains(&quot;&lt;&quot;)) {</span>
+<span class="nc" id="L646">				final int startIndexSub = typeName.lastIndexOf(&quot;&lt;&quot;) + 1;</span>
+<span class="nc" id="L647">				final int endIndexSub = typeName.lastIndexOf(&quot;&gt;&quot;);</span>
+<span class="nc" id="L648">				final String subSignature = typeName.substring(startIndexSub, endIndexSub);</span>
+<span class="nc" id="L649">				final String newsubSignature = getTypeNameFromSignatureOrDescriptor(subSignature);</span>
+<span class="nc" id="L650">				typeName = typeName.replace(subSignature, newsubSignature);</span>
+			}
+<span class="nc" id="L652">			typeName = typeName.substring(1, typeName.length() - 1);</span>
+<span class="nc" id="L653">			break;</span>
+		case &quot;Z&quot;:
+<span class="nc" id="L655">			typeName = &quot;boolean&quot;;</span>
+<span class="nc" id="L656">			break;</span>
+		case &quot;I&quot;:
+<span class="nc" id="L658">			typeName = &quot;int&quot;;</span>
+<span class="nc" id="L659">			break;</span>
+		case &quot;F&quot;:
+<span class="nc" id="L661">			typeName = &quot;float&quot;;</span>
+<span class="nc" id="L662">			break;</span>
+		case &quot;J&quot;:
+<span class="nc" id="L664">			typeName = &quot;long&quot;;</span>
+<span class="nc" id="L665">			break;</span>
+		case &quot;S&quot;:
+<span class="nc" id="L667">			typeName = &quot;short&quot;;</span>
+<span class="nc" id="L668">			break;</span>
+		case &quot;C&quot;:
+<span class="nc" id="L670">			typeName = &quot;char&quot;;</span>
+<span class="nc" id="L671">			break;</span>
+		case &quot;B&quot;:
+<span class="nc" id="L673">			typeName = &quot;byte&quot;;</span>
+<span class="nc" id="L674">			break;</span>
+		case &quot;D&quot;:
+<span class="nc" id="L676">			typeName = &quot;double&quot;;</span>
+<span class="nc" id="L677">			break;</span>
+		case &quot;V&quot;:
+<span class="nc" id="L679">			typeName = &quot;void&quot;;</span>
+			break;
+		}
+<span class="nc bnc" id="L682" title="All 2 branches missed.">		for (int i = 0; i &lt; arrayDimension; ++i) {</span>
+<span class="nc" id="L683">			typeName += &quot;[]&quot;;</span>
+		}
+<span class="nc" id="L685">		return typeName;</span>
+	}
+
+	/**
+	 * Check if the field provided is DataClay field
+	 * @param fieldName
+	 *            Name of the field
+	 * @return TRUE if the class provided is some of the types in a stub. FALSE otherwise.
+	 */
+	public static boolean isStubField(final String fieldName) {
+<span class="nc bnc" id="L695" title="All 2 branches missed.">		for (final Field f : DataClayObject.class.getDeclaredFields()) {</span>
+<span class="nc bnc" id="L696" title="All 2 branches missed.">			if (fieldName.equals(f.getName())) {</span>
+<span class="nc" id="L697">				return true;</span>
+			}
+		}
+<span class="nc bnc" id="L700" title="All 2 branches missed.">		for (final Field f : DataClayExecutionObject.class.getDeclaredFields()) {</span>
+<span class="nc bnc" id="L701" title="All 2 branches missed.">			if (fieldName.equals(f.getName())) {</span>
+<span class="nc" id="L702">				return true;</span>
+			}
+		}
+<span class="nc bnc" id="L705" title="All 2 branches missed.">		if (fieldName.equals(ByteCodeFieldNames.IS_STUB_FIELDNAME)) {</span>
+<span class="nc" id="L706">			return true;</span>
+		}
+<span class="nc" id="L708">		return false;</span>
+	}
+
+	/**
+	 * Get the signature from method provided
+	 * @param method
+	 *            Method
+	 * @return The signature of method provided
+	 */
+	public static String getSignatureFromMethod(final Method method) {
+<span class="nc" id="L718">		final Class&lt;?&gt;[] paramTypes = method.getParameterTypes();</span>
+<span class="nc" id="L719">		Class&lt;?&gt; returnType = method.getReturnType();</span>
+<span class="nc" id="L720">		String paramsSignature = &quot;&quot;;</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">		for (Class&lt;?&gt; paramType : paramTypes) {</span>
+
+<span class="nc bnc" id="L723" title="All 2 branches missed.">			if (paramType.isArray()) {</span>
+<span class="nc" id="L724">				paramsSignature += &quot;[&quot;;</span>
+<span class="nc" id="L725">				paramType = paramType.getComponentType();</span>
+<span class="nc bnc" id="L726" title="All 2 branches missed.">				while (paramType.isArray()) {</span>
+<span class="nc" id="L727">					paramType = paramType.getComponentType();</span>
+				}
+			}
+
+<span class="nc" id="L731">			paramsSignature += getSignatureFromTypeName(paramType.getName());</span>
+		}
+<span class="nc" id="L733">		String returnSignature = &quot;&quot;;</span>
+<span class="nc bnc" id="L734" title="All 2 branches missed.">		if (returnType.isArray()) {</span>
+<span class="nc" id="L735">			returnSignature += &quot;[&quot;;</span>
+<span class="nc" id="L736">			returnType = returnType.getComponentType();</span>
+<span class="nc bnc" id="L737" title="All 2 branches missed.">			while (returnType.isArray()) {</span>
+<span class="nc" id="L738">				returnType = returnType.getComponentType();</span>
+			}
+		}
+<span class="nc" id="L741">		returnSignature += getSignatureFromTypeName(returnType.getName());</span>
+<span class="nc" id="L742">		return &quot;(&quot; + paramsSignature + &quot;)&quot; + returnSignature;</span>
+	}
+
+	/**
+	 * Get the signature from constructor provided
+	 * @param constructor
+	 *            Method
+	 * @return The signature of constructor provided
+	 */
+	public static String getSignatureFromConstructor(final Constructor&lt;?&gt; constructor) {
+<span class="nc" id="L752">		final Class&lt;?&gt;[] paramTypes = constructor.getParameterTypes();</span>
+<span class="nc" id="L753">		String paramsSignature = &quot;&quot;;</span>
+<span class="nc bnc" id="L754" title="All 2 branches missed.">		for (Class&lt;?&gt; paramType : paramTypes) {</span>
+
+<span class="nc bnc" id="L756" title="All 2 branches missed.">			if (paramType.isArray()) {</span>
+<span class="nc" id="L757">				paramsSignature += &quot;[&quot;;</span>
+<span class="nc" id="L758">				paramType = paramType.getComponentType();</span>
+<span class="nc bnc" id="L759" title="All 2 branches missed.">				while (paramType.isArray()) {</span>
+<span class="nc" id="L760">					paramType = paramType.getComponentType();</span>
+				}
+			}
+
+<span class="nc" id="L764">			paramsSignature += getSignatureFromTypeName(paramType.getName());</span>
+		}
+<span class="nc" id="L766">		return &quot;(&quot; + paramsSignature + &quot;)V&quot;;</span>
+	}
+
+	/**
+	 * Get the class corresponding to the provided signature. If the signature belongs to an array get its component type.
+	 * @param signature
+	 *            Signature to check.
+	 * @param classLoader
+	 *            Class loader to use
+	 * @return The class corresponding to the provided signature. If the signature belongs to an array get its component type.
+	 */
+	public static Class&lt;?&gt; getClassFromSignatureAndArray(final String signature, final ClassLoader classLoader) {
+<span class="nc" id="L778">		final int arrayDimension = countOccurrences(signature, &quot;[&quot;);</span>
+<span class="nc" id="L779">		String typeName = signature.replace(&quot;[&quot;, &quot;&quot;).replace(&quot;/&quot;, &quot;.&quot;);</span>
+		final Class&lt;?&gt; typeOfSignature;
+<span class="nc bnc" id="L781" title="All 10 branches missed.">		switch (typeName) {</span>
+		default:
+			/*
+			 * @abarcelo &quot;P&quot; (Python Wildcard) is, indeed, a byte array. (Additionally, some extra semantic on serialization/deserialization
+			 * in the Python Execution Environment).
+			 */
+<span class="nc bnc" id="L787" title="All 2 branches missed.">			if (typeName.startsWith(&quot;P&quot;)) {</span>
+<span class="nc" id="L788">				return null;</span>
+			}
+
+			try {
+<span class="nc" id="L792">				typeName = typeName.substring(1, typeName.length() - 1);</span>
+<span class="nc" id="L793">				typeOfSignature = classLoader.loadClass(typeName);</span>
+<span class="nc" id="L794">			} catch (final ClassNotFoundException e) {</span>
+<span class="nc" id="L795">				return null;</span>
+<span class="nc" id="L796">			}</span>
+			break;
+		case &quot;Z&quot;:
+<span class="nc" id="L799">			typeOfSignature = boolean.class;</span>
+<span class="nc" id="L800">			break;</span>
+		case &quot;I&quot;:
+<span class="nc" id="L802">			typeOfSignature = int.class;</span>
+<span class="nc" id="L803">			break;</span>
+		case &quot;F&quot;:
+<span class="nc" id="L805">			typeOfSignature = float.class;</span>
+<span class="nc" id="L806">			break;</span>
+		case &quot;J&quot;:
+<span class="nc" id="L808">			typeOfSignature = long.class;</span>
+<span class="nc" id="L809">			break;</span>
+		case &quot;S&quot;:
+<span class="nc" id="L811">			typeOfSignature = short.class;</span>
+<span class="nc" id="L812">			break;</span>
+		case &quot;C&quot;:
+<span class="nc" id="L814">			typeOfSignature = char.class;</span>
+<span class="nc" id="L815">			break;</span>
+		case &quot;B&quot;:
+<span class="nc" id="L817">			typeOfSignature = byte.class;</span>
+<span class="nc" id="L818">			break;</span>
+		case &quot;D&quot;:
+<span class="nc" id="L820">			typeOfSignature = double.class;</span>
+<span class="nc" id="L821">			break;</span>
+		case &quot;V&quot;:
+<span class="nc" id="L823">			typeOfSignature = void.class;</span>
+			break;
+		}
+
+<span class="nc bnc" id="L827" title="All 2 branches missed.">		if (arrayDimension &gt; 0) {</span>
+<span class="nc" id="L828">			final int[] dimensions = new int[arrayDimension];</span>
+<span class="nc" id="L829">			return Array.newInstance(typeOfSignature, dimensions).getClass();</span>
+		}
+
+<span class="nc" id="L832">		return typeOfSignature;</span>
+
+	}
+
+	/**
+	 * Check if class with name provided is an stub.
+	 * @param className
+	 *            Name of the class to analyze.
+	 * @param theclassLoader
+	 *            Class loader being used
+	 * @return TRUE if it is an stub for the class loader used for this class. FALSE otherwise.
+	 */
+	public static boolean isStub(final String className, final ClassLoader theclassLoader) {
+		try {
+<span class="nc" id="L846">			final Class&lt;?&gt; clazz = theclassLoader.loadClass(className);</span>
+			try {
+<span class="nc" id="L848">				clazz.getField(ByteCodeFieldNames.IS_STUB_FIELDNAME);</span>
+				/** It is an stub **/
+<span class="nc" id="L850">				return true;</span>
+<span class="nc" id="L851">			} catch (final NoSuchFieldException e2) {</span>
+<span class="nc" id="L852">				return false;</span>
+<span class="nc" id="L853">			} catch (final Exception e1) {</span>
+<span class="nc" id="L854">				return false;</span>
+			}
+<span class="nc" id="L856">		} catch (final ClassNotFoundException e2) {</span>
+<span class="nc" id="L857">			return false;</span>
+		}
+
+	}
+
+	/**
+	 * Nullify all fields of the object in order to free space.
+	 * @param object
+	 *            Object to nullify.
+	 */
+	public static void nullifyAllFields(final Object object) {
+		try {
+<span class="nc" id="L869">			final Field[] fields = object.getClass().getDeclaredFields();</span>
+<span class="nc bnc" id="L870" title="All 2 branches missed.">			for (final Field f : fields) {</span>
+				try {
+<span class="nc" id="L872">					f.setAccessible(true);</span>
+<span class="nc bnc" id="L873" title="All 4 branches missed.">					if (!Reflector.isStubField(f.getName()) &amp;&amp; !f.getType().isPrimitive()) {</span>
+<span class="nc" id="L874">						f.set(object, null);</span>
+					}
+					// Primitive fields spend same memory space, do not bother to nullify,
+					// this function is used to free memory
+<span class="nc" id="L878">				} catch (final Exception e) {</span>
+					// ignore, security or illegal access exceptions
+<span class="nc" id="L880">				}</span>
+			}
+<span class="nc" id="L882">		} catch (final SecurityException e) {</span>
+			// ignore, security exceptions
+<span class="nc" id="L884">		}</span>
+<span class="nc" id="L885">	}</span>
+
+	/**
+	 * Get package name from full class name
+	 * @param fullName
+	 *            Full package name
+	 * @return Package name
+	 */
+	public static String getPackageName(final String fullName) {
+<span class="nc" id="L894">		final int lastDot = fullName.lastIndexOf('.');</span>
+<span class="nc bnc" id="L895" title="All 2 branches missed.">		if (lastDot == -1) {</span>
+<span class="nc" id="L896">			return &quot;default&quot;; // the class is in the default package</span>
+		}
+<span class="nc" id="L898">		return fullName.substring(0, lastDot);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

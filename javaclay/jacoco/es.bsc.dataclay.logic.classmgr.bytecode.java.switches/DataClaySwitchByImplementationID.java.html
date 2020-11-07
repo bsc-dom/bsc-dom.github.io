@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClaySwitchByImplementationID.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.switches</a> &gt; <span class="el_source">DataClaySwitchByImplementationID.java</span></div><h1>DataClaySwitchByImplementationID.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.logic.classmgr.bytecode.java.switches;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.InstructionAdapter;
+
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeTypes;
+import es.bsc.dataclay.util.management.classmgr.Implementation;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+
+/**
+ * Run table switch generator.
+ */
+public abstract class DataClaySwitchByImplementationID {
+
+	// CHECKSTYLE:OFF
+
+	/** Information of class. */
+	protected final MetaClass metaClass;
+
+	/** Stub information for stubs. */
+	protected final StubInfo stubInfo;
+
+	/** Indicates if it is an execution class. */
+	protected final boolean isExecClass;
+
+	/** Method generator. */
+	protected final GeneratorAdapter gn;
+
+	/** Instruction adapter. */
+	protected final InstructionAdapter ia;
+
+	// CHECKSTYLE:ON
+
+	/**
+	 * Constructor
+	 * @param themetaClass
+	 *            Information of class.
+	 * @param thestubInfo
+	 *            Stub info
+	 * @param theisExecClass
+	 *            isExec class
+	 * @param thegn
+	 *            Method generator.
+	 * @param theia
+	 *            Instruction adapter
+	 */
+	public DataClaySwitchByImplementationID(
+			final MetaClass themetaClass,
+			final StubInfo thestubInfo, final boolean theisExecClass,
+<span class="nc" id="L65">			final GeneratorAdapter thegn, final InstructionAdapter theia) {</span>
+<span class="nc" id="L66">		gn = thegn;</span>
+<span class="nc" id="L67">		metaClass = themetaClass;</span>
+<span class="nc" id="L68">		ia = theia;</span>
+<span class="nc" id="L69">		stubInfo = thestubInfo;</span>
+<span class="nc" id="L70">		isExecClass = theisExecClass;</span>
+<span class="nc" id="L71">	}</span>
+
+	/**
+	 * Generate code for each case.
+	 * @param impl
+	 *            Implementation of case
+	 */
+	protected abstract void generateCase(final Implementation impl);
+
+	/**
+	 * Generate code for calling to parent for each case.
+	 */
+	protected abstract void generateCallToParentCase();
+
+	/**
+	 * Generate switch case by Implementation ID code (IMPLID is parameter 0)
+	 * @param ignoreConstructors
+	 *            Indicates if constructors must be ignored.
+	 */
+	public final void generateCode(final boolean ignoreConstructors) {
+		// Code
+<span class="nc" id="L92">		gn.visitCode(); // Start code</span>
+<span class="nc" id="L93">		gn.loadArg(0);</span>
+<span class="nc" id="L94">		gn.invokeVirtual(ByteCodeTypes.IMPLID, ByteCodeMethods.TO_STRING);</span>
+<span class="nc" id="L95">		gn.dup();</span>
+<span class="nc" id="L96">		final int implIDstr = gn.newLocal(ByteCodeTypes.STRING);</span>
+<span class="nc" id="L97">		gn.storeLocal(implIDstr);</span>
+<span class="nc" id="L98">		gn.invokeVirtual(ByteCodeTypes.STRING, ByteCodeMethods.HASHCODE);</span>
+
+		// Prepare cases
+<span class="nc" id="L101">		final Map&lt;Integer, List&lt;Implementation&gt;&gt; implementationsByHashKey = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		for (final Operation op : metaClass.getOperations()) {</span>
+<span class="nc bnc" id="L103" title="All 10 branches missed.">			if ((op.getName().equals(&quot;&lt;init&gt;&quot;) || op.getName().equals(&quot;&lt;clinit&gt;&quot;)) &amp;&amp; ignoreConstructors || op.getName().startsWith(&quot;$$setupdate$$&quot;) &amp;&amp; !isExecClass) {</span>
+<span class="nc" id="L104">				continue;</span>
+			}
+
+<span class="nc bnc" id="L107" title="All 2 branches missed.">			for (final Implementation impl : op.getImplementations()) {</span>
+
+<span class="nc bnc" id="L109" title="All 4 branches missed.">				if (isExecClass || stubInfo.getImplementationByNameAndSignature(impl.getOpNameAndDescriptor()) != null) {</span>
+<span class="nc" id="L110">					final int hashCode = impl.getDataClayID().toString().hashCode();</span>
+<span class="nc" id="L111">					List&lt;Implementation&gt; implsInHash = implementationsByHashKey.get(hashCode);</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">					if (implsInHash == null) {</span>
+<span class="nc" id="L113">						implsInHash = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L114">						implementationsByHashKey.put(hashCode, implsInHash);</span>
+					}
+<span class="nc" id="L116">					implsInHash.add(impl);</span>
+				}
+<span class="nc" id="L118">			}</span>
+<span class="nc" id="L119">		}</span>
+
+		// Prepare keys
+<span class="nc" id="L122">		final int[] keys = new int[implementationsByHashKey.size()];</span>
+<span class="nc" id="L123">		int curKey = 0;</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		for (final Integer implHash : implementationsByHashKey.keySet()) {</span>
+<span class="nc" id="L125">			keys[curKey] = implHash;</span>
+<span class="nc" id="L126">			curKey++;</span>
+<span class="nc" id="L127">		}</span>
+<span class="nc" id="L128">		Arrays.sort(keys);</span>
+
+		// Create labels
+<span class="nc" id="L131">		final Label[] labels = new Label[keys.length];</span>
+<span class="nc" id="L132">		final Map&lt;Integer, Integer&gt; hashCodeToLabelIdx = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		for (int i = 0; i &lt; keys.length; ++i) {</span>
+<span class="nc" id="L134">			labels[i] = new Label();</span>
+<span class="nc" id="L135">			hashCodeToLabelIdx.put(keys[i], i);</span>
+		}
+<span class="nc" id="L137">		final Label lastLabel = new Label();</span>
+<span class="nc" id="L138">		gn.visitLookupSwitchInsn(lastLabel, keys, labels);</span>
+
+		// For each implementation case
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		for (final int implHash : keys) {</span>
+<span class="nc" id="L143">			final List&lt;Implementation&gt; impls = implementationsByHashKey.get(implHash);</span>
+<span class="nc" id="L144">			final int idx = hashCodeToLabelIdx.get(implHash);</span>
+
+			// Get label
+<span class="nc" id="L147">			final Label thisLabel = labels[idx];</span>
+<span class="nc" id="L148">			gn.visitLabel(thisLabel);</span>
+<span class="nc" id="L149">			Label nextInsideThis = lastLabel;</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">			if (impls.size() &gt; 1) { // More than one impl in this case</span>
+<span class="nc" id="L151">				nextInsideThis = new Label();</span>
+			}
+<span class="nc bnc" id="L153" title="All 2 branches missed.">			for (int j = 0; j &lt; impls.size(); ++j) {</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">				if (j &gt; 0) {</span>
+<span class="nc" id="L155">					gn.visitLabel(nextInsideThis);</span>
+<span class="nc" id="L156">					nextInsideThis = new Label();</span>
+				}
+<span class="nc" id="L158">				final Implementation impl = impls.get(j);</span>
+<span class="nc" id="L159">				gn.loadLocal(implIDstr);</span>
+<span class="nc" id="L160">				gn.visitLdcInsn(impl.getDataClayID().toString());</span>
+<span class="nc" id="L161">				gn.invokeVirtual(ByteCodeTypes.STRING, ByteCodeMethods.EQUALS);</span>
+<span class="nc" id="L162">				gn.ifZCmp(Opcodes.IFEQ, nextInsideThis);</span>
+
+				// Generate case
+<span class="nc" id="L165">				generateCase(impl);</span>
+			}
+		}
+
+<span class="nc" id="L169">		gn.visitLabel(lastLabel);</span>
+
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		if (metaClass.getParentType() != null) {</span>
+			// call super.run
+<span class="nc" id="L173">			generateCallToParentCase();</span>
+		} else {
+			// Throw illegal argument exception
+<span class="nc" id="L176">			gn.throwException(ByteCodeTypes.ILLEGAL_ARGUMENT_EXCEPTION, &quot;[DATACLAY] Internal error: Implementation not available&quot;);</span>
+		}
+<span class="nc" id="L178">		gn.visitMaxs(-1, -1); // Calculate it automatically</span>
+<span class="nc" id="L179">		gn.visitEnd();</span>
+
+<span class="nc" id="L181">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

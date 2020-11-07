@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LruCacheByDate.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.structs</a> &gt; <span class="el_source">LruCacheByDate.java</span></div><h1>LruCacheByDate.java</h1><pre class="source lang-java linenums">
+/**
+ * @file LruCache.java
+ * @date May 23, 2013
+ */
+
+package es.bsc.dataclay.util.structs;
+
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
+import es.bsc.dataclay.util.Configuration;
+
+/**
+ * Class that implements a simple LRU cache with specified max entries.
+ * 
+ * @param &lt;A&gt;
+ *            Key element class
+ * @param &lt;B&gt;
+ *            Value element class
+ */
+public final class LruCacheByDate&lt;A, B&gt; {
+	
+	/** Map used for this cache. */
+	private final Map&lt;A, B&gt; map;
+	
+	/** Cache threads. */
+	private final ScheduledExecutorService execService;
+
+	/**
+	 * LruCache constructor
+	 * @param theMaxEntries
+	 *            Maximum entries in Cache.
+	 */
+<span class="fc" id="L41">	public LruCacheByDate(final int theMaxEntries) {</span>
+<span class="fc" id="L42">		map = Collections.synchronizedMap(</span>
+<span class="fc" id="L43">				new CacheLinkedHashMap&lt;A, B&gt;(theMaxEntries, Configuration.Flags.LRU_LOAD_FACTOR.getFloatValue(), </span>
+						true));
+<span class="fc" id="L45">		final Runnable task = new Runnable() {</span>
+			@Override
+			public void run() {
+<span class="fc" id="L48">				cleanCache();</span>
+<span class="fc" id="L49">			}</span>
+		};
+<span class="fc" id="L51">		execService = Executors.newSingleThreadScheduledExecutor();</span>
+<span class="fc" id="L52">		execService.scheduleAtFixedRate(task, 0, Configuration.Flags.LRU_BYDATE_TIMEUNIT_VALUE.getIntValue(),</span>
+<span class="fc" id="L53">				(TimeUnit) Configuration.Flags.LRU_BYDATE_TIMEUNIT.getValue());</span>
+<span class="fc" id="L54">	}</span>
+
+
+
+	/**
+	 * Cleans expired entries
+	 */
+	@SuppressWarnings(&quot;unchecked&quot;)
+	public void cleanCache() {
+<span class="fc" id="L63">		final boolean firstCheckDone = false;</span>
+		// We assume that type B of value is a Tuple&lt;X, Date&gt;
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">		for (A key : this.keySet()) {</span>
+			final Tuple&lt;Object, Calendar&gt; curValue;
+			if (firstCheckDone) {
+				curValue = (Tuple&lt;Object, Calendar&gt;) this.get(key);
+			} else {
+<span class="nc" id="L70">				final Object aux = this.get(key);</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">				if (!(aux instanceof Tuple&lt;?, ?&gt;)) {</span>
+<span class="nc" id="L72">					return;</span>
+				}
+				try {
+<span class="nc" id="L75">					curValue = (Tuple&lt;Object, Calendar&gt;) aux;</span>
+<span class="nc" id="L76">				} catch (ClassCastException ex) {</span>
+<span class="nc" id="L77">					return;</span>
+<span class="nc" id="L78">				}</span>
+			}
+<span class="nc" id="L80">			final Calendar today = Calendar.getInstance();</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">			if (curValue.getSecond().before(today)) {</span>
+<span class="nc" id="L82">				this.remove(key);</span>
+			}
+<span class="nc" id="L84">		}</span>
+<span class="fc" id="L85">	}</span>
+	
+	//CHECKSTYLE:OFF
+	public B put(final A key, final B value) {
+<span class="fc" id="L89">		return map.put(key, value);</span>
+	}
+	
+	public B get(final A key) { 
+<span class="fc" id="L93">		return map.get(key);</span>
+	}
+	
+	public B remove(final A key) { 
+<span class="nc" id="L97">		return map.remove(key);</span>
+	}
+	
+	public boolean containsKey(final A key) { 
+<span class="nc" id="L101">		return map.containsKey(key);</span>
+	}
+	
+	public boolean containsValue(final B value) { 
+<span class="nc" id="L105">		return map.containsValue(value);</span>
+	}
+	
+	public Set&lt;Entry&lt;A, B&gt;&gt; entrySet() { 
+<span class="nc" id="L109">		return map.entrySet();</span>
+	}
+	
+	public Set&lt;A&gt; keySet() { 
+<span class="fc" id="L113">		return map.keySet();</span>
+	}
+	
+	public int size() { 
+<span class="nc" id="L117">		return map.size();</span>
+	}
+	
+	public void putAll(final Map&lt;? extends A, ? extends B&gt; m) { 
+<span class="nc" id="L121">		map.putAll(m);</span>
+<span class="nc" id="L122">	}</span>
+	
+	public void clear() { 
+<span class="nc" id="L125">		map.clear();</span>
+<span class="nc" id="L126">	}</span>
+	//CHECKSTYLE:ON
+	
+	/**
+	 * Finish cache threads
+	 * @throws InterruptedException if shutdown was interrupted.
+	 */
+	public void finishCacheThreads() throws InterruptedException { 
+		//CHECKSTYLE:OFF
+<span class="nc" id="L135">		execService.shutdown();</span>
+<span class="nc" id="L136">		execService.awaitTermination(10, TimeUnit.SECONDS);</span>
+		//CHECKSTYLE:ON
+<span class="nc" id="L138">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

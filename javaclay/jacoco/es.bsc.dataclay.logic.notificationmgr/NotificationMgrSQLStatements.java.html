@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationMgrSQLStatements.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.notificationmgr</a> &gt; <span class="el_source">NotificationMgrSQLStatements.java</span></div><h1>NotificationMgrSQLStatements.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.notificationmgr;
+
+import java.util.ResourceBundle;
+
+/**
+ * This class represents SQL statements.
+ */
+public final class NotificationMgrSQLStatements {
+
+	/** Properties. */
+<span class="nc" id="L12">	private static ResourceBundle props = null;</span>
+
+	/**
+	 * Utility classes should have private constructor.
+	 */
+	private NotificationMgrSQLStatements() {
+
+	}
+
+	/**
+	 * Init properties of the properties file
+	 */
+	static {
+<span class="nc bnc" id="L25" title="All 2 branches missed.">		if (props == null) {</span>
+<span class="nc" id="L26">			props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.notification_mgr_sql&quot;);</span>
+		}
+<span class="nc" id="L28">	}</span>
+
+	/**
+	 * This enumeration represent all possible SQL statements.
+	 */
+<span class="nc" id="L33">	public enum SqlStatements {</span>
+
+		/** Create Listeners table. */
+<span class="nc" id="L36">		CREATE_TABLE_EVENT_LISTENERS,</span>
+
+		/** Create messages table. */
+<span class="nc" id="L39">		CREATE_TABLE_EVENT_MESSAGES,</span>
+
+		/** Drop listeners table. */
+<span class="nc" id="L42">		DROP_TABLE_EVENT_LISTENERS,</span>
+
+		/** Drop messages table. */
+<span class="nc" id="L45">		DROP_TABLE_EVENT_MESSAGES,</span>
+
+		/** Insert ECA sql query. */
+<span class="nc" id="L48">		INSERT_ECA,</span>
+
+		/** Insert Message sql query. */
+<span class="nc" id="L51">		INSERT_MESSAGE,</span>
+
+		/** Delete message. */
+<span class="nc" id="L54">		DELETE_MESSAGE,</span>
+
+		/** Update ECA. */
+<span class="nc" id="L57">		UPDATE_ECA,</span>
+
+		/** Update message. */
+<span class="nc" id="L60">		UPDATE_MESSAGE,</span>
+
+		/** Select all messages. */
+<span class="nc" id="L63">		SELECT_ALL_MESSAGES,</span>
+
+		/** Select all Ecas. */
+<span class="nc" id="L66">		SELECT_ALL_ECAS,</span>
+
+		/** Select all ecas limited. */
+<span class="nc" id="L69">		SELECT_ALL_ECAS_LIMITED,</span>
+
+		/** Select all messages limited. */
+<span class="nc" id="L72">		SELECT_ALL_MESSAGES_LIMITED;</span>
+
+		/** SQL statement. */
+		private String sqlStatement;
+
+		/**
+		 * Init properties of the properties file
+		 */
+		private void init() {
+<span class="nc" id="L81">			final String sqlSt = props.getString(this.name());</span>
+<span class="nc" id="L82">			setSqlStatement(sqlSt);</span>
+<span class="nc" id="L83">		}</span>
+
+		/**
+		 * Get the sqlStatement
+		 * @return the sqlStatement
+		 */
+		public String getSqlStatement() {
+<span class="nc bnc" id="L90" title="All 2 branches missed.">			if (sqlStatement == null) {</span>
+<span class="nc" id="L91">				init();</span>
+			}
+<span class="nc" id="L93">			return sqlStatement;</span>
+		}
+
+		/**
+		 * Set the sqlStatement
+		 * @param newsqlStatement
+		 *            the sqlStatement
+		 */
+		public void setSqlStatement(final String newsqlStatement) {
+<span class="nc" id="L102">			sqlStatement = newsqlStatement;</span>
+<span class="nc" id="L103">		}</span>
+
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

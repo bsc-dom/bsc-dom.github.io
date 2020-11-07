@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LanguageFeature.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr.features</a> &gt; <span class="el_source">LanguageFeature.java</span></div><h1>LanguageFeature.java</h1><pre class="source lang-java linenums">
+/**
+ * @file LanguageFeature.java
+ * @date OCt 8, 2012
+ */
+package es.bsc.dataclay.util.management.classmgr.features;
+
+import java.util.UUID;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents all Language Features (Java, C++,...).
+ * 
+ */
+public final class LanguageFeature extends QualitativeFeature {
+
+	// TODO: We should use SupportedLanguages class instead of a string (1 Apr 2014 jmarti)
+
+	/** ID. */
+	private UUID id;
+	/** Name of the language. */
+	private String languageName;
+	/** Version of the language. */
+	private String version;
+
+	/**
+	 * Empty constructor for deserialization.
+	 */
+<span class="nc" id="L32">	public LanguageFeature() {</span>
+
+<span class="nc" id="L34">	}</span>
+
+	/**
+	 * Constructor with name and version
+	 * @param langName
+	 *            Name to be set
+	 * @param langVersion
+	 *            Version to be set
+	 * @post Creates a new language with the provided name and version
+	 */
+	public LanguageFeature(final String langName, final String langVersion) {
+<span class="fc" id="L45">		super(FeatureType.LANGUAGE);</span>
+
+<span class="pc bpc" id="L47" title="2 of 4 branches missed.">		if (langName == null || langName.trim().isEmpty()) {</span>
+<span class="nc" id="L48">			throw new IllegalArgumentException(&quot;Language name is null or empty&quot;);</span>
+		}
+<span class="pc bpc" id="L50" title="2 of 4 branches missed.">		if (langVersion == null || langVersion.trim().isEmpty()) {</span>
+<span class="nc" id="L51">			throw new IllegalArgumentException(&quot;Language version is null or empty&quot;);</span>
+		}
+<span class="fc" id="L53">		this.languageName = langName;</span>
+<span class="fc" id="L54">		this.version = langVersion;</span>
+<span class="fc" id="L55">	}</span>
+
+	/**
+	 * Get the name of the language
+	 * @return LanguageFeature::languageName of container LanguageFeature.
+	 */
+	public String getLanguageName() {
+<span class="fc" id="L62">		return languageName;</span>
+	}
+
+	/**
+	 * Set the name of the language
+	 * @param newlanguageName
+	 *            LanguageFeature::languageName of container LanguageFeature.
+	 */
+	public void setLanguageName(final String newlanguageName) {
+<span class="nc" id="L71">		languageName = newlanguageName;</span>
+<span class="nc" id="L72">	}</span>
+
+	/**
+	 * Get the version of the language
+	 * @return LanguageFeature::version of container LanguageFeature.
+	 */
+	public String getVersion() {
+<span class="fc" id="L79">		return version;</span>
+	}
+
+	/**
+	 * Set the version of the language
+	 * @param newversion
+	 *            LanguageFeature::version of container LanguageFeature.
+	 */
+	public void setVersion(final String newversion) {
+<span class="nc" id="L88">		version = newversion;</span>
+<span class="nc" id="L89">	}</span>
+
+	@Override
+	public boolean equals(final Object obj) {
+<span class="nc bnc" id="L93" title="All 2 branches missed.">		if (obj instanceof LanguageFeature) {</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">			return (this.languageName.equals(((LanguageFeature) obj).getLanguageName())</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">					&amp;&amp; this.version.equals(((LanguageFeature) obj).getVersion()));</span>
+		}
+<span class="nc" id="L97">		return false;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L102">		return this.languageName.hashCode() + this.version.hashCode();</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L107">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L108">		return yaml.dump(this);</span>
+	}
+
+	/**
+	 * @return the id
+	 */
+	public UUID getId() {
+<span class="fc" id="L115">		return id;</span>
+	}
+
+	/**
+	 * @param theid
+	 *            the id to set
+	 */
+	public void setId(final UUID theid) {
+<span class="fc" id="L123">		this.id = theid;</span>
+<span class="fc" id="L124">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

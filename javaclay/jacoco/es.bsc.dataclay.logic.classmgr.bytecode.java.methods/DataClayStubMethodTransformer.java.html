@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayStubMethodTransformer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.methods</a> &gt; <span class="el_source">DataClayStubMethodTransformer.java</span></div><h1>DataClayStubMethodTransformer.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.java.methods;
+
+import java.lang.reflect.Modifier;
+import java.util.List;
+
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
+
+import es.bsc.dataclay.logic.classmgr.bytecode.java.ByteCodeConstants;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeFieldNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethodsNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeTypes;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.management.classmgr.Annotation;
+import es.bsc.dataclay.util.management.classmgr.Implementation;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.classmgr.Property;
+
+public class DataClayStubMethodTransformer extends DataClayMethodTransformer {
+
+	public DataClayStubMethodTransformer(MethodVisitor next, int accessFlags, String methodName, String methodDescriptor, String newclassDesc, Operation theoperation,
+			Implementation theimpl, final List&lt;Property&gt; properties) {
+<span class="nc" id="L31">		super(next, accessFlags, methodName, methodDescriptor, newclassDesc, theoperation, theimpl, properties);</span>
+<span class="nc" id="L32">	}</span>
+
+	@Override
+	protected void onMethodEnter() {
+		// Code injection (in constructors, just after super call)
+<span class="nc bnc" id="L37" title="All 2 branches missed.">		if (operation.getName().equals(ByteCodeMethodsNames.INIT_MTHD)</span>
+<span class="nc bnc" id="L38" title="All 2 branches missed.">				|| operation.getName().equals(ByteCodeMethodsNames.CLINIT_MTHD)</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">				|| Modifier.isStatic(operation.getJavaOperationInfo().getModifier())) {</span>
+			// Currently not injecting code for constructors or statics
+<span class="nc" id="L41">			return;</span>
+		}
+
+<span class="nc" id="L44">		injectStartMethod(this, this.methodDesc, classDesc, operation.getName(), operation.getNameAndDescriptor(),</span>
+<span class="nc" id="L45">				implementation.getDataClayID().toString(), null, null);</span>
+
+<span class="nc" id="L47">	}</span>
+
+	protected static void injectSetterStartMethod(final GeneratorAdapter genAd,
+			final String methodDescriptor,
+			final String thisclassDesc, final String opName,
+			final String opNameAndDesc,
+			final String implIDAsStr,
+			final List&lt;Annotation&gt; annotations) {
+
+		/**
+		 * if (isPersistent) { Object[] params = ... super.executeRemote(signature, params); }
+		 */
+<span class="nc" id="L59">		final String setterOpNameAndDesc = &quot;$$set&quot; + opNameAndDesc;</span>
+
+<span class="nc" id="L61">		final Type returnType = Type.getReturnType(methodDescriptor);</span>
+<span class="nc" id="L62">		final Type classType = Type.getType(thisclassDesc);</span>
+
+		// Check if isPersistent
+<span class="nc" id="L65">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L67">		final Method methodToCall = ByteCodeMethods.DCOBJ_IS_PERSISTENT;</span>
+<span class="nc" id="L68">		final int opCode = Opcodes.IFEQ;</span>
+
+<span class="nc" id="L70">		genAd.invokeVirtual(classType, methodToCall);</span>
+<span class="nc" id="L71">		final Label execLocalLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L72">		genAd.ifZCmp(opCode, execLocalLabel); // Stack:</span>
+
+
+		// Call executeRemote
+<span class="nc" id="L76">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L78">		genAd.visitLdcInsn(setterOpNameAndDesc);</span>
+<span class="nc" id="L79">		genAd.visitLdcInsn(implIDAsStr);</span>
+<span class="nc" id="L80">		genAd.loadArgArray();</span>
+
+<span class="nc" id="L82">		genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_EXECUTE_IMPL); // Stack: &lt;ResultObj&gt;</span>
+		// Unbox: cast Object -&gt; Integer and then call intValue (for example)
+<span class="nc" id="L84">		genAd.unbox(returnType);</span>
+<span class="nc" id="L85">		genAd.pop();</span>
+
+<span class="nc" id="L87">		genAd.returnValue();</span>
+<span class="nc" id="L88">		genAd.visitLabel(execLocalLabel);</span>
+<span class="nc" id="L89">	}</span>
+
+	protected static void injectStartMethod(final GeneratorAdapter genAd,
+			final String methodDescriptor,
+			final String thisclassDesc, final String opName,
+			final String opNameAndDesc,
+			final String implIDAsStr,
+			final ImplementationID prefetchingID, final MetaClassID prefetchingClassID) {
+
+		/**
+		 * if (isPersistent) { Object[] params = ... super.executeRemote(signature, params); }
+		 */
+
+<span class="nc" id="L102">		final Type returnType = Type.getReturnType(methodDescriptor);</span>
+<span class="nc" id="L103">		final Type classType = Type.getType(thisclassDesc);</span>
+
+		// DEBUG
+<span class="nc bnc" id="L106" title="All 2 branches missed.">		if (Configuration.Flags.ADD_DEBUG_INFO_ON_METHODS.getBooleanValue()) {</span>
+<span class="nc" id="L107">			genAd.getStatic(ByteCodeTypes.DCOBJ,</span>
+					ByteCodeFieldNames.DEBUG_ENABLED_FIELDNAME,
+					Type.BOOLEAN_TYPE);
+<span class="nc" id="L110">			final Label isNotDebugLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L111">			genAd.ifZCmp(Opcodes.IFEQ, isNotDebugLabel); // Stack:</span>
+<span class="nc" id="L112">			genAd.loadThis();</span>
+<span class="nc" id="L113">			genAd.visitLdcInsn(opNameAndDesc);</span>
+<span class="nc" id="L114">			genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_DEBUG_START);</span>
+<span class="nc" id="L115">			genAd.visitLabel(isNotDebugLabel);</span>
+
+		}
+
+		// Check if isPersistent
+<span class="nc" id="L120">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L122">		final Method methodToCall = ByteCodeMethods.DCOBJ_IS_PERSISTENT;</span>
+<span class="nc" id="L123">		final int opCode = Opcodes.IFEQ;</span>
+
+<span class="nc" id="L125">		genAd.invokeVirtual(classType, methodToCall);</span>
+<span class="nc" id="L126">		final Label execLocalLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L127">		genAd.ifZCmp(opCode, execLocalLabel); // Stack:</span>
+
+		// Call executeRemote
+<span class="nc" id="L130">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L132">		genAd.visitLdcInsn(opNameAndDesc);</span>
+<span class="nc" id="L133">		genAd.visitLdcInsn(implIDAsStr);</span>
+<span class="nc" id="L134">		genAd.loadArgArray();</span>
+
+<span class="nc" id="L136">		genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_EXECUTE_IMPL); // Stack: &lt;ResultObj&gt;</span>
+		// Unbox: cast Object -&gt; Integer and then call intValue (for example)
+<span class="nc" id="L138">		genAd.unbox(returnType);</span>
+<span class="nc" id="L139">		genAd.returnValue();</span>
+<span class="nc" id="L140">		genAd.visitLabel(execLocalLabel);</span>
+<span class="nc" id="L141">	}</span>
+	
+
+	@Override
+	public void visitMethodInsn(final int opcode, final String owner, final String name, final String desc, final boolean itf) {
+		// Remove all methodName$$...
+<span class="nc" id="L147">		String actualName = name;</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">		if (name.contains(ByteCodeConstants.DATACLAY_PREFIX_MARK)) {</span>
+<span class="nc" id="L149">			actualName = name.substring(0, name.indexOf(ByteCodeConstants.DATACLAY_PREFIX_MARK));</span>
+		}
+<span class="nc" id="L151">		super.visitMethodInsn(opcode, owner, actualName, desc, itf);</span>
+<span class="nc" id="L152">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

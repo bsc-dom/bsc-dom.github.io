@@ -1,0 +1,2182 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClassManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr</a> &gt; <span class="el_source">ClassManager.java</span></div><h1>ClassManager.java</h1><pre class="source lang-java linenums">
+/**
+ * @file ClassManager.java
+ * @date Sep 6, 2012
+ */
+
+package es.bsc.dataclay.logic.classmgr;
+
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.exceptions.DataClayRuntimeException;
+import es.bsc.dataclay.exceptions.ErrorDefs.ERRORCODE;
+import es.bsc.dataclay.exceptions.dbhandler.DbHandlerException;
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.ClassInIncludesException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.ClassNotExistsException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.ImplementationNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.NoMoreImplementationsInOperationException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.OperationAlreadyInClassException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.OperationNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.OperationNotInClassException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.PropertyAlreadyInClassException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.PropertyNotExistException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.PropertyNotInClassException;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.SetterOrGetterOperationsCannotBeRemoved;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.ByteCodeConstants;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.ExecutionByteCodeManager;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.StubByteCodeManager;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.merger.ByteCodeMerger;
+import es.bsc.dataclay.logic.classmgr.bytecode.pysrc.StubPySourceManager;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.management.AbstractManager;
+import es.bsc.dataclay.util.management.classmgr.AccessedImplementation;
+import es.bsc.dataclay.util.management.classmgr.AccessedProperty;
+import es.bsc.dataclay.util.management.classmgr.Implementation;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.classmgr.PrefetchingInformation;
+import es.bsc.dataclay.util.management.classmgr.Property;
+import es.bsc.dataclay.util.management.classmgr.Type;
+import es.bsc.dataclay.util.management.classmgr.UserType;
+import es.bsc.dataclay.util.management.classmgr.features.Feature;
+import es.bsc.dataclay.util.management.classmgr.features.LanguageFeature;
+import es.bsc.dataclay.util.management.classmgr.features.QualitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.QuantitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.Feature.FeatureType;
+import es.bsc.dataclay.util.management.classmgr.java.JavaImplementation;
+import es.bsc.dataclay.util.management.classmgr.java.JavaOperationInfo;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.reflection.Reflector;
+import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.util.structs.Triple;
+import es.bsc.dataclay.util.structs.Tuple;
+
+/**
+ * This class is responsible to manage Classes, Operations, Properties and
+ * Implementations, and Properties: add, remove and modify.
+ * 
+ * @version 2.0
+ */
+public final class ClassManager extends AbstractManager {
+<span class="fc" id="L82">	private static final Logger logger = LogManager.getLogger(&quot;managers.ClassManager&quot;);</span>
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L85">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Prefix of the getters created in a Stub. */
+	public static final String GETTER_PREFIX = &quot;$$get&quot;;
+	/** Prefix of the setters created in a Stub. */
+	public static final String SETTER_PREFIX = &quot;$$set&quot;;
+
+	/** Class cache. */
+	private final LruCache&lt;MetaClassID, MetaClass&gt; classCache;
+	/** Class cache by name and namespace id. */
+	private final LruCache&lt;Tuple&lt;NamespaceID, String&gt;, MetaClass&gt; classCacheByName;
+	/** Class cache by name and namespace. */
+	private final LruCache&lt;Tuple&lt;String, String&gt;, MetaClass&gt; classCacheByNameAndNamespace;
+	/** Operations cache. */
+	private final LruCache&lt;OperationID, Operation&gt; operationsCache;
+	/** Implementations cache. */
+	private final LruCache&lt;ImplementationID, Implementation&gt; implementationsCache;
+	/** Properties cache. */
+	private final LruCache&lt;PropertyID, Property&gt; propertiesCache;
+
+	/** DbHandler for the management of Database. */
+	private final ClassManagerDB classDB;
+
+	/** Cache of Stubs. */
+	private final LruCache&lt;StubInfo, Triple&lt;String, byte[], byte[]&gt;&gt; stubsCache;
+
+	/**
+	 * Instantiates an Class Manager that uses the Backend configuration
+	 *        provided.
+	 * @param managerName
+	 *            Manager/service name.
+	 * @post Creates an Class manager and hash initializes the backend.
+	 */
+	public ClassManager(final BasicDataSource dataSource) {
+<span class="fc" id="L119">		super(dataSource);</span>
+<span class="fc" id="L120">		classCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CLASS_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L121">		classCacheByName = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CLASS_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L122">		classCacheByNameAndNamespace = new LruCache&lt;&gt;(</span>
+<span class="fc" id="L123">				Configuration.Flags.MAX_ENTRIES_CLASS_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L124">		operationsCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CLASS_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L125">		propertiesCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CLASS_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L126">		implementationsCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CLASS_MANAGER_CACHE.getIntValue());</span>
+
+<span class="fc" id="L128">		stubsCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CLASS_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L129">		this.classDB = new ClassManagerDB(dataSource);</span>
+<span class="fc" id="L130">		this.classDB.createTables();</span>
+<span class="fc" id="L131">	}</span>
+
+	/**
+	 * Empty caches of all references to the class with id provided or
+	 *        operations and properties associated.
+	 * @param classID
+	 *            ID of class to analyze
+	 */
+	private void emptyClassInCaches(final MetaClassID classID) {
+		// IMPORTANT: elements updated must be removed from Cache since references
+		// obtained and modified
+		// (like operations) are not same references than the ones in cache and CHANGES
+		// ARE NOT REFLECTED.
+<span class="fc" id="L144">		final MetaClass mClass = getClassFromDatabaseOrCache(classID);</span>
+<span class="fc" id="L145">		this.classCacheByName.remove(new Tuple&lt;&gt;(mClass.getNamespaceID(), mClass.getName()));</span>
+<span class="fc" id="L146">		classCache.remove(classID);</span>
+<span class="fc bfc" id="L147" title="All 2 branches covered.">		for (final Operation op : mClass.getOperations()) {</span>
+<span class="fc" id="L148">			operationsCache.remove(op.getDataClayID());</span>
+<span class="fc bfc" id="L149" title="All 2 branches covered.">			for (final Implementation impl : op.getImplementations()) {</span>
+<span class="fc" id="L150">				implementationsCache.remove(impl.getDataClayID());</span>
+<span class="fc" id="L151">			}</span>
+<span class="fc" id="L152">		}</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">		for (final Property prop : mClass.getProperties()) {</span>
+<span class="fc" id="L154">			propertiesCache.remove(prop.getDataClayID());</span>
+<span class="fc" id="L155">		}</span>
+<span class="fc" id="L156">	}</span>
+
+	/**
+	 * Get a MetaClass from cache or database
+	 * @param classID
+	 *            ID of the class
+	 * @return The MetaClass with ID provided
+	 */
+	private MetaClass getClassFromDatabaseOrCache(final MetaClassID classID) {
+<span class="fc" id="L165">		MetaClass mClass = classCache.get(classID);</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">		if (mClass == null) {</span>
+<span class="fc" id="L167">			mClass = classDB.getMetaClassByID(classID);</span>
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">			if (mClass == null) {</span>
+<span class="nc" id="L169">				throw new ClassNotExistsException(classID);</span>
+			} else {
+<span class="fc" id="L171">				classCache.put(classID, mClass);</span>
+			}
+		}
+<span class="fc" id="L174">		return mClass;</span>
+	}
+
+	/**
+	 * Get a Operation from cache or database
+	 * @param operationID
+	 *            ID of the Operation
+	 * @return The Operation with ID provided
+	 */
+	private Operation getOperationFromDatabaseOrCache(final OperationID operationID) {
+<span class="fc" id="L184">		Operation op = operationsCache.get(operationID);</span>
+<span class="pc bpc" id="L185" title="1 of 2 branches missed.">		if (op == null) {</span>
+<span class="fc" id="L186">			op = classDB.getOperationByID(operationID);</span>
+<span class="fc bfc" id="L187" title="All 2 branches covered.">			if (op == null) {</span>
+<span class="fc" id="L188">				throw new OperationNotExistException(operationID);</span>
+			} else {
+<span class="fc" id="L190">				operationsCache.put(operationID, op);</span>
+			}
+		}
+
+<span class="fc" id="L194">		return op;</span>
+	}
+
+	/**
+	 * Get a Implementation from cache or database
+	 * @param implementationID
+	 *            ID of the Implementation
+	 * @return The Implementation with ID provided
+	 */
+	private Implementation getImplementationFromDatabaseOrCache(final ImplementationID implementationID) {
+<span class="nc" id="L204">		Implementation impl = implementationsCache.get(implementationID);</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">		if (impl == null) {</span>
+<span class="nc" id="L206">			impl = classDB.getImplementationByID(implementationID);</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">			if (impl == null) {</span>
+<span class="nc" id="L208">				throw new ImplementationNotExistException(implementationID);</span>
+			} else {
+<span class="nc" id="L210">				implementationsCache.put(implementationID, impl);</span>
+			}
+		}
+<span class="nc" id="L213">		return impl;</span>
+	}
+
+	/**
+	 * Get a Property from cache or database
+	 * @param propertyID
+	 *            ID of the Property
+	 * @return The Property with ID provided
+	 */
+	private Property getPropertyFromDatabaseOrCache(final PropertyID propertyID) {
+<span class="nc" id="L223">		Property prop = propertiesCache.get(propertyID);</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		if (prop == null) {</span>
+<span class="nc" id="L225">			prop = classDB.getPropertyByID(propertyID);</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">			if (prop == null) {</span>
+<span class="nc" id="L227">				throw new PropertyNotExistException(propertyID);</span>
+			} else {
+<span class="nc" id="L229">				propertiesCache.put(propertyID, prop);</span>
+			}
+		}
+
+<span class="nc" id="L233">		return prop;</span>
+	}
+
+	// ============== Classes ==============//
+
+	/**
+	 * Creates a new class with specifications and IDs provided
+	 * @param accountID
+	 *            ID of the account registering the class to associate it with the
+	 *            getters and setters implfaementations
+	 * @param namespaceID
+	 *            ID of the namespace of the new class
+	 * @param namespace
+	 *            Namespace of the class
+	 * @param metaClass
+	 *            ifications of the new class
+	 * @param lang
+	 *            Language of the class
+	 * @return Information about the new class created with all the IDs.
+	 */
+	private MetaClass newClassInternal(final AccountID accountID, final NamespaceID namespaceID, final String namespace,
+			final MetaClass metaClass, final Langs lang) {
+
+		// If there are properties
+<span class="fc bfc" id="L257" title="All 2 branches covered.">		for (final Property prop : metaClass.getProperties()) {</span>
+
+			// if (lang.equals(Langs.LANG_JAVA)) {
+			// We create the Getter Operation
+<span class="fc" id="L261">			final Tuple&lt;Operation, Implementation&gt; newGetterOperationAndImpl = newGetterOperation(prop.getName(),</span>
+<span class="fc" id="L262">					metaClass, prop.getType(), prop.getDataClayID(), namespaceID, accountID, lang);</span>
+<span class="fc" id="L263">			final Operation newGetterOperation = newGetterOperationAndImpl.getFirst();</span>
+<span class="fc" id="L264">			final Implementation newGetterImplementation = newGetterOperationAndImpl.getSecond();</span>
+			// We create the Setter Operation
+<span class="fc" id="L266">			final Tuple&lt;Operation, Implementation&gt; newSetterOperationAndImpl = newSetterOperation(prop.getName(),</span>
+<span class="fc" id="L267">					metaClass, prop.getType(), prop.getDataClayID(), namespaceID, accountID, lang);</span>
+<span class="fc" id="L268">			final Operation newSetterOperation = newSetterOperationAndImpl.getFirst();</span>
+			// We create the update Operation
+
+<span class="pc bpc" id="L271" title="1 of 2 branches missed.">			if (prop.isReplicated()) {</span>
+<span class="nc" id="L272">				final Tuple&lt;Operation, Implementation&gt; newupdateOperationAndImpl = newSetterOperation(</span>
+<span class="nc" id="L273">						ByteCodeConstants.DATACLAY_UPDATE + prop.getName(), metaClass, prop.getType(),</span>
+<span class="nc" id="L274">						prop.getDataClayID(), namespaceID, accountID, lang);</span>
+<span class="nc" id="L275">				prop.setUpdateImplementationID(newupdateOperationAndImpl.getSecond().getDataClayID());</span>
+<span class="nc" id="L276">				prop.setUpdateOperationID(newupdateOperationAndImpl.getFirst().getDataClayID());</span>
+<span class="nc" id="L277">				metaClass.addOperation(newupdateOperationAndImpl.getFirst());</span>
+
+			}
+
+<span class="fc" id="L281">			prop.setGetterOperationID(newGetterOperation.getDataClayID());</span>
+<span class="fc" id="L282">			prop.setSetterOperationID(newSetterOperation.getDataClayID());</span>
+<span class="fc" id="L283">			prop.setGetterImplementationID(newGetterImplementation.getDataClayID());</span>
+<span class="fc" id="L284">			prop.setSetterImplementationID(newSetterOperationAndImpl.getSecond().getDataClayID());</span>
+
+<span class="fc" id="L286">			metaClass.addOperation(newGetterOperation);</span>
+<span class="fc" id="L287">			metaClass.addOperation(newSetterOperation);</span>
+			// }
+
+<span class="fc" id="L290">		}</span>
+
+		// Set namespace
+<span class="fc" id="L293">		metaClass.setNamespace(namespace);</span>
+
+		// Fill caches
+<span class="fc" id="L296">		classCache.put(metaClass.getDataClayID(), metaClass);</span>
+<span class="fc" id="L297">		classCacheByName.put(new Tuple&lt;&gt;(metaClass.getNamespaceID(), metaClass.getName()), metaClass);</span>
+<span class="fc bfc" id="L298" title="All 2 branches covered.">		for (final Property newProp : metaClass.getProperties()) {</span>
+<span class="fc" id="L299">			propertiesCache.put(newProp.getDataClayID(), newProp);</span>
+<span class="fc" id="L300">		}</span>
+<span class="fc bfc" id="L301" title="All 2 branches covered.">		for (final Operation newOperation : metaClass.getOperations()) {</span>
+			// we create the Implementation in the System.
+<span class="fc" id="L303">			int curImplPos = 0;</span>
+<span class="fc bfc" id="L304" title="All 2 branches covered.">			for (final Implementation newImplementation : newOperation.getImplementations()) {</span>
+<span class="fc" id="L305">				newImplementation.setPosition(curImplPos);</span>
+<span class="fc" id="L306">				implementationsCache.put(newImplementation.getDataClayID(), newImplementation);</span>
+<span class="fc" id="L307">				curImplPos++;</span>
+<span class="fc" id="L308">			}</span>
+<span class="fc" id="L309">			operationsCache.put(newOperation.getDataClayID(), newOperation);</span>
+<span class="fc" id="L310">		}</span>
+
+		// We store now the new Metaclass on the Database
+<span class="fc" id="L313">		classDB.storeMetaClass(metaClass);</span>
+
+<span class="fc" id="L315">		logger.info(&quot;Registered class {} in namespace {} with ID {}&quot;, metaClass.getName(), namespace,</span>
+<span class="fc" id="L316">				metaClass.getDataClayID());</span>
+
+<span class="fc" id="L318">		return metaClass;</span>
+
+	}
+
+	/**
+	 * Apply new enrichment to class specified
+	 * @param newEnrichmentClass
+	 *            Enrichment metaclass information
+	 */
+	public void newJavaEnrichment(final MetaClass newEnrichmentClass) {
+
+		// Get original class
+<span class="nc" id="L330">		final MetaClass originalClass = getMetaClassByName(newEnrichmentClass.getNamespaceID(),</span>
+<span class="nc" id="L331">				newEnrichmentClass.getName());</span>
+<span class="nc" id="L332">		final byte[] originalByteCode = originalClass.getJavaClassInfo().getClassByteCode();</span>
+<span class="nc" id="L333">		final byte[] enrichmentByteCode = newEnrichmentClass.getJavaClassInfo().getClassByteCode();</span>
+
+<span class="nc" id="L335">		final byte[] newBytecode = ByteCodeMerger.mergeByteCodes(originalByteCode, enrichmentByteCode);</span>
+<span class="nc" id="L336">		originalClass.getJavaClassInfo().setClassByteCode(newBytecode);</span>
+
+		// Update it
+		try {
+<span class="nc" id="L340">			classDB.updateJavaClassByteCode(originalClass.getJavaClassInfo().getId(), newBytecode);</span>
+<span class="nc" id="L341">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L342">			throw new DbHandlerException(e.getMessage());</span>
+
+<span class="nc" id="L344">		}</span>
+<span class="nc" id="L345">	}</span>
+
+	/**
+	 * This operation creates a new MetaClass in the Namespace specified by
+	 *        namespaceID using the provided specifications.
+	 * @param accountID
+	 *            ID of the account registering the class for associating it with
+	 *            implementations of setters and getters
+	 * @param namespaceID
+	 *            ID of the namespace within we will create the MetaClass
+	 * @param namespace
+	 *            Namespace of the class
+	 * @param metaClass
+	 *            New Class specifications
+	 * @param lang
+	 *            Language of the class
+	 * @pre All IDs provided do not have object reference. The namespace identified
+	 *      by namespaceID exists and is correct. The metaClassSpec provided does
+	 *      not have more than one property with same name and no more than one
+	 *      operation with same name, parameter type names and return type names.
+	 * @post A MetaClass with the specification provided is created
+	 * @return All information of the new MetaClass if it was successfully created.
+	 */
+	public MetaClass newClass(final AccountID accountID, final NamespaceID namespaceID, final String namespace,
+			final MetaClass metaClass, final Langs lang) {
+<span class="fc" id="L370">		return newClassInternal(accountID, namespaceID, namespace, metaClass, lang);</span>
+	}
+
+	/**
+	 * This function removes the MetaClass identified by metaClassID. It also
+	 *        remove its associated operations, properties, implementations and
+	 *        types.
+	 * @param metaClassID
+	 *            ID of the MetaClass of the Property to remove
+	 * @pre All IDs provided do not have object reference.
+	 * @pre The class exists
+	 */
+	public void removeClass(final MetaClassID metaClassID) {
+		// First we must get the MetaClass
+<span class="fc" id="L384">		final MetaClass metaclass = getClassFromDatabaseOrCache(metaClassID);</span>
+		// Now we can remove the MetaClass.
+<span class="fc" id="L386">		classDB.deleteClass(metaclass.getDataClayID());</span>
+		// Remove from cache
+		// this.metaClassCache.remove(metaClassID);
+		/*
+		 * for (Operation op : metaclass.getOperations()) {
+		 * this.operationsCache.remove(op.getID()); for (Implementation impl :
+		 * op.getImplementations()) { this.implementationsCache.remove(impl.getID()); }
+		 * }
+		 */
+<span class="fc" id="L395">	}</span>
+
+	/**
+	 * This operation verifies if the namespace provided has some class
+	 *        associated in the System.
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @pre All IDs provided do not have object reference.
+	 * @return TRUE if the provided Namespace has no classes in the database.FALSE
+	 *         otherwise.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 * @note When you delete a MetaClass its namespaceID associated is deleted. Keep
+	 *       in mind that a namespaceID associated to the MetaClass has no object
+	 *       reference and can be replicated.
+	 */
+	public boolean checkNamespaceHasNothing(final NamespaceID namespaceID) {
+<span class="fc" id="L412">		final boolean exists = classDB.existsClassInNamespace(namespaceID);</span>
+		// If exists return false. True, otherwise.
+<span class="fc bfc" id="L414" title="All 2 branches covered.">		return !exists;</span>
+	}
+
+	// ============== Properties =============//
+
+	/**
+	 * This operation creates a new Property in the System, its Types
+	 *        specified and associates it to the MetaClass identified by the
+	 *        metaClassID provided. It also creates new Getter and Setter Operations
+	 *        for the Property provided.
+	 * @pre All IDs provided do not have object reference. The propertySpec provided
+	 *      has an associated TypeSpec. The TypeSpec indicates if it is primitive or
+	 *      not, and must indicates its name.
+	 * @param accountID
+	 *            ID of the account registering the property to be associated with
+	 *            the corresponding setter and getter implementations
+	 * @param namespaceID
+	 *            ID of the namespace in which the property is created
+	 * @param newProperty
+	 *            Specifications of the Property to add
+	 * @param metaClassID
+	 *            ID of the MetaClass that will contain the Property
+	 * @post 1.- A Property with the specifications provided is created. &lt;br&gt;
+	 *       2.- The Property is associated to the MetaClass provided. &lt;br&gt;
+	 *       3.- The MetaClass is updated.
+	 * @return information of the new Property.
+	 */
+	public Property newProperty(final AccountID accountID, final NamespaceID namespaceID, final MetaClassID metaClassID,
+			final Property newProperty) {
+
+		// We get the MetaClass in which to add the Property.
+<span class="fc" id="L445">		final MetaClass clazz = getClassFromDatabaseOrCache(metaClassID);</span>
+
+		// verify that no other Property with same name exists
+<span class="fc bfc" id="L448" title="All 2 branches covered.">		if (clazz.existsPropertyInClass(newProperty.getName())) {</span>
+<span class="fc" id="L449">			throw new PropertyAlreadyInClassException(newProperty.getName(), clazz.getDataClayID());</span>
+		}
+
+		// static final properties have no getter nor setter
+		// We create the Getter Operation
+
+		// TODO: ATTENTION! LANGUAGE OF GETTER IS ONLY JAVA BECAUSE NO ENRICHMENT IN
+		// PYTHON
+<span class="fc" id="L457">		final Tuple&lt;Operation, Implementation&gt; newGetterOperationAndImpl = newGetterOperation(newProperty.getName(),</span>
+<span class="fc" id="L458">				clazz, newProperty.getType(), newProperty.getDataClayID(), namespaceID, accountID, Langs.LANG_JAVA);</span>
+<span class="fc" id="L459">		final Operation newGetterOperation = newGetterOperationAndImpl.getFirst();</span>
+<span class="fc" id="L460">		final Implementation newGetterImplementation = newGetterOperationAndImpl.getSecond();</span>
+
+		// We create the Setter Operation
+<span class="fc" id="L463">		final Tuple&lt;Operation, Implementation&gt; newSetterOperationAndImpl = newSetterOperation(newProperty.getName(),</span>
+<span class="fc" id="L464">				clazz, newProperty.getType(), newProperty.getDataClayID(), namespaceID, accountID, Langs.LANG_JAVA);</span>
+<span class="fc" id="L465">		final Operation newSetterOperation = newSetterOperationAndImpl.getFirst();</span>
+
+		// We create the update Operation
+
+<span class="fc" id="L469">		newProperty.setSetterOperationID(newSetterOperation.getDataClayID());</span>
+<span class="fc" id="L470">		newProperty.setGetterOperationID(newGetterOperation.getDataClayID());</span>
+<span class="fc" id="L471">		newProperty.setGetterImplementationID(newGetterImplementation.getDataClayID());</span>
+<span class="fc" id="L472">		newProperty.setSetterImplementationID(newSetterOperationAndImpl.getSecond().getDataClayID());</span>
+<span class="fc" id="L473">		newProperty.setNamespaceID(namespaceID);</span>
+
+		// We add the PropertyID to the MetaClass obtained before
+<span class="fc" id="L476">		clazz.addOperation(newGetterOperation);</span>
+<span class="fc" id="L477">		clazz.addOperation(newSetterOperation);</span>
+<span class="fc" id="L478">		clazz.addPropertyAsEnrichment(newProperty);</span>
+
+<span class="fc" id="L480">		Operation newUpdateOperation = null;</span>
+<span class="pc bpc" id="L481" title="1 of 2 branches missed.">		if (newProperty.isReplicated()) {</span>
+<span class="nc" id="L482">			final Tuple&lt;Operation, Implementation&gt; newUpdateOperationAndImpl = newSetterOperation(</span>
+<span class="nc" id="L483">					ByteCodeConstants.DATACLAY_UPDATE + newProperty.getName(), clazz, newProperty.getType(),</span>
+<span class="nc" id="L484">					newProperty.getDataClayID(), namespaceID, accountID, Langs.LANG_JAVA);</span>
+<span class="nc" id="L485">			newUpdateOperation = newUpdateOperationAndImpl.getFirst();</span>
+<span class="nc" id="L486">			newProperty.setUpdateImplementationID(newUpdateOperationAndImpl.getSecond().getDataClayID());</span>
+<span class="nc" id="L487">			newProperty.setUpdateOperationID(newUpdateOperation.getDataClayID());</span>
+<span class="nc" id="L488">			clazz.addOperation(newUpdateOperation);</span>
+		}
+
+		try {
+
+<span class="fc" id="L493">			classDB.updateClassPropertiesAndOperations(clazz.getDataClayID(), newProperty, newSetterOperation,</span>
+					newGetterOperation, newUpdateOperation);
+
+<span class="fc" id="L496">			classDB.updateJavaClassByteCode(clazz.getJavaClassInfo().getId(),</span>
+<span class="fc" id="L497">					clazz.getJavaClassInfo().getClassByteCode());</span>
+<span class="fc" id="L498">			emptyClassInCaches(clazz.getDataClayID());</span>
+
+<span class="nc" id="L500">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L501">			throw new DbHandlerException(e.getMessage());</span>
+<span class="fc" id="L502">		}</span>
+
+<span class="fc" id="L504">		return newProperty;</span>
+
+	}
+
+	/**
+	 * This function creates an implementation for the Getter property
+	 *        operations.
+	 * @param propName
+	 *            Name of the property to get
+	 * @param metaClass
+	 *            MetaClass containing the Property
+	 * @param returnType
+	 *            Return Type of the getter.
+	 * @param propertyID
+	 *            Accessed propertyID
+	 * @param originalNamespaceID
+	 *            ID of the namespace in which the operation must be created
+	 * @param responsibleOfProperty
+	 *            ID of the account that registered the property
+	 * @param lang
+	 *            language of setter
+	 * @return The Operation of the Getter Operation for the Property specified.
+	 * 
+	 */
+	private Tuple&lt;Operation, Implementation&gt; newGetterOperation(final String propName, final MetaClass metaClass,
+			final Type returnType, final PropertyID propertyID, final NamespaceID originalNamespaceID,
+			final AccountID responsibleOfProperty, final Langs lang) {
+
+<span class="fc" id="L532">		String opNameAndDescriptor = null;</span>
+<span class="fc" id="L533">		String getterDesc = null;</span>
+<span class="fc" id="L534">		String getterSignature = null;</span>
+
+<span class="pc bpc" id="L536" title="1 of 2 branches missed.">		if (lang.equals(Langs.LANG_JAVA)) {</span>
+			// TODO: Fix Python side to use signatures
+<span class="fc" id="L538">			opNameAndDescriptor = GETTER_PREFIX + propName + &quot;()&quot; + returnType.getDescriptor();</span>
+		} else {
+<span class="nc" id="L540">			opNameAndDescriptor = GETTER_PREFIX + propName;</span>
+		}
+
+<span class="fc" id="L543">		getterDesc = &quot;()&quot; + returnType.getDescriptor();</span>
+<span class="pc bpc" id="L544" title="1 of 2 branches missed.">		if (returnType.getSignature() != null) {</span>
+<span class="fc" id="L545">			getterSignature = &quot;()&quot; + returnType.getSignature();</span>
+		}
+<span class="fc" id="L547">		final Operation getter = new Operation(GETTER_PREFIX + propName, getterDesc, getterSignature,</span>
+<span class="fc" id="L548">				opNameAndDescriptor, metaClass.getNamespace(), metaClass.getName(), false);</span>
+<span class="fc" id="L549">		getter.setMetaClassID(metaClass.getDataClayID());</span>
+<span class="fc" id="L550">		getter.setDataClayID(new OperationID());</span>
+<span class="fc" id="L551">		getter.setNamespaceID(metaClass.getNamespaceID());</span>
+<span class="fc" id="L552">		final JavaOperationInfo javaOpInfo = new JavaOperationInfo(Modifier.PUBLIC);</span>
+<span class="fc" id="L553">		getter.addLanguageDepInfo(javaOpInfo);</span>
+<span class="fc" id="L554">		getter.setDataClayID(new OperationID());</span>
+
+<span class="fc" id="L556">		final List&lt;AccessedProperty&gt; accessedProperties = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L557">		final AccessedProperty accProp = new AccessedProperty(metaClass.getNamespace(), metaClass.getName(), propName);</span>
+<span class="fc" id="L558">		accProp.setPropertyID(propertyID);</span>
+<span class="fc" id="L559">		accessedProperties.add(accProp);</span>
+
+<span class="fc" id="L561">		final List&lt;Type&gt; includedTypes = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L562" title="All 2 branches covered.">		if (returnType instanceof UserType) {</span>
+<span class="fc" id="L563">			includedTypes.add(returnType);</span>
+		}
+
+		// IMPORTANT: GETTERS AND SETTERS CODE IS GENERATED WHILE CREATING
+		// EXECUTION/STUBS CLASSES
+<span class="fc" id="L568">		final Implementation implementation = new JavaImplementation(0, accessedProperties,</span>
+				new ArrayList&lt;AccessedImplementation&gt;(), includedTypes, new PrefetchingInformation(),
+				new HashMap&lt;FeatureType, QuantitativeFeature&gt;(), new HashMap&lt;FeatureType, QualitativeFeature&gt;(),
+<span class="fc" id="L571">				metaClass.getNamespace(), metaClass.getName(), getter.getNameAndDescriptor());</span>
+
+<span class="fc" id="L573">		implementation.setDataClayID(new ImplementationID());</span>
+<span class="fc" id="L574">		implementation.setMetaClassID(metaClass.getDataClayID());</span>
+<span class="fc" id="L575">		implementation.setNamespaceID(metaClass.getNamespaceID());</span>
+<span class="fc" id="L576">		implementation.setOperationID(getter.getDataClayID());</span>
+<span class="fc" id="L577">		implementation.setResponsibleAccountID(responsibleOfProperty);</span>
+
+		// TODO: required feature for now in getter operations is Java 1.8
+<span class="fc" id="L580">		implementation.getRequiredQualitativeFeatures().put(FeatureType.LANGUAGE, new LanguageFeature(&quot;Java&quot;, &quot;1.8&quot;));</span>
+<span class="fc" id="L581">		getter.addImplementation(implementation);</span>
+<span class="fc" id="L582">		getter.setReturnType(returnType);</span>
+
+<span class="fc" id="L584">		return new Tuple&lt;&gt;(getter, implementation);</span>
+	}
+
+	/**
+	 * This function creates an implementation for the Setter property
+	 *        operations.
+	 * @param propName
+	 *            Name of the property to set
+	 * @param metaClass
+	 *            MetaClass containing the Property
+	 * @param paramType
+	 *            Param Type of the setter.
+	 * @param propertyID
+	 *            Accessed propertyID
+	 * @param originalNamespaceID
+	 *            ID of the namespace in which the operation must be created
+	 * @param lang
+	 *            language of setter
+	 * @param responsibleOfProperty
+	 *            ID of the account that registered the property
+	 * @return The Operation of the Setter Operation for the Property specified.
+	 */
+	private Tuple&lt;Operation, Implementation&gt; newSetterOperation(final String propName, final MetaClass metaClass,
+			final Type paramType, final PropertyID propertyID, final NamespaceID originalNamespaceID,
+			final AccountID responsibleOfProperty, final Langs lang) {
+
+<span class="fc" id="L610">		String opNameAndDescriptor = null;</span>
+
+<span class="pc bpc" id="L612" title="1 of 2 branches missed.">		if (lang.equals(Langs.LANG_JAVA)) {</span>
+			// TODO: Fix Python side to use signatures
+<span class="pc bpc" id="L614" title="1 of 2 branches missed.">			if (propName.contains(ByteCodeConstants.DATACLAY_UPDATE)) {</span>
+<span class="nc" id="L615">				opNameAndDescriptor = SETTER_PREFIX + propName + &quot;(&quot; + paramType.getDescriptor()</span>
+						+ &quot;Ljava/lang/Boolean;)V&quot;;
+			} else {
+<span class="fc" id="L618">				opNameAndDescriptor = SETTER_PREFIX + propName + &quot;(&quot; + paramType.getDescriptor() + &quot;)V&quot;;</span>
+			}
+		} else {
+<span class="nc" id="L621">			opNameAndDescriptor = SETTER_PREFIX + propName;</span>
+		}
+
+<span class="fc" id="L624">		final String setterDesc = &quot;()&quot; + &quot;(&quot; + paramType.getDescriptor() + &quot;)V&quot;;</span>
+<span class="fc" id="L625">		String setterSignature = null;</span>
+<span class="pc bpc" id="L626" title="1 of 2 branches missed.">		if (paramType.getSignature() != null) {</span>
+<span class="pc bpc" id="L627" title="1 of 2 branches missed.">			if (propName.contains(ByteCodeConstants.DATACLAY_UPDATE)) {</span>
+<span class="nc" id="L628">				setterSignature = &quot;(&quot; + paramType.getSignature()</span>
+					+ &quot;Ljava/lang/Boolean;)V&quot;;
+			} else {
+<span class="fc" id="L631">				setterSignature = &quot;(&quot; + paramType.getSignature() + &quot;)V&quot;;</span>
+			}
+		}
+<span class="fc" id="L634">		final Operation setter = new Operation(SETTER_PREFIX + propName, setterDesc, setterSignature,</span>
+<span class="fc" id="L635">				opNameAndDescriptor, metaClass.getNamespace(), metaClass.getName(), false);</span>
+<span class="fc" id="L636">		setter.setMetaClassID(metaClass.getDataClayID());</span>
+<span class="fc" id="L637">		setter.setDataClayID(new OperationID());</span>
+<span class="fc" id="L638">		setter.setNamespaceID(metaClass.getNamespaceID());</span>
+<span class="fc" id="L639">		final JavaOperationInfo javaOpInfo = new JavaOperationInfo(Modifier.PUBLIC);</span>
+<span class="fc" id="L640">		setter.addLanguageDepInfo(javaOpInfo);</span>
+<span class="fc" id="L641">		setter.setDataClayID(new OperationID());</span>
+
+<span class="fc" id="L643">		final List&lt;AccessedProperty&gt; accessedProperties = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L644">		final AccessedProperty accProp = new AccessedProperty(metaClass.getNamespace(), metaClass.getName(), propName);</span>
+<span class="fc" id="L645">		accProp.setPropertyID(propertyID);</span>
+<span class="fc" id="L646">		accessedProperties.add(accProp);</span>
+
+<span class="fc" id="L648">		final List&lt;Type&gt; includedTypes = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L649" title="All 2 branches covered.">		if (paramType instanceof UserType) {</span>
+<span class="fc" id="L650">			includedTypes.add(paramType);</span>
+		}
+
+		// IMPORTANT: GETTERS AND SETTERS CODE IS GENERATED WHILE CREATING
+		// EXECUTION/STUBS CLASSES
+<span class="fc" id="L655">		final Implementation implementation = new JavaImplementation(0, accessedProperties,</span>
+				new ArrayList&lt;AccessedImplementation&gt;(), includedTypes, new PrefetchingInformation(),
+				new HashMap&lt;FeatureType, QuantitativeFeature&gt;(), new HashMap&lt;FeatureType, QualitativeFeature&gt;(),
+<span class="fc" id="L658">				metaClass.getNamespace(), metaClass.getName(), setter.getNameAndDescriptor());</span>
+
+<span class="fc" id="L660">		implementation.setDataClayID(new ImplementationID());</span>
+<span class="fc" id="L661">		implementation.setMetaClassID(metaClass.getDataClayID());</span>
+<span class="fc" id="L662">		implementation.setNamespaceID(metaClass.getNamespaceID());</span>
+<span class="fc" id="L663">		implementation.setOperationID(setter.getDataClayID());</span>
+<span class="fc" id="L664">		implementation.setResponsibleAccountID(responsibleOfProperty);</span>
+
+		// TODO: required feature for now in getter operations is Java 1.8
+<span class="fc" id="L667">		implementation.getRequiredQualitativeFeatures().put(FeatureType.LANGUAGE, new LanguageFeature(&quot;Java&quot;, &quot;1.8&quot;));</span>
+<span class="fc" id="L668">		setter.addImplementation(implementation);</span>
+<span class="fc" id="L669">		setter.addParam(&quot;param0&quot;, paramType);</span>
+<span class="pc bpc" id="L670" title="1 of 2 branches missed.">		if (propName.contains(ByteCodeConstants.DATACLAY_UPDATE)) {</span>
+<span class="nc" id="L671">			setter.addParam(&quot;param1&quot;, </span>
+<span class="nc" id="L672">					new Type(&quot;Ljava/lang/Boolean;&quot;, &quot;Ljava/lang/Boolean;&quot;, Reflector.getTypeNameFromSignatureOrDescriptor(&quot;Ljava/lang/Boolean;&quot;)));</span>
+		}
+<span class="fc" id="L674">		final Type returnType = new Type(&quot;V&quot;, null, &quot;void&quot;);</span>
+<span class="fc" id="L675">		setter.setReturnType(returnType);</span>
+<span class="fc" id="L676">		return new Tuple&lt;&gt;(setter, implementation);</span>
+	}
+	
+	
+
+	// ================== Operations ==================//
+
+	/**
+	 * This operation creates a new Operation in the System, its
+	 *        Implementations and Types (arguments) specified and associates it to
+	 *        the MetaClass identified by the metaClassID provided.
+	 * @pre All IDs provided do not have object reference. OperationSpec provided
+	 *      has N implementationSpec and K TypeSpec. The TypeSpecs must specify if
+	 *      they are primitive or not and its name. The implementationSpec must have
+	 *      the implementation code associated and not null.
+	 * @param namespaceID
+	 *            ID of the namespace in which the operation is created
+	 * @param newOperation
+	 *            Specification of the operation
+	 * @param metaClassID
+	 *            ID of the MetaClass that will contain the operation.
+	 * @post 1.- An Operation with the provided specifications is created. &lt;br&gt;
+	 *       2.- For each parameter, a new Type is created. &lt;br&gt;
+	 *       3.- Each Type added to the System is associated to the Operation
+	 *       created before. &lt;br&gt;
+	 *       4.- The Operation is associated to the MetaClass identified by
+	 *       metaClassID. &lt;br&gt;
+	 *       5.- The MetaClass is updated.
+	 * @return information of the new Operation.
+	 */
+	public Operation newOperation(final NamespaceID namespaceID, final MetaClassID metaClassID,
+			final Operation newOperation) {
+
+		// We get the MetaClass in which to add the Operation.
+<span class="fc" id="L710">		final MetaClass clazz = getClassFromDatabaseOrCache(metaClassID);</span>
+
+		// We verify that there is not another Operation in the MetaClass with
+		// the same name, params and return.
+<span class="fc bfc" id="L714" title="All 2 branches covered.">		for (final Operation operation : clazz.getOperations()) {</span>
+<span class="pc bpc" id="L715" title="1 of 2 branches missed.">			if (operation.getNameAndDescriptor().equals(newOperation.getNameAndDescriptor())) {</span>
+
+<span class="fc" id="L717">				throw new OperationAlreadyInClassException(operation.getNameAndDescriptor(), operation.getNamespaceID(),</span>
+<span class="fc" id="L718">						clazz.getDataClayID());</span>
+
+			}
+
+<span class="nc" id="L722">		}</span>
+
+		// Now we can add the Operation to the System
+<span class="fc" id="L725">		clazz.addOperation(newOperation);</span>
+
+<span class="pc bpc" id="L727" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L728">			String log = &quot;Added new operation &quot; + newOperation.getName() + &quot; with OperationID &quot;</span>
+<span class="nc" id="L729">					+ newOperation.getDataClayID() + &quot; and implementations: &quot;;</span>
+<span class="nc bnc" id="L730" title="All 2 branches missed.">			for (final Implementation newImplementation : newOperation.getImplementations()) {</span>
+<span class="nc" id="L731">				log += &quot; ,&quot; + newImplementation.getDataClayID();</span>
+<span class="nc" id="L732">			}</span>
+<span class="nc" id="L733">			logger.debug(log);</span>
+		}
+
+		// We update the MetaClass
+		try {
+<span class="fc" id="L738">			classDB.updateClassAddOperation(clazz.getDataClayID(), newOperation);</span>
+<span class="fc" id="L739">			emptyClassInCaches(clazz.getDataClayID());</span>
+
+<span class="nc" id="L741">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L742">			throw new DbHandlerException(e.getMessage());</span>
+
+<span class="fc" id="L744">		}</span>
+
+<span class="fc" id="L746">		return newOperation;</span>
+	}
+
+	/**
+	 * This function deletes an Operation identified by the operationID
+	 *        provided, and its associated arguments and implementations. The
+	 *        operation's MetaClass is updated.
+	 * @param operationID
+	 *            ID of the operation to remove
+	 * @pre All IDs provided do not have object reference. Operation identified by
+	 *      operationID has a MetaClassID associated which exists and has the
+	 *      OperationID in its list of operation IDs. The Operation in database has
+	 *      its parameter Types, return Types and implementations as object
+	 *      references.
+	 * @pre The class exists
+	 * @post 1.- The Implementations of the Operation identified by operationID are
+	 *       removed from the System. &lt;br&gt;
+	 *       2.- The Types (arguments) of the Operation identified by operationID
+	 *       are removed from the System. &lt;br&gt;
+	 *       3.- The Operation identified by operationID is removed from the System.
+	 *       &lt;br&gt;
+	 *       4.- The MetaClass associated to the Operation removes the Property from
+	 *       its list of Operation and is updated in the System.
+	 * @return Info of the removed operation
+	 */
+	public Operation removeOperation(final OperationID operationID) {
+
+		// First we get the Operation and check if it exists
+<span class="fc" id="L774">		final Operation operation = getOperationFromDatabaseOrCache(operationID);</span>
+
+		// TODO Probably we should define setter/getter boolean flags to check this
+		// better (28 Nov 2013 jmarti)
+<span class="pc bpc" id="L778" title="2 of 4 branches missed.">		if (operation.getName().startsWith(GETTER_PREFIX) || operation.getName().startsWith(SETTER_PREFIX)) {</span>
+<span class="nc" id="L779">			throw new SetterOrGetterOperationsCannotBeRemoved(operationID);</span>
+		}
+
+		// Now we must get the MetaClass (we know it exists and has the
+		// operationID associated)
+<span class="fc" id="L784">		final MetaClass metaClass = getClassFromDatabaseOrCache(operation.getMetaClassID());</span>
+<span class="fc" id="L785">		metaClass.removeOperation(operationID);</span>
+
+		// We update the MetaClass and remove the Operation from database
+		try {
+<span class="fc" id="L789">			classDB.updateClassRemoveOperation(metaClass.getDataClayID(), operationID);</span>
+			// Remove return type, parameters and implementations of the operation.
+<span class="fc" id="L791">			classDB.deleteOperation(operation.getDataClayID());</span>
+
+<span class="fc" id="L793">			emptyClassInCaches(metaClass.getDataClayID());</span>
+
+<span class="nc" id="L795">		} catch (final DbObjectNotExistException ex) {</span>
+<span class="nc" id="L796">			logger.debug(&quot;removeOperation error&quot;, ex);</span>
+<span class="nc" id="L797">			throw new DbHandlerException(ex.getMessage());</span>
+
+<span class="fc" id="L799">		}</span>
+		// classDB.deleteByID(operation.getID());
+<span class="fc" id="L801">		return operation;</span>
+
+	}
+
+	/**
+	 * This function gets the list of Implementation IDs of an Operation
+	 *        identified by the OperationID provided.
+	 * @param operationID
+	 *            ID of the Operation.
+	 * @pre All IDs provided do not have object reference. Operation identified by
+	 *      operationID has a MetaClassID associated which exists and has the
+	 *      OperationID in its list of operation IDs. The Operation in database has
+	 *      its parameter Types, return Types and implementations as object
+	 *      references.
+	 * @return The list of Implementation IDs of the Operation
+	 * @throws Exception
+	 *             If the Operation identified by operationID does not exist or if
+	 *             an internal error occurred while working with Database.
+	 */
+	public LinkedList&lt;ImplementationID&gt; getImplementationsOfOperation(final OperationID operationID) {
+
+		// First we get the Operation and check if it exists
+<span class="fc" id="L823">		final Operation operation = getOperationFromDatabaseOrCache(operationID);</span>
+
+		// Since we cannot return object references we must create new iDs
+<span class="fc" id="L826">		final LinkedList&lt;ImplementationID&gt; res = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L827">		final List&lt;Implementation&gt; impls = operation.getImplementations();</span>
+<span class="fc bfc" id="L828" title="All 2 branches covered.">		for (final Implementation impl : impls) {</span>
+<span class="fc" id="L829">			res.add(impl.getDataClayID());</span>
+<span class="fc" id="L830">		}</span>
+
+		// Now we get the return the Implementations of the Operation
+<span class="fc" id="L833">		return res;</span>
+	}
+
+	// ================== Implementations ================== //
+
+	/**
+	 * This function creates a new Implementation in the System and
+	 *        associates it to the Operation identified by the operationID provided.
+	 * @param accountID
+	 *            ID of the account responsible of the implementation
+	 * @param namespaceID
+	 *            ID of the namespace in which the implementation is created
+	 * @param metaClassID
+	 *            ID of the class containing the operation
+	 * @param newImplementation
+	 *            Specification of the Implementation
+	 * @param operationID
+	 *            ID of the Operation that will contain the Implementation.
+	 * @param namespaceIDofOperation
+	 *            the namespace ID of the operation
+	 * @pre All IDs provided do not have object reference. The implementationSpec
+	 *      provided must have implementation code different of null. Operation
+	 *      identified by operationID has a MetaClassID associated which exists and
+	 *      has the OperationID in its list of operation IDs. The Operation in
+	 *      database has its parameter Types, return Types and implementations as
+	 *      object references. does not belong to the class with ID provided (same
+	 *      parameter type names and return type name) with the operation identified
+	 *      by the ID provided.
+	 * @post 1.- An Implementation with the provided specifications is created. &lt;br&gt;
+	 *       2.- The Implementation is associated to the Operation identified by
+	 *       operationID.&lt;br&gt;
+	 *       3.- The Operation is updated with the new Implementation.
+	 * @return information of the new Implementation.
+	 * @throws Exception
+	 *             If the Operation identified by operationID does not exist or does
+	 *             not belong to the class with ID provided, If implementation is
+	 *             not compatible or if an internal error occurred while working
+	 *             with Database.
+	 */
+	public Implementation newImplementation(final AccountID accountID, final NamespaceID namespaceID,
+			final MetaClassID metaClassID, final OperationID operationID, final NamespaceID namespaceIDofOperation,
+			final Implementation newImplementation) {
+
+		// We create a new Implementation and we get its generated
+		// ImplementationID
+<span class="nc" id="L878">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+<span class="nc" id="L879">		final Operation operation = metaClass.getOperation(operationID);</span>
+
+		// if the operation does not belong to the class with ID provided throw
+		// an error
+<span class="nc bnc" id="L883" title="All 4 branches missed.">		if (operation == null || !operation.getMetaClassID().equals(metaClassID)</span>
+<span class="nc bnc" id="L884" title="All 2 branches missed.">				|| !operation.getNamespaceID().equals(namespaceIDofOperation)) {</span>
+<span class="nc" id="L885">			throw new OperationNotExistException(operationID);</span>
+		}
+
+		// We add the ImplementationID to the Operation
+<span class="nc" id="L889">		operation.addImplementation(newImplementation);</span>
+
+<span class="nc bnc" id="L891" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L892">			String log = &quot;Added new implementation with ImplementationID &quot; + newImplementation.getDataClayID()</span>
+<span class="nc" id="L893">					+ &quot; to operation &quot; + operation.getName() + &quot; with OperationID &quot; + operation.getDataClayID();</span>
+<span class="nc" id="L894">			logger.debug(log);</span>
+<span class="nc" id="L895">			log = &quot;Now operation &quot; + operation.getName() + &quot; with OperationID &quot; + operation.getDataClayID()</span>
+					+ &quot; has implementations: &quot;;
+<span class="nc bnc" id="L897" title="All 2 branches missed.">			for (final Implementation impl : operation.getImplementations()) {</span>
+<span class="nc" id="L898">				log += &quot; ,&quot; + impl.getDataClayID();</span>
+<span class="nc" id="L899">			}</span>
+<span class="nc" id="L900">			logger.debug(log);</span>
+		}
+
+		// We update the Operation containing the implementation
+		try {
+<span class="nc" id="L905">			classDB.updateOperationAddImplementation(operation.getDataClayID(), newImplementation);</span>
+<span class="nc" id="L906">			emptyClassInCaches(metaClass.getDataClayID());</span>
+
+<span class="nc" id="L908">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L909">			throw new OperationNotExistException(operation.getDataClayID());</span>
+<span class="nc" id="L910">		}</span>
+
+<span class="nc" id="L912">		return newImplementation;</span>
+	}
+
+	/**
+	 * This function removes an Implementation with the implementationID
+	 *        provided from the System and updates the associated Operation.
+	 * @param implementationID
+	 *            ID of the Implementation to remove
+	 * @pre All IDs provided do not have object reference. Implementation identified
+	 *      by implementationID has an OperationID associated which exists and has
+	 *      the implementationID in its list of implementation IDs. It also has a
+	 *      MetaClassID associated which exists and has the OperationID in its list
+	 *      of operation IDs. The Operation in database has its parameter Types,
+	 *      return Types and implementations as object references. only has this
+	 *      implementation
+	 * @post 1.- The Type of the Property identified by propertyID is removed from
+	 *       the System. &lt;br&gt;
+	 *       2.- The Property identified by propertyID is removed from the System.
+	 *       &lt;br&gt;
+	 *       3.- The MetaClass associated to the Property removes the Property from
+	 *       its list of Properties and is updated in the System.
+	 * @throws Exception
+	 *             If the Implementation identified by implementationID does not
+	 *             exist, If the Operation associated to the Implementation does not
+	 *             exist, If the implementation cannot be removed because the
+	 *             Operation only has this implementation or if an internal error
+	 *             occurred while working with Database.
+	 */
+	public void removeImplementation(final ImplementationID implementationID) {
+
+		// First we get the Implementation and check if it exists
+<span class="nc" id="L943">		final Implementation implementation = getImplementationFromDatabaseOrCache(implementationID);</span>
+
+		// First we get the Operation (we know it exists and it is correct)
+<span class="nc" id="L946">		final Operation operation = getOperationFromDatabaseOrCache(implementation.getOperationID());</span>
+
+<span class="nc bnc" id="L948" title="All 2 branches missed.">		if (operation.getImplementations().size() == 1) {</span>
+<span class="nc" id="L949">			throw new NoMoreImplementationsInOperationException(implementationID, operation.getDataClayID());</span>
+		}
+
+<span class="nc" id="L952">		final MetaClass metaClass = getClassFromDatabaseOrCache(operation.getMetaClassID());</span>
+
+<span class="nc" id="L954">		operation.removeImplementation(implementation.getDataClayID());</span>
+
+		// We update the Operation containing the implementation and remove the
+		// implementation from database
+		try {
+<span class="nc" id="L959">			classDB.deleteImplementation(implementation);</span>
+<span class="nc" id="L960">			classDB.updateOperationRemoveImplementation(operation.getDataClayID(), implementation.getDataClayID());</span>
+<span class="nc" id="L961">			emptyClassInCaches(metaClass.getDataClayID());</span>
+
+<span class="nc" id="L963">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L964">			throw new OperationNotExistException(implementation.getOperationID());</span>
+<span class="nc" id="L965">		}</span>
+<span class="nc" id="L966">	}</span>
+
+	/**
+	 * This function gets the list of Requirements of an Implementation
+	 *        identified by the ImplementationID provided.
+	 * @param implementationID
+	 *            ID of the Implementation.
+	 * @pre All IDs provided do not have object reference. Implementation identified
+	 *      by implementationID has an OperationID associated which exists and has
+	 *      the implementationID in its list of implementation IDs. It also has a
+	 *      MetaClassID associated which exists and has the OperationID in its list
+	 *      of operation IDs. The Operation in database has its parameter Types,
+	 *      return Types and implementations as object references.
+	 * @return The list of Features (requirements) of the Implementation
+	 * @throws Exception
+	 *             If the Implementation identified by implementationID does not
+	 *             exist or if an internal error occurred while working with
+	 *             Database.
+	 */
+	public List&lt;Feature&gt; getRequirementsOfMethod(final ImplementationID implementationID) {
+
+		// First we get the Implementation and check if it exists
+<span class="nc" id="L988">		final Implementation implementation = getImplementationFromDatabaseOrCache(implementationID);</span>
+<span class="nc" id="L989">		final List&lt;Feature&gt; allFeatures = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L990">		allFeatures.addAll(implementation.getRequiredQualitativeFeatures().values());</span>
+<span class="nc" id="L991">		allFeatures.addAll(implementation.getRequiredQuantitativeFeatures().values());</span>
+<span class="nc" id="L992">		return allFeatures;</span>
+	}
+
+	/**
+	 * This function retrieves the information of the given implementations
+	 * @param implementationsIDs
+	 *            IDs of the implementations
+	 * @return the information about every implementation
+	 * @throws Exception
+	 *             if any of the implementations does not exist
+	 */
+	public Map&lt;ImplementationID, Implementation&gt; getInfoOfImplementations(
+			final Set&lt;ImplementationID&gt; implementationsIDs) {
+<span class="nc" id="L1005">		final Map&lt;ImplementationID, Implementation&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L1006" title="All 2 branches missed.">		for (final ImplementationID implementationID : implementationsIDs) {</span>
+<span class="nc" id="L1007">			final Implementation implementation = getImplementationFromDatabaseOrCache(implementationID);</span>
+<span class="nc" id="L1008">			result.put(implementationID, implementation);</span>
+<span class="nc" id="L1009">		}</span>
+<span class="nc" id="L1010">		return result;</span>
+	}
+
+	/**
+	 * This function gets the MetaClass with name className and namespaceID
+	 *        provided
+	 * @param namespaceID
+	 *            Namespace ID of the MetaClass to look for
+	 * @param className
+	 *            Name of the class to look for
+	 * @return theMetaClass with name and namespace ID provided or NULL if not
+	 *         found.
+	 */
+	private MetaClass getMetaClassByName(final NamespaceID namespaceID, final String className) {
+<span class="nc" id="L1024">		final Tuple&lt;NamespaceID, String&gt; key = new Tuple&lt;&gt;(namespaceID, className);</span>
+<span class="nc" id="L1025">		MetaClass metaclass = classCacheByName.get(new Tuple&lt;&gt;(namespaceID, className));</span>
+<span class="nc bnc" id="L1026" title="All 2 branches missed.">		if (metaclass == null) {</span>
+<span class="nc" id="L1027">			metaclass = classDB.getClassByNameAndNamespaceID(className, namespaceID);</span>
+<span class="nc" id="L1028">			classCacheByName.put(key, metaclass);</span>
+		}
+<span class="nc" id="L1030">		return metaclass;</span>
+	}
+
+	/**
+	 * This function gets the MetaClass with name className and Namespace
+	 *        provided
+	 * @param namespace
+	 *            Namespace of the MetaClass to look for
+	 * @param className
+	 *            Name of the class to look for
+	 * @return theMetaClass with name and namespace ID provided or NULL if not
+	 *         found.
+	 */
+	public MetaClass getMetaClassByNameAndNamespace(final String namespace, final String className) {
+<span class="nc" id="L1044">		final Tuple&lt;String, String&gt; key = new Tuple&lt;&gt;(namespace, className);</span>
+<span class="nc" id="L1045">		MetaClass metaclass = classCacheByNameAndNamespace.get(new Tuple&lt;&gt;(namespace, className));</span>
+<span class="nc bnc" id="L1046" title="All 2 branches missed.">		if (metaclass == null) {</span>
+<span class="nc" id="L1047">			metaclass = classDB.getClassByNameAndNamespace(className, namespace);</span>
+<span class="nc" id="L1048">			classCacheByNameAndNamespace.put(key, metaclass);</span>
+		}
+<span class="nc" id="L1050">		return metaclass;</span>
+	}
+
+	/**
+	 * Retrieves the ID of a class given its name
+	 * @pre All IDs provided do not have object reference.
+	 * @param namespaceID
+	 *            ID of the namespace containing the class
+	 * @param className
+	 *            Name of the MetaClass
+	 * @return The ID of the class or NULL if class does not exist
+	 */
+	public MetaClassID getMetaClassID(final NamespaceID namespaceID, final String className) {
+		// TODO Unify caches and only use namespaceIDs!! (jmarti 5 Apr 2018)
+<span class="fc" id="L1064">		final MetaClass metaclass = classCacheByName.get(new Tuple&lt;&gt;(namespaceID, className));</span>
+<span class="pc bpc" id="L1065" title="1 of 2 branches missed.">		if (metaclass == null) {</span>
+<span class="nc" id="L1066">			return classDB.getClassIDByNameAndNamespaceID(className, namespaceID);</span>
+		} else {
+<span class="fc" id="L1068">			return metaclass.getDataClayID();</span>
+		}
+	}
+
+	/**
+	 * Retrieves the id of a property given its name, name of the class
+	 *        containing the property and the namespace where it belongs to.
+	 * @pre All IDs provided do not have object reference.
+	 * @pre The class exists
+	 * @param metaClassName
+	 *            Name of the class
+	 * @param namespace
+	 *            Namespace of the class
+	 * @param propertyName
+	 *            the name of the property
+	 * @return The ID of the property
+	 */
+	public PropertyID getPropertyID(final String metaClassName, final String namespace, final String propertyName) {
+<span class="nc" id="L1086">		final Property property = classDB.getPropertyByNames(propertyName, metaClassName, namespace);</span>
+<span class="nc bnc" id="L1087" title="All 2 branches missed.">		if (property == null) {</span>
+<span class="nc" id="L1088">			throw new PropertyNotExistException(metaClassName, propertyName);</span>
+		}
+		// We just return the ID and not the ref. object.
+<span class="nc" id="L1091">		return property.getDataClayID();</span>
+	}
+
+	/**
+	 * Retrieves the id of a property given its name, name of the class
+	 *        containing the property and the namespace where it belongs to.
+	 * @pre All IDs provided do not have object reference.
+	 * @pre The class exists
+	 * @param metaClassID
+	 *            ID of the class
+	 * @param propertyName
+	 *            the name of the property
+	 * @return The ID of the property
+	 */
+	public PropertyID getPropertyID(final MetaClassID metaClassID, final String propertyName) {
+
+		// Get the class
+<span class="fc" id="L1108">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+
+<span class="fc" id="L1110">		Property property = null;</span>
+<span class="fc bfc" id="L1111" title="All 2 branches covered.">		for (final Property prop : metaClass.getProperties()) {</span>
+<span class="pc bpc" id="L1112" title="1 of 2 branches missed.">			if (prop.getName().equals(propertyName)) {</span>
+<span class="fc" id="L1113">				property = prop;</span>
+<span class="fc" id="L1114">				break;</span>
+			}
+<span class="nc" id="L1116">		}</span>
+<span class="fc bfc" id="L1117" title="All 2 branches covered.">		if (property == null) {</span>
+<span class="fc" id="L1118">			throw new PropertyNotExistException(metaClass.getName(), propertyName);</span>
+		}
+		// We just return the ID and not the ref. object.
+<span class="fc" id="L1121">		return property.getDataClayID();</span>
+	}
+
+	/**
+	 * Retrieves the names of the properties with IDs provided.
+	 * @param propertiesIDs
+	 *            IDs of the properties
+	 * @return Return the names of the properties with IDs provided
+	 */
+	public Map&lt;PropertyID, String&gt; getPropertiesNames(final Set&lt;PropertyID&gt; propertiesIDs) {
+
+<span class="nc" id="L1132">		final Map&lt;PropertyID, String&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L1133" title="All 2 branches missed.">		for (final PropertyID propertyID : propertiesIDs) {</span>
+<span class="nc" id="L1134">			final Property property = getPropertyFromDatabaseOrCache(propertyID);</span>
+<span class="nc" id="L1135">			result.put(propertyID, property.getName());</span>
+<span class="nc" id="L1136">		}</span>
+<span class="nc" id="L1137">		return result;</span>
+
+	}
+
+	/**
+	 * Retrieves the id of an operation given its signature, id of the
+	 *        namespace of the operation and id of the class containing the
+	 *        operation and the namespace where it belongs to
+	 * @param metaClassID
+	 *            ID of the class
+	 * @param operationSignature
+	 *            the signature of the operation
+	 * @pre All IDs provided do not have object reference.
+	 * @return The ID of the operation
+	 * @throws Exception
+	 *             If operation does not exist
+	 */
+	public OperationID getOperationID(final MetaClassID metaClassID, final String operationSignature) {
+
+		// Get the class
+<span class="fc" id="L1157">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+<span class="fc" id="L1158">		OperationID operation = null;</span>
+<span class="fc bfc" id="L1159" title="All 2 branches covered.">		for (final Operation op : metaClass.getOperations()) {</span>
+<span class="pc bpc" id="L1160" title="1 of 2 branches missed.">			if (op.getNameAndDescriptor().equals(operationSignature)) {</span>
+<span class="fc" id="L1161">				operation = op.getDataClayID();</span>
+<span class="fc" id="L1162">				break;</span>
+			}
+
+<span class="nc" id="L1165">		}</span>
+<span class="fc bfc" id="L1166" title="All 2 branches covered.">		if (operation == null) {</span>
+<span class="fc" id="L1167">			throw new OperationNotExistException(metaClass.getName(), operationSignature);</span>
+		}
+
+<span class="fc" id="L1170">		return operation;</span>
+	}
+
+	/**
+	 * Retrieves the id of an operation given its signature, id of the
+	 *        namespace of the operation and id of the class containing the
+	 *        operation and the namespace where it belongs to
+	 * @param metaClassName
+	 *            Name of the class
+	 * @param namespace
+	 *            Namespace of the class
+	 * @param operationSignature
+	 *            the signature of the operation
+	 * @pre All IDs provided do not have object reference.
+	 * @return The ID of the operation
+	 * @throws Exception
+	 *             If operation does not exist
+	 */
+	public OperationID getOperationID(final String metaClassName, final String namespace,
+			final String operationSignature) {
+
+<span class="nc" id="L1191">		final Operation operation = classDB.getOperationByNames(operationSignature, metaClassName, namespace);</span>
+<span class="nc bnc" id="L1192" title="All 2 branches missed.">		if (operation == null) {</span>
+<span class="nc" id="L1193">			throw new OperationNotExistException(metaClassName, operationSignature);</span>
+		}
+
+<span class="nc" id="L1196">		return operation.getDataClayID();</span>
+	}
+
+	/**
+	 * Returns the name of the MetaClass identified by ID provided
+	 * @param metaClassID
+	 *            ID of the MetaClass
+	 * @return The name of the MetaClass identified by the ID provided
+	 * @pre The class exists
+	 */
+	public String getClassname(final MetaClassID metaClassID) {
+<span class="nc" id="L1207">		return getClassNameInternal(metaClassID);</span>
+	}
+
+	/**
+	 * Returns the name and namespace of the MetaClass identified by ID
+	 *        provided
+	 * @param metaClassID
+	 *            ID of the MetaClass
+	 * @return The name and namespace of the MetaClass identified by the ID provided
+	 * @pre The class exists
+	 */
+	public Tuple&lt;String, String&gt; getClassNameAndNamespace(final MetaClassID metaClassID) {
+<span class="nc" id="L1219">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+<span class="nc" id="L1220">		return new Tuple&lt;&gt;(metaClass.getName(), metaClass.getNamespace());</span>
+	}
+
+	/**
+	 * Return the name of the class with Id provided
+	 * @param metaClassID
+	 *            ID of the class
+	 * @return The name of the class with id proved
+	 */
+	private String getClassNameInternal(final MetaClassID metaClassID) {
+<span class="nc" id="L1230">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+<span class="nc" id="L1231">		return metaClass.getName();</span>
+	}
+
+	/**
+	 * Generate a set of Java stubs with the provided informations
+	 * @pre The class exists
+	 * @param language
+	 *            Language of the stub to generate
+	 * @param stubInfos
+	 *            Information associated to each stub (names, contract IDs,
+	 *            interface IDs...)
+	 * @return Byte code of the stubs of the classes with information provided and
+	 *         its aspect
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Map&lt;MetaClassID, Triple&lt;String, byte[], byte[]&gt;&gt; generateStubs(final Langs language,
+			final Map&lt;MetaClassID, StubInfo&gt; stubInfos) {
+
+<span class="nc" id="L1250">		final Map&lt;MetaClassID, Triple&lt;String, byte[], byte[]&gt;&gt; stubs = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L1251" title="All 2 branches missed.">		for (final Entry&lt;MetaClassID, StubInfo&gt; entry : stubInfos.entrySet()) {</span>
+
+<span class="nc" id="L1253">			final MetaClassID metaClassID = entry.getKey();</span>
+<span class="nc" id="L1254">			final StubInfo stubInfo = entry.getValue();</span>
+			// Get the metaclass
+<span class="nc" id="L1256">			final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+
+<span class="nc" id="L1258">			Triple&lt;String, byte[], byte[]&gt; stubAndIncludes = stubsCache.get(stubInfo);</span>
+<span class="nc bnc" id="L1259" title="All 2 branches missed.">			if (stubAndIncludes == null) {</span>
+				// Get parent name
+<span class="nc" id="L1261">				String realParentName = null;</span>
+<span class="nc bnc" id="L1262" title="All 2 branches missed.">				if (metaClass.getParentType() == null) {</span>
+<span class="nc" id="L1263">					realParentName = DataClayObject.class.getName();</span>
+				} else {
+<span class="nc" id="L1265">					final MetaClass parentClass = getClassFromDatabaseOrCache(metaClass.getParentType().getClassID());</span>
+<span class="nc" id="L1266">					realParentName = parentClass.getName();</span>
+				}
+
+<span class="nc" id="L1269">				final List&lt;MetaClass&gt; accessedClasses = getAllIncludes(metaClass);</span>
+
+				final byte[] byteCode;
+<span class="nc" id="L1272">				byte[] aspectBytes = null;</span>
+<span class="nc bnc" id="L1273" title="All 2 branches missed.">				if (language == Langs.LANG_JAVA) {</span>
+<span class="nc" id="L1274">					byteCode = StubByteCodeManager.generateJavaStub(metaClass, stubInfo, accessedClasses, this);</span>
+<span class="nc" id="L1275">					aspectBytes = StubByteCodeManager.generateStubAspect(metaClass, false, this);</span>
+<span class="nc bnc" id="L1276" title="All 2 branches missed.">				} else if (language == Langs.LANG_PYTHON) {</span>
+
+					// TODO: MODIFY THIS FOR EMBEDDED
+<span class="nc" id="L1279">					byteCode = StubPySourceManager.generatePythonClientStub(metaClass, realParentName,</span>
+<span class="nc" id="L1280">							stubInfos.get(metaClassID));</span>
+				} else {
+<span class="nc" id="L1282">					throw new DataClayRuntimeException(ERRORCODE.CLASS_UNSUPPORTED_LANGUAGE,</span>
+							&quot;Unknown language, could not genearte stub&quot;, false);
+				}
+<span class="nc" id="L1285">				stubAndIncludes = new Triple&lt;&gt;(metaClass.getName(), byteCode, aspectBytes);</span>
+
+<span class="nc" id="L1287">				stubsCache.put(stubInfo, stubAndIncludes);</span>
+			}
+<span class="nc" id="L1289">			stubs.put(metaClassID, stubAndIncludes);</span>
+<span class="nc" id="L1290">		}</span>
+<span class="nc" id="L1291">		return stubs;</span>
+	}
+
+	/**
+	 * Generate a set of Java stubs for Enrichments with the provided
+	 *        informations
+	 * @param language
+	 *            Language of the stub to generate
+	 * @param stubInfos
+	 *            Information associated to each stub (names, contract IDs,
+	 *            interface IDs...)
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 * @pre The class exists
+	 * @return Byte code of the stubs of the stubs for enrichment with information
+	 *         provided
+	 */
+	public Map&lt;MetaClassID, byte[]&gt; generateStubsForEnrichment(final Langs language,
+			final Map&lt;MetaClassID, StubInfo&gt; stubInfos) {
+<span class="nc" id="L1310">		throw new UnsupportedOperationException();</span>
+	}
+
+	/**
+	 * Checks that there is no operation, implementation or property that
+	 *        includes the class with name and Namespace specified.
+	 * @param newClassName
+	 *            Name of the class
+	 * @param newNamespaceID
+	 *            ID of the namespace of the class
+	 * @return The ID of the class with Name and Namespace specified. If no class
+	 *         with this name and namespace exists NULL is returned and the check is
+	 *         skipped.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public MetaClassID checkClassNotInIncludesAndGetID(final String newClassName, final NamespaceID newNamespaceID) {
+
+<span class="nc" id="L1328">		final MetaClass metaClass = getMetaClassByName(newNamespaceID, newClassName);</span>
+<span class="nc" id="L1329">		final MetaClassID metaClassID = metaClass.getDataClayID();</span>
+
+		// Verify there is no type using the class id
+<span class="nc" id="L1332">		final boolean existsInIncludes = classDB.existsClassInSomeType(metaClassID);</span>
+<span class="nc bnc" id="L1333" title="All 2 branches missed.">		if (existsInIncludes) {</span>
+<span class="nc" id="L1334">			throw new ClassInIncludesException(newNamespaceID, newClassName);</span>
+		}
+
+<span class="nc" id="L1337">		return metaClassID;</span>
+	}
+
+	/**
+	 * For each property and operation ID provided verify they belong to the
+	 *        Namespace of the Class with ID provided. Return those that do not
+	 *        belong to the Namespace.
+	 * @param metaClassID
+	 *            ID of the MetaClass
+	 * @param propertyIDs
+	 *            IDs of the properties
+	 * @param operationIDs
+	 *            IDs of the operations
+	 * @return IDs of operations and IDs of properties that do not belong to the
+	 *         MetaClass with ID provided.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Tuple&lt;Set&lt;PropertyID&gt;, Set&lt;OperationID&gt;&gt; getOperationsAndPropertiesNotInNamespaceOfClass(
+			final MetaClassID metaClassID, final Set&lt;PropertyID&gt; propertyIDs, final Set&lt;OperationID&gt; operationIDs) {
+		// Get the metaClass
+<span class="fc" id="L1358">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+<span class="fc" id="L1359">		final Set&lt;PropertyID&gt; propertiesNotInClassNamespace = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L1360" title="All 2 branches covered.">		for (final PropertyID propertyID : propertyIDs) {</span>
+			// Verify the property belong to the metaClass with ID provided
+<span class="fc" id="L1362">			boolean found = false;</span>
+<span class="fc bfc" id="L1363" title="All 2 branches covered.">			for (final Property property : metaClass.getProperties()) {</span>
+<span class="fc" id="L1364">				final PropertyID propID = property.getDataClayID();</span>
+<span class="fc bfc" id="L1365" title="All 2 branches covered.">				if (propID.equals(propertyID)) {</span>
+<span class="pc bpc" id="L1366" title="1 of 2 branches missed.">					if (!property.getNamespaceID().equals(metaClass.getNamespaceID())) {</span>
+<span class="fc" id="L1367">						propertiesNotInClassNamespace.add(propertyID);</span>
+					}
+<span class="fc" id="L1369">					found = true;</span>
+<span class="fc" id="L1370">					break;</span>
+				}
+<span class="fc" id="L1372">			}</span>
+<span class="fc bfc" id="L1373" title="All 2 branches covered.">			if (!found) {</span>
+<span class="fc" id="L1374">				throw new PropertyNotInClassException(propertyID, metaClassID);</span>
+			}
+<span class="fc" id="L1376">		}</span>
+
+<span class="fc" id="L1378">		final Set&lt;OperationID&gt; operationsNotInClassNamespace = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L1379" title="All 2 branches covered.">		for (final OperationID operationID : operationIDs) {</span>
+			// Verify the operation belong to the metaClass with ID provided
+<span class="fc" id="L1381">			boolean found = false;</span>
+<span class="fc bfc" id="L1382" title="All 2 branches covered.">			for (final Operation operation : metaClass.getOperations()) {</span>
+<span class="fc" id="L1383">				final OperationID opID = operation.getDataClayID();</span>
+<span class="pc bpc" id="L1384" title="1 of 2 branches missed.">				if (opID.equals(operationID)) {</span>
+<span class="nc bnc" id="L1385" title="All 2 branches missed.">					if (!operation.getNamespaceID().equals(metaClass.getNamespaceID())) {</span>
+<span class="nc" id="L1386">						operationsNotInClassNamespace.add(operationID);</span>
+					}
+<span class="nc" id="L1388">					found = true;</span>
+<span class="nc" id="L1389">					break;</span>
+				}
+<span class="fc" id="L1391">			}</span>
+<span class="pc bpc" id="L1392" title="1 of 2 branches missed.">			if (!found) {</span>
+<span class="fc" id="L1393">				throw new OperationNotInClassException(operationID, metaClassID);</span>
+			}
+<span class="nc" id="L1395">		}</span>
+
+<span class="fc" id="L1397">		return new Tuple&lt;&gt;(propertiesNotInClassNamespace, operationsNotInClassNamespace);</span>
+	}
+
+	/**
+	 * Verify if the type with ID provided is in namespace specified or not
+	 *        and add it into one of the provided structures.
+	 * @param includedTypeID
+	 *            ID of the type to check
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @param includesInNamespace
+	 *            [out] Set of MetaClass informations of includes in same namespace
+	 * @param includesNotInNamespace
+	 *            [out] Set of MetaClass informations of includes not in same
+	 *            namespace
+	 */
+	private void verifyTypeInclude(final MetaClassID includedTypeID, final NamespaceID namespaceID,
+			final Set&lt;MetaClass&gt; includesInNamespace, final Set&lt;MetaClass&gt; includesNotInNamespace) {
+
+		// Get the class
+<span class="nc" id="L1417">		final MetaClass includedClass = getClassFromDatabaseOrCache(includedTypeID);</span>
+<span class="nc bnc" id="L1418" title="All 2 branches missed.">		if (includedClass != null) {</span>
+<span class="nc bnc" id="L1419" title="All 2 branches missed.">			if (includedClass.getNamespaceID().equals(namespaceID)) {</span>
+<span class="nc" id="L1420">				includesInNamespace.add(includedClass);</span>
+			} else {
+<span class="nc" id="L1422">				includesNotInNamespace.add(includedClass);</span>
+			}
+		}
+
+<span class="nc" id="L1426">	}</span>
+
+	/**
+	 * Verify the includes of the Implementation. Check if they are in
+	 *        namespace specified or not and add it into one of the provided
+	 *        structures.
+	 * @param implementation
+	 *            Implementation to check.
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @param includesInNamespace
+	 *            [out] Set of MetaClass informations of includes in same namespace
+	 * @param includesNotInNamespace
+	 *            [out] Set of MetaClass informations of includes not in same
+	 *            namespace
+	 * @param analyzedImplementations
+	 *            [out] Set of implementations that have been already analyzed
+	 */
+	private void getClassIncludesOfImplementation(final Implementation implementation, final NamespaceID namespaceID,
+			final Set&lt;MetaClass&gt; includesInNamespace, final Set&lt;MetaClass&gt; includesNotInNamespace,
+			final Set&lt;ImplementationID&gt; analyzedImplementations) {
+
+<span class="nc" id="L1448">		final ImplementationID implIDwithoutRef = implementation.getDataClayID();</span>
+<span class="nc bnc" id="L1449" title="All 2 branches missed.">		if (analyzedImplementations.contains(implIDwithoutRef)) {</span>
+<span class="nc" id="L1450">			return;</span>
+		} else {
+<span class="nc" id="L1452">			analyzedImplementations.add(implementation.getDataClayID());</span>
+		}
+
+		// Verify implementation includes
+<span class="nc bnc" id="L1456" title="All 2 branches missed.">		for (final Type implInclude : implementation.getIncludes()) {</span>
+<span class="nc bnc" id="L1457" title="All 2 branches missed.">			if (implInclude instanceof UserType) {</span>
+<span class="nc" id="L1458">				final UserType implIncludeUType = (UserType) implInclude;</span>
+<span class="nc" id="L1459">				verifyTypeInclude(implIncludeUType.getClassID(), namespaceID, includesInNamespace,</span>
+						includesNotInNamespace);
+			}
+<span class="nc" id="L1462">		}</span>
+		// Verify properties accessed by the implementation
+<span class="nc" id="L1464">		final List&lt;AccessedProperty&gt; accessedProperties = implementation.getAccessedProperties();</span>
+<span class="nc bnc" id="L1465" title="All 2 branches missed.">		for (final AccessedProperty accProp : accessedProperties) {</span>
+<span class="nc" id="L1466">			final PropertyID propertyID = accProp.getPropertyID();</span>
+			// TODO: accessed properties cannot be properties that do not belong
+			// to metaclass so it can be
+			// improved the call &quot;getIncludesInDifferentNamespaces&quot;
+<span class="nc" id="L1470">			final Property property = getPropertyFromDatabaseOrCache(propertyID);</span>
+
+<span class="nc" id="L1472">			final Type propertyType = property.getType();</span>
+<span class="nc bnc" id="L1473" title="All 2 branches missed.">			if (propertyType instanceof UserType) {</span>
+<span class="nc" id="L1474">				final UserType includeUType = (UserType) propertyType;</span>
+<span class="nc" id="L1475">				verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace, includesNotInNamespace);</span>
+
+			}
+
+<span class="nc" id="L1479">		}</span>
+
+		// Verify implementations accessed by the implementation
+<span class="nc" id="L1482">		final List&lt;AccessedImplementation&gt; accessedImplementations = implementation.getAccessedImplementations();</span>
+<span class="nc bnc" id="L1483" title="All 2 branches missed.">		for (final AccessedImplementation accImpl : accessedImplementations) {</span>
+<span class="nc" id="L1484">			final ImplementationID implID = accImpl.getImplementationID();</span>
+<span class="nc" id="L1485">			final Implementation accessedImplementation = getImplementationFromDatabaseOrCache(implID);</span>
+<span class="nc" id="L1486">			final Operation accessedOperation = getOperationFromDatabaseOrCache(</span>
+<span class="nc" id="L1487">					accessedImplementation.getOperationID());</span>
+
+			// Verify Operation arguments
+<span class="nc" id="L1490">			final Map&lt;String, Type&gt; params = accessedOperation.getParams();</span>
+<span class="nc bnc" id="L1491" title="All 2 branches missed.">			for (final Entry&lt;String, Type&gt; entry : params.entrySet()) {</span>
+<span class="nc" id="L1492">				final Type type = entry.getValue();</span>
+<span class="nc bnc" id="L1493" title="All 2 branches missed.">				if (type instanceof UserType) {</span>
+<span class="nc" id="L1494">					final UserType includeUType = (UserType) type;</span>
+<span class="nc" id="L1495">					verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace,</span>
+							includesNotInNamespace);
+				}
+<span class="nc" id="L1498">			}</span>
+
+			// Verify operation return type
+<span class="nc" id="L1501">			final Type type = accessedOperation.getReturnType();</span>
+<span class="nc bnc" id="L1502" title="All 2 branches missed.">			if (type instanceof UserType) {</span>
+<span class="nc" id="L1503">				final UserType includeUType = (UserType) type;</span>
+<span class="nc" id="L1504">				verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace, includesNotInNamespace);</span>
+			}
+
+			// Recursive call
+<span class="nc" id="L1508">			getClassIncludesOfImplementation(accessedImplementation, namespaceID, includesInNamespace,</span>
+					includesNotInNamespace, analyzedImplementations);
+
+<span class="nc" id="L1511">		}</span>
+<span class="nc" id="L1512">	}</span>
+
+	/**
+	 * Get the includes of the operations and properties provided and for
+	 *        those that belongs to the Namespace with ID provided return all its
+	 *        information.
+	 * @param operationsAndImpls
+	 *            IDs of the operations and implementations
+	 * @param propertyIDs
+	 *            IDs of the properties
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @param parentClassID
+	 *            ID of the parent class
+	 * @return A set of MetaClass information with only Class ID and Namespace ID
+	 *         corresponding to imported classes, and a set of MetaClass information
+	 *         with all information corresponding to the non imported classes.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Tuple&lt;Set&lt;MetaClass&gt;, Set&lt;MetaClass&gt;&gt; getClassIncludesOfOperationsPropsAndImpls(
+			final Map&lt;OperationID, Set&lt;ImplementationID&gt;&gt; operationsAndImpls, final Set&lt;PropertyID&gt; propertyIDs,
+			final NamespaceID namespaceID, final MetaClassID parentClassID) {
+
+<span class="nc" id="L1536">		final Set&lt;MetaClass&gt; includesInNamespace = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1537">		final Set&lt;MetaClass&gt; includesNotInNamespace = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1538">		final Set&lt;ImplementationID&gt; alreadyAnalyzedImpls = new HashSet&lt;&gt;();</span>
+
+		// Analyze includes of properties
+<span class="nc bnc" id="L1541" title="All 2 branches missed.">		for (final PropertyID propertyID : propertyIDs) {</span>
+<span class="nc" id="L1542">			final Property property = getPropertyFromDatabaseOrCache(propertyID);</span>
+<span class="nc" id="L1543">			final Type propertyType = property.getType();</span>
+<span class="nc bnc" id="L1544" title="All 2 branches missed.">			if (propertyType instanceof UserType) {</span>
+<span class="nc" id="L1545">				final UserType includeUType = (UserType) propertyType;</span>
+<span class="nc" id="L1546">				verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace, includesNotInNamespace);</span>
+			}
+
+<span class="nc" id="L1549">		}</span>
+		// Analyze includes of operations and implementations
+<span class="nc bnc" id="L1551" title="All 2 branches missed.">		for (final Entry&lt;OperationID, Set&lt;ImplementationID&gt;&gt; entry : operationsAndImpls.entrySet()) {</span>
+
+<span class="nc" id="L1553">			final OperationID operationID = entry.getKey();</span>
+<span class="nc" id="L1554">			final Operation operation = getOperationFromDatabaseOrCache(operationID);</span>
+
+			// Verify Operation arguments
+<span class="nc" id="L1557">			final Map&lt;String, Type&gt; params = operation.getParams();</span>
+<span class="nc bnc" id="L1558" title="All 2 branches missed.">			for (final Entry&lt;String, Type&gt; curParam : params.entrySet()) {</span>
+<span class="nc" id="L1559">				final Type type = curParam.getValue();</span>
+<span class="nc bnc" id="L1560" title="All 2 branches missed.">				if (type instanceof UserType) {</span>
+<span class="nc" id="L1561">					final UserType includeUType = (UserType) type;</span>
+<span class="nc" id="L1562">					verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace,</span>
+							includesNotInNamespace);
+				}
+<span class="nc" id="L1565">			}</span>
+
+			// Verify operation return type
+<span class="nc" id="L1568">			final Type type = operation.getReturnType();</span>
+<span class="nc bnc" id="L1569" title="All 2 branches missed.">			if (type instanceof UserType) {</span>
+<span class="nc" id="L1570">				final UserType includeUType = (UserType) type;</span>
+<span class="nc" id="L1571">				verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace, includesNotInNamespace);</span>
+			}
+
+			// Now let's verify the implementation includes
+<span class="nc" id="L1575">			final Set&lt;ImplementationID&gt; implementationIDs = entry.getValue();</span>
+<span class="nc bnc" id="L1576" title="All 2 branches missed.">			for (final ImplementationID implementationID : implementationIDs) {</span>
+<span class="nc" id="L1577">				final Implementation implementation = getImplementationFromDatabaseOrCache(implementationID);</span>
+<span class="nc" id="L1578">				getClassIncludesOfImplementation(implementation, namespaceID, includesInNamespace,</span>
+						includesNotInNamespace, alreadyAnalyzedImpls);
+<span class="nc" id="L1580">			}</span>
+
+<span class="nc" id="L1582">		}</span>
+
+		// Verify parent class (verify the ops and props of parent class is not
+		// necessary since the implementations
+		// will contain this information)
+<span class="nc bnc" id="L1587" title="All 2 branches missed.">		if (parentClassID != null) {</span>
+<span class="nc" id="L1588">			verifyTypeInclude(parentClassID, namespaceID, includesInNamespace, includesNotInNamespace);</span>
+		}
+
+<span class="nc" id="L1591">		return new Tuple&lt;&gt;(includesNotInNamespace, includesInNamespace);</span>
+	}
+
+	/**
+	 * Get the Class name, Namespace ID and the IDs of the included classes
+	 *        in different Namespaces than the one specified of the class with ID
+	 *        provided.
+	 * @param metaClassID
+	 *            ID of the class
+	 * @param propertiesIDs
+	 *            properties to be analyzed
+	 * @param operationsIDsAndImplementationsIDs
+	 *            operations and their implementations to be analyzed
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @return The class name, Namespace ID of class and a set of included classes
+	 *         that are not in the namespace provided.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Triple&lt;String, NamespaceID, Set&lt;MetaClassID&gt;&gt; getIncludesInDifferentNamespaces(final MetaClassID metaClassID,
+			final Set&lt;PropertyID&gt; propertiesIDs,
+			final Map&lt;OperationID, Set&lt;ImplementationID&gt;&gt; operationsIDsAndImplementationsIDs,
+			final NamespaceID namespaceID) {
+		// Get the class
+<span class="nc" id="L1616">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+
+<span class="nc" id="L1618">		final Set&lt;MetaClass&gt; includesInNamespace = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1619">		final Set&lt;MetaClass&gt; includesNotInNamespace = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1620">		final Set&lt;ImplementationID&gt; alreadyAnalyzedImpls = new HashSet&lt;&gt;();</span>
+
+		// Analyze includes of properties
+<span class="nc bnc" id="L1623" title="All 2 branches missed.">		for (final Property property : metaClass.getProperties()) {</span>
+<span class="nc bnc" id="L1624" title="All 2 branches missed.">			if (propertiesIDs.contains(property.getDataClayID())) {</span>
+<span class="nc" id="L1625">				final Type propertyType = property.getType();</span>
+<span class="nc bnc" id="L1626" title="All 2 branches missed.">				if (propertyType instanceof UserType) {</span>
+<span class="nc" id="L1627">					final UserType includeUType = (UserType) propertyType;</span>
+<span class="nc" id="L1628">					verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace,</span>
+							includesNotInNamespace);
+				}
+			}
+
+<span class="nc" id="L1633">		}</span>
+		// Analyze includes of operations and implementations
+<span class="nc bnc" id="L1635" title="All 2 branches missed.">		for (final Operation operation : metaClass.getOperations()) {</span>
+<span class="nc bnc" id="L1636" title="All 2 branches missed.">			if (operationsIDsAndImplementationsIDs.containsKey(operation.getDataClayID())) {</span>
+<span class="nc" id="L1637">				final Set&lt;ImplementationID&gt; implsIDs = operationsIDsAndImplementationsIDs</span>
+<span class="nc" id="L1638">						.get(operation.getDataClayID());</span>
+
+				// Verify Operation arguments
+<span class="nc" id="L1641">				final Map&lt;String, Type&gt; params = operation.getParams();</span>
+<span class="nc bnc" id="L1642" title="All 2 branches missed.">				for (final Entry&lt;String, Type&gt; curParam : params.entrySet()) {</span>
+<span class="nc" id="L1643">					final Type type = curParam.getValue();</span>
+<span class="nc bnc" id="L1644" title="All 2 branches missed.">					if (type instanceof UserType) {</span>
+<span class="nc" id="L1645">						final UserType includeUType = (UserType) type;</span>
+<span class="nc" id="L1646">						verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace,</span>
+								includesNotInNamespace);
+					}
+<span class="nc" id="L1649">				}</span>
+
+				// Verify operation return type
+<span class="nc" id="L1652">				final Type type = operation.getReturnType();</span>
+<span class="nc bnc" id="L1653" title="All 2 branches missed.">				if (type instanceof UserType) {</span>
+<span class="nc" id="L1654">					final UserType includeUType = (UserType) type;</span>
+<span class="nc" id="L1655">					verifyTypeInclude(includeUType.getClassID(), namespaceID, includesInNamespace,</span>
+							includesNotInNamespace);
+				}
+
+				// Now let's verify the implementation includes
+<span class="nc bnc" id="L1660" title="All 2 branches missed.">				for (final Implementation implementation : operation.getImplementations()) {</span>
+<span class="nc bnc" id="L1661" title="All 2 branches missed.">					if (implsIDs.contains(implementation.getDataClayID())) {</span>
+<span class="nc" id="L1662">						getClassIncludesOfImplementation(implementation, namespaceID, includesInNamespace,</span>
+								includesNotInNamespace, alreadyAnalyzedImpls);
+					}
+<span class="nc" id="L1665">				}</span>
+			}
+
+<span class="nc" id="L1668">		}</span>
+
+		// Verify parent class (verify the ops and props of parent class is not
+		// necessary since the implementations
+		// will contain this information)
+<span class="nc bnc" id="L1673" title="All 2 branches missed.">		if (metaClass.getParentType() != null) {</span>
+<span class="nc" id="L1674">			verifyTypeInclude(metaClass.getParentType().getClassID(), namespaceID, includesInNamespace,</span>
+					includesNotInNamespace);
+		}
+
+<span class="nc" id="L1678">		final Set&lt;MetaClassID&gt; includesIDsNotInNamespace = new HashSet&lt;&gt;();</span>
+
+<span class="nc bnc" id="L1680" title="All 2 branches missed.">		for (final MetaClass metaClassInfo : includesNotInNamespace) {</span>
+<span class="nc" id="L1681">			includesIDsNotInNamespace.add(metaClassInfo.getDataClayID());</span>
+<span class="nc" id="L1682">		}</span>
+
+<span class="nc" id="L1684">		return new Triple&lt;&gt;(metaClass.getName(), metaClass.getNamespaceID(), includesIDsNotInNamespace);</span>
+	}
+
+	/**
+	 * Verify if there is some implementation accessing the operation with ID
+	 *        provided
+	 * @param operationID
+	 *            ID of the operation
+	 * @return TRUE if there is some implementation accessing the operation. FALSE
+	 *         otherwise.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public boolean existsImplementationAccessingOperation(final OperationID operationID) {
+
+<span class="nc" id="L1699">		final Operation op = classDB.getOperationByID(operationID);</span>
+		// If any implementation accesses some of the implementations of this operation,
+		// return true.
+<span class="nc bnc" id="L1702" title="All 2 branches missed.">		for (final Implementation impl : op.getImplementations()) {</span>
+<span class="nc bnc" id="L1703" title="All 2 branches missed.">			if (classDB.existsAccessedImplementationWithID(impl.getDataClayID())) {</span>
+<span class="nc" id="L1704">				return true;</span>
+			}
+<span class="nc" id="L1706">		}</span>
+<span class="nc" id="L1707">		return false;</span>
+
+	}
+
+	/**
+	 * Get the properties, operations and implementations created as
+	 *        enrichments of the specified class in the given namespace.
+	 * @param metaClassID
+	 *            ID of the class
+	 * @param namespaceIDofEnrichments
+	 *            ID of the namespace of the enrichments
+	 * @return the set of properties, operations and implementations that enrich the
+	 *         class in the given namespace. If there is no enrichment in the
+	 *         specified namespace, return the corresponding empty sets.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Tuple&lt;Set&lt;PropertyID&gt;, Map&lt;OperationID, Set&lt;ImplementationID&gt;&gt;&gt; getEnrichmentsInNamespaceOfClass(
+			final MetaClassID metaClassID, final NamespaceID namespaceIDofEnrichments) {
+
+		// Get properties of the MetaClass with ID provided whose original
+		// Namespace is the one specified
+<span class="nc" id="L1729">		final Set&lt;PropertyID&gt; propertyEnrichments = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1730">		final List&lt;Property&gt; resultProp = classDB.getPropertiesByClassIDAndNamespaceID(metaClassID,</span>
+				namespaceIDofEnrichments);
+<span class="nc bnc" id="L1732" title="All 2 branches missed.">		for (final Property property : resultProp) {</span>
+<span class="nc" id="L1733">			propertyEnrichments.add(property.getDataClayID());</span>
+<span class="nc" id="L1734">		}</span>
+
+		// Get operations of the MetaClass with ID provided whose original
+		// Namespace is the one specified
+<span class="nc" id="L1738">		final Map&lt;OperationID, Set&lt;ImplementationID&gt;&gt; operationAndImplEnrichments = //</span>
+				new HashMap&lt;&gt;();
+<span class="nc" id="L1740">		final List&lt;Operation&gt; resultOps = classDB.getOperationsByClassIDAndNamespaceID(metaClassID,</span>
+				namespaceIDofEnrichments);
+<span class="nc bnc" id="L1742" title="All 2 branches missed.">		for (final Operation operation : resultOps) {</span>
+
+<span class="nc" id="L1744">			final Set&lt;ImplementationID&gt; implOfOperationEnrichments = new HashSet&lt;&gt;();</span>
+
+<span class="nc bnc" id="L1746" title="All 2 branches missed.">			for (final Implementation implementation : operation.getImplementations()) {</span>
+<span class="nc bnc" id="L1747" title="All 2 branches missed.">				if (implementation.getNamespaceID().equals(namespaceIDofEnrichments)) {</span>
+<span class="nc" id="L1748">					implOfOperationEnrichments.add(implementation.getDataClayID());</span>
+				}
+<span class="nc" id="L1750">			}</span>
+
+<span class="nc" id="L1752">			operationAndImplEnrichments.put(operation.getDataClayID(), implOfOperationEnrichments);</span>
+
+<span class="nc" id="L1754">		}</span>
+
+<span class="nc" id="L1756">		return new Tuple&lt;&gt;(propertyEnrichments, operationAndImplEnrichments);</span>
+	}
+
+	/**
+	 * Return all information of a class
+	 * @param metaClassID
+	 *            ID of the metaclass
+	 * @return Information of the class
+	 * @pre There is a class with ID provided
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public MetaClass getClassInfo(final MetaClassID metaClassID) {
+		// Get class
+<span class="nc" id="L1770">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+<span class="nc" id="L1771">		return metaClass;</span>
+
+	}
+
+	/**
+	 * Return ID of class of the type of the property or NULL if type is not
+	 *        user type.
+	 * @param propertyID
+	 *            ID of the property
+	 * @return ID of class of the type or NULL if type is not user type.
+	 * @pre There is a type with ID provided
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public MetaClassID getClassIDFromProperty(final PropertyID propertyID) {
+<span class="nc" id="L1786">		final Property prop = this.getPropertyFromDatabaseOrCache(propertyID);</span>
+<span class="nc bnc" id="L1787" title="All 2 branches missed.">		if (prop.getType() instanceof UserType) {</span>
+<span class="nc" id="L1788">			final UserType includeUType = (UserType) prop.getType();</span>
+<span class="nc" id="L1789">			return includeUType.getClassID();</span>
+		} else {
+<span class="nc" id="L1791">			return null;</span>
+		}
+	}
+
+	/**
+	 * Return information of classes in the given namespace.
+	 * @param namespaceID
+	 *            ID of the namespace of the classes to be retrieved
+	 * @return the info of the classes in the namespace provided.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Map&lt;MetaClassID, MetaClass&gt; getInfoOfClassesInNamespace(final NamespaceID namespaceID) {
+		// Get classes
+<span class="nc" id="L1805">		final List&lt;MetaClass&gt; classesInNamespace = classDB.getClassesInNamespace(namespaceID);</span>
+<span class="nc bnc" id="L1806" title="All 2 branches missed.">		if (classesInNamespace == null) {</span>
+<span class="nc" id="L1807">			return null;</span>
+		}
+
+<span class="nc" id="L1810">		final Map&lt;MetaClassID, MetaClass&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L1811" title="All 2 branches missed.">		for (final MetaClass curClass : classesInNamespace) {</span>
+<span class="nc" id="L1812">			result.put(curClass.getDataClayID(), curClass);</span>
+<span class="nc" id="L1813">		}</span>
+
+<span class="nc" id="L1815">		return result;</span>
+	}
+
+	/**
+	 * Return all information of an operation
+	 * @param operationID
+	 *            ID of the operation
+	 * @return Information of the operation
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Operation getOperationInfo(final OperationID operationID) {
+		// First we get the Operation and check if it exists
+<span class="nc" id="L1828">		final Operation operation = getOperationFromDatabaseOrCache(operationID);</span>
+<span class="nc" id="L1829">		return operation;</span>
+	}
+
+	/**
+	 * Return all information of a property
+	 * @param propertyID
+	 *            ID of the property
+	 * @return Information of the property
+	 */
+	public Property getPropertyInfo(final PropertyID propertyID) {
+		// First we get the Property and check if it exists
+<span class="nc" id="L1840">		final Property property = getPropertyFromDatabaseOrCache(propertyID);</span>
+<span class="nc" id="L1841">		return property;</span>
+	}
+
+	/**
+	 * For each property and operation ID of the metaclass with ID provided
+	 *        return all those that belong to the namespace with ID specified
+	 * @param metaClassID
+	 *            ID of the MetaClass
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @return IDs of operations and IDs of properties that belong to the Namespace
+	 *         with ID provided and class with ID specified.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Tuple&lt;Set&lt;PropertyID&gt;, Map&lt;OperationID, Set&lt;ImplementationID&gt;&gt;&gt; getOperationsAndPropertiesAndImplInNamespace(
+			final MetaClassID metaClassID, final NamespaceID namespaceID) {
+
+		// Get the class
+<span class="nc" id="L1860">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+
+<span class="nc" id="L1862">		final Set&lt;PropertyID&gt; propertyIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1863">		final Map&lt;OperationID, Set&lt;ImplementationID&gt;&gt; operationIDs = //</span>
+				new HashMap&lt;&gt;();
+
+<span class="nc bnc" id="L1866" title="All 2 branches missed.">		for (final Operation operation : metaClass.getOperations()) {</span>
+<span class="nc bnc" id="L1867" title="All 2 branches missed.">			if (operation.getNamespaceID().equals(namespaceID)) {</span>
+
+<span class="nc" id="L1869">				final Set&lt;ImplementationID&gt; implementationIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L1870" title="All 2 branches missed.">				for (final Implementation implementation : operation.getImplementations()) {</span>
+<span class="nc bnc" id="L1871" title="All 2 branches missed.">					if (implementation.getNamespaceID().equals(namespaceID)) {</span>
+<span class="nc" id="L1872">						implementationIDs.add(implementation.getDataClayID());</span>
+					}
+<span class="nc" id="L1874">				}</span>
+<span class="nc" id="L1875">				operationIDs.put(operation.getDataClayID(), implementationIDs);</span>
+			}
+<span class="nc" id="L1877">		}</span>
+
+<span class="nc bnc" id="L1879" title="All 2 branches missed.">		for (final Property property : metaClass.getProperties()) {</span>
+<span class="nc bnc" id="L1880" title="All 2 branches missed.">			if (property.getNamespaceID().equals(namespaceID)) {</span>
+<span class="nc" id="L1881">				propertyIDs.add(property.getDataClayID());</span>
+			}
+
+<span class="nc" id="L1884">		}</span>
+
+<span class="nc" id="L1886">		return new Tuple&lt;&gt;(propertyIDs, operationIDs);</span>
+	}
+
+	/**
+	 * Return the operations IDs of the default getters and setters of the
+	 *        given properties IDs
+	 * @param metaClassID
+	 *            ID of the class of the properties
+	 * @param propertiesIDs
+	 *            IDs of the properties
+	 * @return The set of operations IDs corresponding to the getters and setters of
+	 *         the specified properties.
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Set&lt;OperationID&gt; getOperationsIDsOfGettersAndSetters(final MetaClassID metaClassID,
+			final Set&lt;PropertyID&gt; propertiesIDs) {
+<span class="nc" id="L1903">		final Set&lt;OperationID&gt; gettersAndSetters = new HashSet&lt;&gt;();</span>
+
+		// Get the class
+<span class="nc" id="L1906">		final MetaClass metaClass = getClassFromDatabaseOrCache(metaClassID);</span>
+<span class="nc bnc" id="L1907" title="All 2 branches missed.">		for (final Property property : metaClass.getProperties()) {</span>
+<span class="nc bnc" id="L1908" title="All 2 branches missed.">			if (propertiesIDs.contains(property.getDataClayID())) {</span>
+<span class="nc" id="L1909">				gettersAndSetters.add(property.getGetterOperationID());</span>
+<span class="nc" id="L1910">				gettersAndSetters.add(property.getSetterOperationID());</span>
+			}
+<span class="nc" id="L1912">		}</span>
+
+<span class="nc" id="L1914">		return gettersAndSetters;</span>
+	}
+
+	/**
+	 * Return the implementations of the operations of the getters and
+	 *        setters of the given properties
+	 * @param propertiesInClass
+	 *            Properties which implementations of getters ands settes have to be
+	 *            retrieved.
+	 * @return The implementations of the operations of the getters and setters of
+	 *         the given properties
+	 * @throws Exception
+	 *             if an internal error occurred while working with Database.
+	 */
+	public Map&lt;PropertyID, Map&lt;OperationID, ImplementationID&gt;&gt; getImplementationsOfGettersAndSetters(
+			final Map&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; propertiesInClass) {
+<span class="nc" id="L1930">		final Map&lt;PropertyID, Map&lt;OperationID, ImplementationID&gt;&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L1931" title="All 2 branches missed.">		for (final Entry&lt;MetaClassID, Set&lt;PropertyID&gt;&gt; curProperties : propertiesInClass.entrySet()) {</span>
+<span class="nc" id="L1932">			final MetaClass metaClass = getClassFromDatabaseOrCache(curProperties.getKey());</span>
+<span class="nc bnc" id="L1933" title="All 2 branches missed.">			for (final Property prop : metaClass.getProperties()) {</span>
+<span class="nc bnc" id="L1934" title="All 2 branches missed.">				if (curProperties.getValue().contains(prop.getDataClayID())) {</span>
+<span class="nc" id="L1935">					final Map&lt;OperationID, ImplementationID&gt; implsOfGettersAndSetters = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L1936">					final OperationID getter = prop.getGetterOperationID();</span>
+<span class="nc" id="L1937">					final OperationID setter = prop.getSetterOperationID();</span>
+<span class="nc" id="L1938">					final Operation getterRef = this.getOperationFromDatabaseOrCache(getter);</span>
+<span class="nc" id="L1939">					final Operation setterRef = this.getOperationFromDatabaseOrCache(setter);</span>
+<span class="nc" id="L1940">					implsOfGettersAndSetters.put(getter,</span>
+<span class="nc" id="L1941">							getterRef.getImplementations().iterator().next().getDataClayID());</span>
+<span class="nc" id="L1942">					implsOfGettersAndSetters.put(setter,</span>
+<span class="nc" id="L1943">							setterRef.getImplementations().iterator().next().getDataClayID());</span>
+
+<span class="nc" id="L1945">					result.put(prop.getDataClayID(), implsOfGettersAndSetters);</span>
+				}
+<span class="nc" id="L1947">			}</span>
+<span class="nc" id="L1948">		}</span>
+<span class="nc" id="L1949">		return result;</span>
+	}
+
+	/**
+	 * Generate execution class for Java MetaClasses. This function should be
+	 *        used to install a class in DataService.
+	 * @param metaClass
+	 *            ID of the class
+	 * @return The bytes of the generated execution class and its aspects.
+	 * @throws Exception
+	 *             If some exception occurs.
+	 */
+	public Tuple&lt;byte[], byte[]&gt; generateJavaExecutionClass(final MetaClass metaClass) {
+
+<span class="nc" id="L1963">		final List&lt;MetaClass&gt; accessedClasses = getAllIncludes(metaClass);</span>
+
+		// Get parent name
+<span class="nc" id="L1966">		String realParentName = null;</span>
+<span class="nc bnc" id="L1967" title="All 2 branches missed.">		if (metaClass.getParentType() == null) {</span>
+<span class="nc" id="L1968">			realParentName = DataClayObject.class.getName();</span>
+		} else {
+<span class="nc" id="L1970">			final MetaClass parentClass = getClassFromDatabaseOrCache(metaClass.getParentType().getClassID());</span>
+<span class="nc" id="L1971">			realParentName = parentClass.getNamespace() + &quot;.&quot; + parentClass.getName();</span>
+		}
+<span class="nc" id="L1973">		MetaClass curClass = metaClass;</span>
+<span class="nc bnc" id="L1974" title="All 2 branches missed.">		while (curClass.getParentType() != null) {</span>
+<span class="nc" id="L1975">			MetaClassID parentID = null;</span>
+<span class="nc bnc" id="L1976" title="All 2 branches missed.">			if (metaClass.getParentType() != null) {</span>
+<span class="nc" id="L1977">				parentID = curClass.getParentType().getClassID();</span>
+			}
+<span class="nc" id="L1979">			curClass = getClassFromDatabaseOrCache(parentID);</span>
+<span class="nc" id="L1980">		}</span>
+
+		// Once symbols were modified we must generate the execution class
+<span class="nc" id="L1983">		final byte[] result = ExecutionByteCodeManager.generateExecutionClass(metaClass, realParentName, this,</span>
+				accessedClasses);
+<span class="nc" id="L1985">		final byte[] aspects = StubByteCodeManager.generateStubAspect(metaClass, true, this);</span>
+<span class="nc" id="L1986">		return new Tuple&lt;&gt;(result, aspects);</span>
+	}
+
+	/**
+	 * Get all includes of the class
+	 * @param metaClass
+	 *            Class to check
+	 * @return All includes of type
+	 */
+	private List&lt;MetaClass&gt; getAllIncludes(final MetaClass metaClass) {
+<span class="nc" id="L1996">		final Set&lt;MetaClassID&gt; accClass = new HashSet&lt;&gt;();</span>
+
+		// ======================== FIND ALL ACCESSED CLASSES
+		// ==================================== //
+<span class="nc" id="L2000">		MetaClass curMetaClass = metaClass;</span>
+<span class="nc bnc" id="L2001" title="All 2 branches missed.">		while (curMetaClass != null) {</span>
+<span class="nc" id="L2002">			accClass.add(curMetaClass.getDataClayID());</span>
+<span class="nc bnc" id="L2003" title="All 2 branches missed.">			if (curMetaClass.getParentType() == null) {</span>
+<span class="nc" id="L2004">				curMetaClass = null;</span>
+			} else {
+<span class="nc" id="L2006">				curMetaClass = this.getClassInfo(curMetaClass.getParentType().getClassID());</span>
+			}
+		}
+		
+<span class="nc bnc" id="L2010" title="All 2 branches missed.">		if (metaClass.getJavaClassInfo() != null) {</span>
+<span class="nc bnc" id="L2011" title="All 2 branches missed.">			for (final Type ifaceInclude : metaClass.getJavaClassInfo().getIncludes()) {  </span>
+<span class="nc bnc" id="L2012" title="All 2 branches missed.">				if (ifaceInclude instanceof UserType) {</span>
+<span class="nc" id="L2013">					final UserType utype = (UserType) ifaceInclude;</span>
+<span class="nc" id="L2014">					accClass.add(utype.getClassID());</span>
+				}
+<span class="nc" id="L2016">			}</span>
+		}
+
+<span class="nc bnc" id="L2019" title="All 2 branches missed.">		for (final Operation op : metaClass.getOperations()) {</span>
+<span class="nc bnc" id="L2020" title="All 2 branches missed.">			if (op.getReturnType() instanceof UserType) {</span>
+<span class="nc" id="L2021">				final UserType utype = (UserType) op.getReturnType();</span>
+<span class="nc" id="L2022">				accClass.add(utype.getClassID());</span>
+			}
+<span class="nc bnc" id="L2024" title="All 2 branches missed.">			if (op.getReturnType().getIncludes() != null) {</span>
+<span class="nc bnc" id="L2025" title="All 2 branches missed.">				for (final Type subInclude : op.getReturnType().getIncludes()) {</span>
+<span class="nc bnc" id="L2026" title="All 2 branches missed.">					if (subInclude instanceof UserType) {</span>
+<span class="nc" id="L2027">						final UserType utype = (UserType) subInclude;</span>
+<span class="nc" id="L2028">						accClass.add(utype.getClassID());</span>
+					}
+<span class="nc" id="L2030">				}</span>
+			}
+<span class="nc bnc" id="L2032" title="All 2 branches missed.">			for (final Type paramType : op.getParams().values()) {</span>
+<span class="nc bnc" id="L2033" title="All 2 branches missed.">				if (paramType instanceof UserType) {</span>
+<span class="nc" id="L2034">					final UserType utype = (UserType) paramType;</span>
+<span class="nc" id="L2035">					accClass.add(utype.getClassID());</span>
+				}
+<span class="nc bnc" id="L2037" title="All 2 branches missed.">				if (paramType.getIncludes() != null) {</span>
+<span class="nc bnc" id="L2038" title="All 2 branches missed.">					for (final Type subInclude : paramType.getIncludes()) {</span>
+<span class="nc bnc" id="L2039" title="All 2 branches missed.">						if (subInclude instanceof UserType) {</span>
+<span class="nc" id="L2040">							final UserType utype = (UserType) subInclude;</span>
+<span class="nc" id="L2041">							accClass.add(utype.getClassID());</span>
+						}
+<span class="nc" id="L2043">					}</span>
+				}
+<span class="nc" id="L2045">			}</span>
+
+<span class="nc bnc" id="L2047" title="All 2 branches missed.">			if (op.getIsAbstract()) {</span>
+<span class="nc" id="L2048">				continue;</span>
+			}
+<span class="nc bnc" id="L2050" title="All 2 branches missed.">			for (final Implementation impl : op.getImplementations()) {</span>
+				// Get accessed implementation IDs
+<span class="nc" id="L2052">				final List&lt;AccessedImplementation&gt; accImplems = impl.getAccessedImplementations();</span>
+<span class="nc bnc" id="L2053" title="All 2 branches missed.">				for (final AccessedImplementation accImplS : accImplems) {</span>
+<span class="nc" id="L2054">					final ImplementationID accImplID = accImplS.getImplementationID();</span>
+<span class="nc" id="L2055">					final Implementation accImpl = getImplementationFromDatabaseOrCache(accImplID);</span>
+<span class="nc" id="L2056">					final Operation accOp = getOperationFromDatabaseOrCache(accImpl.getOperationID());</span>
+
+					// Check accessed classes
+<span class="nc" id="L2059">					accClass.add(accImpl.getMetaClassID());</span>
+<span class="nc bnc" id="L2060" title="All 2 branches missed.">					if (accOp.getReturnType() instanceof UserType) {</span>
+<span class="nc" id="L2061">						final UserType utype = (UserType) accOp.getReturnType();</span>
+<span class="nc" id="L2062">						accClass.add(utype.getClassID());</span>
+					}
+<span class="nc bnc" id="L2064" title="All 2 branches missed.">					if (accOp.getReturnType().getIncludes() != null) {</span>
+<span class="nc bnc" id="L2065" title="All 2 branches missed.">						for (final Type subInclude : accOp.getReturnType().getIncludes()) {</span>
+<span class="nc bnc" id="L2066" title="All 2 branches missed.">							if (subInclude instanceof UserType) {</span>
+<span class="nc" id="L2067">								final UserType utype = (UserType) subInclude;</span>
+<span class="nc" id="L2068">								accClass.add(utype.getClassID());</span>
+							}
+<span class="nc" id="L2070">						}</span>
+					}
+<span class="nc bnc" id="L2072" title="All 2 branches missed.">					for (final Type paramType : accOp.getParams().values()) {</span>
+<span class="nc bnc" id="L2073" title="All 2 branches missed.">						if (paramType instanceof UserType) {</span>
+<span class="nc" id="L2074">							final UserType utype = (UserType) paramType;</span>
+<span class="nc" id="L2075">							accClass.add(utype.getClassID());</span>
+						}
+<span class="nc bnc" id="L2077" title="All 2 branches missed.">						if (paramType.getIncludes() != null) {</span>
+<span class="nc bnc" id="L2078" title="All 2 branches missed.">							for (final Type subInclude : paramType.getIncludes()) {</span>
+<span class="nc bnc" id="L2079" title="All 2 branches missed.">								if (subInclude instanceof UserType) {</span>
+<span class="nc" id="L2080">									final UserType utype = (UserType) subInclude;</span>
+<span class="nc" id="L2081">									accClass.add(utype.getClassID());</span>
+								}
+<span class="nc" id="L2083">							}</span>
+						}
+<span class="nc" id="L2085">					}</span>
+<span class="nc" id="L2086">				}</span>
+
+<span class="nc bnc" id="L2088" title="All 2 branches missed.">				for (final AccessedProperty accProp : impl.getAccessedProperties()) {</span>
+<span class="nc" id="L2089">					final PropertyID accPropertyID = accProp.getPropertyID();</span>
+<span class="nc" id="L2090">					final Property accProperty = getPropertyFromDatabaseOrCache(accPropertyID);</span>
+					// Check accessed classes
+<span class="nc" id="L2092">					accClass.add(accProperty.getMetaClassID());</span>
+
+<span class="nc" id="L2094">					final Type accTypeProp = accProperty.getType();</span>
+<span class="nc bnc" id="L2095" title="All 2 branches missed.">					if (accTypeProp instanceof UserType) {</span>
+
+<span class="nc" id="L2097">						final UserType utype = (UserType) accTypeProp;</span>
+<span class="nc" id="L2098">						accClass.add(utype.getClassID());</span>
+					}
+<span class="nc bnc" id="L2100" title="All 2 branches missed.">					if (accTypeProp.getIncludes() != null) {</span>
+<span class="nc bnc" id="L2101" title="All 2 branches missed.">						for (final Type subInclude : accTypeProp.getIncludes()) {</span>
+<span class="nc bnc" id="L2102" title="All 2 branches missed.">							if (subInclude instanceof UserType) {</span>
+<span class="nc" id="L2103">								final UserType utype = (UserType) subInclude;</span>
+<span class="nc" id="L2104">								accClass.add(utype.getClassID());</span>
+							}
+<span class="nc" id="L2106">						}</span>
+					}
+
+<span class="nc" id="L2109">				}</span>
+<span class="nc bnc" id="L2110" title="All 2 branches missed.">				for (final Type accInclude : impl.getIncludes()) {</span>
+<span class="nc bnc" id="L2111" title="All 2 branches missed.">					if (accInclude instanceof UserType) {</span>
+<span class="nc" id="L2112">						final UserType utype = (UserType) accInclude;</span>
+<span class="nc" id="L2113">						accClass.add(utype.getClassID());</span>
+					}
+<span class="nc bnc" id="L2115" title="All 2 branches missed.">					if (accInclude.getIncludes() != null) {</span>
+<span class="nc bnc" id="L2116" title="All 2 branches missed.">						for (final Type subInclude : accInclude.getIncludes()) {</span>
+<span class="nc bnc" id="L2117" title="All 2 branches missed.">							if (subInclude instanceof UserType) {</span>
+<span class="nc" id="L2118">								final UserType utype = (UserType) subInclude;</span>
+<span class="nc" id="L2119">								accClass.add(utype.getClassID());</span>
+							}
+<span class="nc" id="L2121">						}</span>
+					}
+<span class="nc" id="L2123">				}</span>
+
+<span class="nc" id="L2125">			}</span>
+<span class="nc" id="L2126">		}</span>
+<span class="nc bnc" id="L2127" title="All 2 branches missed.">		for (final Property prop : metaClass.getProperties()) {</span>
+<span class="nc" id="L2128">			final Type propType = prop.getType();</span>
+<span class="nc bnc" id="L2129" title="All 2 branches missed.">			if (propType instanceof UserType) {</span>
+<span class="nc" id="L2130">				final UserType utype = (UserType) propType;</span>
+<span class="nc" id="L2131">				accClass.add(utype.getClassID());</span>
+			}
+<span class="nc bnc" id="L2133" title="All 2 branches missed.">			if (propType.getIncludes() != null) {</span>
+<span class="nc bnc" id="L2134" title="All 2 branches missed.">				for (final Type accInclude : propType.getIncludes()) {</span>
+<span class="nc bnc" id="L2135" title="All 2 branches missed.">					if (accInclude instanceof UserType) {</span>
+<span class="nc" id="L2136">						final UserType utype = (UserType) accInclude;</span>
+<span class="nc" id="L2137">						accClass.add(utype.getClassID());</span>
+					}
+<span class="nc" id="L2139">				}</span>
+			}
+<span class="nc" id="L2141">		}</span>
+
+<span class="nc" id="L2143">		final List&lt;MetaClass&gt; accessedClasses = new ArrayList&lt;&gt;(); // Used later for replacing.</span>
+<span class="nc bnc" id="L2144" title="All 2 branches missed.">		for (final MetaClassID accClassID : accClass) {</span>
+<span class="nc bnc" id="L2145" title="All 2 branches missed.">			if (accClassID == null) {</span>
+<span class="nc" id="L2146">				continue; // Can be null for java or DataCLay types</span>
+			}
+<span class="nc" id="L2148">			final MetaClass accessedClass = getClassFromDatabaseOrCache(accClassID);</span>
+<span class="nc" id="L2149">			accessedClasses.add(accessedClass);</span>
+<span class="nc" id="L2150">		}</span>
+
+<span class="nc" id="L2152">		return accessedClasses;</span>
+	}
+
+	// ============= OTHER =========== //
+
+	/**
+	 * Return the cache of classes
+	 * @return The cache of classes
+	 */
+	public LruCache&lt;MetaClassID, MetaClass&gt; getClassCache() {
+<span class="fc" id="L2162">		return this.classCache;</span>
+	}
+
+	/**
+	 * Method for unit testing.
+	 * @return the db handler reference of this manager.
+	 */
+	public ClassManagerDB getDbHandler() {
+<span class="fc" id="L2170">		return classDB;</span>
+	}
+
+	@Override
+	public void cleanCaches() {
+<span class="nc" id="L2175">		this.implementationsCache.clear();</span>
+<span class="nc" id="L2176">		this.classCache.clear();</span>
+<span class="nc" id="L2177">		this.operationsCache.clear();</span>
+<span class="nc" id="L2178">		this.propertiesCache.clear();</span>
+<span class="nc" id="L2179">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

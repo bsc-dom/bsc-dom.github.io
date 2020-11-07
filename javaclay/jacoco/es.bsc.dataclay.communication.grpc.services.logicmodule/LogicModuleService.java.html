@@ -1,0 +1,2615 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogicModuleService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.communication.grpc.services.logicmodule</a> &gt; <span class="el_source">LogicModuleService.java</span></div><h1>LogicModuleService.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.communication.grpc.services.logicmodule;
+
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.google.protobuf.ByteString;
+
+import es.bsc.dataclay.communication.grpc.Utils;
+import es.bsc.dataclay.communication.grpc.generated.logicmodule.LogicModuleGrpc;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EmptyMessage;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExceptionInfo;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.GetTracesResponse;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.communication.grpc.messages.logicmodule.LogicmoduleMessages.*;
+import es.bsc.dataclay.logic.LogicModule;
+import es.bsc.dataclay.serialization.lib.SerializedParametersOrReturn;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.events.listeners.ECA;
+import es.bsc.dataclay.util.events.message.EventMessage;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.ids.DataSetID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.ids.StorageLocationID;
+import es.bsc.dataclay.util.info.VersionInfo;
+import es.bsc.dataclay.util.management.accountmgr.Account;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.contractmgr.Contract;
+import es.bsc.dataclay.util.management.datacontractmgr.DataContract;
+import es.bsc.dataclay.util.management.datasetmgr.DataSet;
+import es.bsc.dataclay.util.management.interfacemgr.Interface;
+import es.bsc.dataclay.util.management.metadataservice.DataClayInstance;
+import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
+import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
+import es.bsc.dataclay.util.management.metadataservice.RegistrationInfo;
+import es.bsc.dataclay.util.management.metadataservice.StorageLocation;
+import es.bsc.dataclay.util.management.namespacemgr.Namespace;
+import es.bsc.dataclay.util.management.sessionmgr.SessionInfo;
+import es.bsc.dataclay.util.structs.Triple;
+import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+import io.grpc.stub.StreamObserver;
+
+/**
+ * Implements all LogicModule GRPC methods.
+ */
+public final class LogicModuleService extends LogicModuleGrpc.LogicModuleImplBase {
+<span class="nc" id="L67">	private static final Logger logger = LogManager.getLogger(&quot;communication.LogicModule.service&quot;);</span>
+
+	/** Actual logic module implementation. */
+	private final LogicModule logicModule;
+
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L73">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/**
+	 * Constructor
+	 * 
+	 * @param theLogicModule
+	 *            Logic module to process calls
+	 */
+<span class="nc" id="L81">	public LogicModuleService(final LogicModule theLogicModule) {</span>
+<span class="nc" id="L82">		this.logicModule = theLogicModule;</span>
+<span class="nc" id="L83">		logger.info(&quot;Initialized LogicModuleService&quot;);</span>
+<span class="nc" id="L84">	}</span>
+
+	@Override
+	public void checkAlive(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EmptyMessage request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L90">			logicModule.checkAlive();</span>
+
+<span class="nc" id="L92">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L93">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L95">		} catch (final Exception e) {</span>
+<span class="nc" id="L96">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L97">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L98">			responseObserver.onCompleted();</span>
+<span class="nc" id="L99">		}</span>
+<span class="nc" id="L100">	}</span>
+
+	@Override
+	public void autoregisterEE(final AutoRegisterEERequest request,
+			final StreamObserver&lt;AutoRegisterEEResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L107">			final StorageLocationID result = logicModule.autoregisterEE(Utils.getID(request.getExecutionEnvironmentID()),</span>
+<span class="nc" id="L108">					request.getEeName(), request.getEeHostname(), request.getEePort(),</span>
+<span class="nc" id="L109">					Langs.values()[request.getLangValue()]);</span>
+<span class="nc" id="L110">			final AutoRegisterEEResponse resp = AutoRegisterEEResponse.newBuilder()</span>
+<span class="nc" id="L111">					.setStorageLocationID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L112">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L113">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L115">		} catch (final Exception e) {</span>
+<span class="nc" id="L116">			final AutoRegisterEEResponse.Builder builder = AutoRegisterEEResponse.newBuilder();</span>
+<span class="nc" id="L117">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L118">			final AutoRegisterEEResponse resp = builder.build();</span>
+<span class="nc" id="L119">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L120">			responseObserver.onCompleted();</span>
+<span class="nc" id="L121">		}</span>
+<span class="nc" id="L122">	}</span>
+	
+	@Override
+	public void autoregisterSL(final AutoRegisterSLRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L129">			logicModule.autoregisterSL(Utils.getID(request.getStorageLocationID()),</span>
+<span class="nc" id="L130">					request.getDsName(), request.getDsHostname(), request.getDsPort());</span>
+<span class="nc" id="L131">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L132">			responseObserver.onCompleted();</span>
+<span class="nc" id="L133">		} catch (final Exception e) {</span>
+<span class="nc" id="L134">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L135">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L136">			responseObserver.onCompleted();</span>
+<span class="nc" id="L137">		}</span>
+<span class="nc" id="L138">	}</span>
+
+	@Override
+	public void unregisterStorageLocation(final UnregisterStorageLocationRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L144">			logicModule.unregisterStorageLocation(Utils.getID(request.getStorageLocationID()));</span>
+<span class="nc" id="L145">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L147">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L149">		} catch (final Exception e) {</span>
+<span class="nc" id="L150">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L151">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L152">			responseObserver.onCompleted();</span>
+<span class="nc" id="L153">		}</span>
+<span class="nc" id="L154">	}</span>
+
+	@Override
+	public void unregisterExecutionEnvironment(final UnregisterExecutionEnvironmentRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L160">			logicModule.unregisterExecutionEnvironment(Utils.getID(request.getExecutionEnvironmentID()));</span>
+<span class="nc" id="L161">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L163">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L165">		} catch (final Exception e) {</span>
+<span class="nc" id="L166">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L167">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L168">			responseObserver.onCompleted();</span>
+<span class="nc" id="L169">		}</span>
+<span class="nc" id="L170">	}</span>
+	
+	@Override
+	public void publishAddress(final PublishAddressRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L176">			logicModule.publishAddress(request.getHostname(), request.getPort());</span>
+<span class="nc" id="L177">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L178">			responseObserver.onCompleted();</span>
+<span class="nc" id="L179">		} catch (final Exception e) {</span>
+<span class="nc" id="L180">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L181">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L182">			responseObserver.onCompleted();</span>
+<span class="nc" id="L183">		}</span>
+<span class="nc" id="L184">	}</span>
+
+	@Override
+	public void performSetOfNewAccounts(final PerformSetAccountsRequest request,
+			final StreamObserver&lt;PerformSetAccountsResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L191">			final byte[] result = logicModule.performSetOfNewAccounts(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L192">					Utils.getCredential(request.getCredential()), request.getYaml().getBytes());</span>
+<span class="nc" id="L193">			final PerformSetAccountsResponse resp = PerformSetAccountsResponse.newBuilder()</span>
+<span class="nc" id="L194">					.setResultYaml(new String(result)).build();</span>
+
+<span class="nc" id="L196">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L197">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L199">		} catch (final Exception e) {</span>
+<span class="nc" id="L200">			final PerformSetAccountsResponse.Builder builder = PerformSetAccountsResponse.newBuilder();</span>
+<span class="nc" id="L201">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L202">			final PerformSetAccountsResponse resp = builder.build();</span>
+<span class="nc" id="L203">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L204">			responseObserver.onCompleted();</span>
+<span class="nc" id="L205">		}</span>
+<span class="nc" id="L206">	}</span>
+
+	@Override
+	public void performSetOfOperations(final PerformSetOperationsRequest request,
+			final StreamObserver&lt;PerformSetOperationsResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L212">			final byte[] result = logicModule.performSetOfOperations(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L213">					Utils.getCredential(request.getCredential()), request.getYaml().getBytes());</span>
+<span class="nc" id="L214">			final PerformSetOperationsResponse resp = PerformSetOperationsResponse.newBuilder()</span>
+<span class="nc" id="L215">					.setResultYaml(new String(result)).build();</span>
+
+<span class="nc" id="L217">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L218">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L220">		} catch (final Exception ex) {</span>
+<span class="nc" id="L221">			logger.debug(&quot;performSetOfOperations error&quot;, ex);</span>
+
+<span class="nc" id="L223">			final PerformSetOperationsResponse.Builder builder = PerformSetOperationsResponse.newBuilder();</span>
+<span class="nc" id="L224">			builder.setExcInfo(Utils.serializeException(ex));</span>
+<span class="nc" id="L225">			final PerformSetOperationsResponse resp = builder.build();</span>
+<span class="nc" id="L226">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L227">			responseObserver.onCompleted();</span>
+<span class="nc" id="L228">		}</span>
+
+<span class="nc" id="L230">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Account Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newAccountNoAdmin(final NewAccountNoAdminRequest request,
+			final StreamObserver&lt;NewAccountResponse&gt; responseObserver) {
+		try {
+			// String yamlStr = CommonYAML.getYamlObject().dump(params[0]);
+<span class="nc" id="L242">			final Account acc = (Account) CommonYAML.getYamlObject().load(request.getYamlNewAccount());</span>
+<span class="nc" id="L243">			final AccountID result = logicModule.newAccountNoAdmin(acc);</span>
+<span class="nc" id="L244">			final NewAccountResponse resp = NewAccountResponse.newBuilder().setNewAccountID(Utils.getMsgID(result))</span>
+<span class="nc" id="L245">					.build();</span>
+
+<span class="nc" id="L247">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L248">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L250">		} catch (final Exception e) {</span>
+<span class="nc" id="L251">			final NewAccountResponse.Builder builder = NewAccountResponse.newBuilder();</span>
+<span class="nc" id="L252">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L253">			final NewAccountResponse resp = builder.build();</span>
+<span class="nc" id="L254">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L255">			responseObserver.onCompleted();</span>
+<span class="nc" id="L256">		}</span>
+
+<span class="nc" id="L258">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Account Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newAccount(final NewAccountRequest request, final StreamObserver&lt;NewAccountResponse&gt; responseObserver) {
+		try {
+			// String yamlStr = CommonYAML.getYamlObject().dump(params[0]);
+<span class="nc" id="L269">			final Account acc = (Account) CommonYAML.getYamlObject().load(request.getYamlNewAccount());</span>
+<span class="nc" id="L270">			final AccountID result = logicModule.newAccount(Utils.getID(request.getAdminID()),</span>
+<span class="nc" id="L271">					Utils.getCredential(request.getAdmincredential()), acc);</span>
+<span class="nc" id="L272">			final NewAccountResponse resp = NewAccountResponse.newBuilder().setNewAccountID(Utils.getMsgID(result))</span>
+<span class="nc" id="L273">					.build();</span>
+
+<span class="nc" id="L275">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L276">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L278">		} catch (final Exception e) {</span>
+<span class="nc" id="L279">			final NewAccountResponse.Builder builder = NewAccountResponse.newBuilder();</span>
+<span class="nc" id="L280">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L281">			final NewAccountResponse resp = builder.build();</span>
+<span class="nc" id="L282">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L283">			responseObserver.onCompleted();</span>
+<span class="nc" id="L284">		}</span>
+
+<span class="nc" id="L286">	}</span>
+
+	@Override
+	public void getAccountID(final GetAccountIDRequest request,
+			final StreamObserver&lt;GetAccountIDResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L292">			final AccountID result = logicModule.getAccountID(request.getAccountName());</span>
+<span class="nc" id="L293">			final GetAccountIDResponse resp = GetAccountIDResponse.newBuilder().setNewAccountID(Utils.getMsgID(result))</span>
+<span class="nc" id="L294">					.build();</span>
+<span class="nc" id="L295">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L296">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L298">		} catch (final Exception e) {</span>
+<span class="nc" id="L299">			final GetAccountIDResponse.Builder builder = GetAccountIDResponse.newBuilder();</span>
+<span class="nc" id="L300">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L301">			final GetAccountIDResponse resp = builder.build();</span>
+<span class="nc" id="L302">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L303">			responseObserver.onCompleted();</span>
+<span class="nc" id="L304">		}</span>
+<span class="nc" id="L305">	}</span>
+
+	@Override
+	public void getAccountList(final GetAccountListRequest request,
+			final StreamObserver&lt;GetAccountListResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L311">			final HashSet&lt;AccountID&gt; result = logicModule.getAccountList(Utils.getID(request.getAdminID()),</span>
+<span class="nc" id="L312">					Utils.getCredential(request.getAdmincredential()));</span>
+
+<span class="nc" id="L314">			final GetAccountListResponse.Builder builder = GetAccountListResponse.newBuilder();</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">			for (final AccountID accID : result) {</span>
+<span class="nc" id="L316">				builder.addAccountIDs(accID.toString());</span>
+<span class="nc" id="L317">			}</span>
+<span class="nc" id="L318">			final GetAccountListResponse resp = builder.build();</span>
+<span class="nc" id="L319">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L320">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L322">		} catch (final Exception e) {</span>
+<span class="nc" id="L323">			final GetAccountListResponse.Builder builder = GetAccountListResponse.newBuilder();</span>
+<span class="nc" id="L324">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L325">			final GetAccountListResponse resp = builder.build();</span>
+<span class="nc" id="L326">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L327">			responseObserver.onCompleted();</span>
+<span class="nc" id="L328">		}</span>
+<span class="nc" id="L329">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Session Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newSession(final NewSessionRequest request, final StreamObserver&lt;NewSessionResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L339">			final Set&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">			for (final CommonMessages.ContractID cID : request.getContractIDsList()) {</span>
+<span class="nc" id="L341">				contracts.add(Utils.getID(cID));</span>
+<span class="nc" id="L342">			}</span>
+<span class="nc" id="L343">			final Set&lt;DataSetID&gt; dataSetIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">			for (final CommonMessages.DataSetID dsID : request.getDataSetIDsList()) {</span>
+<span class="nc" id="L345">				dataSetIDs.add(Utils.getID(dsID));</span>
+<span class="nc" id="L346">			}</span>
+<span class="nc" id="L347">			final SessionInfo result = logicModule.newSession(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L348">					Utils.getCredential(request.getCredential()), contracts, dataSetIDs,</span>
+<span class="nc" id="L349">					Utils.getID(request.getStoreDataSet()), Langs.values()[request.getSessionLangValue()]);</span>
+
+<span class="nc" id="L351">			final NewSessionResponse resp = NewSessionResponse.newBuilder()</span>
+<span class="nc" id="L352">					.setSessionInfo(CommonYAML.getYamlObject().dump(result)).build();</span>
+
+<span class="nc" id="L354">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L355">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L357">		} catch (final Exception ex) {</span>
+<span class="nc" id="L358">			logger.debug(&quot;newSession error&quot;, ex);</span>
+
+<span class="nc" id="L360">			final NewSessionResponse.Builder builder = NewSessionResponse.newBuilder();</span>
+<span class="nc" id="L361">			builder.setExcInfo(Utils.serializeException(ex));</span>
+<span class="nc" id="L362">			final NewSessionResponse resp = builder.build();</span>
+<span class="nc" id="L363">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L364">			responseObserver.onCompleted();</span>
+<span class="nc" id="L365">		}</span>
+<span class="nc" id="L366">	}</span>
+
+	@Override
+	public void closeSession(final CloseSessionRequest request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L372">			logicModule.closeSession(Utils.getID(request.getSessionID()));</span>
+
+<span class="nc" id="L374">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L376">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L378">		} catch (final Exception e) {</span>
+<span class="nc" id="L379">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L380">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L381">			responseObserver.onCompleted();</span>
+<span class="nc" id="L382">		}</span>
+<span class="nc" id="L383">	}</span>
+
+	@Override
+	public void getInfoOfSessionForDS(final GetInfoOfSessionForDSRequest request,
+			final StreamObserver&lt;GetInfoOfSessionForDSResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L390">			final Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt; result = logicModule</span>
+<span class="nc" id="L391">					.getInfoOfSessionForDS(Utils.getID(request.getSessionID()));</span>
+
+<span class="nc" id="L393">			final GetInfoOfSessionForDSResponse.Builder builder = GetInfoOfSessionForDSResponse.newBuilder()</span>
+<span class="nc" id="L394">					.setDataSetID(Utils.getMsgID(result.getFirst().getFirst()))</span>
+<span class="nc" id="L395">					.setDate(result.getSecond().getTimeInMillis());</span>
+<span class="nc bnc" id="L396" title="All 2 branches missed.">			for (final DataSetID dsID : result.getFirst().getSecond()) {</span>
+<span class="nc" id="L397">				builder.addDataSetIDs(Utils.getMsgID(dsID));</span>
+<span class="nc" id="L398">			}</span>
+<span class="nc" id="L399">			final GetInfoOfSessionForDSResponse resp = builder.build();</span>
+<span class="nc" id="L400">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L401">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L403">		} catch (final Exception e) {</span>
+<span class="nc" id="L404">			final GetInfoOfSessionForDSResponse.Builder builder = GetInfoOfSessionForDSResponse.newBuilder();</span>
+<span class="nc" id="L405">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L406">			final GetInfoOfSessionForDSResponse resp = builder.build();</span>
+<span class="nc" id="L407">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L408">			responseObserver.onCompleted();</span>
+<span class="nc" id="L409">		}</span>
+<span class="nc" id="L410">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Namespace Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newNamespace(final NewNamespaceRequest request,
+			final StreamObserver&lt;NewNamespaceResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L421">			final Namespace newNamespace = (Namespace) CommonYAML.getYamlObject().load(request.getNewNamespaceYaml());</span>
+<span class="nc" id="L422">			final NamespaceID domID = logicModule.newNamespace(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L423">					Utils.getCredential(request.getCredential()), newNamespace);</span>
+
+<span class="nc" id="L425">			final NewNamespaceResponse resp = NewNamespaceResponse.newBuilder().setNamespaceID(Utils.getMsgID(domID))</span>
+<span class="nc" id="L426">					.build();</span>
+
+<span class="nc" id="L428">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L429">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L431">		} catch (final Exception e) {</span>
+<span class="nc" id="L432">			final NewNamespaceResponse.Builder builder = NewNamespaceResponse.newBuilder();</span>
+<span class="nc" id="L433">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L434">			final NewNamespaceResponse resp = builder.build();</span>
+<span class="nc" id="L435">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L436">			responseObserver.onCompleted();</span>
+<span class="nc" id="L437">		}</span>
+<span class="nc" id="L438">	}</span>
+
+	@Override
+	public void removeNamespace(final RemoveNamespaceRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L444">			logicModule.removeNamespace(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L445">					Utils.getCredential(request.getCredential()), request.getNamespaceName());</span>
+
+<span class="nc" id="L447">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L449">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L451">		} catch (final Exception e) {</span>
+<span class="nc" id="L452">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L453">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L454">			responseObserver.onCompleted();</span>
+<span class="nc" id="L455">		}</span>
+<span class="nc" id="L456">	}</span>
+
+	@Override
+	public void getNamespaces(final GetNamespacesRequest request,
+			final StreamObserver&lt;GetNamespacesResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L462">			final Set&lt;String&gt; result = logicModule.getNamespaces(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L463">					Utils.getCredential(request.getCredential()));</span>
+<span class="nc" id="L464">			final GetNamespacesResponse resp = GetNamespacesResponse.newBuilder().addAllNamespaces(result).build();</span>
+<span class="nc" id="L465">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L466">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L468">		} catch (final Exception e) {</span>
+<span class="nc" id="L469">			final GetNamespacesResponse.Builder builder = GetNamespacesResponse.newBuilder();</span>
+<span class="nc" id="L470">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L471">			final GetNamespacesResponse resp = builder.build();</span>
+<span class="nc" id="L472">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L473">			responseObserver.onCompleted();</span>
+<span class="nc" id="L474">		}</span>
+<span class="nc" id="L475">	}</span>
+
+	@Override
+	public void getNamespaceID(final GetNamespaceIDRequest request,
+			final StreamObserver&lt;GetNamespaceIDResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L481">			final NamespaceID namespaceID = logicModule.getNamespaceID(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L482">					Utils.getCredential(request.getCredential()), request.getNamespaceName());</span>
+<span class="nc" id="L483">			final GetNamespaceIDResponse resp = GetNamespaceIDResponse.newBuilder()</span>
+<span class="nc" id="L484">					.setNamespaceID(Utils.getMsgID(namespaceID)).build();</span>
+<span class="nc" id="L485">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L486">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L488">		} catch (final Exception e) {</span>
+<span class="nc" id="L489">			final GetNamespaceIDResponse.Builder builder = GetNamespaceIDResponse.newBuilder();</span>
+<span class="nc" id="L490">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L491">			final GetNamespaceIDResponse resp = builder.build();</span>
+<span class="nc" id="L492">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L493">			responseObserver.onCompleted();</span>
+<span class="nc" id="L494">		}</span>
+<span class="nc" id="L495">	}</span>
+
+	@Override
+	public void getNamespaceLang(final GetNamespaceLangRequest request,
+			final StreamObserver&lt;GetNamespaceLangResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L501">			final Langs language = logicModule.getNamespaceLang(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L502">					Utils.getCredential(request.getCredential()), request.getNamespaceName());</span>
+<span class="nc" id="L503">			final GetNamespaceLangResponse resp = GetNamespaceLangResponse.newBuilder().setLanguage(language).build();</span>
+<span class="nc" id="L504">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L505">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L507">		} catch (final Exception e) {</span>
+<span class="nc" id="L508">			final GetNamespaceLangResponse.Builder builder = GetNamespaceLangResponse.newBuilder();</span>
+<span class="nc" id="L509">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L510">			final GetNamespaceLangResponse resp = builder.build();</span>
+<span class="nc" id="L511">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L512">			responseObserver.onCompleted();</span>
+<span class="nc" id="L513">		}</span>
+<span class="nc" id="L514">	}</span>
+
+	@Override
+	public void getObjectDataSetID(final GetObjectDataSetIDRequest request,
+			final StreamObserver&lt;GetObjectDataSetIDResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L520">			final DataSetID result = logicModule.getObjectDataSetID(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L521">					Utils.getID(request.getObjectID()));</span>
+<span class="nc" id="L522">			final GetObjectDataSetIDResponse resp = GetObjectDataSetIDResponse.newBuilder()</span>
+<span class="nc" id="L523">					.setDataSetID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L524">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L525">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L527">		} catch (final Exception e) {</span>
+<span class="nc" id="L528">			final GetObjectDataSetIDResponse.Builder builder = GetObjectDataSetIDResponse.newBuilder();</span>
+<span class="nc" id="L529">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L530">			final GetObjectDataSetIDResponse resp = builder.build();</span>
+<span class="nc" id="L531">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L532">			responseObserver.onCompleted();</span>
+<span class="nc" id="L533">		}</span>
+<span class="nc" id="L534">	}</span>
+
+	@Override
+	public void importInterface(final ImportInterfaceRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L540">			logicModule.importInterface(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L541">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L542">					Utils.getID(request.getContractID()), Utils.getID(request.getInterfaceID()));</span>
+
+<span class="nc" id="L544">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L546">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L548">		} catch (final Exception e) {</span>
+<span class="nc" id="L549">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L550">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L551">			responseObserver.onCompleted();</span>
+<span class="nc" id="L552">		}</span>
+<span class="nc" id="L553">	}</span>
+
+	@Override
+	public void importContract(final ImportContractRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L560">			logicModule.importContract(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L561">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L562">					Utils.getID(request.getContractID()));</span>
+
+<span class="nc" id="L564">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L566">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L568">		} catch (final Exception e) {</span>
+<span class="nc" id="L569">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L570">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L571">			responseObserver.onCompleted();</span>
+<span class="nc" id="L572">		}</span>
+<span class="nc" id="L573">	}</span>
+
+	@Override
+	public void getInfoOfClassesInNamespace(final GetInfoOfClassesInNamespaceRequest request,
+			final StreamObserver&lt;GetInfoOfClassesInNamespaceResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L579">			final Map&lt;MetaClassID, MetaClass&gt; result = logicModule.getInfoOfClassesInNamespace(</span>
+<span class="nc" id="L580">					Utils.getID(request.getAccountID()), Utils.getCredential(request.getCredential()),</span>
+<span class="nc" id="L581">					Utils.getID(request.getNamespaceID()));</span>
+
+			final GetInfoOfClassesInNamespaceResponse.Builder builder = GetInfoOfClassesInNamespaceResponse
+<span class="nc" id="L584">					.newBuilder();</span>
+<span class="nc bnc" id="L585" title="All 2 branches missed.">			for (final Entry&lt;MetaClassID, MetaClass&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L586">				final String yaml = CommonYAML.getYamlObject().dump(entry.getValue());</span>
+<span class="nc" id="L587">				builder.putClassesInfo(entry.getKey().toString(), yaml);</span>
+<span class="nc" id="L588">			}</span>
+
+<span class="nc" id="L590">			final GetInfoOfClassesInNamespaceResponse resp = builder.build();</span>
+<span class="nc" id="L591">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L592">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L594">		} catch (final Exception e) {</span>
+			final GetInfoOfClassesInNamespaceResponse.Builder builder = GetInfoOfClassesInNamespaceResponse
+<span class="nc" id="L596">					.newBuilder();</span>
+<span class="nc" id="L597">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L598">			final GetInfoOfClassesInNamespaceResponse resp = builder.build();</span>
+<span class="nc" id="L599">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L600">			responseObserver.onCompleted();</span>
+<span class="nc" id="L601">		}</span>
+<span class="nc" id="L602">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * DataSet Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newDataSet(final NewDataSetRequest request, final StreamObserver&lt;NewDataSetResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L612">			final DataSet newDataSet = (DataSet) CommonYAML.getYamlObject().load(request.getDataSetYaml());</span>
+<span class="nc" id="L613">			final DataSetID result = logicModule.newDataSet(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L614">					Utils.getCredential(request.getCredential()), newDataSet);</span>
+<span class="nc" id="L615">			final NewDataSetResponse resp = NewDataSetResponse.newBuilder().setDataSetID(Utils.getMsgID(result))</span>
+<span class="nc" id="L616">					.build();</span>
+
+<span class="nc" id="L618">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L619">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L621">		} catch (final Exception e) {</span>
+<span class="nc" id="L622">			final NewDataSetResponse.Builder builder = NewDataSetResponse.newBuilder();</span>
+<span class="nc" id="L623">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L624">			final NewDataSetResponse resp = builder.build();</span>
+<span class="nc" id="L625">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L626">			responseObserver.onCompleted();</span>
+<span class="nc" id="L627">		}</span>
+<span class="nc" id="L628">	}</span>
+
+	@Override
+	public void removeDataSet(final RemoveDataSetRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L634">			logicModule.removeDataSet(Utils.getID(request.getAccountID()), Utils.getCredential(request.getCredential()),</span>
+<span class="nc" id="L635">					request.getDataSetName());</span>
+
+<span class="nc" id="L637">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L639">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L641">		} catch (final Exception e) {</span>
+<span class="nc" id="L642">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L643">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L644">			responseObserver.onCompleted();</span>
+<span class="nc" id="L645">		}</span>
+<span class="nc" id="L646">	}</span>
+
+	@Override
+	public void getDataSetID(final GetDataSetIDRequest request,
+			final StreamObserver&lt;GetDataSetIDResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L652">			final DataSetID result = logicModule.getDataSetID(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L653">					Utils.getCredential(request.getCredential()), request.getDataSetName());</span>
+<span class="nc" id="L654">			final GetDataSetIDResponse resp = GetDataSetIDResponse.newBuilder().setDataSetID(Utils.getMsgID(result))</span>
+<span class="nc" id="L655">					.build();</span>
+<span class="nc" id="L656">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L657">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L659">		} catch (final Exception e) {</span>
+<span class="nc" id="L660">			final GetDataSetIDResponse.Builder builder = GetDataSetIDResponse.newBuilder();</span>
+<span class="nc" id="L661">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L662">			final GetDataSetIDResponse resp = builder.build();</span>
+<span class="nc" id="L663">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L664">			responseObserver.onCompleted();</span>
+<span class="nc" id="L665">		}</span>
+<span class="nc" id="L666">	}</span>
+
+	@Override
+	public void checkDataSetIsPublic(final CheckDataSetIsPublicRequest request,
+			final StreamObserver&lt;CheckDataSetIsPublicResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L672">			final boolean result = logicModule.checkDataSetIsPublic(Utils.getID(request.getDataSetID()));</span>
+<span class="nc" id="L673">			final CheckDataSetIsPublicResponse resp = CheckDataSetIsPublicResponse.newBuilder().setIsPublic(result)</span>
+<span class="nc" id="L674">					.build();</span>
+<span class="nc" id="L675">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L676">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L678">		} catch (final Exception e) {</span>
+<span class="nc" id="L679">			final CheckDataSetIsPublicResponse.Builder builder = CheckDataSetIsPublicResponse.newBuilder();</span>
+<span class="nc" id="L680">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L681">			final CheckDataSetIsPublicResponse resp = builder.build();</span>
+<span class="nc" id="L682">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L683">			responseObserver.onCompleted();</span>
+<span class="nc" id="L684">		}</span>
+<span class="nc" id="L685">	}</span>
+
+	@Override
+	public void isPrefetchingEnabled(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EmptyMessage request,
+			final StreamObserver&lt;IsPrefetchingEnabledResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L691">			final boolean result = logicModule.isPrefetchingEnabled();</span>
+<span class="nc" id="L692">			final IsPrefetchingEnabledResponse resp = IsPrefetchingEnabledResponse.newBuilder().setEnabled(result)</span>
+<span class="nc" id="L693">					.build();</span>
+<span class="nc" id="L694">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L695">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L697">		} catch (final Exception e) {</span>
+<span class="nc" id="L698">			final IsPrefetchingEnabledResponse.Builder builder = IsPrefetchingEnabledResponse.newBuilder();</span>
+<span class="nc" id="L699">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L700">			final IsPrefetchingEnabledResponse resp = builder.build();</span>
+<span class="nc" id="L701">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L702">			responseObserver.onCompleted();</span>
+<span class="nc" id="L703">		}</span>
+<span class="nc" id="L704">	}</span>
+	
+	@Override
+	public void objectExistsInDataClay(final ObjectExistsInDataClayRequest request,
+			final StreamObserver&lt;ObjectExistsInDataClayResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L710">			final boolean result = logicModule.objectExistsInDataClay(Utils.getID(request.getObjectID()));</span>
+<span class="nc" id="L711">			final ObjectExistsInDataClayResponse resp = ObjectExistsInDataClayResponse.newBuilder().setExists(result)</span>
+<span class="nc" id="L712">					.build();</span>
+<span class="nc" id="L713">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L714">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L716">		} catch (final Exception e) {</span>
+<span class="nc" id="L717">			final ObjectExistsInDataClayResponse.Builder builder = ObjectExistsInDataClayResponse.newBuilder();</span>
+<span class="nc" id="L718">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L719">			final ObjectExistsInDataClayResponse resp = builder.build();</span>
+<span class="nc" id="L720">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L721">			responseObserver.onCompleted();</span>
+<span class="nc" id="L722">		}</span>
+<span class="nc" id="L723">	}</span>
+	
+	@Override
+	public void getPublicDataSets(final GetPublicDataSetsRequest request,
+			final StreamObserver&lt;GetPublicDataSetsResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L729">			final Set&lt;String&gt; result = logicModule.getPublicDataSets(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L730">					Utils.getCredential(request.getCredential()));</span>
+<span class="nc" id="L731">			final GetPublicDataSetsResponse resp = GetPublicDataSetsResponse.newBuilder().addAllDataSets(result)</span>
+<span class="nc" id="L732">					.build();</span>
+<span class="nc" id="L733">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L734">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L736">		} catch (final Exception e) {</span>
+<span class="nc" id="L737">			final GetPublicDataSetsResponse.Builder builder = GetPublicDataSetsResponse.newBuilder();</span>
+<span class="nc" id="L738">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L739">			final GetPublicDataSetsResponse resp = builder.build();</span>
+<span class="nc" id="L740">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L741">			responseObserver.onCompleted();</span>
+<span class="nc" id="L742">		}</span>
+<span class="nc" id="L743">	}</span>
+
+	@Override
+	public void getAccountDataSets(final GetAccountDataSetsRequest request,
+			final StreamObserver&lt;GetAccountDataSetsResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L749">			final Set&lt;String&gt; result = logicModule.getAccountDataSets(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L750">					Utils.getCredential(request.getCredential()));</span>
+<span class="nc" id="L751">			final GetAccountDataSetsResponse resp = GetAccountDataSetsResponse.newBuilder().addAllDataSets(result)</span>
+<span class="nc" id="L752">					.build();</span>
+<span class="nc" id="L753">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L754">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L756">		} catch (final Exception e) {</span>
+<span class="nc" id="L757">			final GetAccountDataSetsResponse.Builder builder = GetAccountDataSetsResponse.newBuilder();</span>
+<span class="nc" id="L758">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L759">			final GetAccountDataSetsResponse resp = builder.build();</span>
+<span class="nc" id="L760">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L761">			responseObserver.onCompleted();</span>
+<span class="nc" id="L762">		}</span>
+<span class="nc" id="L763">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Class Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newClass(final NewClassRequest request, final StreamObserver&lt;NewClassResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L774">			final Map&lt;String, MetaClass&gt; newClasses = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L775" title="All 2 branches missed.">			for (final Entry&lt;String, String&gt; clazz : request.getNewClassesMap().entrySet()) {</span>
+<span class="nc" id="L776">				final MetaClass mClass = (MetaClass) CommonYAML.getYamlObject().load(clazz.getValue());</span>
+<span class="nc" id="L777">				newClasses.put(clazz.getKey(), mClass);</span>
+<span class="nc" id="L778">			}</span>
+<span class="nc" id="L779">			final Map&lt;String, MetaClass&gt; result = logicModule.newClass(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L780">					Utils.getCredential(request.getCredential()), Langs.values()[request.getLanguageValue()],</span>
+					newClasses);
+
+<span class="nc" id="L783">			final NewClassResponse.Builder builder = NewClassResponse.newBuilder();</span>
+<span class="nc bnc" id="L784" title="All 2 branches missed.">			for (final Entry&lt;String, MetaClass&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L785">				final String yaml = CommonYAML.getYamlObject().dump(entry.getValue());</span>
+<span class="nc" id="L786">				builder.putNewClasses(entry.getKey(), yaml);</span>
+<span class="nc" id="L787">			}</span>
+
+<span class="nc" id="L789">			final NewClassResponse resp = builder.build();</span>
+
+<span class="nc" id="L791">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L792">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L794">		} catch (final Exception ex) {</span>
+<span class="nc" id="L795">			logger.debug(&quot;newClass error&quot;, ex);</span>
+
+<span class="nc" id="L797">			final NewClassResponse.Builder builder = NewClassResponse.newBuilder();</span>
+<span class="nc" id="L798">			builder.setExcInfo(Utils.serializeException(ex));</span>
+<span class="nc" id="L799">			final NewClassResponse resp = builder.build();</span>
+<span class="nc" id="L800">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L801">			responseObserver.onCompleted();</span>
+<span class="nc" id="L802">		}</span>
+
+<span class="nc" id="L804">	}</span>
+
+	@Override
+	public void newClassID(final NewClassIDRequest request, final StreamObserver&lt;NewClassIDResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L809">			final Map&lt;String, MetaClass&gt; newClasses = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L810" title="All 2 branches missed.">			for (final Entry&lt;String, String&gt; clazz : request.getNewClassesMap().entrySet()) {</span>
+<span class="nc" id="L811">				final MetaClass mClass = (MetaClass) CommonYAML.getYamlObject().load(clazz.getValue());</span>
+<span class="nc" id="L812">				newClasses.put(clazz.getKey(), mClass);</span>
+<span class="nc" id="L813">			}</span>
+<span class="nc" id="L814">			final MetaClassID result = logicModule.newClassID(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L815">					Utils.getCredential(request.getCredential()), request.getClassName(),</span>
+<span class="nc" id="L816">					Langs.values()[request.getLanguageValue()], newClasses);</span>
+
+<span class="nc" id="L818">			final NewClassIDResponse resp = NewClassIDResponse.newBuilder().setClassID(Utils.getMsgID(result)).build();</span>
+
+<span class="nc" id="L820">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L821">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L823">		} catch (final Exception e) {</span>
+<span class="nc" id="L824">			final NewClassIDResponse.Builder builder = NewClassIDResponse.newBuilder();</span>
+<span class="nc" id="L825">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L826">			final NewClassIDResponse resp = builder.build();</span>
+<span class="nc" id="L827">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L828">			responseObserver.onCompleted();</span>
+<span class="nc" id="L829">		}</span>
+
+<span class="nc" id="L831">	}</span>
+
+	@Override
+	public void removeClass(final RemoveClassRequest request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L836">			logicModule.removeClass(Utils.getID(request.getAccountID()), Utils.getCredential(request.getCredential()),</span>
+<span class="nc" id="L837">					Utils.getID(request.getNamespaceID()), request.getClassName());</span>
+
+<span class="nc" id="L839">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L841">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L843">		} catch (final Exception e) {</span>
+<span class="nc" id="L844">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L845">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L846">			responseObserver.onCompleted();</span>
+<span class="nc" id="L847">		}</span>
+<span class="nc" id="L848">	}</span>
+
+	@Override
+	public void removeOperation(final RemoveOperationRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L854">			logicModule.removeOperation(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L855">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L856">					request.getClassName(), request.getOperationNameAndSignature());</span>
+
+<span class="nc" id="L858">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L860">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L862">		} catch (final Exception e) {</span>
+<span class="nc" id="L863">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L864">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L865">			responseObserver.onCompleted();</span>
+<span class="nc" id="L866">		}</span>
+<span class="nc" id="L867">	}</span>
+
+	@Override
+	public void removeImplementation(final RemoveImplementationRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L873">			logicModule.removeImplementation(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L874">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L875">					Utils.getID(request.getImplementationID()));</span>
+
+<span class="nc" id="L877">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+
+<span class="nc" id="L879">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L881">		} catch (final Exception e) {</span>
+<span class="nc" id="L882">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L883">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L884">			responseObserver.onCompleted();</span>
+<span class="nc" id="L885">		}</span>
+<span class="nc" id="L886">	}</span>
+
+	@Override
+	public void getOperationID(final GetOperationIDRequest request,
+			final StreamObserver&lt;GetOperationIDResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L892">			final OperationID opID = logicModule.getOperationID(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L893">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L894">					request.getClassName(), request.getOperationNameAndSignature());</span>
+
+<span class="nc" id="L896">			final GetOperationIDResponse resp = GetOperationIDResponse.newBuilder().setOperationID(Utils.getMsgID(opID))</span>
+<span class="nc" id="L897">					.build();</span>
+<span class="nc" id="L898">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L899">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L901">		} catch (final Exception e) {</span>
+<span class="nc" id="L902">			final GetOperationIDResponse.Builder builder = GetOperationIDResponse.newBuilder();</span>
+<span class="nc" id="L903">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L904">			final GetOperationIDResponse resp = builder.build();</span>
+<span class="nc" id="L905">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L906">			responseObserver.onCompleted();</span>
+<span class="nc" id="L907">		}</span>
+
+<span class="nc" id="L909">	}</span>
+
+	@Override
+	public void getPropertyID(final GetPropertyIDRequest request,
+			final StreamObserver&lt;GetPropertyIDResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L915">			final PropertyID result = logicModule.getPropertyID(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L916">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L917">					request.getClassName(), request.getPropertyName());</span>
+<span class="nc" id="L918">			final GetPropertyIDResponse resp = GetPropertyIDResponse.newBuilder().setPropertyID(Utils.getMsgID(result))</span>
+<span class="nc" id="L919">					.build();</span>
+<span class="nc" id="L920">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L921">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L923">		} catch (final Exception e) {</span>
+<span class="nc" id="L924">			final GetPropertyIDResponse.Builder builder = GetPropertyIDResponse.newBuilder();</span>
+<span class="nc" id="L925">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L926">			final GetPropertyIDResponse resp = builder.build();</span>
+<span class="nc" id="L927">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L928">			responseObserver.onCompleted();</span>
+<span class="nc" id="L929">		}</span>
+<span class="nc" id="L930">	}</span>
+
+	@Override
+	public void getClassID(final GetClassIDRequest request, final StreamObserver&lt;GetClassIDResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L936">			final MetaClassID result = logicModule.getClassID(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L937">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L938">					request.getClassName());</span>
+<span class="nc" id="L939">			final GetClassIDResponse resp = GetClassIDResponse.newBuilder().setClassID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L940">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L941">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L943">		} catch (final Exception e) {</span>
+<span class="nc" id="L944">			final GetClassIDResponse.Builder builder = GetClassIDResponse.newBuilder();</span>
+<span class="nc" id="L945">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L946">			final GetClassIDResponse resp = builder.build();</span>
+<span class="nc" id="L947">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L948">			responseObserver.onCompleted();</span>
+<span class="nc" id="L949">		}</span>
+<span class="nc" id="L950">	}</span>
+
+	@Override
+	public void getClassInfo(final GetClassInfoRequest request,
+			final StreamObserver&lt;GetClassInfoResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L956">			final MetaClass result = logicModule.getClassInfo(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L957">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L958">					request.getClassName());</span>
+<span class="nc" id="L959">			final String yaml = CommonYAML.getYamlObject().dump(result);</span>
+<span class="nc" id="L960">			final GetClassInfoResponse resp = GetClassInfoResponse.newBuilder().setMetaClassYaml(yaml).build();</span>
+<span class="nc" id="L961">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L962">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L964">		} catch (final Exception e) {</span>
+<span class="nc" id="L965">			final GetClassInfoResponse.Builder builder = GetClassInfoResponse.newBuilder();</span>
+<span class="nc" id="L966">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L967">			final GetClassInfoResponse resp = builder.build();</span>
+<span class="nc" id="L968">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L969">			responseObserver.onCompleted();</span>
+<span class="nc" id="L970">		}</span>
+<span class="nc" id="L971">	}</span>
+	
+	/**
+	 * &lt;pre&gt;
+	 * Contract Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newContract(final NewContractRequest request,
+			final StreamObserver&lt;NewContractResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L982">			final Contract newContract = (Contract) CommonYAML.getYamlObject().load(request.getNewContractYaml());</span>
+<span class="nc" id="L983">			final ContractID cID = logicModule.newContract(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L984">					Utils.getCredential(request.getCredential()), newContract);</span>
+
+<span class="nc" id="L986">			final NewContractResponse resp = NewContractResponse.newBuilder().setContractID(Utils.getMsgID(cID))</span>
+<span class="nc" id="L987">					.build();</span>
+
+<span class="nc" id="L989">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L990">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L992">		} catch (final Exception ex) {</span>
+<span class="nc" id="L993">			logger.debug(&quot;newContract error&quot;, ex);</span>
+
+<span class="nc" id="L995">			final NewContractResponse.Builder builder = NewContractResponse.newBuilder();</span>
+<span class="nc" id="L996">			builder.setExcInfo(Utils.serializeException(ex));</span>
+<span class="nc" id="L997">			final NewContractResponse resp = builder.build();</span>
+<span class="nc" id="L998">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L999">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1000">		}</span>
+
+<span class="nc" id="L1002">	}</span>
+
+	@Override
+	public void registerToPublicContract(final RegisterToPublicContractRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1008">			logicModule.registerToPublicContract(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L1009">					Utils.getCredential(request.getCredential()), Utils.getID(request.getContractID()));</span>
+
+<span class="nc" id="L1011">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1012">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1014">		} catch (final Exception e) {</span>
+<span class="nc" id="L1015">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1016">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1017">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1018">		}</span>
+<span class="nc" id="L1019">	}</span>
+
+	@Override
+	public void registerToPublicContractOfNamespace(final RegisterToPublicContractOfNamespaceRequest request,
+			final StreamObserver&lt;RegisterToPublicContractOfNamespaceResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1025">			final ContractID cID = logicModule.registerToPublicContractOfNamespace(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L1026">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()));</span>
+
+			final RegisterToPublicContractOfNamespaceResponse resp = RegisterToPublicContractOfNamespaceResponse
+<span class="nc" id="L1029">					.newBuilder().setContractID(Utils.getMsgID(cID)).build();</span>
+
+<span class="nc" id="L1031">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1032">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1034">		} catch (final Exception e) {</span>
+			final RegisterToPublicContractOfNamespaceResponse.Builder builder = RegisterToPublicContractOfNamespaceResponse
+<span class="nc" id="L1036">					.newBuilder();</span>
+<span class="nc" id="L1037">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1038">			final RegisterToPublicContractOfNamespaceResponse resp = builder.build();</span>
+<span class="nc" id="L1039">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1040">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1041">		}</span>
+<span class="nc" id="L1042">	}</span>
+
+	@Override
+	public void getContractIDsOfApplicant(final GetContractIDsOfApplicantRequest request,
+			final StreamObserver&lt;GetContractIDsOfApplicantResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1048">			final Map&lt;ContractID, Contract&gt; result = logicModule.getContractIDsOfApplicant(</span>
+<span class="nc" id="L1049">					Utils.getID(request.getApplicantID()), Utils.getCredential(request.getCredential()));</span>
+
+<span class="nc" id="L1051">			final GetContractIDsOfApplicantResponse.Builder builder = GetContractIDsOfApplicantResponse.newBuilder();</span>
+<span class="nc bnc" id="L1052" title="All 2 branches missed.">			for (final Entry&lt;ContractID, Contract&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L1053">				builder.putContracts(entry.getKey().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L1054">			}</span>
+
+<span class="nc" id="L1056">			final GetContractIDsOfApplicantResponse resp = builder.build();</span>
+<span class="nc" id="L1057">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1058">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1060">		} catch (final Exception e) {</span>
+<span class="nc" id="L1061">			final GetContractIDsOfApplicantResponse.Builder builder = GetContractIDsOfApplicantResponse.newBuilder();</span>
+<span class="nc" id="L1062">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1063">			final GetContractIDsOfApplicantResponse resp = builder.build();</span>
+<span class="nc" id="L1064">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1065">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1066">		}</span>
+<span class="nc" id="L1067">	}</span>
+
+	@Override
+	public void getContractIDsOfProvider(final GetContractIDsOfProviderRequest request,
+			final StreamObserver&lt;GetContractIDsOfProviderResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L1074">			final Map&lt;ContractID, Contract&gt; result = logicModule.getContractIDsOfProvider(</span>
+<span class="nc" id="L1075">					Utils.getID(request.getProviderID()), Utils.getCredential(request.getCredential()),</span>
+<span class="nc" id="L1076">					Utils.getID(request.getNamespaceIDOfProvider()));</span>
+
+<span class="nc" id="L1078">			final GetContractIDsOfProviderResponse.Builder builder = GetContractIDsOfProviderResponse.newBuilder();</span>
+<span class="nc bnc" id="L1079" title="All 2 branches missed.">			for (final Entry&lt;ContractID, Contract&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L1080">				builder.putContracts(entry.getKey().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L1081">			}</span>
+
+<span class="nc" id="L1083">			final GetContractIDsOfProviderResponse resp = builder.build();</span>
+<span class="nc" id="L1084">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1085">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1087">		} catch (final Exception e) {</span>
+<span class="nc" id="L1088">			final GetContractIDsOfProviderResponse.Builder builder = GetContractIDsOfProviderResponse.newBuilder();</span>
+<span class="nc" id="L1089">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1090">			final GetContractIDsOfProviderResponse resp = builder.build();</span>
+<span class="nc" id="L1091">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1092">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1093">		}</span>
+<span class="nc" id="L1094">	}</span>
+
+	@Override
+	public void getContractIDsOfApplicantWithProvider(final GetContractsOfApplicantWithProvRequest request,
+			final StreamObserver&lt;GetContractsOfApplicantWithProvResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1100">			final Map&lt;ContractID, Contract&gt; result = logicModule.getContractIDsOfApplicantWithProvider(</span>
+<span class="nc" id="L1101">					Utils.getID(request.getApplicantID()), Utils.getCredential(request.getCredential()),</span>
+<span class="nc" id="L1102">					Utils.getID(request.getNamespaceIDOfProvider()));</span>
+			final GetContractsOfApplicantWithProvResponse.Builder builder = GetContractsOfApplicantWithProvResponse
+<span class="nc" id="L1104">					.newBuilder();</span>
+<span class="nc bnc" id="L1105" title="All 2 branches missed.">			for (final Entry&lt;ContractID, Contract&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L1106">				builder.putContracts(entry.getKey().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L1107">			}</span>
+
+<span class="nc" id="L1109">			final GetContractsOfApplicantWithProvResponse resp = builder.build();</span>
+<span class="nc" id="L1110">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1111">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1113">		} catch (final Exception e) {</span>
+			final GetContractsOfApplicantWithProvResponse.Builder builder = GetContractsOfApplicantWithProvResponse
+<span class="nc" id="L1115">					.newBuilder();</span>
+<span class="nc" id="L1116">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1117">			final GetContractsOfApplicantWithProvResponse resp = builder.build();</span>
+<span class="nc" id="L1118">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1119">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1120">		}</span>
+<span class="nc" id="L1121">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * DataContract Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newDataContract(final NewDataContractRequest request,
+			final StreamObserver&lt;NewDataContractResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L1133">			final DataContract newContract = (DataContract) CommonYAML.getYamlObject()</span>
+<span class="nc" id="L1134">					.load(request.getDataContractYaml());</span>
+<span class="nc" id="L1135">			final DataContractID cID = logicModule.newDataContract(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L1136">					Utils.getCredential(request.getCredential()), newContract);</span>
+
+<span class="nc" id="L1138">			final NewDataContractResponse resp = NewDataContractResponse.newBuilder()</span>
+<span class="nc" id="L1139">					.setDataContractID(Utils.getMsgID(cID)).build();</span>
+
+<span class="nc" id="L1141">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1142">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1144">		} catch (final Exception e) {</span>
+<span class="nc" id="L1145">			final NewDataContractResponse.Builder builder = NewDataContractResponse.newBuilder();</span>
+<span class="nc" id="L1146">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1147">			final NewDataContractResponse resp = builder.build();</span>
+<span class="nc" id="L1148">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1149">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1150">		}</span>
+<span class="nc" id="L1151">	}</span>
+
+	@Override
+	public void registerToPublicDataContract(final RegisterToPublicDataContractRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1157">			logicModule.registerToPublicDataContract(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L1158">					Utils.getCredential(request.getCredential()), Utils.getID(request.getDataContractID()));</span>
+
+<span class="nc" id="L1160">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1161">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1163">		} catch (final Exception e) {</span>
+<span class="nc" id="L1164">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1165">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1166">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1167">		}</span>
+<span class="nc" id="L1168">	}</span>
+
+	@Override
+	public void getDataContractIDsOfApplicant(final GetDataContractIDsOfApplicantRequest request,
+			final StreamObserver&lt;GetDataContractIDsOfApplicantResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1174">			final Map&lt;DataContractID, DataContract&gt; result = logicModule.getDataContractIDsOfApplicant(</span>
+<span class="nc" id="L1175">					Utils.getID(request.getApplicantID()), Utils.getCredential(request.getCredential()));</span>
+
+			final GetDataContractIDsOfApplicantResponse.Builder builder = GetDataContractIDsOfApplicantResponse
+<span class="nc" id="L1178">					.newBuilder();</span>
+<span class="nc bnc" id="L1179" title="All 2 branches missed.">			for (final Entry&lt;DataContractID, DataContract&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L1180">				builder.putDatacontracts(entry.getKey().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L1181">			}</span>
+
+<span class="nc" id="L1183">			final GetDataContractIDsOfApplicantResponse resp = builder.build();</span>
+<span class="nc" id="L1184">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1185">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1187">		} catch (final Exception e) {</span>
+			final GetDataContractIDsOfApplicantResponse.Builder builder = GetDataContractIDsOfApplicantResponse
+<span class="nc" id="L1189">					.newBuilder();</span>
+<span class="nc" id="L1190">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1191">			final GetDataContractIDsOfApplicantResponse resp = builder.build();</span>
+<span class="nc" id="L1192">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1193">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1194">		}</span>
+
+<span class="nc" id="L1196">	}</span>
+
+	@Override
+	public void getDataContractIDsOfProvider(final GetDataContractIDsOfProviderRequest request,
+			final StreamObserver&lt;GetDataContractIDsOfProviderResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1202">			final Map&lt;DataContractID, DataContract&gt; result = logicModule.getDataContractIDsOfProvider(</span>
+<span class="nc" id="L1203">					Utils.getID(request.getProviderID()), Utils.getCredential(request.getCredential()),</span>
+<span class="nc" id="L1204">					Utils.getID(request.getDataSetIDOfProvider()));</span>
+
+			final GetDataContractIDsOfProviderResponse.Builder builder = GetDataContractIDsOfProviderResponse
+<span class="nc" id="L1207">					.newBuilder();</span>
+<span class="nc bnc" id="L1208" title="All 2 branches missed.">			for (final Entry&lt;DataContractID, DataContract&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L1209">				builder.putDatacontracts(entry.getKey().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L1210">			}</span>
+
+<span class="nc" id="L1212">			final GetDataContractIDsOfProviderResponse resp = builder.build();</span>
+<span class="nc" id="L1213">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1214">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1216">		} catch (final Exception e) {</span>
+			final GetDataContractIDsOfProviderResponse.Builder builder = GetDataContractIDsOfProviderResponse
+<span class="nc" id="L1218">					.newBuilder();</span>
+<span class="nc" id="L1219">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1220">			final GetDataContractIDsOfProviderResponse resp = builder.build();</span>
+<span class="nc" id="L1221">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1222">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1223">		}</span>
+
+<span class="nc" id="L1225">	}</span>
+
+	@Override
+	public void getDataContractInfoOfApplicantWithProvider(final GetDataContractInfoOfApplicantWithProvRequest request,
+			final StreamObserver&lt;GetDataContractInfoOfApplicantWithProvResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1231">			final DataContract result = logicModule.getDataContractInfoOfApplicantWithProvider(</span>
+<span class="nc" id="L1232">					Utils.getID(request.getApplicantID()), Utils.getCredential(request.getCredential()),</span>
+<span class="nc" id="L1233">					Utils.getID(request.getDataSetIDOfProvider()));</span>
+
+			final GetDataContractInfoOfApplicantWithProvResponse.Builder builder = GetDataContractInfoOfApplicantWithProvResponse
+<span class="nc" id="L1236">					.newBuilder().setDataContractInfo(CommonYAML.getYamlObject().dump(result));</span>
+<span class="nc" id="L1237">			final GetDataContractInfoOfApplicantWithProvResponse resp = builder.build();</span>
+<span class="nc" id="L1238">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1239">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1241">		} catch (final Exception e) {</span>
+			final GetDataContractInfoOfApplicantWithProvResponse.Builder builder = GetDataContractInfoOfApplicantWithProvResponse
+<span class="nc" id="L1243">					.newBuilder();</span>
+<span class="nc" id="L1244">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1245">			final GetDataContractInfoOfApplicantWithProvResponse resp = builder.build();</span>
+<span class="nc" id="L1246">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1247">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1248">		}</span>
+
+<span class="nc" id="L1250">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Interface Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newInterface(final NewInterfaceRequest request,
+			final StreamObserver&lt;NewInterfaceResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1261">			final Interface newInterface = (Interface) CommonYAML.getYamlObject().load(request.getInterfaceYaml());</span>
+<span class="nc" id="L1262">			final InterfaceID result = logicModule.newInterface(Utils.getID(request.getApplicantID()),</span>
+<span class="nc" id="L1263">					Utils.getCredential(request.getCredential()), newInterface);</span>
+
+<span class="nc" id="L1265">			final NewInterfaceResponse resp = NewInterfaceResponse.newBuilder().setInterfaceID(Utils.getMsgID(result))</span>
+<span class="nc" id="L1266">					.build();</span>
+
+<span class="nc" id="L1268">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1269">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1271">		} catch (final Exception e) {</span>
+<span class="nc" id="L1272">			final NewInterfaceResponse.Builder builder = NewInterfaceResponse.newBuilder();</span>
+<span class="nc" id="L1273">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1274">			final NewInterfaceResponse resp = builder.build();</span>
+<span class="nc" id="L1275">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1276">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1277">		}</span>
+
+<span class="nc" id="L1279">	}</span>
+
+	@Override
+	public void getInterfaceInfo(final GetInterfaceInfoRequest request,
+			final StreamObserver&lt;GetInterfaceInfoResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1285">			final Interface iface = logicModule.getInterfaceInfo(Utils.getID(request.getApplicantID()),</span>
+<span class="nc" id="L1286">					Utils.getCredential(request.getCredential()), Utils.getID(request.getInterfaceID()));</span>
+
+<span class="nc" id="L1288">			final GetInterfaceInfoResponse resp = GetInterfaceInfoResponse.newBuilder()</span>
+<span class="nc" id="L1289">					.setInterfaceYaml(CommonYAML.getYamlObject().dump(iface)).build();</span>
+<span class="nc" id="L1290">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1291">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1293">		} catch (final Exception e) {</span>
+<span class="nc" id="L1294">			final GetInterfaceInfoResponse.Builder builder = GetInterfaceInfoResponse.newBuilder();</span>
+<span class="nc" id="L1295">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1296">			final GetInterfaceInfoResponse resp = builder.build();</span>
+<span class="nc" id="L1297">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1298">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1299">		}</span>
+<span class="nc" id="L1300">	}</span>
+
+	@Override
+	public void removeInterface(final RemoveInterfaceRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1306">			logicModule.removeInterface(Utils.getID(request.getApplicantID()),</span>
+<span class="nc" id="L1307">					Utils.getCredential(request.getCredential()), Utils.getID(request.getNamespaceID()),</span>
+<span class="nc" id="L1308">					Utils.getID(request.getInterfaceID()));</span>
+
+<span class="nc" id="L1310">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1311">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1313">		} catch (final Exception e) {</span>
+<span class="nc" id="L1314">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1315">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1316">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1317">		}</span>
+
+<span class="nc" id="L1319">	}</span>
+
+	@Override
+	public void getStorageLocationForDS(final GetStorageLocationForDSRequest request,
+			final StreamObserver&lt;GetStorageLocationForDSResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1325">			final StorageLocation stLoc = logicModule</span>
+<span class="nc" id="L1326">					.getStorageLocationForDS(Utils.getID(request.getStorageLocationID()));</span>
+
+<span class="nc" id="L1328">			final GetStorageLocationForDSResponse resp = GetStorageLocationForDSResponse.newBuilder()</span>
+<span class="nc" id="L1329">					.setStorageLocationYaml(CommonYAML.getYamlObject().dump(stLoc)).build();</span>
+<span class="nc" id="L1330">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1331">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1333">		} catch (final Exception e) {</span>
+<span class="nc" id="L1334">			final GetStorageLocationForDSResponse.Builder builder = GetStorageLocationForDSResponse.newBuilder();</span>
+<span class="nc" id="L1335">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1336">			final GetStorageLocationForDSResponse resp = builder.build();</span>
+<span class="nc" id="L1337">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1338">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1339">		}</span>
+<span class="nc" id="L1340">	}</span>
+
+	@Override
+	public void getExecutionEnvironmentForDS(final GetExecutionEnvironmentForDSRequest request,
+			final StreamObserver&lt;GetExecutionEnvironmentForDSResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1346">			final ExecutionEnvironment result = logicModule</span>
+<span class="nc" id="L1347">					.getExecutionEnvironmentForDS(Utils.getID(request.getExecEnvID()));</span>
+
+<span class="nc" id="L1349">			final GetExecutionEnvironmentForDSResponse resp = GetExecutionEnvironmentForDSResponse.newBuilder()</span>
+<span class="nc" id="L1350">					.setExecEnvYaml(CommonYAML.getYamlObject().dump(result)).build();</span>
+<span class="nc" id="L1351">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1352">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1354">		} catch (final Exception e) {</span>
+			final GetExecutionEnvironmentForDSResponse.Builder builder = GetExecutionEnvironmentForDSResponse
+<span class="nc" id="L1356">					.newBuilder();</span>
+<span class="nc" id="L1357">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1358">			final GetExecutionEnvironmentForDSResponse resp = builder.build();</span>
+<span class="nc" id="L1359">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1360">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1361">		}</span>
+<span class="nc" id="L1362">	}</span>
+
+	@Override
+	public void getDataClayID(final EmptyMessage request,
+			final StreamObserver&lt;GetDataClayIDResponse&gt; responseObserver) {
+<span class="nc" id="L1367">		final GetDataClayIDResponse.Builder builder = GetDataClayIDResponse.newBuilder();</span>
+		try {
+<span class="nc" id="L1369">			final DataClayInstanceID result = logicModule.getDataClayID();</span>
+<span class="nc" id="L1370">			final GetDataClayIDResponse resp = builder.setDataClayID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L1371">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1372">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1374">		} catch (final Exception e) {</span>
+<span class="nc" id="L1375">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1376">			final GetDataClayIDResponse resp = builder.build();</span>
+<span class="nc" id="L1377">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1378">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1379">		}</span>
+<span class="nc" id="L1380">	}</span>
+
+	@Override
+	public void registerExternalDataClay(final RegisterExternalDataClayRequest request,
+			final StreamObserver&lt;RegisterExternalDataClayResponse&gt; responseObserver) {
+<span class="nc" id="L1385">		final RegisterExternalDataClayResponse.Builder builder = RegisterExternalDataClayResponse.newBuilder();</span>
+		try {
+<span class="nc" id="L1387">			final DataClayInstanceID result = logicModule.registerExternalDataClay(request.getHostname(),</span>
+<span class="nc" id="L1388">					request.getPort());</span>
+
+<span class="nc" id="L1390">			final RegisterExternalDataClayResponse resp = builder.setExtDataClayID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L1391">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1392">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1394">		} catch (final Exception e) {</span>
+<span class="nc" id="L1395">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1396">			final RegisterExternalDataClayResponse resp = builder.build();</span>
+<span class="nc" id="L1397">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1398">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1399">		}</span>
+<span class="nc" id="L1400">	}</span>
+
+	
+	@Override
+	public void registerExternalDataClayOverrideAuthority(final RegisterExternalDataClayOverrideAuthorityRequest request,
+			final StreamObserver&lt;RegisterExternalDataClayResponse&gt; responseObserver) {
+<span class="nc" id="L1406">		final RegisterExternalDataClayResponse.Builder builder = RegisterExternalDataClayResponse.newBuilder();</span>
+		try {
+<span class="nc" id="L1408">			final DataClayInstanceID result = logicModule.registerExternalDataClayOverrideAuthority(Utils.getID(request.getAdminAccountID()), </span>
+<span class="nc" id="L1409">					Utils.getCredential(request.getAdminCredential()), request.getHostname(),</span>
+<span class="nc" id="L1410">					request.getPort(), request.getAuthority());</span>
+
+<span class="nc" id="L1412">			final RegisterExternalDataClayResponse resp = builder.setExtDataClayID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L1413">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1414">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1416">		} catch (final Exception e) {</span>
+<span class="nc" id="L1417">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1418">			final RegisterExternalDataClayResponse resp = builder.build();</span>
+<span class="nc" id="L1419">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1420">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1421">		}</span>
+<span class="nc" id="L1422">	}</span>
+	
+	@Override
+	public void notifyRegistrationOfExternalDataClay(final NotifyRegistrationOfExternalDataClayRequest request,
+			final StreamObserver&lt;NotifyRegistrationOfExternalDataClayResponse&gt; responseObserver) {
+		final NotifyRegistrationOfExternalDataClayResponse.Builder builder = NotifyRegistrationOfExternalDataClayResponse
+<span class="nc" id="L1428">				.newBuilder();</span>
+		try {
+<span class="nc" id="L1430">			final DataClayInstanceID result = logicModule.notifyRegistrationOfExternalDataClay(</span>
+<span class="nc" id="L1431">					Utils.getID(request.getExtDataClayID()), request.getHostname(), request.getPort());</span>
+
+<span class="nc" id="L1433">			final NotifyRegistrationOfExternalDataClayResponse resp = builder.setExtDataClayID(Utils.getMsgID(result))</span>
+<span class="nc" id="L1434">					.build();</span>
+<span class="nc" id="L1435">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1436">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1438">		} catch (final Exception e) {</span>
+<span class="nc" id="L1439">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1440">			final NotifyRegistrationOfExternalDataClayResponse resp = builder.build();</span>
+<span class="nc" id="L1441">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1442">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1443">		}</span>
+<span class="nc" id="L1444">	}</span>
+
+	@Override
+	public void getExternalDataClayInfo(final GetExtDataClayInfoRequest request,
+			final StreamObserver&lt;GetExtDataClayInfoResponse&gt; responseObserver) {
+<span class="nc" id="L1449">		final GetExtDataClayInfoResponse.Builder builder = GetExtDataClayInfoResponse.newBuilder();</span>
+		try {
+<span class="nc" id="L1451">			final DataClayInstance result = logicModule</span>
+<span class="nc" id="L1452">					.getExternalDataClayInfo(Utils.getID(request.getExtDataClayID()));</span>
+<span class="nc" id="L1453">			final GetExtDataClayInfoResponse resp = builder.setExtDataClayYaml(CommonYAML.getYamlObject().dump(result))</span>
+<span class="nc" id="L1454">					.build();</span>
+<span class="nc" id="L1455">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1456">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1458">		} catch (final Exception e) {</span>
+<span class="nc" id="L1459">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1460">			final GetExtDataClayInfoResponse resp = builder.build();</span>
+<span class="nc" id="L1461">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1462">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1463">		}</span>
+<span class="nc" id="L1464">	}</span>
+
+	@Override
+	public void getExternalDataclayId(final GetExternalDataclayIDRequest request,
+			final StreamObserver&lt;GetExternalDataclayIDResponse&gt; responseObserver) {
+<span class="nc" id="L1469">		final GetExternalDataclayIDResponse.Builder builder = GetExternalDataclayIDResponse.newBuilder();</span>
+		try {
+<span class="nc" id="L1471">			final DataClayInstanceID result = logicModule.getExternalDataClayID(request.getHost(), request.getPort());</span>
+<span class="nc" id="L1472">			final GetExternalDataclayIDResponse resp = builder.setExtDataClayID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L1473">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1474">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1476">		} catch (final Exception e) {</span>
+<span class="nc" id="L1477">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1478">			final GetExternalDataclayIDResponse resp = builder.build();</span>
+<span class="nc" id="L1479">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1480">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1481">		}</span>
+<span class="nc" id="L1482">	}</span>
+
+	@Override
+	public void federateObject(final FederateObjectRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1488">			logicModule.federateObject(Utils.getID(request.getSessionID()), Utils.getID(request.getObjectID()),</span>
+<span class="nc" id="L1489">					Utils.getID(request.getExtDataClayID()), request.getRecursive());</span>
+
+<span class="nc" id="L1491">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1492">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1494">		} catch (final Exception e) {</span>
+<span class="nc" id="L1495">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1496">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1497">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1498">		}</span>
+<span class="nc" id="L1499">	}</span>
+
+	@Override
+	public void unfederateObject(final UnfederateObjectRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1505">			logicModule.unfederateObject(Utils.getID(request.getSessionID()), Utils.getID(request.getObjectID()),</span>
+<span class="nc" id="L1506">					Utils.getID(request.getExtDataClayID()), request.getRecursive());</span>
+
+<span class="nc" id="L1508">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1509">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1511">		} catch (final Exception e) {</span>
+<span class="nc" id="L1512">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1513">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1514">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1515">		}</span>
+<span class="nc" id="L1516">	}</span>
+
+	@Override
+	public void unfederateAllObjects(final UnfederateAllObjectsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1522">			logicModule.unfederateAllObjects(Utils.getID(request.getSessionID()), </span>
+<span class="nc" id="L1523">					Utils.getID(request.getExtDataClayID()));</span>
+<span class="nc" id="L1524">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1525">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1527">		} catch (final Exception e) {</span>
+<span class="nc" id="L1528">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1529">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1530">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1531">		}</span>
+<span class="nc" id="L1532">	}</span>
+	
+	@Override
+	public void unfederateAllObjectsWithAllDCs(final UnfederateAllObjectsWithAllDCsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1538">			logicModule.unfederateAllObjectsWithAllDCs(Utils.getID(request.getSessionID()));</span>
+<span class="nc" id="L1539">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1540">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1542">		} catch (final Exception e) {</span>
+<span class="nc" id="L1543">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1544">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1545">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1546">		}</span>
+<span class="nc" id="L1547">	}</span>
+	
+	@Override
+	public void unfederateObjectWithAllDCs(final UnfederateObjectWithAllDCsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1553">			logicModule.unfederateObjectWithAllDCs(Utils.getID(request.getSessionID()), </span>
+<span class="nc" id="L1554">					Utils.getID(request.getObjectID()), request.getRecursive());</span>
+<span class="nc" id="L1555">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1556">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1558">		} catch (final Exception e) {</span>
+<span class="nc" id="L1559">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1560">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1561">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1562">		}</span>
+<span class="nc" id="L1563">	}</span>
+	
+	@Override
+	public void federateAllObjects(final FederateAllObjectsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1569">			logicModule.federateAllObjects(Utils.getID(request.getSessionID()), </span>
+<span class="nc" id="L1570">					Utils.getID(request.getExternalDestinationDataClayID()));</span>
+<span class="nc" id="L1571">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1572">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1574">		} catch (final Exception e) {</span>
+<span class="nc" id="L1575">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1576">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1577">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1578">		}</span>
+<span class="nc" id="L1579">	}</span>
+	
+	@Override
+	public void migrateFederatedObjects(final MigrateFederatedObjectsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1585">			logicModule.migrateFederatedObjects(Utils.getID(request.getSessionID()), </span>
+<span class="nc" id="L1586">					Utils.getID(request.getExternalOriginDataClayID()), </span>
+<span class="nc" id="L1587">					Utils.getID(request.getExternalDestinationDataClayID()));</span>
+<span class="nc" id="L1588">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1589">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1591">		} catch (final Exception e) {</span>
+<span class="nc" id="L1592">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1593">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1594">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1595">		}</span>
+<span class="nc" id="L1596">	}</span>
+	
+	@Override
+	public void notifyFederatedObjects(final NotifyFederatedObjectsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1602">			final Map&lt;Langs, SerializedParametersOrReturn&gt; federatedObjects = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L1603">			final Map&lt;ObjectID, MetaDataInfo&gt; objectsInfo = new HashMap&lt;&gt;();</span>
+
+<span class="nc" id="L1605">			final Map&lt;String, String&gt; fedObjectsInfo = request.getObjectsInfoMap();</span>
+<span class="nc" id="L1606">			final Map&lt;String, es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SerializedParametersOrReturn&gt; fedObjsReq = </span>
+<span class="nc" id="L1607">					request.getFederatedObjectsMap();</span>
+
+<span class="nc bnc" id="L1609" title="All 2 branches missed.">			for (final Entry&lt;String, String&gt; fedObjectInfo : fedObjectsInfo.entrySet()) {</span>
+<span class="nc" id="L1610">				objectsInfo.put(Utils.getObjectIDFromUUID(fedObjectInfo.getKey()),</span>
+<span class="nc" id="L1611">						(MetaDataInfo) CommonYAML.getYamlObject().load(fedObjectInfo.getValue()));</span>
+<span class="nc" id="L1612">			}</span>
+<span class="nc bnc" id="L1613" title="All 2 branches missed.">			for (final Entry&lt;String, es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SerializedParametersOrReturn&gt; fedObj : fedObjsReq.entrySet()) {</span>
+<span class="nc" id="L1614">				final Langs language = Langs.valueOf(fedObj.getKey());</span>
+<span class="nc" id="L1615">				final SerializedParametersOrReturn fedObjs = Utils.getParamsOrReturn(fedObj.getValue());</span>
+<span class="nc" id="L1616">				federatedObjects.put(language, fedObjs);</span>
+<span class="nc" id="L1617">			}</span>
+<span class="nc" id="L1618">			logicModule.notifyFederatedObjects(Utils.getID(request.getSrcDcID()),</span>
+<span class="nc" id="L1619">					request.getSrcDcHost(), request.getSrcDcPort(), objectsInfo, </span>
+					federatedObjects);
+
+<span class="nc" id="L1622">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1623">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1625">		} catch (final Exception e) {</span>
+<span class="nc" id="L1626">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1627">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1628">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1629">		}</span>
+<span class="nc" id="L1630">	}</span>
+
+	@Override
+	public void notifyUnfederatedObjects(final NotifyUnfederatedObjectsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1636">			final Set&lt;ObjectID&gt; oids = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L1637" title="All 2 branches missed.">			for (final CommonMessages.ObjectID oid : request.getObjectsIDsList()) {</span>
+<span class="nc" id="L1638">				oids.add(Utils.getID(oid));</span>
+<span class="nc" id="L1639">			}</span>
+<span class="nc" id="L1640">			logicModule.notifyUnfederatedObjects(Utils.getID(request.getSrcDcID()),</span>
+					oids);
+
+<span class="nc" id="L1643">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1644">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1646">		} catch (final Exception e) {</span>
+<span class="nc" id="L1647">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1648">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1649">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1650">		}</span>
+<span class="nc" id="L1651">	}</span>
+
+	@Override
+	public void checkObjectIsFederatedWithDataClayInstance(
+			final CheckObjectFederatedWithDataClayInstanceRequest request,
+			final StreamObserver&lt;CheckObjectFederatedWithDataClayInstanceResponse&gt; responseObserver) {
+		final CheckObjectFederatedWithDataClayInstanceResponse.Builder builder = CheckObjectFederatedWithDataClayInstanceResponse
+<span class="nc" id="L1658">				.newBuilder();</span>
+		try {
+<span class="nc" id="L1660">			final boolean result = logicModule.checkObjectIsFederatedWithDataClayInstance(</span>
+<span class="nc" id="L1661">					Utils.getID(request.getObjectID()), Utils.getID(request.getExtDataClayID()));</span>
+<span class="nc" id="L1662">			final CheckObjectFederatedWithDataClayInstanceResponse resp = builder.setIsFederated(result).build();</span>
+<span class="nc" id="L1663">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1664">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1666">		} catch (final Exception e) {</span>
+<span class="nc" id="L1667">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1668">			final CheckObjectFederatedWithDataClayInstanceResponse resp = builder.build();</span>
+<span class="nc" id="L1669">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1670">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1671">		}</span>
+<span class="nc" id="L1672">	}</span>
+
+	
+	@Override
+	public void getDataClaysObjectIsFederatedWith(final GetDataClaysObjectIsFederatedWithRequest request,
+			final StreamObserver&lt;GetDataClaysObjectIsFederatedWithResponse&gt; responseObserver) {
+<span class="nc" id="L1678">		final GetDataClaysObjectIsFederatedWithResponse.Builder builder = GetDataClaysObjectIsFederatedWithResponse.newBuilder();</span>
+		try {
+<span class="nc" id="L1680">			final Set&lt;DataClayInstanceID&gt; result = logicModule.getDataClaysObjectIsFederatedWith(Utils.getID(request.getObjectID()));</span>
+<span class="nc bnc" id="L1681" title="All 2 branches missed.">			for (final DataClayInstanceID di : result) {</span>
+<span class="nc" id="L1682">				builder.addExtDataClayIDs(Utils.getMsgID(di));</span>
+<span class="nc" id="L1683">			}</span>
+<span class="nc" id="L1684">			final GetDataClaysObjectIsFederatedWithResponse resp = builder.build();</span>
+<span class="nc" id="L1685">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1686">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1688">		} catch (final Exception e) {</span>
+<span class="nc" id="L1689">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1690">			final GetDataClaysObjectIsFederatedWithResponse resp = builder.build();</span>
+<span class="nc" id="L1691">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1692">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1693">		}</span>
+<span class="nc" id="L1694">	}</span>
+
+	@Override
+	public void getExternalSourceDataClayOfObject(final GetExternalSourceDataClayOfObjectRequest request,
+			final StreamObserver&lt;GetExternalSourceDataClayOfObjectResponse&gt; responseObserver) {
+<span class="nc" id="L1699">		final GetExternalSourceDataClayOfObjectResponse.Builder builder = GetExternalSourceDataClayOfObjectResponse.newBuilder();</span>
+		try {
+<span class="nc" id="L1701">			final DataClayInstanceID result = logicModule.getExternalSourceDataClayOfObject(Utils.getID(request.getObjectID()));</span>
+<span class="nc" id="L1702">			builder.setExtDataClayID(Utils.getMsgID(result));</span>
+			
+<span class="nc" id="L1704">			final GetExternalSourceDataClayOfObjectResponse resp = builder.build();</span>
+<span class="nc" id="L1705">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1706">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1708">		} catch (final Exception e) {</span>
+<span class="nc" id="L1709">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1710">			final GetExternalSourceDataClayOfObjectResponse resp = builder.build();</span>
+<span class="nc" id="L1711">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1712">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1713">		}</span>
+<span class="nc" id="L1714">	}</span>
+	
+	@Override
+	public void registerObjectFromGC(final RegisterObjectForGCRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1720">			final CommonMessages.RegistrationInfo regInfoMsg = request.getRegInfo();</span>
+<span class="nc" id="L1721">			final RegistrationInfo regInfo = new RegistrationInfo(Utils.getID(regInfoMsg.getObjectID()),</span>
+<span class="nc" id="L1722">					Utils.getID(regInfoMsg.getClassID()), Utils.getID(regInfoMsg.getSessionID()),</span>
+<span class="nc" id="L1723">					Utils.getID(regInfoMsg.getDataSetID()));</span>
+
+<span class="nc" id="L1725">			logicModule.registerObjectFromGC(regInfo, Utils.getID(request.getBackendID()), null);</span>
+
+<span class="nc" id="L1727">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1728">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1730">		} catch (final Exception e) {</span>
+<span class="nc" id="L1731">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1732">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1733">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1734">		}</span>
+
+<span class="nc" id="L1736">	}</span>
+
+	@Override
+	public void registerObject(final RegisterObjectRequest request,
+			final StreamObserver&lt;RegisterObjectResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L1743">			final CommonMessages.RegistrationInfo regInfoMsg = request.getRegInfo();</span>
+<span class="nc" id="L1744">			final RegistrationInfo regInfo = new RegistrationInfo(Utils.getID(regInfoMsg.getObjectID()),</span>
+<span class="nc" id="L1745">					Utils.getID(regInfoMsg.getClassID()), Utils.getID(regInfoMsg.getSessionID()),</span>
+<span class="nc" id="L1746">					Utils.getID(regInfoMsg.getDataSetID()));</span>
+
+<span class="nc" id="L1748">			String alias = null; </span>
+
+<span class="nc bnc" id="L1750" title="All 4 branches missed.">			if (request.getAlias() != null &amp;&amp; !request.getAlias().isEmpty()) { </span>
+<span class="nc" id="L1751">				alias = request.getAlias();</span>
+			}
+<span class="nc" id="L1753">			final ObjectID oid = logicModule.registerObject(regInfo, Utils.getID(request.getBackendID()), alias, request.getLang());</span>
+
+<span class="nc" id="L1755">			final RegisterObjectResponse.Builder builder = RegisterObjectResponse.newBuilder();</span>
+<span class="nc" id="L1756">			builder.setObjectID(Utils.getMsgID(oid));</span>
+<span class="nc" id="L1757">			final RegisterObjectResponse resp = builder.build();</span>
+<span class="nc" id="L1758">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1759">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1761">		} catch (final Exception e) {</span>
+<span class="nc" id="L1762">			final RegisterObjectResponse.Builder builder = RegisterObjectResponse.newBuilder();</span>
+<span class="nc" id="L1763">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1764">			final RegisterObjectResponse resp = builder.build();</span>
+<span class="nc" id="L1765">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1766">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1767">		}</span>
+
+<span class="nc" id="L1769">	}</span>
+
+	@Override
+	public void getExecutionEnvironmentsInfo(final GetExecutionEnvironmentsInfoRequest request,
+			final StreamObserver&lt;GetExecutionEnvironmentsInfoResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1775">			final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; result = logicModule</span>
+<span class="nc" id="L1776">					.getExecutionEnvironmentsInfo(Utils.getID(request.getSessionID()), </span>
+<span class="nc" id="L1777">							request.getExecEnvLang(), request.getFromClient());</span>
+			final GetExecutionEnvironmentsInfoResponse.Builder builder = GetExecutionEnvironmentsInfoResponse
+<span class="nc" id="L1779">					.newBuilder();</span>
+<span class="nc bnc" id="L1780" title="All 2 branches missed.">			for (final Entry&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L1781">				builder.putExecEnvs(entry.getKey().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L1782">			}</span>
+<span class="nc" id="L1783">			final GetExecutionEnvironmentsInfoResponse resp = builder.build();</span>
+<span class="nc" id="L1784">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1785">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1787">		} catch (final Exception e) {</span>
+			final GetExecutionEnvironmentsInfoResponse.Builder builder = GetExecutionEnvironmentsInfoResponse
+<span class="nc" id="L1789">					.newBuilder();</span>
+<span class="nc" id="L1790">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1791">			final GetExecutionEnvironmentsInfoResponse resp = builder.build();</span>
+<span class="nc" id="L1792">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1793">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1794">		}</span>
+<span class="nc" id="L1795">	}</span>
+
+	@Override
+	public void getExecutionEnvironmentsNames(final GetExecutionEnvironmentsNamesRequest request,
+			final StreamObserver&lt;GetExecutionEnvironmentsNamesResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1801">			final Set&lt;String&gt; result = logicModule.getExecutionEnvironmentsNames(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L1802">					Utils.getCredential(request.getCredential()), request.getExecEnvLang());</span>
+			final GetExecutionEnvironmentsNamesResponse.Builder builder = GetExecutionEnvironmentsNamesResponse
+<span class="nc" id="L1804">					.newBuilder();</span>
+<span class="nc" id="L1805">			builder.addAllExecEnvs(result);</span>
+<span class="nc" id="L1806">			final GetExecutionEnvironmentsNamesResponse resp = builder.build();</span>
+<span class="nc" id="L1807">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1808">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1810">		} catch (final Exception e) {</span>
+			final GetExecutionEnvironmentsNamesResponse.Builder builder = GetExecutionEnvironmentsNamesResponse
+<span class="nc" id="L1812">					.newBuilder();</span>
+<span class="nc" id="L1813">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1814">			final GetExecutionEnvironmentsNamesResponse resp = builder.build();</span>
+<span class="nc" id="L1815">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1816">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1817">		}</span>
+<span class="nc" id="L1818">	}</span>
+
+	@Override
+	public void getObjectInfo(final GetObjectInfoRequest request,
+			final StreamObserver&lt;GetObjectInfoResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1824">			final Tuple&lt;String, String&gt; objInfo = logicModule.getObjectInfo(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L1825">					Utils.getID(request.getObjectID()));</span>
+<span class="nc" id="L1826">			final GetObjectInfoResponse resp = GetObjectInfoResponse.newBuilder().setClassname(objInfo.getFirst())</span>
+<span class="nc" id="L1827">					.setNamespace(objInfo.getSecond()).build();</span>
+<span class="nc" id="L1828">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1829">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1831">		} catch (final Exception e) {</span>
+<span class="nc" id="L1832">			final GetObjectInfoResponse.Builder builder = GetObjectInfoResponse.newBuilder();</span>
+<span class="nc" id="L1833">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1834">			final GetObjectInfoResponse resp = builder.build();</span>
+<span class="nc" id="L1835">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1836">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1837">		}</span>
+<span class="nc" id="L1838">	}</span>
+
+	@Override
+	public void getObjectFromAlias(final GetObjectFromAliasRequest request,
+			final StreamObserver&lt;GetObjectFromAliasResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1844">			final Triple&lt;ObjectID, MetaClassID, ExecutionEnvironmentID&gt; result = logicModule</span>
+<span class="nc" id="L1845">					.getObjectFromAlias(Utils.getID(request.getSessionID()), request.getAlias());</span>
+<span class="nc" id="L1846">			final GetObjectFromAliasResponse resp = GetObjectFromAliasResponse.newBuilder()</span>
+<span class="nc" id="L1847">					.setObjectID(Utils.getMsgID(result.getFirst())).setClassID(Utils.getMsgID(result.getSecond()))</span>
+<span class="nc" id="L1848">					.setHint(Utils.getMsgID(result.getThird())).build();</span>
+<span class="nc" id="L1849">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1850">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1852">		} catch (final Exception e) {</span>
+<span class="nc" id="L1853">			final GetObjectFromAliasResponse.Builder builder = GetObjectFromAliasResponse.newBuilder();</span>
+<span class="nc" id="L1854">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1855">			final GetObjectFromAliasResponse resp = builder.build();</span>
+<span class="nc" id="L1856">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1857">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1858">		}</span>
+<span class="nc" id="L1859">	}</span>
+
+	@Override
+	public void deleteAlias(final DeleteAliasRequest request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1864">			logicModule.deleteAlias(Utils.getID(request.getSessionID()), request.getAlias());</span>
+
+<span class="nc" id="L1866">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1867">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1869">		} catch (final Exception e) {</span>
+<span class="nc" id="L1870">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1871">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1872">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1873">		}</span>
+<span class="nc" id="L1874">	}</span>
+
+	@Override
+	public void getObjectsMetaDataInfoOfClassForNM(final GetObjectsMetaDataInfoOfClassForNMRequest request,
+			final StreamObserver&lt;GetObjectsMetaDataInfoOfClassForNMResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1880">			final Map&lt;ObjectID, MetaDataInfo&gt; result = logicModule</span>
+<span class="nc" id="L1881">					.getObjectsMetaDataInfoOfClassForNM(Utils.getID(request.getClassID()));</span>
+
+			final GetObjectsMetaDataInfoOfClassForNMResponse.Builder builder = GetObjectsMetaDataInfoOfClassForNMResponse
+<span class="nc" id="L1884">					.newBuilder();</span>
+<span class="nc bnc" id="L1885" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, MetaDataInfo&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L1886">				builder.putMdataInfo(entry.getKey().toString(), CommonYAML.getYamlObject().dump(entry.getValue()));</span>
+<span class="nc" id="L1887">			}</span>
+<span class="nc" id="L1888">			final GetObjectsMetaDataInfoOfClassForNMResponse resp = builder.build();</span>
+<span class="nc" id="L1889">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1890">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1892">		} catch (final Exception e) {</span>
+			final GetObjectsMetaDataInfoOfClassForNMResponse.Builder builder = GetObjectsMetaDataInfoOfClassForNMResponse
+<span class="nc" id="L1894">					.newBuilder();</span>
+<span class="nc" id="L1895">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1896">			final GetObjectsMetaDataInfoOfClassForNMResponse resp = builder.build();</span>
+<span class="nc" id="L1897">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1898">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1899">		}</span>
+<span class="nc" id="L1900">	}</span>
+
+	@Override
+	public void newVersion(final NewVersionRequest request, final StreamObserver&lt;NewVersionResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1905">			final VersionInfo vinfo = logicModule.newVersion(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L1906">					Utils.getID(request.getObjectID()), Utils.getID(request.getOptDestBackendID()));</span>
+
+<span class="nc" id="L1908">			final NewVersionResponse resp = NewVersionResponse.newBuilder()</span>
+<span class="nc" id="L1909">					.setVersionInfoYaml(CommonYAML.getYamlObject().dump(vinfo)).build();</span>
+
+<span class="nc" id="L1911">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1912">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1914">		} catch (final Exception e) {</span>
+<span class="nc" id="L1915">			final NewVersionResponse.Builder builder = NewVersionResponse.newBuilder();</span>
+<span class="nc" id="L1916">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1917">			final NewVersionResponse resp = builder.build();</span>
+<span class="nc" id="L1918">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1919">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1920">		}</span>
+<span class="nc" id="L1921">	}</span>
+
+	@Override
+	public void consolidateVersion(final ConsolidateVersionRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L1928">			final VersionInfo vinfo = (VersionInfo) CommonYAML.getYamlObject().load(request.getVersionInfoYaml());</span>
+<span class="nc" id="L1929">			logicModule.consolidateVersion(Utils.getID(request.getSessionID()), vinfo);</span>
+
+<span class="nc" id="L1931">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1932">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1934">		} catch (final Exception e) {</span>
+<span class="nc" id="L1935">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1936">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1937">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1938">		}</span>
+<span class="nc" id="L1939">	}</span>
+
+	@Override
+	public void newReplica(final NewReplicaRequest request, final StreamObserver&lt;NewReplicaResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L1945">			final ExecutionEnvironmentID result = logicModule.newReplica(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L1946">					Utils.getID(request.getObjectID()), Utils.getID(request.getDestBackendID()),</span>
+<span class="nc" id="L1947">					request.getRecursive());</span>
+
+<span class="nc" id="L1949">			final NewReplicaResponse resp = NewReplicaResponse.newBuilder().setDestBackendID(Utils.getMsgID(result))</span>
+<span class="nc" id="L1950">					.build();</span>
+
+<span class="nc" id="L1952">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1953">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1955">		} catch (final Exception e) {</span>
+<span class="nc" id="L1956">			final NewReplicaResponse.Builder builder = NewReplicaResponse.newBuilder();</span>
+<span class="nc" id="L1957">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1958">			final NewReplicaResponse resp = builder.build();</span>
+<span class="nc" id="L1959">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1960">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1961">		}</span>
+
+<span class="nc" id="L1963">	}</span>
+
+	@Override
+	public void moveObject(final MoveObjectRequest request, final StreamObserver&lt;MoveObjectResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L1969">			final List&lt;ObjectID&gt; result = logicModule.moveObject(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L1970">					Utils.getID(request.getObjectID()), Utils.getID(request.getSrcBackendID()),</span>
+<span class="nc" id="L1971">					Utils.getID(request.getDestBackendID()), request.getRecursive());</span>
+
+			final MoveObjectResponse.Builder builder = es.bsc.dataclay.communication.grpc.messages.logicmodule.LogicmoduleMessages.MoveObjectResponse
+<span class="nc" id="L1974">					.newBuilder();</span>
+<span class="nc bnc" id="L1975" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc bnc" id="L1976" title="All 2 branches missed.">				for (final ObjectID curObjID : result) {</span>
+<span class="nc" id="L1977">					builder.addObjectIDs(Utils.getMsgID(curObjID));</span>
+<span class="nc" id="L1978">				}</span>
+			}
+<span class="nc" id="L1980">			final MoveObjectResponse resp = builder.build();</span>
+
+<span class="nc" id="L1982">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1983">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1985">		} catch (final Exception e) {</span>
+			final MoveObjectResponse.Builder builder = es.bsc.dataclay.communication.grpc.messages.logicmodule.LogicmoduleMessages.MoveObjectResponse
+<span class="nc" id="L1987">					.newBuilder();</span>
+<span class="nc" id="L1988">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1989">			final MoveObjectResponse resp = builder.build();</span>
+<span class="nc" id="L1990">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1991">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1992">		}</span>
+<span class="nc" id="L1993">	}</span>
+
+	@Override
+	public void setObjectReadOnly(final SetObjectReadOnlyRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L2001">			logicModule.setObjectReadOnly(Utils.getID(request.getSessionID()), Utils.getID(request.getObjectID()));</span>
+
+<span class="nc" id="L2003">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2004">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2006">		} catch (final Exception e) {</span>
+<span class="nc" id="L2007">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2008">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2009">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2010">		}</span>
+<span class="nc" id="L2011">	}</span>
+
+	@Override
+	public void setObjectReadWrite(final SetObjectReadWriteRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2018">			logicModule.setObjectReadWrite(Utils.getID(request.getSessionID()), Utils.getID(request.getObjectID()));</span>
+
+<span class="nc" id="L2020">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2021">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2023">		} catch (final Exception e) {</span>
+<span class="nc" id="L2024">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2025">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2026">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2027">		}</span>
+<span class="nc" id="L2028">	}</span>
+
+	@Override
+	public void getMetadataByOID(final GetMetadataByOIDRequest request,
+			final StreamObserver&lt;GetMetadataByOIDResponse&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L2036">			final MetaDataInfo result = logicModule.getMetadataByOID(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L2037">					Utils.getID(request.getObjectID()));</span>
+<span class="nc" id="L2038">			final GetMetadataByOIDResponse.Builder builder = GetMetadataByOIDResponse.newBuilder();</span>
+<span class="nc bnc" id="L2039" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc" id="L2040">				builder.setObjMdataYaml(CommonYAML.getYamlObject().dump(result));</span>
+			}
+<span class="nc bnc" id="L2042" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L2043">				logger.debug(&quot;Sending &quot; + builder.getObjMdataYaml());</span>
+			}
+<span class="nc" id="L2045">			final GetMetadataByOIDResponse resp = builder.build();</span>
+<span class="nc" id="L2046">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2047">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2049">		} catch (final Exception e) {</span>
+<span class="nc" id="L2050">			final GetMetadataByOIDResponse.Builder builder = GetMetadataByOIDResponse.newBuilder();</span>
+<span class="nc" id="L2051">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2052">			final GetMetadataByOIDResponse resp = builder.build();</span>
+<span class="nc" id="L2053">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2054">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2055">		}</span>
+
+<span class="nc" id="L2057">	}</span>
+
+	@Override
+	public void getMetadataByOIDForDS(final GetMetadataByOIDForDSRequest request,
+			final StreamObserver&lt;GetMetadataByOIDForDSResponse&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L2065">			final MetaDataInfo result = logicModule.getMetadataByOIDForDS(Utils.getID(request.getObjectID()));</span>
+
+<span class="nc" id="L2067">			final GetMetadataByOIDForDSResponse.Builder builder = GetMetadataByOIDForDSResponse.newBuilder();</span>
+<span class="nc" id="L2068">			builder.setObjMdataYaml(CommonYAML.getYamlObject().dump(result));</span>
+<span class="nc" id="L2069">			final GetMetadataByOIDForDSResponse resp = builder.build();</span>
+<span class="nc" id="L2070">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2071">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2073">		} catch (final Exception e) {</span>
+<span class="nc" id="L2074">			final GetMetadataByOIDForDSResponse.Builder builder = GetMetadataByOIDForDSResponse.newBuilder();</span>
+<span class="nc" id="L2075">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2076">			final GetMetadataByOIDForDSResponse resp = builder.build();</span>
+<span class="nc" id="L2077">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2078">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2079">		}</span>
+
+<span class="nc" id="L2081">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Execution Environment.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void executeImplementation(final ExecuteImplementationRequest request,
+			final StreamObserver&lt;ExecuteImplementationResponse&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L2093">			SerializedParametersOrReturn params = null;</span>
+<span class="nc bnc" id="L2094" title="All 2 branches missed.">			if (request.hasParams()) {</span>
+<span class="nc" id="L2095">				params = Utils.getParamsOrReturn(request.getParams());</span>
+			}
+<span class="nc" id="L2097">			final SerializedParametersOrReturn result = logicModule</span>
+<span class="nc" id="L2098">					.executeImplementation(Utils.getID(request.getSessionID()), Utils.getID(request.getOperationID()),</span>
+<span class="nc" id="L2099">							new Triple&lt;&gt;(Utils.getID(request.getImplementationID()),</span>
+<span class="nc" id="L2100">									Utils.getID(request.getContractID()), Utils.getID(request.getInterfaceID())),</span>
+<span class="nc" id="L2101">							Utils.getID(request.getObjectID()), params);</span>
+
+<span class="nc" id="L2103">			final ExecuteImplementationResponse.Builder builder = ExecuteImplementationResponse.newBuilder();</span>
+<span class="nc bnc" id="L2104" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc" id="L2105">				builder.setRet(Utils.getParamsOrReturn(result));</span>
+			}
+<span class="nc" id="L2107">			final ExecuteImplementationResponse resp = builder.build();</span>
+<span class="nc" id="L2108">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2109">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2111">		} catch (final Exception e) {</span>
+<span class="nc" id="L2112">			final ExecuteImplementationResponse.Builder builder = ExecuteImplementationResponse.newBuilder();</span>
+<span class="nc" id="L2113">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2114">			final ExecuteImplementationResponse resp = builder.build();</span>
+<span class="nc" id="L2115">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2116">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2117">		}</span>
+
+<span class="nc" id="L2119">	}</span>
+
+	@Override
+	public void executeMethodOnTarget(final ExecuteMethodOnTargetRequest request,
+			final StreamObserver&lt;ExecuteMethodOnTargetResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L2125">			SerializedParametersOrReturn params = null;</span>
+<span class="nc bnc" id="L2126" title="All 2 branches missed.">			if (request.hasParams()) {</span>
+<span class="nc" id="L2127">				params = Utils.getParamsOrReturn(request.getParams());</span>
+			}
+<span class="nc" id="L2129">			final SerializedParametersOrReturn result = logicModule.executeMethodOnTarget(</span>
+<span class="nc" id="L2130">					Utils.getID(request.getSessionID()), Utils.getID(request.getObjectID()),</span>
+<span class="nc" id="L2131">					request.getOperationNameAndSignature(), params, Utils.getID(request.getTargetBackendID()));</span>
+
+<span class="nc" id="L2133">			final ExecuteMethodOnTargetResponse.Builder builder = ExecuteMethodOnTargetResponse.newBuilder();</span>
+<span class="nc bnc" id="L2134" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc" id="L2135">				builder.setRet(Utils.getParamsOrReturn(result));</span>
+			}
+<span class="nc" id="L2137">			final ExecuteMethodOnTargetResponse resp = builder.build();</span>
+<span class="nc" id="L2138">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2139">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2141">		} catch (final Exception e) {</span>
+<span class="nc" id="L2142">			final ExecuteMethodOnTargetResponse.Builder builder = ExecuteMethodOnTargetResponse.newBuilder();</span>
+<span class="nc" id="L2143">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2144">			final ExecuteMethodOnTargetResponse resp = builder.build();</span>
+<span class="nc" id="L2145">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2146">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2147">		}</span>
+<span class="nc" id="L2148">	}</span>
+
+	@Override
+	public void synchronizeFederatedObject(final SynchronizeFederatedObjectRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2154">			SerializedParametersOrReturn params = null;</span>
+<span class="nc bnc" id="L2155" title="All 2 branches missed.">			if (request.hasParams()) {</span>
+<span class="nc" id="L2156">				params = Utils.getParamsOrReturn(request.getParams());</span>
+			}
+<span class="nc" id="L2158">			logicModule.synchronizeFederatedObject(</span>
+<span class="nc" id="L2159">					Utils.getID(request.getExtDataClayID()), Utils.getID(request.getObjectID()),</span>
+<span class="nc" id="L2160">					Utils.getID(request.getImplementationID()), params, request.getAllBackends());</span>
+
+<span class="nc" id="L2162">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2163">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2165">		} catch (final Exception e) {</span>
+<span class="nc" id="L2166">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2167">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2168">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2169">		}</span>
+<span class="nc" id="L2170">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Stubs.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void getStubs(final GetStubsRequest request, final StreamObserver&lt;GetStubsResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2181">			final List&lt;ContractID&gt; contractsIDs = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L2182" title="All 2 branches missed.">			for (final CommonMessages.ContractID cID : request.getContractIDsList()) {</span>
+<span class="nc" id="L2183">				contractsIDs.add(Utils.getID(cID));</span>
+<span class="nc" id="L2184">			}</span>
+
+<span class="nc" id="L2186">			final Map&lt;String, byte[]&gt; stubs = logicModule.getStubs(Utils.getID(request.getApplicantAccountID()),</span>
+<span class="nc" id="L2187">					Utils.getCredential(request.getCredentials()), request.getLanguage(), contractsIDs);</span>
+
+<span class="nc" id="L2189">			final GetStubsResponse.Builder builder = GetStubsResponse.newBuilder();</span>
+<span class="nc bnc" id="L2190" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; entry : stubs.entrySet()) {</span>
+<span class="nc" id="L2191">				builder.putStubs(entry.getKey(), ByteString.copyFrom(entry.getValue()));</span>
+<span class="nc" id="L2192">			}</span>
+
+<span class="nc" id="L2194">			final GetStubsResponse resp = builder.build();</span>
+<span class="nc" id="L2195">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2196">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2198">		} catch (final Exception e) {</span>
+<span class="nc" id="L2199">			final GetStubsResponse.Builder builder = GetStubsResponse.newBuilder();</span>
+<span class="nc" id="L2200">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2201">			final GetStubsResponse resp = builder.build();</span>
+<span class="nc" id="L2202">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2203">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2204">		}</span>
+
+<span class="nc" id="L2206">	}</span>
+
+	@Override
+	public void getBabelStubs(final GetBabelStubsRequest request,
+			final StreamObserver&lt;GetBabelStubsResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2213">			final List&lt;ContractID&gt; contractsIDs = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L2214" title="All 2 branches missed.">			for (final CommonMessages.ContractID cID : request.getContractIDsList()) {</span>
+<span class="nc" id="L2215">				contractsIDs.add(Utils.getID(cID));</span>
+<span class="nc" id="L2216">			}</span>
+
+<span class="nc" id="L2218">			final byte[] result = logicModule.getBabelStubs(Utils.getID(request.getAccountID()),</span>
+<span class="nc" id="L2219">					Utils.getCredential(request.getCredentials()), contractsIDs);</span>
+
+<span class="nc" id="L2221">			final GetBabelStubsResponse.Builder builder = GetBabelStubsResponse.newBuilder();</span>
+<span class="nc" id="L2222">			builder.setYamlStub(ByteString.copyFrom(result));</span>
+<span class="nc" id="L2223">			final GetBabelStubsResponse resp = builder.build();</span>
+<span class="nc" id="L2224">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2225">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2227">		} catch (final Exception e) {</span>
+<span class="nc" id="L2228">			final GetBabelStubsResponse.Builder builder = GetBabelStubsResponse.newBuilder();</span>
+<span class="nc" id="L2229">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2230">			final GetBabelStubsResponse resp = builder.build();</span>
+<span class="nc" id="L2231">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2232">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2233">		}</span>
+<span class="nc" id="L2234">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Notification Manager.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void registerECA(final RegisterECARequest request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2245">			final ECA eca = (ECA) CommonYAML.getYamlObject().load(request.getEca());</span>
+<span class="nc" id="L2246">			logicModule.registerEventListenerImplementation(Utils.getID(request.getApplicantAccountID()),</span>
+<span class="nc" id="L2247">					Utils.getCredential(request.getCredentials()), eca);</span>
+
+<span class="nc" id="L2249">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2250">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2252">		} catch (final Exception e) {</span>
+<span class="nc" id="L2253">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2254">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2255">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2256">		}</span>
+<span class="nc" id="L2257">	}</span>
+
+	@Override
+	public void adviseEvent(final AdviseEventRequest request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2263">			final EventMessage newEvent = (EventMessage) CommonYAML.getYamlObject().load(request.getEventYaml());</span>
+<span class="nc" id="L2264">			logicModule.adviseEvent(newEvent);</span>
+
+<span class="nc" id="L2266">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2267">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2269">		} catch (final Exception e) {</span>
+<span class="nc" id="L2270">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2271">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2272">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2273">		}</span>
+<span class="nc" id="L2274">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Others.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void getClassNameForDS(final GetClassNameForDSRequest request,
+			final StreamObserver&lt;GetClassNameForDSResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2286">			final String className = logicModule.getClassNameForDS(Utils.getID(request.getClassID()));</span>
+<span class="nc" id="L2287">			final GetClassNameForDSResponse resp = GetClassNameForDSResponse.newBuilder().setClassName(className)</span>
+<span class="nc" id="L2288">					.build();</span>
+<span class="nc" id="L2289">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2290">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2292">		} catch (final Exception e) {</span>
+<span class="nc" id="L2293">			final GetClassNameForDSResponse.Builder builder = GetClassNameForDSResponse.newBuilder();</span>
+<span class="nc" id="L2294">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2295">			final GetClassNameForDSResponse resp = builder.build();</span>
+<span class="nc" id="L2296">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2297">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2298">		}</span>
+<span class="nc" id="L2299">	}</span>
+
+	@Override
+	public void getClassNameAndNamespaceForDS(final GetClassNameAndNamespaceForDSRequest request,
+			final StreamObserver&lt;GetClassNameAndNamespaceForDSResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2306">			final Tuple&lt;String, String&gt; result = logicModule</span>
+<span class="nc" id="L2307">					.getClassNameAndNamespaceForDS(Utils.getID(request.getClassID()));</span>
+<span class="nc" id="L2308">			final GetClassNameAndNamespaceForDSResponse resp = GetClassNameAndNamespaceForDSResponse.newBuilder()</span>
+<span class="nc" id="L2309">					.setClassName(result.getFirst()).setNamespace(result.getSecond()).build();</span>
+<span class="nc" id="L2310">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2311">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2313">		} catch (final Exception ex) {</span>
+<span class="nc" id="L2314">			ex.printStackTrace();</span>
+<span class="nc" id="L2315">			logger.debug(&quot;getClassNameAndNamespaceForDS error&quot;, ex);</span>
+
+			final GetClassNameAndNamespaceForDSResponse.Builder builder = GetClassNameAndNamespaceForDSResponse
+<span class="nc" id="L2318">					.newBuilder();</span>
+<span class="nc" id="L2319">			builder.setExcInfo(Utils.serializeException(ex));</span>
+<span class="nc" id="L2320">			final GetClassNameAndNamespaceForDSResponse resp = builder.build();</span>
+<span class="nc" id="L2321">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2322">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2323">		}</span>
+<span class="nc" id="L2324">	}</span>
+
+	@Override
+	public void getContractIDOfDataClayProvider(final GetContractIDOfDataClayProviderRequest request,
+			final StreamObserver&lt;GetContractIDOfDataClayProviderResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2331">			final ContractID result = logicModule.getContractIDOfDataClayProvider(</span>
+<span class="nc" id="L2332">					Utils.getID(request.getApplicantAccountID()), Utils.getCredential(request.getCredentials()));</span>
+<span class="nc" id="L2333">			final GetContractIDOfDataClayProviderResponse resp = GetContractIDOfDataClayProviderResponse.newBuilder()</span>
+<span class="nc" id="L2334">					.setContractID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L2335">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2336">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2338">		} catch (final Exception e) {</span>
+			final GetContractIDOfDataClayProviderResponse.Builder builder = GetContractIDOfDataClayProviderResponse
+<span class="nc" id="L2340">					.newBuilder();</span>
+<span class="nc" id="L2341">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2342">			final GetContractIDOfDataClayProviderResponse resp = builder.build();</span>
+<span class="nc" id="L2343">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2344">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2345">		}</span>
+<span class="nc" id="L2346">	}</span>
+
+	@Override
+	public void activateTracing(final ActivateTracingRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+
+<span class="nc" id="L2352">		final int currentAvailableTaskID = request.getTaskid();</span>
+		try {
+<span class="nc" id="L2354">			logicModule.activateTracing(currentAvailableTaskID);</span>
+<span class="nc" id="L2355">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2356">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2357">		} catch (final Exception e) {</span>
+<span class="nc" id="L2358">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2359">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2360">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2361">		}</span>
+		
+<span class="nc" id="L2363">	}</span>
+
+	@Override
+	public void deactivateTracing(final EmptyMessage request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2368">			logicModule.deactivateTracing();</span>
+<span class="nc" id="L2369">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2370">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2371">		} catch (final Exception e) {</span>
+<span class="nc" id="L2372">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2373">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2374">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2375">		}</span>
+<span class="nc" id="L2376">	}</span>
+
+	@Override
+	public void getTraces(final EmptyMessage request, final StreamObserver&lt;GetTracesResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L2381">			final Map&lt;String, byte[]&gt; traces = logicModule.getTraces();</span>
+<span class="nc" id="L2382">			final GetTracesResponse.Builder builder = GetTracesResponse.newBuilder();</span>
+<span class="nc bnc" id="L2383" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; entry : traces.entrySet()) {</span>
+<span class="nc" id="L2384">				builder.putTraces(entry.getKey(), ByteString.copyFrom(entry.getValue()));</span>
+<span class="nc" id="L2385">			}</span>
+
+<span class="nc" id="L2387">			final GetTracesResponse resp = builder.build();</span>
+<span class="nc" id="L2388">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2389">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2391">		} catch (final Exception e) {</span>
+<span class="nc" id="L2392">			final GetTracesResponse.Builder builder = GetTracesResponse.newBuilder();</span>
+<span class="nc" id="L2393">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2394">			final GetTracesResponse resp = builder.build();</span>
+<span class="nc" id="L2395">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2396">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2397">		}</span>
+<span class="nc" id="L2398">	}</span>
+
+	
+	@Override
+	public void cleanMetaDataCaches(final EmptyMessage request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2404">			logicModule.cleanMetaDataCaches();</span>
+
+<span class="nc" id="L2406">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2407">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2408">		} catch (final Exception e) {</span>
+<span class="nc" id="L2409">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2410">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2411">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2412">		}</span>
+<span class="nc" id="L2413">	}</span>
+
+	@Override
+	public void closeManagerDb(final EmptyMessage request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2418">			logicModule.closeManagerDb();</span>
+
+<span class="nc" id="L2420">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2421">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2422">		} catch (final Exception e) {</span>
+<span class="nc" id="L2423">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2424">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2425">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2426">		}</span>
+<span class="nc" id="L2427">	}</span>
+
+	@Override
+	public void closeDb(final EmptyMessage request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2432">			logicModule.closeDb();</span>
+<span class="nc" id="L2433">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2434">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2435">		} catch (final Exception e) {</span>
+<span class="nc" id="L2436">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2437">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2438">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2439">		}</span>
+<span class="nc" id="L2440">	}</span>
+
+	@Override
+	public void setDataSetID(final SetDataSetIDRequest request, final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L2447">			logicModule.setDataSetID(Utils.getID(request.getSessionID()), Utils.getID(request.getObjectID()),</span>
+<span class="nc" id="L2448">					Utils.getID(request.getDatasetID()));</span>
+
+<span class="nc" id="L2450">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2451">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2452">		} catch (final Exception e) {</span>
+<span class="nc" id="L2453">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2454">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2455">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2456">		}</span>
+<span class="nc" id="L2457">	}</span>
+
+	@Override
+	public void setDataSetIDFromGarbageCollector(final SetDataSetIDFromGarbageCollectorRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L2465">			logicModule.setDataSetIDFromGarbageCollector(Utils.getID(request.getObjectID()),</span>
+<span class="nc" id="L2466">					Utils.getID(request.getDatasetID()));</span>
+
+<span class="nc" id="L2468">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2469">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2470">		} catch (final Exception e) {</span>
+<span class="nc" id="L2471">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2472">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2473">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2474">		}</span>
+<span class="nc" id="L2475">	}</span>
+
+	@Override
+	public void unregisterObjects(final UnregisterObjectsRequest request,
+			final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2481">			final Set&lt;ObjectID&gt; objectsToUnregister = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L2482" title="All 2 branches missed.">			for (final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID oid : request</span>
+<span class="nc" id="L2483">					.getObjectsToUnregisterList()) {</span>
+<span class="nc" id="L2484">				objectsToUnregister.add(Utils.getID(oid));</span>
+<span class="nc" id="L2485">			}</span>
+<span class="nc" id="L2486">			logicModule.unregisterObjects(objectsToUnregister);</span>
+
+<span class="nc" id="L2488">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2489">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2491">		} catch (final Exception e) {</span>
+<span class="nc" id="L2492">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2493">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2494">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2495">		}</span>
+<span class="nc" id="L2496">	}</span>
+
+	@Override
+	public void getClassesInNamespace(final GetClassesInNamespaceRequest request,
+								  final StreamObserver&lt;GetClassesInNamespaceResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2503">			Tuple&lt;Namespace, Set&lt;MetaClass&gt;&gt; result = logicModule.getClassesInNamespace(request.getNamespaceName());</span>
+<span class="nc" id="L2504">			Namespace namespace = result.getFirst();</span>
+<span class="nc" id="L2505">			Set&lt;MetaClass&gt; metaClasses = result.getSecond();</span>
+<span class="nc" id="L2506">			final GetClassesInNamespaceResponse.Builder builder = GetClassesInNamespaceResponse.newBuilder();</span>
+<span class="nc" id="L2507">			builder.setNamespaceYaml(CommonYAML.getYamlObject().dump(namespace));</span>
+<span class="nc bnc" id="L2508" title="All 2 branches missed.">			for (final MetaClass mClass : metaClasses) {</span>
+<span class="nc" id="L2509">				builder.addMetaClassYaml(CommonYAML.getYamlObject().dump(mClass));</span>
+<span class="nc" id="L2510">			}</span>
+
+<span class="nc" id="L2512">			final GetClassesInNamespaceResponse resp = builder.build();</span>
+<span class="nc" id="L2513">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2514">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2516">		} catch (final Exception e) {</span>
+<span class="nc" id="L2517">			final GetClassesInNamespaceResponse.Builder builder = GetClassesInNamespaceResponse.newBuilder();</span>
+<span class="nc" id="L2518">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2519">			final GetClassesInNamespaceResponse resp = builder.build();</span>
+<span class="nc" id="L2520">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2521">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2522">		}</span>
+<span class="nc" id="L2523">	}</span>
+
+	@Override
+	public void importModelsFromExternalDataClay(final ImportModelsFromExternalDataClayRequest request,
+									   final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2529">			logicModule.importModelsFromExternalDataClay(request.getNamespaceName(),</span>
+<span class="nc" id="L2530">					Utils.getID(request.getDataClayID()));</span>
+<span class="nc" id="L2531">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2532">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2534">		} catch (final Exception e) {</span>
+<span class="nc" id="L2535">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2536">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2537">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2538">		}</span>
+<span class="nc" id="L2539">	}</span>
+
+
+	@Override
+	public void getStorageLocationID(final GetStorageLocationIDRequest request,
+									  final StreamObserver&lt;GetStorageLocationIDResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2547">			StorageLocationID result = logicModule.getStorageLocationID(request.getSlName());</span>
+<span class="nc" id="L2548">			final GetStorageLocationIDResponse resp = GetStorageLocationIDResponse.newBuilder()</span>
+<span class="nc" id="L2549">					.setStorageLocationID(Utils.getMsgID(result)).build();</span>
+<span class="nc" id="L2550">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2551">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2553">		} catch (final Exception e) {</span>
+<span class="nc" id="L2554">			final GetStorageLocationIDResponse.Builder builder = GetStorageLocationIDResponse.newBuilder();</span>
+<span class="nc" id="L2555">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2556">			final GetStorageLocationIDResponse resp = builder.build();</span>
+<span class="nc" id="L2557">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2558">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2559">		}</span>
+<span class="nc" id="L2560">	}</span>
+
+	@Override
+	public void notifyExecutionEnvironmentShutdown(final NotifyExecutionEnvironmentShutdownRequest request,
+												 final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2566">			logicModule.notifyExecutionEnvironmentShutdown(</span>
+<span class="nc" id="L2567">					Utils.getID(request.getExecutionEnvironmentID()));</span>
+<span class="nc" id="L2568">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2569">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2571">		} catch (final Exception e) {</span>
+<span class="nc" id="L2572">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2573">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2574">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2575">		}</span>
+<span class="nc" id="L2576">	}</span>
+
+	@Override
+	public void notifyStorageLocationShutdown(final NotifyStorageLocationShutdownRequest request,
+												   final StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L2582">			logicModule.notifyStorageLocationShutdown(</span>
+<span class="nc" id="L2583">					Utils.getID(request.getStorageLocationID()));</span>
+<span class="nc" id="L2584">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L2585">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2587">		} catch (final Exception e) {</span>
+<span class="nc" id="L2588">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L2589">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2590">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2591">		}</span>
+<span class="nc" id="L2592">	}</span>
+
+	@Override
+	public void existsActiveEnvironmentsForSL(final ExistsActiveEnvironmentsForSLRequest request,
+									 final StreamObserver&lt;ExistsActiveEnvironmentsForSLResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L2599">			boolean result = logicModule.existsActiveEnvironmentsForSL(Utils.getID(request.getStorageLocationID()));</span>
+<span class="nc" id="L2600">			final ExistsActiveEnvironmentsForSLResponse resp = ExistsActiveEnvironmentsForSLResponse.newBuilder()</span>
+<span class="nc" id="L2601">					.setExists(result).build();</span>
+<span class="nc" id="L2602">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2603">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L2605">		} catch (final Exception e) {</span>
+<span class="nc" id="L2606">			final ExistsActiveEnvironmentsForSLResponse.Builder builder = ExistsActiveEnvironmentsForSLResponse.newBuilder();</span>
+<span class="nc" id="L2607">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L2608">			final ExistsActiveEnvironmentsForSLResponse resp = builder.build();</span>
+<span class="nc" id="L2609">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L2610">			responseObserver.onCompleted();</span>
+<span class="nc" id="L2611">		}</span>
+<span class="nc" id="L2612">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

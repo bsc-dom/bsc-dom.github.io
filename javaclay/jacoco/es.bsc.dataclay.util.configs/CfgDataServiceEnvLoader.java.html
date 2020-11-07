@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CfgDataServiceEnvLoader.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.configs</a> &gt; <span class="el_source">CfgDataServiceEnvLoader.java</span></div><h1>CfgDataServiceEnvLoader.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.configs;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.EnumMap;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.dbhandler.DBHandlerConf;
+import es.bsc.dataclay.dbhandler.DBHandlerFactory.DBHandlerType;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteHandlerConfig;
+import es.bsc.dataclay.exceptions.DataClayRuntimeException;
+import es.bsc.dataclay.exceptions.ErrorDefs.ERRORCODE;
+import es.bsc.dataclay.util.ProcessEnvironment;
+import es.bsc.dataclay.util.Configuration.Flags;
+
+/**
+ * This class parses the environment variables and generates a DataService configuration.
+ * 
+ * @see CfgManager
+ */
+public final class CfgDataServiceEnvLoader {
+
+	/** Logger. */
+<span class="nc" id="L30">	private static final Logger LOGGER = LogManager.getLogger(&quot;CfgDataService&quot;);</span>
+	
+	/** Name of the DBHandlerConf for NVRAM (external JAR, dynamically loaded when needed). */
+	private static final String NVRAM_HANDLER_CONF_CLASS_NAME = &quot;es.bsc.dataclay.dbhandler.nvram.NVRAMHandlerConf&quot;;
+
+	/**
+	 * Constructor
+	 * @throws IllegalAccessException
+	 *             Prevent instantiation
+	 */
+<span class="nc" id="L40">	private CfgDataServiceEnvLoader() throws IllegalAccessException {</span>
+<span class="nc" id="L41">		throw new IllegalAccessException(&quot;This class cannot be instantiated&quot;);</span>
+	}
+
+	/**
+	 * The configurable properties.
+	 * 
+	 */
+<span class="nc" id="L48">	public enum ConfigDataServiceProperties {</span>
+
+		/** DataService name environment variable name. */
+<span class="nc" id="L51">		DS_NAME(null),</span>
+		/** DataService hostname environment variable name. */
+<span class="nc" id="L53">		DS_HOSTNAME(null),</span>
+		/** DataService TCP port environment variable name. */
+<span class="nc" id="L55">		DS_TCPPORT(null),</span>
+		/** DbHandler type field name. */
+<span class="nc" id="L57">		DBHANDLER_TYPE(null),</span>
+		/** DbHandler path field name. */
+<span class="nc" id="L59">		DB_PATH(DBHANDLER_TYPE),</span>
+		/** DataService paraver tag. */
+<span class="nc" id="L61">		DS_PARAVERTAG(null);</span>
+
+		/** DbHandler type. */
+<span class="nc" id="L64">		private ConfigDataServiceProperties dbhandlerType = null;</span>
+
+		/**
+		 * ConfigDataServiceProperties constructor
+		 * @param newdbhandlerType
+		 *            DbHandler type
+		 */
+<span class="nc" id="L71">		ConfigDataServiceProperties(final ConfigDataServiceProperties newdbhandlerType) {</span>
+<span class="nc" id="L72">			this.setDbhandlerType(newdbhandlerType);</span>
+<span class="nc" id="L73">		}</span>
+
+		/**
+		 * Get the {@link #dbhandlerType}
+		 * @return the dbhandlerType
+		 */
+
+		public ConfigDataServiceProperties getDbhandlerType() {
+<span class="nc" id="L81">			return dbhandlerType;</span>
+		}
+
+		/**
+		 * Set the {@link #dbhandlerType}
+		 * @param newdbhandlerType
+		 *            the dbhandlerType to set
+		 */
+		public void setDbhandlerType(final ConfigDataServiceProperties newdbhandlerType) {
+<span class="nc" id="L90">			this.dbhandlerType = newdbhandlerType;</span>
+<span class="nc" id="L91">		}</span>
+	}
+
+	/** The names of the config tags. */
+	public static final Map&lt;ConfigDataServiceProperties, String&gt; ENVVAR_NAMES;
+
+	/**
+	 * Association between keys and strings that the configuration file must contain. It means, to look for a manager Port,
+	 *        the parser must search &quot;DataServicePort&quot;.
+	 */
+	static {
+<span class="nc" id="L102">		ENVVAR_NAMES = new EnumMap&lt;&gt;(ConfigDataServiceProperties.class);</span>
+<span class="nc" id="L103">		ENVVAR_NAMES.put(ConfigDataServiceProperties.DS_NAME, &quot;DATASERVICE_NAME&quot;);</span>
+<span class="nc" id="L104">		ENVVAR_NAMES.put(ConfigDataServiceProperties.DS_HOSTNAME, &quot;DATASERVICE_HOST&quot;);</span>
+<span class="nc" id="L105">		ENVVAR_NAMES.put(ConfigDataServiceProperties.DS_TCPPORT, &quot;DATASERVICE_JAVA_PORT_TCP&quot;);</span>
+<span class="nc" id="L106">		ENVVAR_NAMES.put(ConfigDataServiceProperties.DBHANDLER_TYPE, &quot;DATASERVICE_DBHANDLER_TYPE&quot;);</span>
+<span class="nc" id="L107">		ENVVAR_NAMES.put(ConfigDataServiceProperties.DB_PATH, &quot;DATASERVICE_DB_PATH&quot;);</span>
+<span class="nc" id="L108">	}</span>
+
+	/**
+	 * This method parses the configuration from the environment
+	 * @return The configuration of a DataService
+	 */
+	public static CfgDataService parseConfiguration() {
+<span class="nc" id="L115">		final String name = ProcessEnvironment.getInstance().get(CfgDataServiceEnvLoader.ENVVAR_NAMES.get(ConfigDataServiceProperties.DS_NAME));</span>
+
+		/* @pierlauro sept. 2018
+			TODO Change this ugly thing: it should be completely removed any static method to parse the configuration
+			and instead of environment variables it should be used a configuration file
+		*/
+
+<span class="nc" id="L122">		final DBHandlerType dbHandlerType = (DBHandlerType)Flags.DB_HANDLER_TYPE_FOR_DATASERVICES.getValue();</span>
+
+<span class="nc" id="L124">		final DBHandlerConf dbHandlerConf = parseConfiguration(dbHandlerType, name);</span>
+
+<span class="nc" id="L126">		String hostname = ProcessEnvironment.getInstance().get(CfgDataServiceEnvLoader.ENVVAR_NAMES.get(ConfigDataServiceProperties.DS_HOSTNAME));</span>
+
+<span class="nc bnc" id="L128" title="All 4 branches missed.">		if (hostname == null || hostname.isEmpty()) {</span>
+			try {
+<span class="nc" id="L130">				hostname = InetAddress.getLocalHost().getHostAddress();</span>
+<span class="nc" id="L131">				LOGGER.info(&quot;Resolved inet address : &quot; + InetAddress.getLocalHost());</span>
+<span class="nc" id="L132">				LOGGER.info(&quot;Resolved hostname : &quot; + hostname);</span>
+<span class="nc" id="L133">			} catch (final UnknownHostException e) {</span>
+<span class="nc" id="L134">				LOGGER.info(&quot;Unknown hostname, using 127.0.0.1&quot;);</span>
+				// Fallback: localhost
+<span class="nc" id="L136">				hostname = &quot;127.0.0.1&quot;;</span>
+<span class="nc" id="L137">			}</span>
+		}
+		
+<span class="nc" id="L140">		final int tcpPort = new Integer(ProcessEnvironment.getInstance().get(CfgDataServiceEnvLoader.ENVVAR_NAMES.get(</span>
+				ConfigDataServiceProperties.DS_TCPPORT)));
+
+<span class="nc" id="L143">		return new CfgDataService(name, hostname, tcpPort, dbHandlerConf);</span>
+	}
+
+	/**
+	 * Parse the configuration regarding the DBHandler.
+	 * 
+	 * @param dbHandlerType The specific type that should be used as the DBHandler.
+	 * @param name Extra parameters in the configuration for the DBHandler.
+	 * @return A DBHandlerConf for the specific DBHandler, null if not required.
+	 */
+	private static DBHandlerConf parseConfiguration(final DBHandlerType dbHandlerType, final String name) {
+<span class="nc bnc" id="L154" title="All 3 branches missed.">		switch(dbHandlerType) {</span>
+		case SQLITE:
+<span class="nc" id="L156">			return new SQLiteHandlerConfig(name);</span>
+		case NVRAM:
+			try {
+<span class="nc" id="L159">				final Class&lt;?&gt; nvramHandlerConfClass = Class.forName(NVRAM_HANDLER_CONF_CLASS_NAME);</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">				if (DBHandlerConf.class.isAssignableFrom(nvramHandlerConfClass)) {</span>
+<span class="nc" id="L161">					final Constructor&lt;?&gt; constructor = nvramHandlerConfClass.getConstructor(String.class);</span>
+<span class="nc" id="L162">					return (DBHandlerConf) constructor.newInstance(name);</span>
+				} else {
+<span class="nc" id="L164">					throw new IllegalArgumentException(&quot;Class NVRAMHandlerConfClass is not a DBHandlerConf&quot;);</span>
+				}
+<span class="nc" id="L166">			} catch (final ClassNotFoundException ex) {</span>
+<span class="nc" id="L167">				throw new IllegalArgumentException(&quot;Could not import class for NVRAMHandlerConf, dependencies error&quot;);</span>
+<span class="nc" id="L168">			} catch (final NoSuchMethodException ex) {</span>
+<span class="nc" id="L169">				throw new IllegalArgumentException(&quot;Could not call NVRAMHandlerConf constructor&quot;);</span>
+<span class="nc" id="L170">			} catch (final InstantiationException ex) {</span>
+<span class="nc" id="L171">				throw new IllegalArgumentException(&quot;Could not instantiate a NVRAMHandlerConf instance&quot;);</span>
+<span class="nc" id="L172">			} catch (final InvocationTargetException ex) {</span>
+<span class="nc" id="L173">				throw new IllegalArgumentException(&quot;Could not invocate the NVRAMHandlerConf constructor&quot;);</span>
+<span class="nc" id="L174">			} catch (final IllegalAccessException ex) {</span>
+<span class="nc" id="L175">				throw new IllegalArgumentException(&quot;Could not legally access and call the NVRAMHandlerConf constructor&quot;);</span>
+			}
+		default:
+<span class="nc" id="L178">			throw new DataClayRuntimeException(ERRORCODE.BAD_DEFINED_DBHANDLER_CONF, &quot;Bad defined DbHandler configuration&quot;, false);</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

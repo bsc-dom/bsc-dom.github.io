@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ErrorDefs.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.exceptions</a> &gt; <span class="el_source">ErrorDefs.java</span></div><h1>ErrorDefs.java</h1><pre class="source lang-java linenums">
+/**
+ * @file ErrorDefs.java
+ * 
+ * @date Oct 22, 2012
+ */
+
+package es.bsc.dataclay.exceptions;
+
+import java.util.ResourceBundle;
+
+/**
+ * This class contains all errors that Logic Module must return in case of an Exception in any manager.
+ * 
+ * 
+ */
+<span class="nc" id="L17">public final class ErrorDefs {</span>
+
+	/** Error code properties file. */
+<span class="nc" id="L20">	private static ResourceBundle errorProps = null;</span>
+
+	/**
+	 * Enum for the error codes.
+	 */
+<span class="fc" id="L25">	public enum ERRORCODE {</span>
+		/** DB backend failure. */
+<span class="fc" id="L27">		DB_EXCEPTION,</span>
+
+		/** Some parameter is null or empty. */
+<span class="fc" id="L30">		NULL_OR_EMPTY_PARAMETER_EXCEPTION,</span>
+		
+		/** Some parameter has non-valid value. */
+<span class="fc" id="L33">		INVALID_PARAMETER_EXCEPTION,</span>
+
+		// DBHANDLER ERRORS
+		/** DbHandlerConf is bad defined. */
+<span class="fc" id="L37">		BAD_DEFINED_DBHANDLER_CONF,</span>
+
+		// ACCOUNT ERRORS
+		/** Account already exists. */
+<span class="fc" id="L41">		ACCOUNT_EXISTS,</span>
+		/** Account does not exist. */
+<span class="fc" id="L43">		ACCOUNT_NOT_EXIST,</span>
+		/** Account invalid credentials. */
+<span class="fc" id="L45">		INVALID_CREDENTIALS,</span>
+
+		// CLASS ERRORS
+		/** Class does not exist. */
+<span class="fc" id="L49">		CLASS_NOT_EXIST,</span>
+		/** Class language dependant info already registered. */
+<span class="fc" id="L51">		CLASS_LANG_DEP_INFO_ALREADY_REGISTERED,</span>
+		/** Class found an Unsupported Language. */
+<span class="fc" id="L53">		CLASS_UNSUPPORTED_LANGUAGE,</span>
+		/** Property language dependant info already registered. */
+<span class="fc" id="L55">		PROP_LANG_DEP_INFO_ALREADY_REGISTERED,</span>
+		/** Type language dependant info already registered. */
+<span class="fc" id="L57">		TYPE_LANG_DEP_INFO_ALREADY_REGISTERED,</span>
+		/** Operation language dependant info already registered. */
+<span class="fc" id="L59">		OP_LANG_DEP_INFO_ALREADY_REGISTERED,</span>
+		/** Incompatible language of class with namespace where it is being registered. */
+<span class="fc" id="L61">		INCOMPATIBLE_LANGUAGE_FOR_CLASS_WITH_NAMESPACE,</span>
+		/** Property does not exist. */
+<span class="fc" id="L63">		PROPERTY_NOT_EXIST,</span>
+		/** Property not in class. */
+<span class="fc" id="L65">		PROPERTY_NOT_IN_CLASS,</span>
+		/** Property already in class. */
+<span class="fc" id="L67">		PROPERTY_ALREADY_IN_CLASS,</span>
+		/** Default getter and setter operations cannot be removed. */
+<span class="fc" id="L69">		DEFAULT_GETTER_SETTER_OPERATION_CANNOT_BE_REMOVED,</span>
+		/** Operation does not exist. */
+<span class="fc" id="L71">		OPERATION_NOT_EXIST,</span>
+		/** Operation not in class. */
+<span class="fc" id="L73">		OPERATION_NOT_IN_CLASS,</span>
+		/** Operation already exists in class. */
+<span class="fc" id="L75">		OPERATION_ALREADY_IN_CLASS,</span>
+		/** Implementation does not exist. */
+<span class="fc" id="L77">		IMPLEMENTATION_NOT_EXIST,</span>
+		/** Implementation not compatible with its operation. */
+<span class="fc" id="L79">		INCOMPATIBLE_IMPLEMENTATION,</span>
+		/** Operation has no other implementation. */
+<span class="fc" id="L81">		NO_OTHER_IMPL_FOR_OPERATION,</span>
+		/** Some implementation accesses the operation. */
+<span class="fc" id="L83">		SOME_IMPLEMENTATIONS_ACCESS_OPERATION,</span>
+
+		// NAMESPACE ERRORS
+		/** Namespace already exists. */
+<span class="fc" id="L87">		NAMESPACE_EXISTS,</span>
+		/** Namespace does not exist. */
+<span class="fc" id="L89">		NAMESPACE_NOT_EXIST,</span>
+		/** Wrong namespace responsible provided. */
+<span class="fc" id="L91">		BAD_NAMESPACE_RESPONSIBLE,</span>
+		/** Namespace has classes. */
+<span class="fc" id="L93">		NAMESPACE_WITH_CLASSES,</span>
+		/** Namespace has contracts. */
+<span class="fc" id="L95">		NAMESPACE_WITH_CONTRACTS,</span>
+
+		// DATASET ERRORS
+		/** DataSet already exists. */
+<span class="fc" id="L99">		DATASET_EXISTS,</span>
+		/** DataSet does not exist. */
+<span class="fc" id="L101">		DATASET_NOT_EXIST,</span>
+		/** DataSet with objects. */
+<span class="fc" id="L103">		DATASET_NOT_EMPTY,</span>
+		/** Wrong dataset responsible provided. */
+<span class="fc" id="L105">		BAD_DATASET_RESPONSIBLE,</span>
+
+		// INTERFACE ERRORS
+		/** Interface does not exist. */
+<span class="fc" id="L109">		INTERFACE_NOT_EXIST,</span>
+		/** Operation already in interface. */
+<span class="fc" id="L111">		OPERATION_ALREADY_IN_INTERFACE,</span>
+		/** Operation not in interface. */
+<span class="fc" id="L113">		OPERATION_NOT_IN_INTERFACE,</span>
+		/** Interface has contracts. */
+<span class="fc" id="L115">		INTERFACE_WITH_CONTRACTS,</span>
+		/** Interface is &quot;bad&quot;, or inconsistent with neighbors. */
+<span class="fc" id="L117">		BAD_INTERFACE,</span>
+
+		// CONTRACT ERRORS
+		/** Account already registered in contract. */
+<span class="fc" id="L121">		ACCOUNT_ALREADY_REGISTERED_IN_CONTRACT,</span>
+		/** Account not registered in contract. */
+<span class="fc" id="L123">		ACCOUNT_NOT_REGISTERED_IN_CONTRACT,</span>
+		/** Contract does not exist. */
+<span class="fc" id="L125">		CONTRACT_NOT_EXIST,</span>
+		/** Contract is not active. */
+<span class="fc" id="L127">		CONTRACT_NOT_ACTIVE,</span>
+		/** Contract is not public. */
+<span class="fc" id="L129">		CONTRACT_NOT_PUBLIC,</span>
+		/** Interface is not in contract. */
+<span class="fc" id="L131">		INTERFACE_NOT_IN_CONTRACT,</span>
+		/** Interface is not in contract. */
+<span class="fc" id="L133">		INTERFACE_NOT_ACCESSIBLE,</span>
+		/** Contract is duplicated. */
+<span class="fc" id="L135">		CONTRACT_DUPLICATION,</span>
+		/** Bad contract defined. */
+<span class="fc" id="L137">		BAD_CONTRACT,</span>
+		/** Wrong dates in contract. */
+<span class="fc" id="L139">		BAD_DATES,</span>
+		/** Some interfaces belongs to the same metaclass. */
+<span class="fc" id="L141">		SOME_INTERFACES_WITH_SAME_METACLASS,</span>
+		/** Some operation has no accessible implementation. */
+<span class="fc" id="L143">		SOME_OPERATION_WITH_NO_ACCESSIBLE_IMPL,</span>
+		/** Implementation is accessible from contracts. */
+<span class="fc" id="L145">		IMPL_ACCESSIBLE_FROM_CONTRACTS,</span>
+
+		// DATA CONTRACT ERRORS
+		/** Account already has a contract with a certain dataset as provider. */
+<span class="fc" id="L149">		ACCOUNT_ALREADY_HAS_A_DATACONTRACT_WITH_PROVIDER,</span>
+		/** Account has no contract with a certain dataset as provider. */
+<span class="fc" id="L151">		ACCOUNT_HAS_NO_DATACONTRACT_WITH_PROVIDER,</span>
+		/** Contract does not exist. */
+<span class="fc" id="L153">		DATACONTRACT_NOT_EXIST,</span>
+		/** Contract is not active. */
+<span class="fc" id="L155">		DATACONTRACT_NOT_ACTIVE,</span>
+		/** Contract is not public. */
+<span class="fc" id="L157">		DATACONTRACT_NOT_PUBLIC,</span>
+		/** Dataset with contracts. */
+<span class="fc" id="L159">		DATASET_WITH_DATACONTRACTS,</span>
+
+		// DATA SERVICE
+		/** Execute method error. */
+<span class="fc" id="L163">		EXECUTE_METHOD_ERROR,</span>
+		/** Object does not exist. */
+<span class="fc" id="L165">		OBJECT_NOT_EXIST,</span>
+		/** Data Service initialization error. */
+<span class="fc" id="L167">		DATASERVICE_INIT_ERROR,</span>
+		/** Error when deploying a class. */
+<span class="fc" id="L169">		CLASS_DEPLOYMENT_ERROR,</span>
+
+		/** Error produced during an execution of a user registered class. */
+<span class="fc" id="L172">		LANGUAGE_EXECUTION_EXCEPTION,</span>
+
+		/** Cannot clean execution classes directory. */
+<span class="fc" id="L175">		CLEAN_EXEC_CLASSES_DIR_ERROR, </span>
+		/** Error while deploying library. */
+<span class="fc" id="L177">		ERROR_DEPLOYING_LIB,</span>
+
+		// METADATASERVICE
+		/** Backend already exists. */
+<span class="fc" id="L181">		STORAGE_LOCATION_ALREADY_EXIST,</span>
+		/** Backend does not exist. */
+<span class="fc" id="L183">		STORAGE_LOCATION_NOT_EXIST,</span>
+		/** Backend unreachable. */
+<span class="fc" id="L185">		STORAGE_LOCATION_UNREACHABLE,</span>
+		/** Backend already exists. */
+<span class="fc" id="L187">		EXECUTION_ENVIRONMENT_ALREADY_EXIST,</span>
+		/** Backend does not exist. */
+<span class="fc" id="L189">		EXECUTION_ENVIRONMENT_NOT_EXIST,</span>
+		/** Object already registered in MDS. */
+<span class="fc" id="L191">		OBJECT_ALREADY_REGISTERED,</span>
+		/** Alias already exists. */
+<span class="fc" id="L193">		ALIAS_ALREADY_EXISTS,</span>
+		/** Multiple aliases on one object. */
+<span class="fc" id="L195">		MULTIPLE_ALIASES,</span>
+		/** Object has replicas. */
+<span class="fc" id="L197">		OBJECT_HAS_REPLICAS, </span>
+		/** Object is not readonly. */
+<span class="fc" id="L199">		OBJECT_IS_NOT_READONLY, </span>
+		/** Object is readonly. */
+<span class="fc" id="L201">		OBJECT_IS_READONLY, </span>
+		/** Object is not in backend. */
+<span class="fc" id="L203">		OBJECT_NOT_IN_BACKEND,</span>
+		/** External dataClay instance is not registered. */
+<span class="fc" id="L205">		EXTERNAL_DATACLAY_NOT_REGISTERED,</span>
+
+		// IMPORTS
+		/** Interface already imported. */
+<span class="fc" id="L209">		INTERFACE_ALREADY_IMPORTED,</span>
+		/** Interface not imported. */
+<span class="fc" id="L211">		INTERFACE_NOT_IMPORTED,</span>
+		/** Interface to import was created in target namespace. */
+<span class="fc" id="L213">		IMPORTED_INTERFACE_WAS_CREATED_IN_TARGET_NAMESPACE,</span>
+		/** Class of imported interface was created in target namespace. */
+<span class="fc" id="L215">		CLASS_OF_IMPORTED_INTERFACE_WAS_CREATED_IN_TARGET_NAMESPACE,</span>
+		/** Class with same name in namespace. */
+<span class="fc" id="L217">		CLASS_WITH_SAME_NAME_IN_NAMESPACE,</span>
+		/** Imported interface in use. */
+<span class="fc" id="L219">		IMPORTED_INTERFACE_IN_USE,</span>
+		/** Class is not imported. */
+<span class="fc" id="L221">		CLASS_NOT_IMPORTED,</span>
+		/** Class not created in namespace or not imported. */
+<span class="fc" id="L223">		CLASS_NOT_CREATED_IN_NAMESPACE_NOR_IMPORTED,</span>
+		/** Bad imports. */
+<span class="fc" id="L225">		BAD_IMPORTS,</span>
+
+		// SESSION MANAGER
+		/** Appliable end deta for session is before current date. */
+<span class="fc" id="L229">		APPLIABLE_END_DATE_FOR_SESSION_IS_BEFORE_CURRENT_DATE, </span>
+		/** Session does not match requirements. */
+<span class="fc" id="L231">		SESSION_DOES_NOT_MATCH_REQ,</span>
+		/** Session is not active. */
+<span class="fc" id="L233">		SESSION_IS_NOT_ACTIVE,</span>
+		/** Session not of account. */
+<span class="fc" id="L235">		SESSION_NOT_EXISTS,</span>
+		/** The data set specified for storing new objects is not present among the given data contracts. */
+<span class="fc" id="L237">		DATASET_FOR_STORE_NOT_AMONG_DATACONTRACTS,</span>
+		/** The data set of an object is not among the available data contracts. */
+<span class="fc" id="L239">		DATASET_NOT_AMONG_DATACONTRACTS,</span>
+
+		/** Class is included. */
+<span class="fc" id="L242">		CLASS_INCLUDED,</span>
+		/** DataService Backend not answering. */
+<span class="fc" id="L244">		DATASERVICE_BACKEND_NOT_RESPONDS,</span>
+
+		// DB HANDLER
+		/** Object not exists in database. */
+<span class="fc" id="L248">		OBJECT_NOT_EXISTS_IN_DB,</span>
+		/** Object already exists in database. */
+<span class="fc" id="L250">		OBJECT_EXISTS_IN_DB,</span>
+
+		// TCP COMMUNICATION PROTOCOL
+		/** Request was interrupted. */
+<span class="fc" id="L254">		REQUEST_INTERRUPTED,</span>
+		/** Unexpected exception. */
+<span class="fc" id="L256">		UNEXPECTED_EXCEPTION,</span>
+
+		// NOTIFICATION MGR
+		/** Event listener already registered. */
+<span class="fc" id="L260">		EVENT_LISTENER_ALREADY_REGISTERED,</span>
+		/** Event objs meet condition already registered. */
+<span class="fc" id="L262">		EVENT_OBJS_MEET_CONDITION_ALREADY_REGISTERED,</span>
+		/** Event listener not registered. */
+<span class="fc" id="L264">		EVENT_LISTENER_NOT_REGISTERED,</span>
+		/** Event message not registered. */
+<span class="fc" id="L266">		EVENT_MESSAGE_NOT_REGISTERED,</span>
+
+		// REGISTER LISTENER
+		/**  */
+		/** Metaclass does not exist. */
+<span class="fc" id="L271">		METACLASSID_NOT_EXIST,</span>
+		/** MetadataInfo was not found. */
+<span class="fc" id="L273">		METADATAINFO_WAS_NOT_FOUND,</span>
+		/** FilterMethod must not have parameters. */
+<span class="fc" id="L275">		FILTERMETHOD_MUST_NOT_HAVE_PARAMETERS,</span>
+		/** FilterMethod must return a boolean. */
+<span class="fc" id="L277">		FILTERMETHOD_MUST_RETURN_A_BOOLEAN,</span>
+		/** FilterMethod was not found. */
+<span class="fc" id="L279">		FILTERMETHOD_WAS_NOT_FOUND,</span>
+
+		// Others
+		/** Generic java exception. */
+<span class="fc" id="L283">		UNKNOWN_EXCEPTION;</span>
+
+		/**
+		 * Init properties
+		 */
+		private void init() {
+<span class="nc bnc" id="L289" title="All 2 branches missed.">			if (errorProps == null) {</span>
+<span class="nc" id="L290">				errorProps = ResourceBundle.getBundle(&quot;properties.errorcodes&quot;);</span>
+			}
+<span class="nc" id="L292">			final Integer errvalue = Integer.valueOf(errorProps.getString(this.name()));</span>
+<span class="nc" id="L293">			setErrorID(errvalue);</span>
+<span class="nc" id="L294">		}</span>
+
+		/** Error code ID. */
+<span class="fc" id="L297">		private Integer errorID = null;</span>
+
+		/**
+		 * Get the ERRORCODE::errorID
+		 * @return the errorID
+		 */
+		public int getErrorID() {
+<span class="nc bnc" id="L304" title="All 2 branches missed.">			if (errorID == null) {</span>
+<span class="nc" id="L305">				init();</span>
+			}
+<span class="nc" id="L307">			return errorID;</span>
+		}
+
+		/**
+		 * Set the ERRORCODE::errorID
+		 * @param newerrorID
+		 *            the errorID to set
+		 */
+		public void setErrorID(final int newerrorID) {
+<span class="nc" id="L316">			this.errorID = newerrorID;</span>
+<span class="nc" id="L317">		}</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

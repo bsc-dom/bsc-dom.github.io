@@ -1,0 +1,2014 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClientManagementLib.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.commonruntime</a> &gt; <span class="el_source">ClientManagementLib.java</span></div><h1>ClientManagementLib.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.commonruntime;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.rmi.RemoteException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.DataClayMockObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.FileAndAspectsUtils;
+import es.bsc.dataclay.util.ProcessEnvironment;
+import es.bsc.dataclay.util.events.listeners.ECA;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.DataContractID;
+import es.bsc.dataclay.util.ids.DataSetID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.ids.SessionID;
+import es.bsc.dataclay.util.management.accountmgr.Account;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.contractmgr.Contract;
+import es.bsc.dataclay.util.management.datacontractmgr.DataContract;
+import es.bsc.dataclay.util.management.datasetmgr.DataSet;
+import es.bsc.dataclay.util.management.interfacemgr.Interface;
+import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
+import es.bsc.dataclay.util.management.namespacemgr.Namespace;
+import es.bsc.dataclay.util.management.sessionmgr.SessionInfo;
+import es.bsc.dataclay.util.management.stubs.StubClassLoader;
+import es.bsc.dataclay.util.management.stubs.StubInfo;
+import es.bsc.dataclay.util.tools.java.JavaSpecGenerator;
+
+/**
+ * This class contains all those functions that the User needs to interact with
+ * the system to register users, classes, namespaces...
+ * 
+ * 
+ */
+public final class ClientManagementLib {
+
+	/** Logger. */
+<span class="nc" id="L64">	private static final Logger LOGGER = LogManager.getLogger(&quot;ClientManagementLib&quot;);</span>
+	/** Path of configuration file. */
+<span class="nc" id="L66">	private static final String CONFIGFILEPATH = &quot;.&quot; + File.separatorChar + &quot;cfgfiles&quot; + File.separatorChar</span>
+			+ &quot;client.properties&quot;;
+	/** Environment variable where configuration file can be specified. */
+	public static final String CONFIGFILEPATH_ENV = &quot;DATACLAYCLIENTCONFIG&quot;;
+	/** Field name of host in configuration file. */
+	private static final String KEYLOGICHOST = &quot;HOST&quot;;
+	/** Field name of tcp port in configuration file. */
+	private static final String KEYLOGICTCPPORT = &quot;TCPPORT&quot;;
+	/** Suffix of java classes. */
+	private static final String JAVACLASSEXT = &quot;.class&quot;;
+	/** Suffix of aspect classes. */
+	private static final String JAVAASPECTEXT = &quot;.aj&quot;;
+	/** Suffix of Babel Stubs. */
+	private static final String BABELEXT = &quot;.yaml&quot;;
+	/** DataClayClientLib instance. */
+	private static ClientRuntime clientLib;
+
+	/** Lock for newClass. */
+<span class="nc" id="L84">	private static Lock newClassLock = new ReentrantLock();</span>
+
+	/**
+	 * ClientManagementLib constructor
+	 */
+<span class="nc" id="L89">	private ClientManagementLib() {</span>
+<span class="nc" id="L90">		throw new IllegalAccessError(&quot;This class cannot be instantiated&quot;);</span>
+	}
+
+	/**
+	 * Get Manifest version
+	 * 
+	 * @return Version of the library
+	 */
+	public static String getManifestInfo() {
+<span class="nc" id="L99">		final Package pkg = ClientManagementLib.class.getPackage();</span>
+<span class="nc" id="L100">		return pkg.getImplementationVersion();</span>
+	}
+
+	/**
+	 * Initialize connections with LM.
+	 * 
+	 * @param configFilePathArg
+	 *            optional path of config file. If a null or empty string is
+	 *            provided, the method will try looking for it in the path defined
+	 *            by dataClayCLIENTCONFIG environment variable, or the default path
+	 *            CONFIGFILEPATH
+	 * @return TRUE if connections were successfully initiliazed. FALSE, otherwise.
+	 */
+	public static boolean initializeCMLib(final String configFilePathArg) {
+<span class="nc" id="L114">		String configFilePath = configFilePathArg;</span>
+		try {
+<span class="nc" id="L116">			File configFile = null;</span>
+<span class="nc" id="L117">			LOGGER.info(&quot;Initializing client library with properties located at {}&quot;, configFilePath);</span>
+<span class="nc" id="L118">			boolean fileExists = false;</span>
+<span class="nc bnc" id="L119" title="All 4 branches missed.">			if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
+<span class="nc" id="L120">				configFile = new File(configFilePath);</span>
+<span class="nc bnc" id="L121" title="All 4 branches missed.">				fileExists = configFile.isFile() &amp;&amp; configFile.exists();</span>
+			}
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			if (!fileExists) {</span>
+<span class="nc" id="L124">				LOGGER.warn(&quot;Provided config file path is null, empty or does not exist. &quot;</span>
+						+ &quot;Looking for environment variable {}&quot;, CONFIGFILEPATH_ENV);
+<span class="nc" id="L126">				configFilePath = ProcessEnvironment.getInstance().get(CONFIGFILEPATH_ENV);</span>
+<span class="nc bnc" id="L127" title="All 4 branches missed.">				if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
+<span class="nc" id="L128">					LOGGER.info(&quot;Trying to use the following configFile: {}&quot;, configFilePath);</span>
+<span class="nc" id="L129">					configFile = new File(configFilePath);</span>
+<span class="nc bnc" id="L130" title="All 4 branches missed.">					fileExists = configFile.isFile() &amp;&amp; configFile.exists();</span>
+				}
+
+<span class="nc bnc" id="L133" title="All 2 branches missed.">				if (fileExists) {</span>
+<span class="nc" id="L134">					LOGGER.info(&quot;Found {}. Initializing client library with properties located at {}&quot;,</span>
+							CONFIGFILEPATH_ENV, configFilePath);
+				} else {
+<span class="nc" id="L137">					final Path path = Paths.get(CONFIGFILEPATH).normalize();</span>
+<span class="nc" id="L138">					LOGGER.warn(&quot;Unsuccessful while trying to load file from the environment variable `{}`. &quot;</span>
+<span class="nc" id="L139">							+ &quot;Fallback to default location: {}&quot;, CONFIGFILEPATH_ENV, path.toAbsolutePath());</span>
+<span class="nc" id="L140">					configFilePath = path.toAbsolutePath().toString();</span>
+<span class="nc" id="L141">					configFile = new File(configFilePath);</span>
+
+				}
+			}
+
+<span class="nc" id="L146">			final FileInputStream configFileStr = new FileInputStream(configFile);</span>
+<span class="nc" id="L147">			final Properties prop = new Properties();</span>
+<span class="nc" id="L148">			prop.load(configFileStr);</span>
+<span class="nc" id="L149">			configFileStr.close();</span>
+
+<span class="nc" id="L151">			final String host = prop.getProperty(KEYLOGICHOST);</span>
+<span class="nc" id="L152">			final Integer port = new Integer(prop.getProperty(KEYLOGICTCPPORT));</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">			if (clientLib != null) {</span>
+				// If commonLib is not null, it means it was previously initialized and we are
+				// restarting it. So, close it
+				// before.
+<span class="nc" id="L157">				LOGGER.info(&quot;Previous connection found during start of DataClay libraries.&quot;</span>
+						+ &quot; Closing it before new connection.&quot;);
+<span class="nc" id="L159">				clientLib.finishConnections();</span>
+			}
+<span class="nc" id="L161">			clientLib = new ClientRuntime();</span>
+<span class="nc" id="L162">			clientLib.initialize(host, port, &quot;CL&quot;);</span>
+
+<span class="nc bnc" id="L164" title="All 2 branches missed.">			if (Configuration.mockTesting) {</span>
+<span class="nc" id="L165">				DataClayMockObject.setCurrentThreadLib(clientLib);</span>
+			}
+<span class="nc" id="L167">			final Thread shutdownHook = new Thread() {</span>
+				@Override
+				public void run() {
+					try {
+<span class="nc bnc" id="L171" title="All 2 branches missed.">						if (clientLib != null) {</span>
+<span class="nc" id="L172">							clientLib.finishConnections();</span>
+<span class="nc" id="L173">							clientLib = null;</span>
+<span class="nc" id="L174">							LOGGER.info(&quot;Client Library closed by SHUTDOWN HOOK &quot;);</span>
+						}
+<span class="nc" id="L176">					} catch (final Exception e) {</span>
+<span class="nc" id="L177">						LOGGER.error(&quot;Error during shutdown hook&quot;, e);</span>
+<span class="nc" id="L178">					}</span>
+<span class="nc" id="L179">				}</span>
+			};
+<span class="nc" id="L181">			shutdownHook.setName(&quot;CL-ShutdownHook&quot;);</span>
+<span class="nc" id="L182">			Runtime.getRuntime().addShutdownHook(shutdownHook);</span>
+
+<span class="nc" id="L184">		} catch (final Exception ex) {</span>
+<span class="nc" id="L185">			LOGGER.error(&quot;Cannot initialize client library. Is client.properties valid? Has init() been called?&quot;, ex);</span>
+<span class="nc" id="L186">			return false;</span>
+<span class="nc" id="L187">		}</span>
+<span class="nc" id="L188">		return true;</span>
+	}
+
+	/**
+	 * Finish connections to server
+	 * 
+	 * @throws Exception
+	 *             if some exception occurs
+	 */
+	public static void finishConnections() throws Exception {
+<span class="nc bnc" id="L198" title="All 2 branches missed.">		if (clientLib != null) {</span>
+<span class="nc" id="L199">			LOGGER.info(&quot;Finishing connections ... &quot;);</span>
+<span class="nc" id="L200">			clientLib.finishConnections();</span>
+<span class="nc" id="L201">			clientLib = null;</span>
+		}
+<span class="nc" id="L203">	}</span>
+
+	// ============== Account Manager ==============//
+
+	/**
+	 * Get the common library
+	 * 
+	 * @return The common lib
+	 */
+	public static ClientRuntime getDataClayClientLib() {
+<span class="nc" id="L213">		return clientLib;</span>
+	}
+
+	/**
+	 * This operation creates a new account in the system with the provided
+	 * username.
+	 * 
+	 * @param newAcc
+	 *            Specifications of account to create
+	 * @return AccountID of the new account if the it was successfully created. Null
+	 *         otherwise.
+	 */
+	public static AccountID newAccount(final Account newAcc) {
+
+<span class="nc" id="L227">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot;, &quot;Account&quot; },</span>
+				new Object[] { newAcc });
+
+<span class="nc" id="L230">		AccountID result = null;</span>
+		try {
+<span class="nc" id="L232">			result = clientLib.getLogicModuleAPI().newAccountNoAdmin(newAcc);</span>
+<span class="nc" id="L233">		} catch (final Exception ex) {</span>
+<span class="nc" id="L234">			LOGGER.warn(&quot;Error during newAccount&quot;, ex);</span>
+<span class="nc" id="L235">		}</span>
+<span class="nc" id="L236">		return result;</span>
+	}
+
+	/**
+	 * Method that retrieves the id of an account given its user name
+	 * 
+	 * @param userName
+	 *            Name of the user
+	 * @return the id of Account class if the operation succeeds. null otherwise
+	 * @exception RemoteException
+	 *                if some exception occurs
+	 */
+	public static AccountID getAccountID(final String userName) {
+
+<span class="nc" id="L250">		clientLib.checkConnectionAndParams(new String[] { &quot;UserName&quot; }, new Object[] { userName });</span>
+<span class="nc" id="L251">		AccountID result = null;</span>
+		try {
+<span class="nc" id="L253">			result = clientLib.getLogicModuleAPI().getAccountID(userName);</span>
+<span class="nc" id="L254">		} catch (final Exception ex) {</span>
+<span class="nc" id="L255">			LOGGER.warn(&quot;Error during getAccountID&quot;, ex);</span>
+<span class="nc" id="L256">		}</span>
+<span class="nc" id="L257">		return result;</span>
+	}
+
+	/**
+	 * Method that retrieves the list of non admin accounts registered in the
+	 * system.
+	 * 
+	 * @param adminAccountID
+	 *            ID of the account of the user that calls the operation
+	 * @param adminCredential
+	 *            Credential of the adminAccount provided
+	 * @return IDs of existent accounts (admin not included)
+	 */
+	public static Set&lt;AccountID&gt; getNonAdminAccountList(final AccountID adminAccountID,
+			final PasswordCredential adminCredential) {
+<span class="nc" id="L272">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot; },</span>
+				new Object[] { adminAccountID, adminCredential });
+<span class="nc" id="L274">		Set&lt;AccountID&gt; result = null;</span>
+		try {
+<span class="nc" id="L276">			result = clientLib.getLogicModuleAPI().getAccountList(adminAccountID, adminCredential);</span>
+<span class="nc" id="L277">		} catch (final Exception ex) {</span>
+<span class="nc" id="L278">			LOGGER.warn(&quot;Error during getNonAdminAccountList&quot;, ex);</span>
+<span class="nc" id="L279">		}</span>
+<span class="nc" id="L280">		return result;</span>
+	}
+
+	// ============== Session Manager ==============//
+
+	/**
+	 * This operation creates a new session
+	 * 
+	 * @param accountID
+	 *            ID of the account that generates the session
+	 * @param credential
+	 *            credentials of the account
+	 * @param stubsInfo
+	 *            Stubs info to use in new Session
+	 * @param dataSets
+	 *            Accessible datasets for the session (user must have one data
+	 *            contract for each dataset)
+	 * @param dataSetForStore
+	 *            Dataset for store (dataset must be include among the dataSets)
+	 * @return the Session ID of the new session
+	 */
+	public static SessionID newSession(final AccountID accountID, final PasswordCredential credential,
+			final Map&lt;String, StubInfo&gt; stubsInfo, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
+
+<span class="nc" id="L304">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;StubsInfo&quot;, &quot;DataSets&quot;, &quot;DataSetForStore&quot; },
+				new Object[] { accountID, credential, stubsInfo, dataSets, dataSetForStore });
+<span class="nc" id="L307">		SessionID result = null;</span>
+		try {
+<span class="nc bnc" id="L309" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
+<span class="nc" id="L310">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
+						dataSetForStore, dataSets);
+			}
+
+			// Init result
+<span class="nc" id="L315">			final HashSet&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
+
+			// For each stub in classpath, extract info of their contracts
+<span class="nc bnc" id="L318" title="All 2 branches missed.">			for (final Entry&lt;String, StubInfo&gt; entry : stubsInfo.entrySet()) {</span>
+<span class="nc" id="L319">				final StubInfo stubInfo = entry.getValue();</span>
+<span class="nc" id="L320">				contracts.addAll(stubInfo.getContracts());</span>
+<span class="nc" id="L321">			}</span>
+<span class="nc bnc" id="L322" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
+<span class="nc" id="L323">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
+			}
+
+			// Call to Logic module
+<span class="nc" id="L327">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
+
+<span class="nc" id="L329">		} catch (final Exception ex) {</span>
+<span class="nc" id="L330">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
+<span class="nc" id="L331">		}</span>
+<span class="nc" id="L332">		return result;</span>
+	}
+
+	/**
+	 * This operation creates a new session
+	 * 
+	 * @param accountID
+	 *            ID of the account that generates the session
+	 * @param credential
+	 *            credentials of the account
+	 * @param classPathOfStubs
+	 *            class path where stubs (interfaces in contracts) can be found
+	 * @param dataSets
+	 *            Accessible datasets for the session (user must have one data
+	 *            contract for each dataset)
+	 * @param dataSetForStore
+	 *            Dataset for store (dataset must be include among the dataSets)
+	 * @return the Session ID of the new session
+	 */
+	public static SessionID newSession(final AccountID accountID, final PasswordCredential credential,
+			final String classPathOfStubs, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
+<span class="nc" id="L353">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ClassPathOfStubs&quot;, &quot;DataSets&quot;, &quot;DataSetForStore&quot; },
+				new Object[] { accountID, credential, classPathOfStubs, dataSets, dataSetForStore });
+<span class="nc" id="L356">		SessionID result = null;</span>
+		try {
+<span class="nc bnc" id="L358" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
+<span class="nc" id="L359">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
+						dataSetForStore, dataSets);
+			}
+			// Get info of stubs in classpath
+<span class="nc" id="L363">			final Map&lt;String, StubInfo&gt; stubsInfo = StubClassLoader.getStubInfosFromClassPath(classPathOfStubs);</span>
+
+			// Init result
+<span class="nc" id="L366">			final HashSet&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
+
+			// For each stub in classpath, extract info of their contracts
+<span class="nc bnc" id="L369" title="All 2 branches missed.">			for (final Entry&lt;String, StubInfo&gt; entry : stubsInfo.entrySet()) {</span>
+<span class="nc" id="L370">				final StubInfo stubInfo = entry.getValue();</span>
+<span class="nc" id="L371">				contracts.addAll(stubInfo.getContracts());</span>
+<span class="nc" id="L372">			}</span>
+<span class="nc bnc" id="L373" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
+<span class="nc" id="L374">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
+			}
+
+			// Call to Logic module
+<span class="nc" id="L378">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
+
+<span class="nc" id="L380">		} catch (final Exception ex) {</span>
+<span class="nc" id="L381">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
+<span class="nc" id="L382">		}</span>
+<span class="nc" id="L383">		return result;</span>
+	}
+
+	/**
+	 * This operation creates a new session
+	 * 
+	 * @param accountID
+	 *            ID of the account that generates the session
+	 * @param credential
+	 *            credentials of the account
+	 * @param contracts
+	 *            All contracts to be used in the new session to be created
+	 * @param dataSets
+	 *            Accessible datasets for the session (user must have one data
+	 *            contract for each dataset)
+	 * @param dataSetForStore
+	 *            Dataset for store (dataset must be include among the dataSets)
+	 * @return the Session ID of the new session
+	 */
+	public static SessionID newSession(final AccountID accountID, final PasswordCredential credential,
+			final Set&lt;ContractID&gt; contracts, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
+<span class="nc" id="L404">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contracts&quot;, &quot;DataSets&quot;, &quot;DataSetForStore&quot; },
+				new Object[] { accountID, credential, contracts, dataSets, dataSetForStore });
+<span class="nc" id="L407">		SessionID result = null;</span>
+		try {
+<span class="nc bnc" id="L409" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
+<span class="nc" id="L410">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
+						dataSetForStore, dataSets);
+			}
+<span class="nc bnc" id="L413" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
+<span class="nc" id="L414">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
+			}
+<span class="nc" id="L416">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
+<span class="nc" id="L417">		} catch (final Exception ex) {</span>
+<span class="nc" id="L418">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
+<span class="nc" id="L419">		}</span>
+<span class="nc" id="L420">		return result;</span>
+	}
+
+	/**
+	 * Private function with common functionalities to initialize a session from
+	 * different API calls.
+	 * 
+	 * @param accountID
+	 *            ID of the account.
+	 * @param credential
+	 *            Credentials of the account.
+	 * @param contracts
+	 *            Contract IDs to use in the new session.
+	 * @param dataSets
+	 *            Data set names in session.
+	 * @param dataSetForStore
+	 *            Data set to use for storing or creating new objects during
+	 *            session.
+	 * @return ID of the sessionc created.
+	 */
+	private static SessionID newSessionCommon(final AccountID accountID, final PasswordCredential credential,
+			final Set&lt;ContractID&gt; contracts, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
+<span class="nc" id="L442">		final Set&lt;DataSetID&gt; dataSetIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L443">		final DataSetID dataSetForStoreID = getDatasetID(accountID, credential, dataSetForStore);</span>
+<span class="nc bnc" id="L444" title="All 2 branches missed.">		for (final String datasetName : dataSets) {</span>
+<span class="nc" id="L445">			dataSetIDs.add(getDatasetID(accountID, credential, datasetName));</span>
+<span class="nc" id="L446">		}</span>
+		// Call to Logic module
+<span class="nc" id="L448">		LOGGER.debug(&quot;Calling new session with datasets :&quot; + dataSetIDs);</span>
+<span class="nc" id="L449">		final SessionInfo sessInfo = clientLib.getLogicModuleAPI().newSession(accountID, credential, contracts,</span>
+				dataSetIDs, dataSetForStoreID, Langs.LANG_JAVA);
+<span class="nc" id="L451">		clientLib.setSessionInfo(sessInfo);</span>
+<span class="nc" id="L452">		DataClayObject.setLib(clientLib);</span>
+<span class="nc" id="L453">		return sessInfo.getSessionID();</span>
+	}
+
+	/**
+	 * Finish session
+	 */
+	public static void closeSession() {
+		try {
+<span class="nc" id="L461">			clientLib.closeSession();</span>
+<span class="nc" id="L462">		} catch (final Exception ex) {</span>
+
+<span class="nc" id="L464">		}</span>
+<span class="nc" id="L465">	}</span>
+
+	/**
+	 * Configure LogicModule to give provided address in case external dataClays require to know how
+	 * to access current dataClay
+	 * @param hostname Hostname to be published (given to external dataClays)
+	 * @param port Port to be published
+	 */
+	public static void publishAddress(final String hostname, final int port) { 
+<span class="nc" id="L474">		clientLib.checkConnectionAndParams(new String[] { &quot;hostname&quot;, &quot;port&quot; },</span>
+<span class="nc" id="L475">				new Object[] { hostname, port });</span>
+<span class="nc" id="L476">		clientLib.getLogicModuleAPI().publishAddress(hostname, port);</span>
+<span class="nc" id="L477">	}</span>
+	
+	// ============== Namespace Manager ==============//
+
+	/**
+	 * Method that creates a new namespace in the system. The account doing the
+	 * action must have admin role.
+	 * 
+	 * @param accountID
+	 *            the account id of the account or the responsible of the namespace
+	 * @param credential
+	 *            the credential of the account or the responsible of the namespace
+	 * @param newNamespace
+	 *            the new namespace
+	 * @return the id of the new namespace if the operation succeeds. null otherwise
+	 */
+	public static NamespaceID newNamespace(final AccountID accountID, final PasswordCredential credential,
+			final Namespace newNamespace) {
+<span class="nc" id="L495">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;newNamespace&quot; },</span>
+				new Object[] { accountID, credential, newNamespace });
+<span class="nc" id="L497">		NamespaceID result = null;</span>
+		try {
+<span class="nc" id="L499">			result = clientLib.getLogicModuleAPI().newNamespace(accountID, credential, newNamespace);</span>
+<span class="nc" id="L500">		} catch (final Exception ex) {</span>
+<span class="nc" id="L501">			LOGGER.warn(&quot;Error during newNamespace&quot;, ex);</span>
+<span class="nc" id="L502">		}</span>
+<span class="nc" id="L503">		return result;</span>
+	}
+
+	/**
+	 * This method removes a namespace from the system by checking it has no active
+	 * contract associated with it, and no classes registered on it.
+	 * 
+	 * @param accountID
+	 *            the account id of the responsible of the namespace
+	 * @param credential
+	 *            credentials of the account
+	 * @param namespaceName
+	 *            the name of the namespace to be removed
+	 * @return True if the namespace is the namespace is correctly removed. False
+	 *         otherwise.
+	 */
+	public static boolean removeNamespace(final AccountID accountID, final PasswordCredential credential,
+			final String namespaceName) {
+<span class="nc" id="L521">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
+				new Object[] { accountID, credential, namespaceName });
+		try {
+<span class="nc" id="L524">			clientLib.getLogicModuleAPI().removeNamespace(accountID, credential, namespaceName);</span>
+<span class="nc" id="L525">			return true;</span>
+<span class="nc" id="L526">		} catch (final Exception ex) {</span>
+<span class="nc" id="L527">			LOGGER.warn(&quot;Error during removeNamespace&quot;, ex);</span>
+		}
+<span class="nc" id="L529">		return false;</span>
+	}
+
+	/**
+	 * Retrieves the id of a namespace identified by name provided
+	 * 
+	 * @param accountID
+	 *            ID of an account asking for the ID
+	 * @param credential
+	 *            credential of account
+	 * @param namespaceName
+	 *            Name of the namespace
+	 * @return ID of the namespace or NULL if an error happened.
+	 * @throws RemoteException
+	 *             If some exception occurs
+	 */
+	public static NamespaceID getNamespaceID(final AccountID accountID, final PasswordCredential credential,
+			final String namespaceName) {
+<span class="nc" id="L547">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
+				new Object[] { accountID, credential, namespaceName });
+<span class="nc" id="L549">		NamespaceID result = null;</span>
+		try {
+<span class="nc" id="L551">			result = clientLib.getLogicModuleAPI().getNamespaceID(accountID, credential, namespaceName);</span>
+<span class="nc" id="L552">		} catch (final Exception ex) {</span>
+<span class="nc" id="L553">			LOGGER.warn(&quot;Error during getNamespaceID&quot;, ex);</span>
+<span class="nc" id="L554">		}</span>
+<span class="nc" id="L555">		return result;</span>
+	}
+
+	/**
+	 * Retrieves the id of a namespace identified by name provided
+	 * 
+	 * @param accountID
+	 *            ID of an account asking for the language
+	 * @param credential
+	 *            credential of account
+	 * @param namespaceName
+	 *            Name of the namespace
+	 * @return ID of the namespace or NULL if an error happened.
+	 * @throws RemoteException
+	 *             If some exception occurs
+	 */
+	public static Langs getNamespaceLanguage(final AccountID accountID, final PasswordCredential credential,
+			final String namespaceName) {
+<span class="nc" id="L573">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
+				new Object[] { accountID, credential, namespaceName });
+<span class="nc" id="L575">		Langs result = null;</span>
+		try {
+<span class="nc" id="L577">			result = clientLib.getLogicModuleAPI().getNamespaceLang(accountID, credential, namespaceName);</span>
+<span class="nc" id="L578">		} catch (final Exception ex) {</span>
+<span class="nc" id="L579">			LOGGER.warn(&quot;Error during newgetNamespaceLanguage&quot;, ex);</span>
+<span class="nc" id="L580">		}</span>
+<span class="nc" id="L581">		return result;</span>
+	}
+
+	/**
+	 * Retrieves available namespaces from the account provided.
+	 * 
+	 * @param accountID
+	 *            ID of the account retreiving the information.
+	 * @param credential
+	 *            Credentials of the account.
+	 * @return set of namespaces names available from the account provided.
+	 */
+	public static Set&lt;String&gt; getNamespaces(final AccountID accountID, final PasswordCredential credential) {
+<span class="nc" id="L594">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+				new Object[] { accountID, credential });
+<span class="nc" id="L596">		Set&lt;String&gt; result = null;</span>
+		try {
+<span class="nc" id="L598">			result = clientLib.getLogicModuleAPI().getNamespaces(accountID, credential);</span>
+<span class="nc" id="L599">		} catch (final Exception ex) {</span>
+<span class="nc" id="L600">			LOGGER.warn(&quot;Error during getNamespaces&quot;, ex);</span>
+<span class="nc" id="L601">		}</span>
+<span class="nc" id="L602">		return result;</span>
+	}
+
+	/**
+	 * Imports a class from a specific interface in a specific contract into the
+	 * given namespace
+	 * 
+	 * @param accountID
+	 *            ID of the account
+	 * @param credential
+	 *            credential of the account
+	 * @param namespaceID
+	 *            ID of the namespace where the class will be imported
+	 * @param contractID
+	 *            ID of the contract
+	 * @param interfaceID
+	 *            ID of the interface
+	 * @return TRUE if the interface has been successuflly imported, FALSE otherwise
+	 */
+	public static boolean importInterface(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final ContractID contractID, final InterfaceID interfaceID) {
+<span class="nc" id="L623">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ContractID&quot;, &quot;InterfaceID&quot; },
+				new Object[] { accountID, credential, namespaceID, contractID, interfaceID });
+		try {
+<span class="nc" id="L627">			clientLib.getLogicModuleAPI().importInterface(accountID, credential, namespaceID, contractID, interfaceID);</span>
+<span class="nc" id="L628">			return true;</span>
+<span class="nc" id="L629">		} catch (final Exception ex) {</span>
+<span class="nc" id="L630">			LOGGER.warn(&quot;Error during importInterface&quot;, ex);</span>
+		}
+<span class="nc" id="L632">		return false;</span>
+	}
+
+	/**
+	 * Imports all the classes represented by the interfaces of the given contract
+	 * into a specific namespace
+	 * 
+	 * @param accountID
+	 *            ID of the account
+	 * @param credential
+	 *            credential of the account
+	 * @param namespaceID
+	 *            ID of the namespace where classes will be imported
+	 * @param contractID
+	 *            ID of the contract
+	 * @return TRUE if the interface has been successuflly imported, FALSE otherwise
+	 */
+	public static boolean importContract(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final ContractID contractID) {
+<span class="nc" id="L651">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ContractID&quot; },</span>
+				new Object[] { accountID, credential, namespaceID, contractID });
+		try {
+<span class="nc" id="L654">			clientLib.getLogicModuleAPI().importContract(accountID, credential, namespaceID, contractID);</span>
+<span class="nc" id="L655">			return true;</span>
+<span class="nc" id="L656">		} catch (final Exception ex) {</span>
+<span class="nc" id="L657">			LOGGER.warn(&quot;Error during importContract&quot;, ex);</span>
+		}
+<span class="nc" id="L659">		return false;</span>
+	}
+
+	// ============== DataSet Manager ============== //
+	/**
+	 * Method that creates a new namespace in the system. The account doing the
+	 * action must have admin role.
+	 * 
+	 * @param accountID
+	 *            the account id of the account or the responsible of the namespace
+	 * @param credential
+	 *            the credential of the account or the responsible of the namespace
+	 * @param dataSet
+	 *            the new dataset
+	 * @return the id of the new namespace if the operation succeeds. null otherwise
+	 */
+	public static DataSetID newDataSet(final AccountID accountID, final PasswordCredential credential,
+			final DataSet dataSet) {
+<span class="nc" id="L677">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSet&quot; },</span>
+				new Object[] { accountID, credential, dataSet });
+<span class="nc" id="L679">		DataSetID result = null;</span>
+		try {
+<span class="nc" id="L681">			result = clientLib.getLogicModuleAPI().newDataSet(accountID, credential, dataSet);</span>
+<span class="nc" id="L682">		} catch (final Exception ex) {</span>
+<span class="nc" id="L683">			LOGGER.warn(&quot;Error during newDataSet&quot;, ex);</span>
+<span class="nc" id="L684">		}</span>
+<span class="nc" id="L685">		return result;</span>
+	}
+
+	/**
+	 * This method removes a dataset from the system by checking it has no active
+	 * data contract associated with it, and no objects registered in it.
+	 * 
+	 * @param accountID
+	 *            the account id of the responsible of the dataset (or admin)
+	 * @param credential
+	 *            credentials of the account
+	 * @param datasetName
+	 *            the name of the dataset to be removed
+	 * @return True if the dataset is correctly removed. False otherwise.
+	 */
+	public static boolean removeDataset(final AccountID accountID, final PasswordCredential credential,
+			final String datasetName) {
+<span class="nc" id="L702">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetName&quot; },</span>
+				new Object[] { accountID, credential, datasetName });
+		try {
+<span class="nc" id="L705">			clientLib.getLogicModuleAPI().removeDataSet(accountID, credential, datasetName);</span>
+<span class="nc" id="L706">			return true;</span>
+<span class="nc" id="L707">		} catch (final Exception ex) {</span>
+<span class="nc" id="L708">			LOGGER.warn(&quot;Error during removeDataset&quot;, ex);</span>
+		}
+<span class="nc" id="L710">		return false;</span>
+	}
+
+	/**
+	 * Retrieves the id of a dataset identified by name provided
+	 * 
+	 * @param accountID
+	 *            ID of an account asking for the ID
+	 * @param credential
+	 *            credential of account
+	 * @param datasetName
+	 *            Name of the dataset
+	 * @return ID of the dataset or NULL if an error happened.
+	 */
+	public static DataSetID getDatasetID(final AccountID accountID, final PasswordCredential credential,
+			final String datasetName) {
+<span class="nc" id="L726">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetName&quot; },</span>
+				new Object[] { accountID, credential, datasetName });
+<span class="nc" id="L728">		DataSetID result = null;</span>
+		try {
+<span class="nc" id="L730">			result = clientLib.getLogicModuleAPI().getDataSetID(accountID, credential, datasetName);</span>
+<span class="nc" id="L731">		} catch (final Exception ex) {</span>
+<span class="nc" id="L732">			LOGGER.warn(&quot;Error during getDatasetID&quot;, ex);</span>
+<span class="nc" id="L733">		}</span>
+<span class="nc" id="L734">		return result;</span>
+	}
+
+	/**
+	 * Get all public datasets (which the account can be registered to)
+	 * 
+	 * @param accountID
+	 *            id of the account performing request
+	 * @param credential
+	 *            credential of account performing request
+	 * @return Set of names of public datasets
+	 */
+	public static Set&lt;String&gt; getPublicDatasets(final AccountID accountID, final PasswordCredential credential) {
+<span class="nc" id="L747">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+				new Object[] { accountID, credential });
+<span class="nc" id="L749">		Set&lt;String&gt; result = null;</span>
+		try {
+<span class="nc" id="L751">			result = clientLib.getLogicModuleAPI().getPublicDataSets(accountID, credential);</span>
+<span class="nc" id="L752">		} catch (final Exception ex) {</span>
+<span class="nc" id="L753">			LOGGER.warn(&quot;Error during getPublicDatasets&quot;, ex);</span>
+<span class="nc" id="L754">		}</span>
+<span class="nc" id="L755">		return result;</span>
+	}
+
+	/**
+	 * Get datasets provided by the given account
+	 * 
+	 * @param accountID
+	 *            id of the account
+	 * @param credential
+	 *            credential of the account
+	 * @return Set of names of account's datasets.
+	 */
+	public static Set&lt;String&gt; getAccountDatasets(final AccountID accountID, final PasswordCredential credential) {
+<span class="nc" id="L768">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+				new Object[] { accountID, credential });
+<span class="nc" id="L770">		Set&lt;String&gt; result = null;</span>
+		try {
+<span class="nc" id="L772">			result = clientLib.getLogicModuleAPI().getAccountDataSets(accountID, credential);</span>
+<span class="nc" id="L773">		} catch (final Exception ex) {</span>
+<span class="nc" id="L774">			LOGGER.warn(&quot;Error during getAccountDatasets&quot;, ex);</span>
+<span class="nc" id="L775">		}</span>
+<span class="nc" id="L776">		return result;</span>
+	}
+
+	// ============== Class Manager ==============//
+
+	/**
+	 * This operation creates a new metaclass in the system of the provided
+	 * className from the given classPath and associate it to the Namespace
+	 * provided.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the user that calls the operation
+	 * @param credentials
+	 *            Credentials of the account provided
+	 * @param namespace
+	 *            Namespace in which to create the metaclass
+	 * @param className
+	 *            name of the class (packages included if necessary)
+	 * @param classPath
+	 *            class path of the class
+	 * @param srcPath
+	 * 			  path to the source files of the classes
+	 * @param libPath
+	 * 			  path to the libraries of the application (including dataclayClient)
+	 * @return the information of all registered classes if the operation succeeds.
+	 *         null otherwise.
+	 */
+	public static Map&lt;String, MetaClass&gt; newClass(final AccountID accountID, final PasswordCredential credentials,
+			final String namespace, final String className, final String classPath, final String srcPath,
+			final String libPath) {
+<span class="nc" id="L806">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Namespace&quot;, &quot;ClassName&quot;, &quot;ClassPath&quot; },
+				new Object[] { accountID, credentials, namespace, className, classPath });
+<span class="nc" id="L809">		final Set&lt;String&gt; classNames = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L810">		classNames.add(className);</span>
+<span class="nc" id="L811">		final Map&lt;String, MetaClass&gt; specsGen = generateSpecs(namespace, classPath, classNames);</span>
+
+<span class="nc" id="L813">		return newClassInternal(accountID, credentials, specsGen, classPath, srcPath, libPath);</span>
+	}
+
+	/**
+	 * This operation creates a new metaclass in the system for each class with name
+	 * provided from the given classPath and associate it to the Namespace provided.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the user that calls the operation
+	 * @param credentials
+	 *            Credentials of the account provided
+	 * @param namespace
+	 *            Namespace in which to create the metaclass
+	 * @param classNames
+	 *            name of classes (packages included if necessary)
+	 * @param classPath
+	 *            class path of the classes
+	 * @param srcPath
+	 * 			  path to the source files of the classes
+	 * @param libPath
+	 * 			  path to the libraries of the application (including dataclayClient)
+	 * @return the information of all registered classes if the operation succeeds.
+	 *         null otherwise.
+	 */
+	public static Map&lt;String, MetaClass&gt; newClasses(final AccountID accountID, final PasswordCredential credentials,
+			final String namespace, final Set&lt;String&gt; classNames, final String classPath, final String srcPath, 
+			final String libPath) {
+<span class="nc" id="L840">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Namespace&quot;, &quot;ClassNames&quot;, &quot;ClassPath&quot; },
+				new Object[] { accountID, credentials, namespace, classNames, classPath });
+<span class="nc" id="L843">		final Map&lt;String, MetaClass&gt; specsGen = generateSpecs(namespace, classPath, classNames);</span>
+<span class="nc" id="L844">		return newClassInternal(accountID, credentials, specsGen, classPath, srcPath, libPath);</span>
+	}
+
+	/**
+	 * Generate Specifications of classes
+	 * 
+	 * @param namespace
+	 *            Namespace of class to register
+	 * @param classPath
+	 *            Path in where classes are located
+	 * @param classNames
+	 *            Names of classes to analyze
+	 * @return Specifications of classes
+	 */
+	public static Map&lt;String, MetaClass&gt; generateSpecs(final String namespace, final String classPath,
+			final Set&lt;String&gt; classNames) {
+<span class="nc" id="L860">		clientLib.checkConnectionAndParams(new String[] { &quot;Namespace&quot;, &quot;ClassNames&quot;, &quot;ClassPath&quot; },</span>
+				new Object[] { namespace, classNames, classPath });
+<span class="nc" id="L862">		newClassLock.lock();</span>
+		try {
+<span class="nc" id="L864">			final JavaSpecGenerator specGen = new JavaSpecGenerator(classPath);</span>
+<span class="nc" id="L865">			final Map&lt;String, MetaClass&gt; newClasses = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L866" title="All 2 branches missed.">			for (final String className : classNames) {</span>
+<span class="nc bnc" id="L867" title="All 2 branches missed.">				if (newClasses.containsKey(className)) {</span>
+<span class="nc" id="L868">					continue; // Avoid registering same class twice.</span>
+				}
+<span class="nc" id="L870">				final Map&lt;String, MetaClass&gt; classes = specGen.generateMetaClassSpecForRegisterClass(namespace,</span>
+						className);
+<span class="nc bnc" id="L872" title="All 2 branches missed.">				if (classes.isEmpty()) {</span>
+<span class="nc" id="L873">					LOGGER.info(&quot;Could not create Class spec of {}.&quot;, className);</span>
+				}
+<span class="nc" id="L875">				newClasses.putAll(classes);</span>
+<span class="nc" id="L876">			}</span>
+<span class="nc bnc" id="L877" title="All 2 branches missed.">			if (newClasses.isEmpty()) {</span>
+<span class="nc" id="L878">				LOGGER.info(&quot;Could not create any Class spec.&quot;);</span>
+			} else {
+				/*
+				 * for (MetaClass newClass : newClasses.values()) {
+				 * newClass.setNamespace(namespace); }
+				 */
+<span class="nc" id="L884">				return newClasses;</span>
+			}
+<span class="nc" id="L886">		} catch (final Exception ex) {</span>
+<span class="nc" id="L887">			ex.printStackTrace();</span>
+<span class="nc" id="L888">			LOGGER.warn(&quot;Error during generateSpecs&quot;, ex);</span>
+		} finally {
+<span class="nc" id="L890">			newClassLock.unlock();</span>
+		}
+<span class="nc" id="L892">		return null;</span>
+	}
+
+	/**
+	 * Internal function for newClass
+	 * 
+	 * @param accountID
+	 *            ID of registrator
+	 * @param credentials
+	 *            Credentials
+	 * @param newClasses
+	 *            Specifications of classes to register
+	 * @param classPath
+	 *            Class path of new classes to register
+	 * @param srcPath
+	 * 			  path to the source files of the classes
+	 * @param libPath
+	 * 			  path to the libraries of the application (including dataclayClient)
+	 * @return Registered classes
+	 */
+	public static Map&lt;String, MetaClass&gt; newClassInternal(final AccountID accountID,
+			final PasswordCredential credentials, final Map&lt;String, MetaClass&gt; newClasses, final String classPath,
+			final String srcPath, final String libPath) {
+
+		/******** RT: Generate Prefetching Info ********/
+		//if (Configuration.Flags.PREFETCHING_ENABLED.getBooleanValue()) {
+		//	PrefetchingSpecGenerator.generateAndStorePrefetchingSpec(newClasses, classPath, srcPath, libPath);
+		//}
+		/***********************************************/
+
+<span class="nc" id="L922">		final Map&lt;String, MetaClass&gt; result = clientLib.getLogicModuleAPI().newClass(accountID, credentials,</span>
+				Langs.LANG_JAVA, newClasses);
+<span class="nc" id="L924">		return result;</span>
+	}
+
+	/**
+	 * Method that removes a class from the specified namespace (either removing the
+	 * imports or because it was actually created in the namespace)
+	 * 
+	 * @param accountID
+	 *            ID of the account responsible of the namespace of the class
+	 * @param credential
+	 *            Credential of the account responsible of the namespace of the
+	 *            class
+	 * @param namespaceID
+	 *            ID of the namespace where the class is present
+	 * @param className
+	 *            name of the class to be removed from the namespace
+	 * @return TRUE if it was successfully removed. FALSE, otherwise.
+	 */
+	public static boolean removeClass(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final String className) {
+
+<span class="nc" id="L945">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
+				new Object[] { accountID, credential, namespaceID, className });
+
+		try {
+<span class="nc" id="L949">			clientLib.getLogicModuleAPI().removeClass(accountID, credential, namespaceID, className);</span>
+<span class="nc" id="L950">			return true;</span>
+<span class="nc" id="L951">		} catch (final Exception ex) {</span>
+<span class="nc" id="L952">			LOGGER.warn(&quot;Error during removeClass&quot;, ex);</span>
+		}
+<span class="nc" id="L954">		return false;</span>
+	}
+
+	/**
+	 * Method that removes an operation from the specified namespace
+	 * 
+	 * @param accountID
+	 *            ID of the account responsible of the namespace of the class
+	 *            containing the operation
+	 * @param credential
+	 *            Credential of the account responsible of the namespace of the
+	 *            class containing the operation
+	 * @param namespaceID
+	 *            ID of the namespace of the operation.
+	 * @param className
+	 *            name of the class of the operation
+	 * @param operationSignature
+	 *            signature of the operation.
+	 * @return TRUE if it was successfully removed. FALSE, otherwise.
+	 */
+	public static boolean removeOperation(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final String className, final String operationSignature) {
+
+<span class="nc" id="L977">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot;, &quot;OperationSignature&quot; },
+				new Object[] { accountID, credential, namespaceID, className, operationSignature });
+
+		try {
+<span class="nc" id="L982">			clientLib.getLogicModuleAPI().removeOperation(accountID, credential, namespaceID, className,</span>
+					operationSignature);
+<span class="nc" id="L984">			return true;</span>
+<span class="nc" id="L985">		} catch (final Exception ex) {</span>
+<span class="nc" id="L986">			LOGGER.warn(&quot;Error during removeOperation&quot;, ex);</span>
+		}
+<span class="nc" id="L988">		return false;</span>
+	}
+
+	/**
+	 * Method that removes an implementation of a certain operation
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace
+	 * @param credential
+	 *            the credentials of the account
+	 * @param namespaceID
+	 *            ID of the namespace of the implementation
+	 * @param implementationID
+	 *            the id of the implementation
+	 * @return TRUE if it was successfully removed. FALSE, otherwise.
+	 */
+	public static boolean removeImplementation(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final ImplementationID implementationID) {
+
+<span class="nc" id="L1007">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ImplementationID&quot; },
+				new Object[] { accountID, credential, namespaceID, implementationID });
+
+		try {
+<span class="nc" id="L1012">			clientLib.getLogicModuleAPI().removeImplementation(accountID, credential, namespaceID, implementationID);</span>
+<span class="nc" id="L1013">			return true;</span>
+<span class="nc" id="L1014">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1015">			LOGGER.warn(&quot;Error during removeImplementation&quot;, ex);</span>
+		}
+<span class="nc" id="L1017">		return false;</span>
+	}
+
+	/**
+	 * Method that retrieves the id of an operation given its signature
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace
+	 * @param credential
+	 *            the credentials of the account
+	 * @param namespaceID
+	 *            the ID of the namespace
+	 * @param className
+	 *            the name of the class
+	 * @param operationSignature
+	 *            signature of the operation
+	 * @return the operation id if the operation succeeds. null otherwise.
+	 */
+	public static OperationID getOperationID(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final String className, final String operationSignature) {
+
+<span class="nc" id="L1038">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot;, &quot;OperationSignature&quot; },
+				new Object[] { accountID, credential, namespaceID, className, operationSignature });
+
+<span class="nc" id="L1042">		OperationID result = null;</span>
+		try {
+<span class="nc" id="L1044">			result = clientLib.getLogicModuleAPI().getOperationID(accountID, credential, namespaceID, className,</span>
+					operationSignature);
+<span class="nc" id="L1046">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1047">			LOGGER.warn(&quot;Error during getOperationID&quot;, ex);</span>
+<span class="nc" id="L1048">		}</span>
+<span class="nc" id="L1049">		return result;</span>
+	}
+
+	/**
+	 * Method that retrieves the id of a property given its signature
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace
+	 * @param credential
+	 *            the credentials of the account
+	 * @param namespaceID
+	 *            the ID of the namespace
+	 * @param className
+	 *            the name of the class
+	 * @param propertyName
+	 *            the name of the property
+	 * @return the id of the property if the operation succeeds. null otherwise
+	 */
+	public static PropertyID getPropertyID(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final String className, final String propertyName) {
+<span class="nc" id="L1069">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot;, &quot;PropertyName&quot; },
+				new Object[] { accountID, credential, namespaceID, className, propertyName });
+<span class="nc" id="L1072">		PropertyID result = null;</span>
+		try {
+<span class="nc" id="L1074">			result = clientLib.getLogicModuleAPI().getPropertyID(accountID, credential, namespaceID, className,</span>
+					propertyName);
+<span class="nc" id="L1076">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1077">			LOGGER.warn(&quot;Error during getPropertyID&quot;, ex);</span>
+<span class="nc" id="L1078">		}</span>
+<span class="nc" id="L1079">		return result;</span>
+	}
+
+	/**
+	 * Method that retrieves the id of a class given its name
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace
+	 * @param credential
+	 *            the credentials of the account
+	 * @param namespaceID
+	 *            the ID of the namespace of the class
+	 * @param className
+	 *            the name of the class
+	 * @return the id of the class if the operation succeeds. null otherwise
+	 */
+	public static MetaClassID getClassID(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final String className) {
+<span class="nc" id="L1097">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
+				new Object[] { accountID, credential, namespaceID, className });
+<span class="nc" id="L1099">		MetaClassID result = null;</span>
+		try {
+<span class="nc" id="L1101">			result = clientLib.getLogicModuleAPI().getClassID(accountID, credential, namespaceID, className);</span>
+<span class="nc" id="L1102">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1103">			LOGGER.warn(&quot;Error during getClassID&quot;, ex);</span>
+<span class="nc" id="L1104">		}</span>
+<span class="nc" id="L1105">		return result;</span>
+	}
+
+	/**
+	 * Method that retrieves the info of a class given its name.
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace.
+	 * @param credential
+	 *            the credentials of the account.
+	 * @param namespaceID
+	 *            the ID of the namespace of the class.
+	 * @param className
+	 *            the name of the class.
+	 * @return the id of the class if the operation succeeds. null otherwise.
+	 */
+	public static MetaClass getClassInfo(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final String className) {
+<span class="nc" id="L1123">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
+				new Object[] { accountID, credential, namespaceID, className });
+<span class="nc" id="L1125">		MetaClass result = null;</span>
+		try {
+<span class="nc" id="L1127">			result = clientLib.getLogicModuleAPI().getClassInfo(accountID, credential, namespaceID, className);</span>
+<span class="nc" id="L1128">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1129">			LOGGER.warn(&quot;Error during getClassInfo&quot;, ex);</span>
+<span class="nc" id="L1130">		}</span>
+<span class="nc" id="L1131">		return result;</span>
+	}
+
+	/**
+	 * Method that retrieves the info of the classes registered in a specific
+	 * namespace.
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace.
+	 * @param credential
+	 *            the credentials of the account.
+	 * @param namespaceID
+	 *            the ID of the namespace of the class.
+	 * @return The info of the classes registered in the given namespace.
+	 */
+	public static Map&lt;MetaClassID, MetaClass&gt; getClassesInfoInNamespace(final AccountID accountID,
+			final PasswordCredential credential, final NamespaceID namespaceID) {
+<span class="nc" id="L1148">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
+				new Object[] { accountID, credential, namespaceID });
+<span class="nc" id="L1150">		Map&lt;MetaClassID, MetaClass&gt; result = null;</span>
+		try {
+<span class="nc" id="L1152">			result = clientLib.getLogicModuleAPI().getInfoOfClassesInNamespace(accountID, credential, namespaceID);</span>
+<span class="nc" id="L1153">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1154">			LOGGER.warn(&quot;Error during getClassesInfoInNamespace&quot;, ex);</span>
+<span class="nc" id="L1155">		}</span>
+<span class="nc" id="L1156">		return result;</span>
+	}
+
+	// ============== Contract Manager ==============//
+
+	/**
+	 * Method to register a new private contract.
+	 * 
+	 * @param proprietaryAccountID
+	 *            The account of the contract provider
+	 * @param proprietaryCredential
+	 *            The credential of the contract provider
+	 * @param contract
+	 *            The specification of a contract. It includes the interfaces that
+	 *            will be part of the contract, the date the contract starts (it
+	 *            becomes active), and the date the contract expires
+	 * @return the contract id if the operation succeeds. null otherwise.
+	 */
+	public static ContractID newPrivateContract(final AccountID proprietaryAccountID,
+			final PasswordCredential proprietaryCredential, final Contract contract) {
+<span class="nc" id="L1176">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contract&quot; },</span>
+				new Object[] { proprietaryAccountID, proprietaryCredential, contract });
+<span class="nc" id="L1178">		ContractID result = null;</span>
+		try {
+<span class="nc" id="L1180">			result = clientLib.getLogicModuleAPI().newContract(proprietaryAccountID, proprietaryCredential, contract);</span>
+<span class="nc" id="L1181">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1182">			LOGGER.warn(&quot;Error during newPrivateContract&quot;, ex);</span>
+<span class="nc" id="L1183">		}</span>
+<span class="nc" id="L1184">		return result;</span>
+	}
+
+	/**
+	 * Method that registers a new contract
+	 * 
+	 * @param proprietaryAccountID
+	 *            The account of the contract provider
+	 * @param proprietaryCredential
+	 *            The credential of the contract provider
+	 * @param contract
+	 *            The specification of a contract. It includes the interfaces that
+	 *            will be part of the contract, the date the contract starts (it
+	 *            becomes active), and the date the contract expires
+	 * @return the contract id if the operation succeeds. null otherwise.
+	 */
+	public static ContractID newPublicContract(final AccountID proprietaryAccountID,
+			final PasswordCredential proprietaryCredential, final Contract contract) {
+<span class="nc" id="L1202">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contract&quot; },</span>
+				new Object[] { proprietaryAccountID, proprietaryCredential, contract });
+<span class="nc" id="L1204">		ContractID result = null;</span>
+		try {
+<span class="nc" id="L1206">			result = clientLib.getLogicModuleAPI().newContract(proprietaryAccountID, proprietaryCredential, contract);</span>
+<span class="nc" id="L1207">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1208">			LOGGER.warn(&quot;Error during newPublicContract&quot;, ex);</span>
+<span class="nc" id="L1209">		}</span>
+<span class="nc" id="L1210">		return result;</span>
+	}
+
+	/**
+	 * Return all contracts info of public DataClay provider.
+	 * 
+	 * @param accountID
+	 *            ID of the account querying.
+	 * @param credential
+	 *            Credential of the user.
+	 * @return The info of the contracts of the namespace provider.
+	 */
+	public static ContractID getContractOfDataClayProvider(final AccountID accountID,
+			final PasswordCredential credential) {
+<span class="nc" id="L1224">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+				new Object[] { accountID, credential });
+<span class="nc" id="L1226">		ContractID result = null;</span>
+		try {
+<span class="nc" id="L1228">			result = clientLib.getLogicModuleAPI().getContractIDOfDataClayProvider(accountID, credential);</span>
+<span class="nc" id="L1229">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1230">			LOGGER.warn(&quot;Error during getContractOfDataClayProvider&quot;, ex);</span>
+<span class="nc" id="L1231">		}</span>
+<span class="nc" id="L1232">		return result;</span>
+	}
+
+	/**
+	 * Return all contracts info of the namespace provider.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the responsible of the namespace.
+	 * @param credential
+	 *            Credential of the user.
+	 * @param namespaceID
+	 *            ID of the namespace provider.
+	 * @return The info of the contracts of the namespace provider.
+	 */
+	public static Map&lt;ContractID, Contract&gt; getContractsOfProvider(final AccountID accountID,
+			final PasswordCredential credential, final NamespaceID namespaceID) {
+<span class="nc" id="L1248">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
+				new Object[] { accountID, credential, namespaceID });
+<span class="nc" id="L1250">		Map&lt;ContractID, Contract&gt; result = null;</span>
+		try {
+<span class="nc" id="L1252">			result = clientLib.getLogicModuleAPI().getContractIDsOfProvider(accountID, credential, namespaceID);</span>
+<span class="nc" id="L1253">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1254">			LOGGER.warn(&quot;Error during getContractsOfProvider&quot;, ex);</span>
+<span class="nc" id="L1255">		}</span>
+<span class="nc" id="L1256">		return result;</span>
+	}
+
+	/**
+	 * Return the info of all the contracts of the user (as applicant) specified.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the user.
+	 * @param credential
+	 *            Credential of the user.
+	 * @return @return The info of the contracts of the user specified (as
+	 *         applicant).
+	 */
+	public static Map&lt;ContractID, Contract&gt; getContractsOfApplicant(final AccountID accountID,
+			final PasswordCredential credential) {
+<span class="nc" id="L1271">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+				new Object[] { accountID, credential });
+<span class="nc" id="L1273">		Map&lt;ContractID, Contract&gt; result = null;</span>
+		try {
+<span class="nc" id="L1275">			result = clientLib.getLogicModuleAPI().getContractIDsOfApplicant(accountID, credential);</span>
+<span class="nc" id="L1276">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1277">			LOGGER.warn(&quot;Error during getContractsOfApplicant&quot;, ex);</span>
+<span class="nc" id="L1278">		}</span>
+<span class="nc" id="L1279">		return result;</span>
+	}
+
+	/**
+	 * Return the info of all the contracts of the user (as applicant) specified
+	 * with the namespace provider specified.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the user.
+	 * @param credential
+	 *            Credential of the user.
+	 * @param namespaceIDofProvider
+	 *            ID of the namespace that provides the contracts to be retrieved.
+	 * @return The info of the contracts of the user specified with the given
+	 *         namespace provider.
+	 */
+	public static Map&lt;ContractID, Contract&gt; getContractsOfApplicant(final AccountID accountID,
+			final PasswordCredential credential, final NamespaceID namespaceIDofProvider) {
+<span class="nc" id="L1297">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceIDofProvider&quot; },</span>
+				new Object[] { accountID, credential, namespaceIDofProvider });
+<span class="nc" id="L1299">		Map&lt;ContractID, Contract&gt; result = null;</span>
+		try {
+<span class="nc" id="L1301">			result = clientLib.getLogicModuleAPI().getContractIDsOfApplicantWithProvider(accountID, credential,</span>
+					namespaceIDofProvider);
+<span class="nc" id="L1303">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1304">			LOGGER.warn(&quot;Error during getContractsOfApplicant&quot;, ex);</span>
+<span class="nc" id="L1305">		}</span>
+<span class="nc" id="L1306">		return result;</span>
+	}
+
+	/**
+	 * Method to register an account to a contract
+	 * 
+	 * @param accountID
+	 *            The account of the applicant for the contract
+	 * @param credential
+	 *            The credential of the applicant for the contract
+	 * @param contractID
+	 *            ID of the contract in which to register.
+	 * @return TRUE if the account was successfully registered to contract. FALSE,
+	 *         otherwise.
+	 */
+	public static boolean registerToPublicContract(final AccountID accountID, final PasswordCredential credential,
+			final ContractID contractID) {
+<span class="nc" id="L1323">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractID&quot; },</span>
+				new Object[] { accountID, credential, contractID });
+		try {
+<span class="nc" id="L1326">			clientLib.getLogicModuleAPI().registerToPublicContract(accountID, credential, contractID);</span>
+<span class="nc" id="L1327">			return true;</span>
+<span class="nc" id="L1328">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1329">			LOGGER.warn(&quot;Error during registerToPublicContract&quot;, ex);</span>
+		}
+<span class="nc" id="L1331">		return false;</span>
+	}
+
+	/**
+	 * Method to register an account to a contract
+	 * 
+	 * @param accountID
+	 *            The account of the applicant for the contract
+	 * @param credential
+	 *            The credential of the applicant for the contract
+	 * @param namespaceID
+	 *            ID of the namespace to check for a public contract
+	 * @return the contractID corresponding to the public contract of the namespace
+	 */
+	public static ContractID registerToPublicContractOfNamespace(final AccountID accountID,
+			final PasswordCredential credential, final NamespaceID namespaceID) {
+<span class="nc" id="L1347">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
+				new Object[] { accountID, credential, namespaceID });
+		try {
+<span class="nc" id="L1350">			return clientLib.getLogicModuleAPI().registerToPublicContractOfNamespace(accountID, credential,</span>
+					namespaceID);
+<span class="nc" id="L1352">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1353">			LOGGER.warn(&quot;Error during registerToPublicContractOfNamespace&quot;, ex);</span>
+		}
+<span class="nc" id="L1355">		return null;</span>
+	}
+
+	/**
+	 * Method that allows to retrieve the stubs
+	 * 
+	 * @param applicantAccountID
+	 *            the applicant of the contracts
+	 * @param applicantCredential
+	 *            the credentials of the applicant
+	 * @param contractsIDs
+	 *            the contracts ids of the user
+	 * @return Byte arrays representing stubs and aspects
+	 */
+	public static Map&lt;String, byte[]&gt; getStubs(final AccountID applicantAccountID,
+			final PasswordCredential applicantCredential, final LinkedList&lt;ContractID&gt; contractsIDs) {
+<span class="nc" id="L1371">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractIDs&quot; },</span>
+				new Object[] { applicantAccountID, applicantCredential, contractsIDs });
+<span class="nc" id="L1373">		Map&lt;String, byte[]&gt; stubs = null;</span>
+		try {
+			// Get the stubs
+<span class="nc" id="L1376">			stubs = clientLib.getLogicModuleAPI().getStubs(applicantAccountID, applicantCredential, Langs.LANG_JAVA,</span>
+					contractsIDs);
+<span class="nc" id="L1378">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1379">			LOGGER.warn(&quot;Error during getStubs&quot;, ex);</span>
+<span class="nc" id="L1380">		}</span>
+<span class="nc" id="L1381">		return stubs;</span>
+	}
+
+	/**
+	 * Method that allows to retrieve the stubs and prototypes of the given contract
+	 * and store them to certain directory
+	 * 
+	 * @param applicantAccountID
+	 *            the applicant of the contracts
+	 * @param applicantCredential
+	 *            the credentials of the applicant
+	 * @param contractsIDs
+	 *            the contracts ids of the user
+	 * @param targetDirectoryPath
+	 *            the directory path where stubs are saved
+	 * @return Set of name of classes of stubs stored
+	 */
+	public static Set&lt;String&gt; getAndStoreStubs(final AccountID applicantAccountID,
+			final PasswordCredential applicantCredential, final LinkedList&lt;ContractID&gt; contractsIDs,
+			final String targetDirectoryPath) {
+<span class="nc" id="L1401">		clientLib.checkConnectionAndParams(</span>
+				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractIDs&quot;, &quot;TargetDirectoryPath&quot; },
+				new Object[] { applicantAccountID, applicantCredential, contractsIDs, targetDirectoryPath });
+<span class="nc" id="L1404">		final Set&lt;String&gt; stubsStored = new HashSet&lt;&gt;();</span>
+		try {
+
+			// Clear stubs infos cache
+<span class="nc" id="L1408">			DataClayObject.clearStubInfosCache();</span>
+
+			// Get the stubs
+<span class="nc" id="L1411">			final Map&lt;String, byte[]&gt; stubs = getStubs(applicantAccountID, applicantCredential, contractsIDs);</span>
+
+			// Create the target directory and store them in it
+<span class="nc" id="L1414">			FileAndAspectsUtils.createDirectory(targetDirectoryPath);</span>
+<span class="nc bnc" id="L1415" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; curEntry : stubs.entrySet()) {</span>
+<span class="nc" id="L1416">				final String className = curEntry.getKey();</span>
+<span class="nc" id="L1417">				String extension = JAVACLASSEXT;</span>
+<span class="nc bnc" id="L1418" title="All 2 branches missed.">				if (className.endsWith(&quot;Aspect&quot;)) {</span>
+<span class="nc" id="L1419">					extension = JAVAASPECTEXT;</span>
+<span class="nc" id="L1420">					final String javaVersion = System.getProperty(&quot;java.version&quot;);</span>
+<span class="nc bnc" id="L1421" title="All 4 branches missed.">					if (!javaVersion.startsWith(&quot;1.7.&quot;) &amp;&amp; !javaVersion.startsWith(&quot;1.8.&quot;)) {</span>
+<span class="nc" id="L1422">						continue;</span>
+					}
+				}
+<span class="nc bnc" id="L1425" title="All 2 branches missed.">				if (className.endsWith(&quot;Yaml&quot;)) {</span>
+<span class="nc" id="L1426">					extension = BABELEXT;</span>
+				}
+<span class="nc bnc" id="L1428" title="All 2 branches missed.">				if (FileAndAspectsUtils.storeClass(targetDirectoryPath, className + extension,</span>
+<span class="nc" id="L1429">						curEntry.getValue()) != null) {</span>
+<span class="nc" id="L1430">					stubsStored.add(className);</span>
+				}
+<span class="nc" id="L1432">			}</span>
+
+<span class="nc" id="L1434">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1435">			LOGGER.warn(&quot;Error during getAndStoreStubs&quot;, ex);</span>
+<span class="nc" id="L1436">		}</span>
+<span class="nc" id="L1437">		return stubsStored;</span>
+	}
+
+	/**
+	 * Method that allows to retrieve the stubs FOR ENRICHMENT of the given contract
+	 * and store them to certain directory
+	 * 
+	 * @param applicantAccountID
+	 *            the applicant of the contracts
+	 * @param applicantCredential
+	 *            the credentials of the applicant
+	 * @param contractsIDs
+	 *            the contracts ids of the user
+	 * @param targetDirectoryPath
+	 *            the directory path where stubs are saved
+	 * @return TRUE if it succeeds, FALSE otherwise
+	 */
+	public static boolean getAndStoreStubsForEnrichment(final AccountID applicantAccountID,
+			final PasswordCredential applicantCredential, final LinkedList&lt;ContractID&gt; contractsIDs,
+			final String targetDirectoryPath) {
+<span class="nc" id="L1457">		throw new UnsupportedOperationException();</span>
+		// TODO: REVIEW enrichment stuff (jmarti 2018)
+		/**
+		 * try { // Get the stubs Map&lt;String, byte[]&gt; stubs =
+		 * commonLib.getLogicModuleAPI().getStubsForEnrichment(applicantAccountID,
+		 * applicantCredential, Langs.LANG_JAVA, contractsIDs);
+		 * 
+		 * // Create the target directory and store them in it
+		 * FileAndAspectsUtils.createDirectory(targetDirectoryPath); for (Entry&lt;String,
+		 * byte[]&gt; curEntry : stubs.entrySet()) { String className = curEntry.getKey();
+		 * String extension = &quot;.java&quot;; if
+		 * (FileAndAspectsUtils.storeClass(targetDirectoryPath, className + extension,
+		 * curEntry.getValue()) == null) { return false; } } return true; } catch
+		 * (Exception ex) { &lt;&lt;process the exception&gt;&gt; } return false;
+		 **/
+	}
+
+	// ============== Interface Manager ==============//
+	// PRIORITY - newInterface
+
+	/**
+	 * Method that registers a new interface
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace of the class
+	 * @param credential
+	 *            the credentials of the account
+	 * @param interfaceSpec
+	 *            Interface specification
+	 * @return ID of the new interface created or NULL if it failed.
+	 */
+	public static InterfaceID newInterface(final AccountID accountID, final PasswordCredential credential,
+			final Interface interfaceSpec) {
+<span class="nc" id="L1490">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Interface&quot; },</span>
+				new Object[] { accountID, credential, interfaceSpec });
+<span class="nc" id="L1492">		InterfaceID result = null;</span>
+		try {
+<span class="nc" id="L1494">			result = clientLib.getLogicModuleAPI().newInterface(accountID, credential, interfaceSpec);</span>
+<span class="nc" id="L1495">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1496">			LOGGER.warn(&quot;Error during newInterface&quot;, ex);</span>
+<span class="nc" id="L1497">		}</span>
+<span class="nc" id="L1498">		return result;</span>
+	}
+
+	/**
+	 * Method that removes a specific interface
+	 * 
+	 * @param accountID
+	 *            the account of the responsible of the namespace of the interface
+	 * @param credential
+	 *            the credentials of the acount
+	 * @param namespaceID
+	 *            ID of the namespace of the interface
+	 * @param interfaceID
+	 *            the id of the interface to be removed
+	 * @return TRUE if it was successfully removed. FALSE, otherwise.
+	 */
+	public static boolean removeInterface(final AccountID accountID, final PasswordCredential credential,
+			final NamespaceID namespaceID, final InterfaceID interfaceID) {
+<span class="nc" id="L1516">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;InterfaceID&quot; },</span>
+				new Object[] { accountID, credential, namespaceID, interfaceID });
+		try {
+<span class="nc" id="L1519">			clientLib.getLogicModuleAPI().removeInterface(accountID, credential, namespaceID, interfaceID);</span>
+<span class="nc" id="L1520">			return true;</span>
+<span class="nc" id="L1521">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1522">			LOGGER.warn(&quot;Error during removeInterface&quot;, ex);</span>
+		}
+<span class="nc" id="L1524">		return false;</span>
+	}
+
+	/**
+	 * Call that performs a series of account creations, described by one YAML file.
+	 * 
+	 * @param adminID
+	 *            The admin AccountID, in order to perform the newAccount calls.
+	 * @param credential
+	 *            The credential for admin account.
+	 * @param yamlRequest
+	 *            The YAML file containing the new accounts information.
+	 * @return A YAML payload containing the ID for the new accounts.
+	 */
+	public static byte[] performSetOfNewAccounts(final AccountID adminID, final PasswordCredential credential,
+			final byte[] yamlRequest) {
+<span class="nc" id="L1540">		byte[] yamlResponse = null;</span>
+		try {
+<span class="nc" id="L1542">			yamlResponse = clientLib.getLogicModuleAPI().performSetOfNewAccounts(adminID, credential, yamlRequest);</span>
+<span class="nc" id="L1543">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1544">			LOGGER.warn(&quot;Error during performSetOfNewAccounts&quot;, ex);</span>
+<span class="nc" id="L1545">		}</span>
+<span class="nc" id="L1546">		return yamlResponse;</span>
+	}
+
+	/**
+	 * Call that performs a series of operations (user type), described by one YAML
+	 * file.
+	 * 
+	 * @param performerID
+	 *            The performer AccountID, user responsible for all the operations.
+	 * @param credential
+	 *            The credential for the performer account.
+	 * @param yamlRequest
+	 *            The YAML file containing the information for the set of
+	 *            operations.
+	 * @return A YAML payload containing the new dataClay IDs, resulting from this
+	 *         call.
+	 */
+	public static byte[] performSetOfOperations(final AccountID performerID, final PasswordCredential credential,
+			final byte[] yamlRequest) {
+<span class="nc" id="L1565">		byte[] yamlResponse = null;</span>
+		try {
+<span class="nc" id="L1567">			yamlResponse = clientLib.getLogicModuleAPI().performSetOfOperations(performerID, credential, yamlRequest);</span>
+<span class="nc" id="L1568">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1569">			LOGGER.warn(&quot;Error during performSetOfOperations&quot;, ex);</span>
+<span class="nc" id="L1570">		}</span>
+<span class="nc" id="L1571">		return yamlResponse;</span>
+	}
+
+	/**
+	 * Method that retrieves the info of the interface if the account is registered
+	 * in a contract that contains it
+	 * 
+	 * @param accountID
+	 *            ID of the account registered in a contract with the interface
+	 *            present
+	 * @param credential
+	 *            the credential of the account
+	 * @param interfaceID
+	 *            the ID of the interface to be retrieved
+	 * @return info of the interface
+	 */
+	public static Interface getInterfaceInfo(final AccountID accountID, final PasswordCredential credential,
+			final InterfaceID interfaceID) {
+<span class="nc" id="L1589">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;InterfaceID&quot; },</span>
+				new Object[] { accountID, credential, interfaceID });
+<span class="nc" id="L1591">		Interface result = null;</span>
+		try {
+<span class="nc" id="L1593">			result = clientLib.getLogicModuleAPI().getInterfaceInfo(accountID, credential, interfaceID);</span>
+<span class="nc" id="L1594">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1595">			LOGGER.warn(&quot;Error during getInterfaceInfo&quot;, ex);</span>
+<span class="nc" id="L1596">		}</span>
+<span class="nc" id="L1597">		return result;</span>
+	}
+
+	// ============== Data Contract Manager ==============//
+
+	/**
+	 * Method to register a new private data contract.
+	 * 
+	 * @param proprietaryAccountID
+	 *            The account of the contract provider
+	 * @param proprietaryCredential
+	 *            The credential of the contract provider
+	 * @param datacontract
+	 *            The specification of a contract. It includes the date the contract
+	 *            starts (it becomes active) and the date the contract expires
+	 * @return the contract id if the operation succeeds. null otherwise.
+	 */
+	public static DataContractID newPrivateDataContract(final AccountID proprietaryAccountID,
+			final PasswordCredential proprietaryCredential, final DataContract datacontract) {
+<span class="nc" id="L1616">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContract&quot; },</span>
+				new Object[] { proprietaryAccountID, proprietaryCredential, datacontract });
+<span class="nc" id="L1618">		DataContractID result = null;</span>
+		try {
+<span class="nc" id="L1620">			result = clientLib.getLogicModuleAPI().newDataContract(proprietaryAccountID, proprietaryCredential,</span>
+					datacontract);
+<span class="nc" id="L1622">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1623">			LOGGER.warn(&quot;Error during newPrivateDataContract&quot;, ex);</span>
+<span class="nc" id="L1624">		}</span>
+<span class="nc" id="L1625">		return result;</span>
+	}
+
+	/**
+	 * Method that registers a new public data contract
+	 * 
+	 * @param proprietaryAccountID
+	 *            The account of the contract provider
+	 * @param proprietaryCredential
+	 *            The credential of the contract provider
+	 * @param datacontract
+	 *            The specification of a contract. It includes the date the contract
+	 *            starts (it becomes active) and the date the contract expires
+	 * @return the contract id if the operation succeeds. null otherwise.
+	 */
+	public static DataContractID newPublicDataContract(final AccountID proprietaryAccountID,
+			final PasswordCredential proprietaryCredential, final DataContract datacontract) {
+<span class="nc" id="L1642">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContract&quot; },</span>
+				new Object[] { proprietaryAccountID, proprietaryCredential, datacontract });
+<span class="nc" id="L1644">		DataContractID result = null;</span>
+		try {
+<span class="nc" id="L1646">			result = clientLib.getLogicModuleAPI().newDataContract(proprietaryAccountID, proprietaryCredential,</span>
+					datacontract);
+<span class="nc" id="L1648">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1649">			LOGGER.warn(&quot;Error during newPublicDataContract&quot;, ex);</span>
+<span class="nc" id="L1650">		}</span>
+<span class="nc" id="L1651">		return result;</span>
+	}
+
+	/**
+	 * Return all contracts info of the dataset provider.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the responsible of the dataset.
+	 * @param credential
+	 *            Credential of the user.
+	 * @param datasetID
+	 *            ID of the dataset provider.
+	 * @return The info of the contracts of the namespace provider.
+	 */
+	public static Map&lt;DataContractID, DataContract&gt; getDataContractsOfProvider(final AccountID accountID,
+			final PasswordCredential credential, final DataSetID datasetID) {
+<span class="nc" id="L1667">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetID&quot; },</span>
+				new Object[] { accountID, credential, datasetID });
+<span class="nc" id="L1669">		Map&lt;DataContractID, DataContract&gt; result = null;</span>
+		try {
+<span class="nc" id="L1671">			result = clientLib.getLogicModuleAPI().getDataContractIDsOfProvider(accountID, credential, datasetID);</span>
+<span class="nc" id="L1672">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1673">			LOGGER.warn(&quot;Error during getDataContractsOfProvider&quot;, ex);</span>
+<span class="nc" id="L1674">		}</span>
+<span class="nc" id="L1675">		return result;</span>
+	}
+
+	/**
+	 * Return the info of all the data contracts of the user (as applicant)
+	 * specified.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the user.
+	 * @param credential
+	 *            Credential of the user.
+	 * @return @return The info of the data contracts of the user specified (as
+	 *         applicant).
+	 */
+
+	public static Map&lt;DataContractID, DataContract&gt; getDataContractsOfApplicant(final AccountID accountID,
+			final PasswordCredential credential) {
+<span class="nc" id="L1692">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+				new Object[] { accountID, credential });
+<span class="nc" id="L1694">		Map&lt;DataContractID, DataContract&gt; result = null;</span>
+		try {
+<span class="nc" id="L1696">			result = clientLib.getLogicModuleAPI().getDataContractIDsOfApplicant(accountID, credential);</span>
+<span class="nc" id="L1697">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1698">			LOGGER.warn(&quot;Error during getDataContractsOfApplicant&quot;, ex);</span>
+<span class="nc" id="L1699">		}</span>
+<span class="nc" id="L1700">		return result;</span>
+	}
+
+	/**
+	 * Return the info of all the data contracts of the user (as applicant)
+	 * specified with the dataset provider specified.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the user.
+	 * @param credential
+	 *            Credential of the user.
+	 * @param datasetIDofProvider
+	 *            ID of the dataset that provides the contracts to be retrieved.
+	 * @return The info of the data contracts of the user specified with the given
+	 *         dataset provider.
+	 */
+	public static DataContract getDataContractInfoOfApplicantWithProvider(final AccountID accountID,
+			final PasswordCredential credential, final DataSetID datasetIDofProvider) {
+<span class="nc" id="L1718">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetID&quot; },</span>
+				new Object[] { accountID, credential, datasetIDofProvider });
+<span class="nc" id="L1720">		DataContract result = null;</span>
+		try {
+<span class="nc" id="L1722">			result = clientLib.getLogicModuleAPI().getDataContractInfoOfApplicantWithProvider(accountID, credential,</span>
+					datasetIDofProvider);
+<span class="nc" id="L1724">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1725">			LOGGER.warn(&quot;Error during getDataContractInfoOfApplicantWithProvider&quot;, ex);</span>
+<span class="nc" id="L1726">		}</span>
+<span class="nc" id="L1727">		return result;</span>
+	}
+
+	/**
+	 * Method to register an account to a data contract
+	 * 
+	 * @param accountID
+	 *            The account of the applicant for the data contract
+	 * @param credential
+	 *            The credential of the applicant for the data contract
+	 * @param datacontractID
+	 *            ID of the contract in which to register.
+	 * @return TRUE if the account was successfully registered to data contract.
+	 *         FALSE, otherwise.
+	 */
+	public static boolean registerToPublicDataContract(final AccountID accountID, final PasswordCredential credential,
+			final DataContractID datacontractID) {
+<span class="nc" id="L1744">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContractID&quot; },</span>
+				new Object[] { accountID, credential, datacontractID });
+		try {
+<span class="nc" id="L1747">			clientLib.getLogicModuleAPI().registerToPublicDataContract(accountID, credential, datacontractID);</span>
+<span class="nc" id="L1748">			return true;</span>
+<span class="nc" id="L1749">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1750">			LOGGER.warn(&quot;Error during registerToPublicDataContract&quot;, ex);</span>
+		}
+<span class="nc" id="L1752">		return false;</span>
+	}
+
+	/**
+	 * Method that retrieves the info of the execution environments of a specific
+	 * language
+	 * 
+	 * @param accountID
+	 *            ID of the account
+	 * @param credential
+	 *            credential of the account
+	 * @param language
+	 *            language of the backends to be retrieved
+	 * @return info of the of the execution environments of a specific language, indexed by their ID
+	 */
+	public static Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getExecutionEnvironmentsInfo(final AccountID accountID,
+			final PasswordCredential credential, final Langs language) {
+		try {
+<span class="nc bnc" id="L1770" title="All 4 branches missed.">			if (language == null || language.equals(Langs.LANG_NONE)) {</span>
+<span class="nc" id="L1771">				LOGGER.error(&quot;A specific language must be provided&quot;);</span>
+<span class="nc" id="L1772">				return null;</span>
+			}
+<span class="nc" id="L1774">			return clientLib.getExecutionEnvironmentsInfo(language);</span>
+<span class="nc" id="L1775">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1776">			LOGGER.warn(&quot;Error during getExecutionEnvironmentsInfo&quot;, ex);</span>
+<span class="nc" id="L1777">			return null;</span>
+		}
+	}
+
+	/**
+	 * Method that retrieves the info of the registered backends assuming that they
+	 * might have 1 storage location and/or 1 exec environment
+	 * 
+	 * @param accountID
+	 *            ID of the account
+	 * @param credential
+	 *            credential of the account
+	 * @param backendLanguage
+	 *            Language of the backend.
+	 * @return info of the registered backends indexed by their names
+	 */
+	public static Set&lt;String&gt; getBackendNames(final AccountID accountID, final PasswordCredential credential,
+			final Langs backendLanguage) {
+<span class="nc" id="L1795">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+				new Object[] { accountID, credential });
+<span class="nc" id="L1797">		Set&lt;String&gt; result = null;</span>
+		try {
+<span class="nc" id="L1799">			result = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1800">			result = clientLib.getLogicModuleAPI().getExecutionEnvironmentsNames(accountID, credential,</span>
+					backendLanguage);
+<span class="nc" id="L1802">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1803">			LOGGER.warn(&quot;Error during getBackendNames&quot;, ex);</span>
+<span class="nc" id="L1804">		}</span>
+<span class="nc" id="L1805">		return result;</span>
+	}
+
+	/**
+	 * Register Event listener implementation i.e. method that must be executed
+	 * every time a certain event (and its conditions) occurs.
+	 * 
+	 * @param accountID
+	 *            ID of the account of the user registering event listener.
+	 * @param credentials
+	 *            Credentials of the user
+	 * @param eventListenerImpl
+	 *            Event listener implementation. The user must be the responsible of
+	 *            the implementation.
+	 */
+	public static void registerEventListenerImpl(final AccountID accountID, final PasswordCredential credentials,
+			final ECA eventListenerImpl) {
+<span class="nc" id="L1822">		clientLib.getLogicModuleAPI().registerEventListenerImplementation(accountID, credentials, eventListenerImpl);</span>
+<span class="nc" id="L1823">	}</span>
+
+	// ============== Listener Registering ==============//
+
+	
+
+	// ============== UTILS ==============//
+
+	/**
+	 * Method that registers the info of a dataClay instance
+	 * 
+	 * @param dcHost
+	 *            entry port host of the external dataClay
+	 * @param dcPort
+	 *            entry point port of the external dataClay
+	 * @return ID of external registered dataClay.
+	 */
+	public static DataClayInstanceID registerExternalDataClay(final String dcHost, final int dcPort) {
+<span class="nc" id="L1841">		clientLib.checkConnectionAndParams(new String[] { &quot;dcID&quot;, &quot;dcName&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; },</span>
+<span class="nc" id="L1842">				new Object[] { dcHost, dcPort });</span>
+		try {
+<span class="nc" id="L1844">			return clientLib.registerExternalDataClay(dcHost, dcPort);</span>
+<span class="nc" id="L1845">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1846">			LOGGER.warn(&quot;Error during registerExternalDataClay&quot;, ex);</span>
+<span class="nc" id="L1847">			return null;</span>
+		}
+	}
+	
+	/**
+	 * ADMIN usage only. Method that registers the info of a dataClay instance but with overriden authority for SSL connections.
+	 * @param adminAccountID admin account id
+	 * @param  adminCredential admin credentials
+	 * @param dcHost
+	 *            entry port host of the external dataClay
+	 * @param dcPort
+	 *            entry point port of the external dataClay
+	 * @param authority authority to use
+	 * @return ID of external registered dataClay.
+	 */
+	public static DataClayInstanceID registerExternalDataClayOverrideAuthority(final AccountID adminAccountID,
+			final PasswordCredential adminCredential, final String dcHost, final int dcPort, final String authority) {
+<span class="nc" id="L1864">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; , &quot;authority&quot;},</span>
+<span class="nc" id="L1865">				new Object[] { adminAccountID, adminCredential, dcHost, dcPort, authority });</span>
+		try {
+<span class="nc" id="L1867">			return clientLib.registerExternalDataClayOverrideAuthority(adminAccountID, adminCredential, dcHost, dcPort, authority);</span>
+<span class="nc" id="L1868">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1869">			LOGGER.warn(&quot;Error during registerExternalDataClay&quot;, ex);</span>
+<span class="nc" id="L1870">			return null;</span>
+		}
+	}
+	
+	/**
+	 * Method that updates the info of a dataClay instance (adds new &quot;access&quot;)
+	 * 
+	 * @param dcID ID of the dataclay to update
+	 * @param dcHost
+	 *            entry port host of the external dataClay
+	 * @param dcPort
+	 *            entry point port of the external dataClay
+	 */
+	public static void updateExternalDataClay(final DataClayInstanceID dcID, final String dcHost, final int dcPort) {
+<span class="nc" id="L1884">		clientLib.checkConnectionAndParams(new String[] { &quot;dcID&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; },</span>
+<span class="nc" id="L1885">				new Object[] { dcID, dcHost, dcPort });</span>
+		try {
+<span class="nc" id="L1887">			clientLib.getLogicModuleAPI().notifyRegistrationOfExternalDataClay(dcID, dcHost, dcPort);</span>
+<span class="nc" id="L1888">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1889">			LOGGER.warn(&quot;Error during updateExternalDataClay&quot;, ex);</span>
+<span class="nc" id="L1890">		}</span>
+<span class="nc" id="L1891">	}</span>
+
+	/**
+	 * Tries to connect to an external dataClay instance and retrieve its ID. *
+	 * 
+	 * @param dcHost
+	 *            hostname of the external dataClay instance
+	 * @param dcPort
+	 *            port of the external dataClay instance
+	 * @return id of the external dataClay instance
+	 */
+	public static DataClayInstanceID getExternalDataClayID(final String dcHost, final int dcPort) {
+		try {
+<span class="nc" id="L1904">			return clientLib.getExternalDataClayID(dcHost, dcPort);</span>
+<span class="nc" id="L1905">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1906">			LOGGER.warn(&quot;Error during getExternalDataClayID&quot;, ex);</span>
+<span class="nc" id="L1907">			return null;</span>
+		}
+	}
+
+	/**
+	 * Method that retrieves the current dataClay identifier
+	 * 
+	 * @return id of the current dataClay (current dataClay is which this clientLib
+	 *         is being connected to)
+	 */
+	public static DataClayInstanceID getDataClayID() {
+<span class="nc" id="L1918">		return clientLib.getDataClayID();</span>
+	}
+
+	/**
+	 * Unfederate all objects belonging/federated with external dataClay with id provided
+	 * @param extDataClayID External dataClay ID
+	 */
+	public static void unfederateAllObjects(final DataClayInstanceID extDataClayID) {
+<span class="nc" id="L1926">		clientLib.unfederateAllObjects(extDataClayID);</span>
+<span class="nc" id="L1927">	}</span>
+	
+	/**
+	 * Unfederate all objects belonging/federated with ANY external dataClay 
+	 */
+	public static void unfederateAllObjectsWithAllDCs() {
+<span class="nc" id="L1933">		clientLib.unfederateAllObjectsWithAllDCs();</span>
+<span class="nc" id="L1934">	}</span>
+	
+	/**
+	 * Migrate (unfederate and federate) all current dataClay objects from specified external dataclay di to
+	 * destination dataclay. 
+	 * @param originDataClayID Origin dataclay id
+	 * @param destinationDataClayID Destination dataclay id
+	 */
+	public static void migrateFederatedObjects(final DataClayInstanceID originDataClayID, 
+			final DataClayInstanceID destinationDataClayID) {
+<span class="nc" id="L1944">		clientLib.migrateFederatedObjects(originDataClayID, destinationDataClayID);</span>
+<span class="nc" id="L1945">	}</span>
+
+	/**
+	 * Federate all dataClay objects from specified current dataClay
+	 * destination dataclay. 
+	 * @param destinationDataClayID Destination dataclay id
+	 */
+	public static void federateAllObjects(
+			final DataClayInstanceID destinationDataClayID) {
+<span class="nc" id="L1954">		clientLib.federateAllObjects(destinationDataClayID);</span>
+<span class="nc" id="L1955">	}</span>
+
+	/**
+	 * Import classes in namespace specified from an external dataClay
+	 * @param externalNamespace External namespace to get
+	 * @param extDataClayID External dataClay ID
+	 */
+	public static void importModelsFromExternalDataClay(final String externalNamespace,
+															 final DataClayInstanceID extDataClayID) {
+<span class="nc" id="L1964">		clientLib.importModelsFromExternalDataClay(externalNamespace, extDataClayID);</span>
+<span class="nc" id="L1965">	}</span>
+	
+	/**
+	 * Activate tracing in dataClay services
+	 * 
+	 */
+	public final static void activateTracingInDataClayServices() {
+<span class="nc" id="L1972">		clientLib.activateTracingInDataClayServices();</span>
+<span class="nc" id="L1973">	}</span>
+	
+	/**
+	 * Dectivate tracing
+	 */
+	public final static void deactivateTracingInDataClayServices() {
+<span class="nc" id="L1979">		clientLib.deactivateTracingInDataClayServices();</span>
+<span class="nc" id="L1980">	}</span>
+
+	/**
+	 * Activate tracing
+	 */
+	public final static void activateTracing(
+			final boolean initializeWrapper) {
+<span class="nc" id="L1987">		clientLib.activateTracing(initializeWrapper);</span>
+<span class="nc" id="L1988">	}</span>
+
+	/**
+	 * Deactivate tracing
+	 */
+	public final static void deactivateTracing(final boolean finalizeWrapper) {
+<span class="nc" id="L1994">		clientLib.deactivateTracing(finalizeWrapper);</span>
+<span class="nc" id="L1995">	}</span>
+	
+	/**
+	 * Get traces in dataClay services and store it in current workspace
+	 */
+	public final static void getTracesInDataClayServices() {
+<span class="nc" id="L2001">		clientLib.getTracesInDataClayServices();</span>
+<span class="nc" id="L2002">	}</span>
+	
+	/**
+	 * Wait for asynchronous requests to finish.
+	 */
+	public static void waitForAsyncRequestToFinish() {
+<span class="nc bnc" id="L2008" title="All 2 branches missed.">		if (clientLib != null) {</span>
+			// Register pending objects
+<span class="nc" id="L2010">			clientLib.waitForAsyncRequestToFinish();</span>
+		}
+<span class="nc" id="L2012">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Tuple.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.structs</a> &gt; <span class="el_source">Tuple.java</span></div><h1>Tuple.java</h1><pre class="source lang-java linenums">
+/**
+ * @file Tuple.java
+ * @date May 23, 2013
+ */
+package es.bsc.dataclay.util.structs;
+
+import java.io.Serializable;
+import java.util.Objects;
+
+/**
+ * This class represents a tuple.
+ * 
+ * @param &lt;X&gt;
+ *            First element type
+ * @param &lt;Y&gt;
+ *            Second element type
+ */
+public final class Tuple&lt;X, Y&gt; implements Serializable {
+
+	/** Serial version UID. */
+	private static final long serialVersionUID = 4814332679297004307L;
+	
+	// Set to public for YAML processing
+	//CHECKSTYLE:OFF
+	/** First element. */
+	public X first;
+	/** Second element. */
+	public Y second;
+	//CHECKSTYLE:ON
+
+	/**
+	 * Tuple empty constructor.
+	 */
+<span class="nc" id="L35">	public Tuple() {</span>
+
+<span class="nc" id="L37">	}</span>
+
+	/**
+	 * Tuple constructor
+	 * @param newfirst
+	 *            First element.
+	 * @param newsecond
+	 *            Second element.
+	 */
+<span class="fc" id="L46">	public Tuple(final X newfirst, final Y newsecond) {</span>
+<span class="fc" id="L47">		this.setFirst(newfirst);</span>
+<span class="fc" id="L48">		this.setSecond(newsecond);</span>
+<span class="fc" id="L49">	}</span>
+
+	/**
+	 * Get the Tuple::first
+	 * @return the first
+	 */
+	public X getFirst() {
+<span class="fc" id="L56">		return this.first;</span>
+	}
+
+	/**
+	 * Set the Tuple::first
+	 * @param newfirst
+	 *            the first to set
+	 */
+	public void setFirst(final X newfirst) {
+<span class="fc" id="L65">		this.first = newfirst;</span>
+<span class="fc" id="L66">	}</span>
+
+	/**
+	 * Get the Tuple::second
+	 * @return the second
+	 */
+	public Y getSecond() {
+<span class="fc" id="L73">		return this.second;</span>
+	}
+
+	/**
+	 * Set the Tuple::second
+	 * @param newsecond
+	 *            the second to set
+	 */
+	public void setSecond(final Y newsecond) {
+<span class="fc" id="L82">		this.second = newsecond;</span>
+<span class="fc" id="L83">	}</span>
+
+	@Override
+	public boolean equals(final Object t) {
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">		if (t instanceof Tuple) {</span>
+<span class="fc" id="L88">			final Tuple&lt;?, ?&gt; other = (Tuple&lt;?, ?&gt;) t;</span>
+<span class="pc bpc" id="L89" title="2 of 4 branches missed.">			return other.getFirst().equals(this.getFirst()) &amp;&amp; other.getSecond().equals(this.getSecond());</span>
+		}
+<span class="nc" id="L91">		return false;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L96">		return Objects.hash(first, second);</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L101">		return &quot;{&quot; + this.getFirst().toString() + &quot;, &quot; + this.getSecond().toString() + &quot;}&quot;;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

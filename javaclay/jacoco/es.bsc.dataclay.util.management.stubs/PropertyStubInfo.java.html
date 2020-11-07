@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PropertyStubInfo.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.stubs</a> &gt; <span class="el_source">PropertyStubInfo.java</span></div><h1>PropertyStubInfo.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.stubs;
+
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.management.classmgr.Type;
+
+/**
+ * This class represents the information about a property in a contract in a stub.
+ * 
+ */
+public final class PropertyStubInfo {
+
+	/** Namespace of the property (can be different from Stub in case of enrichments). */
+	private String namespace;
+	/** Name of the property. */
+	private String propertyName;
+	
+	/** ID of the namespace. */
+	private NamespaceID namespaceID;
+	/** ID of the Property. */
+	private PropertyID propertyID;
+	/** Type of the Property. */
+	private Type propertyType;
+	
+	/** ID of the getter operation. */
+	private OperationID getterOperationID;
+	/** ID of the setter operation. */
+	private OperationID setterOperationID;
+
+	private String beforeUpdate, afterUpdate;
+
+	private boolean inMaster;
+
+	/**
+	 * Empty constructor
+	 */
+<span class="nc" id="L39">	public PropertyStubInfo() {</span>
+
+<span class="nc" id="L41">	}</span>
+
+	/**
+	 * PropertyStubSpec constructor
+	 * @param newpropertyID
+	 *            ID of the Property
+	 * @param newpropertyName
+	 *            Name of the Property
+	 * @param newpropertyType
+	 *            Type of the Property
+	 * @param newgetterOperationID
+	 *            OperationID of the getter operation
+	 * @param newsetterOperationID
+	 *            OperationID of the setter operation
+	 * @param newnamespace Namespace of the property (different for enrichments)
+	 * @param newnamespaceID ID of the namespace      
+	 */
+	public PropertyStubInfo(final PropertyID newpropertyID, final String newpropertyName, 
+			final Type newpropertyType, final OperationID newgetterOperationID, 
+			final OperationID newsetterOperationID, final String newnamespace, 
+			final NamespaceID newnamespaceID, final String beforeUpdate,
+<span class="nc" id="L62">			final String afterUpdate, boolean inMaster) {</span>
+<span class="nc" id="L63">		this.setNamespace(newnamespace);</span>
+<span class="nc" id="L64">		this.setPropertyID(newpropertyID);</span>
+<span class="nc" id="L65">		this.setPropertyName(newpropertyName);</span>
+<span class="nc" id="L66">		this.setPropertyType(newpropertyType);</span>
+<span class="nc" id="L67">		this.setGetterOperationID(newgetterOperationID);</span>
+<span class="nc" id="L68">		this.setSetterOperationID(newsetterOperationID);</span>
+<span class="nc" id="L69">		this.setBeforeUpdate(beforeUpdate);</span>
+<span class="nc" id="L70">		this.setAfterUpdate(afterUpdate);</span>
+<span class="nc" id="L71">		this.setInMaster(inMaster);</span>
+<span class="nc" id="L72">	}</span>
+
+	/**
+	 * Get the PropertyStubSpec::propertyID
+	 * @return the propertyID
+	 */
+
+	public PropertyID getPropertyID() {
+<span class="nc" id="L80">		return propertyID;</span>
+	}
+
+	/**
+	 * Set the PropertyStubSpec::propertyID
+	 * @param newpropertyID
+	 *            the propertyID to set
+	 */
+	public void setPropertyID(final PropertyID newpropertyID) {
+<span class="nc" id="L89">		this.propertyID = newpropertyID;</span>
+<span class="nc" id="L90">	}</span>
+
+	@Override
+	public boolean equals(final Object t) {
+<span class="nc bnc" id="L94" title="All 2 branches missed.">		if (t instanceof PropertyStubInfo) {</span>
+<span class="nc" id="L95">			final PropertyStubInfo other = (PropertyStubInfo) t;</span>
+<span class="nc" id="L96">			return other.getPropertyID().equals(this.getPropertyID());</span>
+		}
+<span class="nc" id="L98">		return false;</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L103">		return this.getPropertyID().hashCode();</span>
+	}
+
+	/**
+	 * Get the PropertyStubInfo::propertyName
+	 * @return the propertyName
+	 */
+	public String getPropertyName() {
+<span class="nc" id="L111">		return propertyName;</span>
+	}
+
+	/**
+	 * Set the PropertyStubInfo::propertyName
+	 * @param newpropertyName
+	 *            the propertyName to set
+	 */
+	public void setPropertyName(final String newpropertyName) {
+		// can be null for virtual stubs
+<span class="nc" id="L121">		this.propertyName = newpropertyName;</span>
+<span class="nc" id="L122">	}</span>
+	
+	/**
+	 * Get the PropertyStubInfo::propertyType
+	 * @return the propertyType
+	 */
+	public Type getPropertyType() {
+<span class="nc" id="L129">		return propertyType;</span>
+	}
+	
+	/**
+	 * Set the PropertyStubInfo::propertyType
+	 * @param newpropertyType 
+	 *            the propertyType to set
+	 */
+	public void setPropertyType(final Type newpropertyType) {
+<span class="nc" id="L138">		this.propertyType = newpropertyType;</span>
+<span class="nc" id="L139">	}</span>
+	
+	/**
+	 * Get the PropertyStubInfo::getterOperationID
+	 * @return the OperationID for the getter operation
+	 */
+	public OperationID getGetterOperationID() {
+<span class="nc" id="L146">		return this.getterOperationID;</span>
+	}
+	
+	/**
+	 * Set the PropertyStubInfo::getterOperationID
+	 * @param newgetterOperationID
+	 *            the new OperationID for the getter
+	 */	
+	public void setGetterOperationID(final OperationID newgetterOperationID) {
+<span class="nc" id="L155">		this.getterOperationID = newgetterOperationID;</span>
+<span class="nc" id="L156">	}</span>
+	
+	/**
+	 * Get the PropertyStubInfo::setterOperationID
+	 * @return the OperationID for the setter operation
+	 */
+	public OperationID getSetterOperationID() {
+<span class="nc" id="L163">		return this.setterOperationID;</span>
+	}
+	
+	/**
+	 * Set the PropertyStubInfo::setterOperationID
+	 * @param newsetterOperationID
+	 *            the new OperationID for the setter
+	 */
+	public void setSetterOperationID(final OperationID newsetterOperationID) {
+<span class="nc" id="L172">		this.setterOperationID = newsetterOperationID;</span>
+<span class="nc" id="L173">	}</span>
+
+	/**
+	 * Get namespace
+	 * @return the namespace
+	 */
+	public String getNamespace() {
+<span class="nc" id="L180">		return namespace;</span>
+	}
+
+	/**
+	 * Set namespace
+	 * @param newnamespace the namespace to set
+	 */
+	public void setNamespace(final String newnamespace) {
+<span class="nc" id="L188">		this.namespace = newnamespace;</span>
+<span class="nc" id="L189">	}</span>
+
+	/**
+	 * Get namespaceID
+	 * @return the namespaceID
+	 */
+	public NamespaceID getNamespaceID() {
+<span class="nc" id="L196">		return namespaceID;</span>
+	}
+
+	/**
+	 * Set namespaceID
+	 * @param newnamespaceID the namespaceID to set
+	 */
+	public void setNamespaceID(final NamespaceID newnamespaceID) {
+<span class="nc" id="L204">		this.namespaceID = newnamespaceID;</span>
+<span class="nc" id="L205">	}</span>
+
+	public String getAfterUpdate() {
+<span class="nc" id="L208">		return afterUpdate;</span>
+	}
+
+	public void setAfterUpdate(String afterUpdate) {
+<span class="nc" id="L212">		this.afterUpdate = afterUpdate;</span>
+<span class="nc" id="L213">	}</span>
+
+	public String getBeforeUpdate() {
+<span class="nc" id="L216">		return beforeUpdate;</span>
+	}
+
+	public void setBeforeUpdate(String beforeUpdate) {
+<span class="nc" id="L220">		this.beforeUpdate = beforeUpdate;</span>
+<span class="nc" id="L221">	}</span>
+
+	public boolean getInMaster() {
+<span class="nc" id="L224">		return inMaster;</span>
+	}
+
+	public void setInMaster(boolean inMaster) {
+<span class="nc" id="L228">		this.inMaster = inMaster;</span>
+<span class="nc" id="L229">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

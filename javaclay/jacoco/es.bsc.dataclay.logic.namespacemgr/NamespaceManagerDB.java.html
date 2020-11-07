@@ -1,0 +1,1194 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NamespaceManagerDB.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.namespacemgr</a> &gt; <span class="el_source">NamespaceManagerDB.java</span></div><h1>NamespaceManagerDB.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.namespacemgr;
+
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.UUID;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ContractID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.management.namespacemgr.ImportedInterface;
+import es.bsc.dataclay.util.management.namespacemgr.Namespace;
+import es.bsc.dataclay.util.structs.Tuple;
+
+/**
+ * Data base connection.
+ */
+public final class NamespaceManagerDB {
+
+	/** Logger. */
+	private Logger logger;
+
+	/** Indicates if debug is enabled. */
+<span class="fc" id="L45">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** SingleConnection. */
+	private final BasicDataSource dataSource;
+
+	/**
+	 * MetaDataServiceDB constructor.
+	 * 
+	 * @param managerName
+	 *            Name of the LM service managing.
+	 */
+<span class="fc" id="L56">	public NamespaceManagerDB(final BasicDataSource dataSource) {</span>
+<span class="fc" id="L57">		this.dataSource = dataSource;</span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L59">			logger = LogManager.getLogger(&quot;LMDB&quot;);</span>
+		}
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Create tables of MDS.
+	 */
+	public void createTables() {
+
+<span class="fc" id="L68">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L70">			conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">			for (final NamespaceManagerSQLStatements.SqlStatements stmt : NamespaceManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
+<span class="fc" id="L73">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L74">					updateStatement.execute();</span>
+				}
+			}
+<span class="nc" id="L77">		} catch (final SQLException e) {</span>
+<span class="nc" id="L78">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L81" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L82">					conn.close();</span>
+				}
+<span class="nc" id="L84">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L85">				ex1.printStackTrace();</span>
+<span class="fc" id="L86">			}</span>
+		}
+<span class="fc" id="L88">	}</span>
+
+	/**
+	 * Delete the tables of MDS. Just the other way around of createTables --much simpler.
+	 */
+	public void dropTables() {
+
+<span class="fc" id="L95">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L97">			conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">			for (final NamespaceManagerSQLStatements.SqlStatements stmt : NamespaceManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
+<span class="fc" id="L100">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L101">					updateStatement.execute();</span>
+				}
+			}
+<span class="nc" id="L104">		} catch (final SQLException e) {</span>
+<span class="nc" id="L105">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L109">					conn.close();</span>
+				}
+<span class="nc" id="L111">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L112">				ex1.printStackTrace();</span>
+<span class="fc" id="L113">			}</span>
+		}
+<span class="fc" id="L115">	}</span>
+
+	/**
+	 * Store ImportedInterface into database
+	 * @param importedIface
+	 *            importedIface
+	 * @return UUID of stored object
+	 */
+	private UUID store(final ImportedInterface importedIface) {
+
+<span class="fc" id="L125">		final UUID uuid = UUID.randomUUID();</span>
+<span class="fc" id="L126">		importedIface.setId(uuid);</span>
+
+<span class="fc" id="L128">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L130">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L131">			final PreparedStatement insertStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.INSERT_IMPORTEDIFACE.getSqlStatement());</span>
+<span class="fc" id="L132">			insertStatement.setObject(1, uuid);</span>
+			// CHECKSTYLE:OFF
+<span class="fc" id="L134">			insertStatement.setString(2, importedIface.getImportedClassName());</span>
+<span class="fc" id="L135">			insertStatement.setObject(3, importedIface.getInterfaceID().getId());</span>
+<span class="fc" id="L136">			insertStatement.setObject(4, importedIface.getContractID().getId());</span>
+<span class="fc" id="L137">			insertStatement.setObject(5, importedIface.getClassOfImportID().getId());</span>
+<span class="fc" id="L138">			insertStatement.setObject(6, importedIface.getNamespaceIDofClass().getId());</span>
+
+<span class="fc" id="L140">			final UUID[] propertiesUsingImports = new UUID[importedIface.getPropertiesUsingImports().size()];</span>
+<span class="fc" id="L141">			int i = 0;</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">			for (final PropertyID propID : importedIface.getPropertiesUsingImports()) {</span>
+<span class="nc" id="L143">				propertiesUsingImports[i] = propID.getId();</span>
+<span class="nc" id="L144">				i++;</span>
+<span class="nc" id="L145">			}</span>
+<span class="fc" id="L146">			Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, propertiesUsingImports);</span>
+<span class="fc" id="L147">			insertStatement.setArray(7, tArray);</span>
+
+<span class="fc" id="L149">			final UUID[] operationsUsingImports = new UUID[importedIface.getOperationsUsingImports().size()];</span>
+<span class="fc" id="L150">			i = 0;</span>
+<span class="fc bfc" id="L151" title="All 2 branches covered.">			for (final OperationID opID : importedIface.getOperationsUsingImports()) {</span>
+<span class="fc" id="L152">				operationsUsingImports[i] = opID.getId();</span>
+<span class="fc" id="L153">				i++;</span>
+<span class="fc" id="L154">			}</span>
+<span class="fc" id="L155">			tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, operationsUsingImports);</span>
+<span class="fc" id="L156">			insertStatement.setArray(8, tArray);</span>
+
+<span class="fc" id="L158">			final UUID[] implementationsUsingImports = new UUID[importedIface.getImplementationsUsingImports().size()];</span>
+<span class="fc" id="L159">			i = 0;</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">			for (final ImplementationID implID : importedIface.getImplementationsUsingImports()) {</span>
+<span class="fc" id="L161">				implementationsUsingImports[i] = implID.getId();</span>
+<span class="fc" id="L162">				i++;</span>
+<span class="fc" id="L163">			}</span>
+<span class="fc" id="L164">			tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, implementationsUsingImports);</span>
+<span class="fc" id="L165">			insertStatement.setArray(9, tArray);</span>
+
+<span class="fc" id="L167">			final UUID[] subClassesOfImport = new UUID[importedIface.getSubClassesOfImport().size()];</span>
+<span class="fc" id="L168">			i = 0;</span>
+<span class="fc bfc" id="L169" title="All 2 branches covered.">			for (final MetaClassID classID : importedIface.getSubClassesOfImport()) {</span>
+<span class="fc" id="L170">				subClassesOfImport[i] = classID.getId();</span>
+<span class="fc" id="L171">				i++;</span>
+<span class="fc" id="L172">			}</span>
+<span class="fc" id="L173">			tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, subClassesOfImport);</span>
+<span class="fc" id="L174">			insertStatement.setArray(10, tArray);</span>
+
+			// CHECKSTYLE:ON
+<span class="pc bpc" id="L177" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L178">				logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
+			}
+<span class="fc" id="L180">			insertStatement.executeUpdate();</span>
+
+<span class="nc" id="L182">		} catch (final Exception e) {</span>
+<span class="nc" id="L183">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L186" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L187">					conn.close();</span>
+				}
+<span class="nc" id="L189">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L190">				ex1.printStackTrace();</span>
+<span class="fc" id="L191">			}</span>
+		}
+<span class="fc" id="L193">		return uuid;</span>
+
+	}
+
+	/**
+	 * Store namespace into database
+	 * @param namespace
+	 *            namespace
+	 */
+	public void store(final Namespace namespace) {
+
+<span class="fc" id="L204">		UUID[] importedIfaces = null;</span>
+<span class="fc" id="L205">		UUID[] importedIfacesKeysFirst = null;</span>
+<span class="fc" id="L206">		UUID[] importedIfacesKeysSecond = null;</span>
+<span class="pc bpc" id="L207" title="1 of 2 branches missed.">		if (namespace.getImportedInterfaces() != null) {</span>
+<span class="fc" id="L208">			importedIfaces = new UUID[namespace.getImportedInterfaces().size()];</span>
+<span class="fc" id="L209">			importedIfacesKeysFirst = new UUID[importedIfaces.length];</span>
+<span class="fc" id="L210">			importedIfacesKeysSecond = new UUID[importedIfaces.length];</span>
+
+<span class="fc" id="L212">			int i = 0;</span>
+<span class="pc bpc" id="L213" title="1 of 2 branches missed.">			for (final Entry&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; curEntry : namespace.getImportedInterfaces().entrySet()) {</span>
+<span class="nc" id="L214">				final InterfaceID ifaceID = curEntry.getKey().getFirst();</span>
+<span class="nc" id="L215">				final ContractID contractID = curEntry.getKey().getSecond();</span>
+<span class="nc" id="L216">				final ImportedInterface importedIface = curEntry.getValue();</span>
+<span class="nc" id="L217">				final UUID importedIfaceUUID = this.store(importedIface);</span>
+<span class="nc" id="L218">				importedIfaces[i] = importedIfaceUUID;</span>
+<span class="nc" id="L219">				importedIfacesKeysFirst[i] = ifaceID.getId();</span>
+<span class="nc" id="L220">				importedIfacesKeysSecond[i] = contractID.getId();</span>
+<span class="nc" id="L221">				i++;</span>
+<span class="nc" id="L222">			}</span>
+		}
+
+<span class="fc" id="L225">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L227">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L228">			final PreparedStatement insertStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.INSERT_NAMESPACE.getSqlStatement());</span>
+<span class="fc" id="L229">			insertStatement.setObject(1, namespace.getDataClayID().getId());</span>
+			// CHECKSTYLE:OFF
+<span class="fc" id="L231">			insertStatement.setString(2, namespace.getProviderAccountName());</span>
+<span class="fc" id="L232">			insertStatement.setString(3, namespace.getName());</span>
+<span class="fc" id="L233">			insertStatement.setObject(4, namespace.getProviderAccountID().getId());</span>
+
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">			if (importedIfaces != null) {</span>
+<span class="fc" id="L236">				Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, importedIfacesKeysFirst);</span>
+<span class="fc" id="L237">				insertStatement.setArray(5, tArray);</span>
+<span class="fc" id="L238">				tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, importedIfacesKeysSecond);</span>
+<span class="fc" id="L239">				insertStatement.setArray(6, tArray);</span>
+<span class="fc" id="L240">				tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, importedIfaces);</span>
+<span class="fc" id="L241">				insertStatement.setArray(7, tArray);</span>
+<span class="fc" id="L242">			} else {</span>
+<span class="nc" id="L243">				insertStatement.setArray(5, null);</span>
+<span class="nc" id="L244">				insertStatement.setArray(6, null);</span>
+<span class="nc" id="L245">				insertStatement.setArray(7, null);</span>
+
+			}
+
+<span class="fc" id="L249">			insertStatement.setString(8, namespace.getLanguage().name());</span>
+
+			// CHECKSTYLE:ON
+<span class="pc bpc" id="L252" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L253">				logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
+			}
+<span class="fc" id="L255">			insertStatement.executeUpdate();</span>
+
+<span class="nc" id="L257">		} catch (final Exception e) {</span>
+<span class="nc" id="L258">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L261" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L262">					conn.close();</span>
+				}
+<span class="nc" id="L264">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L265">				ex1.printStackTrace();</span>
+<span class="fc" id="L266">			}</span>
+		}
+<span class="fc" id="L268">	}</span>
+
+	/**
+	 * Deserialize
+	 * @param rs
+	 *            Result set
+	 * @return ImportedInterface
+	 */
+	private ImportedInterface deserializeImportedInterface(
+			final ResultSet rs) {
+<span class="fc" id="L278">		ImportedInterface result = null;</span>
+		try {
+			// CHECKSTYLE:OFF
+<span class="fc" id="L281">			final UUID uuid = (UUID)rs.getObject(&quot;id&quot;);</span>
+<span class="fc" id="L282">			final String importedClassName = rs.getString(&quot;importedClassName&quot;);</span>
+<span class="fc" id="L283">			final InterfaceID interfaceID = new InterfaceID((UUID)rs.getObject(&quot;interfaceID&quot;));</span>
+<span class="fc" id="L284">			final ContractID contractID = new ContractID((UUID)rs.getObject(&quot;contractID&quot;));</span>
+<span class="fc" id="L285">			final MetaClassID classOfImportID = new MetaClassID((UUID)rs.getObject(&quot;classOfImportID&quot;));</span>
+<span class="fc" id="L286">			final NamespaceID namespaceIDofClass = new NamespaceID((UUID)rs.getObject(&quot;namespaceIDofClass&quot;));</span>
+<span class="fc" id="L287">			final UUID[] propertiesUsingImportsUUIDs = (UUID[]) rs.getArray(&quot;propertiesUsingImports&quot;).getArray();</span>
+
+<span class="fc" id="L289">			final HashSet&lt;PropertyID&gt; propertiesUsingImports = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L290" title="All 2 branches covered.">			for (final UUID theuuid : propertiesUsingImportsUUIDs) {</span>
+<span class="fc" id="L291">				propertiesUsingImports.add(new PropertyID(theuuid));</span>
+			}
+
+<span class="fc" id="L294">			final UUID[] operationsUsingImportsUUIDs = (UUID[]) rs.getArray(&quot;operationsUsingImports&quot;).getArray();</span>
+<span class="fc" id="L295">			final HashSet&lt;OperationID&gt; operationsUsingImports = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L296" title="All 2 branches covered.">			for (final UUID theuuid : operationsUsingImportsUUIDs) {</span>
+<span class="fc" id="L297">				operationsUsingImports.add(new OperationID(theuuid));</span>
+			}
+
+<span class="fc" id="L300">			final UUID[] implementationsUsingImportsUUIDs = (UUID[]) rs.getArray(&quot;implementationsUsingImports&quot;).getArray();</span>
+<span class="fc" id="L301">			final HashSet&lt;ImplementationID&gt; implementationsUsingImports = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L302" title="All 2 branches covered.">			for (final UUID theuuid : implementationsUsingImportsUUIDs) {</span>
+<span class="fc" id="L303">				implementationsUsingImports.add(new ImplementationID(theuuid));</span>
+			}
+
+<span class="fc" id="L306">			final UUID[] subClassesOfImportUUIDs = (UUID[]) rs.getArray(&quot;subClassesOfImport&quot;).getArray();</span>
+<span class="fc" id="L307">			final HashSet&lt;MetaClassID&gt; subClassesOfImport = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L308" title="All 2 branches covered.">			for (final UUID theuuid : subClassesOfImportUUIDs) {</span>
+<span class="fc" id="L309">				subClassesOfImport.add(new MetaClassID(theuuid));</span>
+			}
+
+<span class="fc" id="L312">			result = new ImportedInterface();</span>
+<span class="fc" id="L313">			result.setClassOfImportID(classOfImportID);</span>
+<span class="fc" id="L314">			result.setContractID(contractID);</span>
+<span class="fc" id="L315">			result.setNamespaceIDofClass(namespaceIDofClass);</span>
+<span class="fc" id="L316">			result.setId(uuid);</span>
+<span class="fc" id="L317">			result.setImplementationsUsingImports(implementationsUsingImports);</span>
+<span class="fc" id="L318">			result.setImportedClassName(importedClassName);</span>
+<span class="fc" id="L319">			result.setInterfaceID(interfaceID);</span>
+<span class="fc" id="L320">			result.setOperationsUsingImports(operationsUsingImports);</span>
+<span class="fc" id="L321">			result.setPropertiesUsingImports(propertiesUsingImports);</span>
+<span class="fc" id="L322">			result.setSubClassesOfImport(subClassesOfImport);</span>
+
+<span class="nc" id="L324">		} catch (final SQLException e) {</span>
+<span class="nc" id="L325">			e.printStackTrace();</span>
+<span class="fc" id="L326">		}</span>
+<span class="fc" id="L327">		return result;</span>
+	}
+
+	/**
+	 * Deserialize
+	 * @param rs
+	 *            Result set
+	 * @return Namespace
+	 */
+	private Namespace deserializeNamespace(
+			final ResultSet rs) {
+<span class="fc" id="L338">		Namespace result = null;</span>
+		try {
+			// CHECKSTYLE:OFF
+<span class="fc" id="L341">			final NamespaceID namespaceID = new NamespaceID((UUID)rs.getObject(&quot;id&quot;));</span>
+<span class="fc" id="L342">			final String providerAccountName = rs.getString(&quot;providerAccountName&quot;);</span>
+<span class="fc" id="L343">			final String name = rs.getString(&quot;name&quot;);</span>
+<span class="fc" id="L344">			final AccountID responsibleAccountID = new AccountID((UUID)rs.getObject(&quot;responsible&quot;));</span>
+
+<span class="fc" id="L346">			final Map&lt;Tuple&lt;InterfaceID, ContractID&gt;, ImportedInterface&gt; importedInterfaces = new HashMap&lt;&gt;();</span>
+
+<span class="fc" id="L348">			final Array arr = rs.getArray(&quot;importedInterfacesFirstKey&quot;);</span>
+<span class="pc bpc" id="L349" title="1 of 2 branches missed.">			if (arr != null) {</span>
+<span class="fc" id="L350">				final UUID[] importedInterfacesFirstKey = (UUID[]) arr.getArray();</span>
+<span class="fc" id="L351">				final UUID[] importedInterfacesSecondKey = (UUID[]) rs.getArray(&quot;importedInterfacesSecondKey&quot;).getArray();</span>
+<span class="fc" id="L352">				final UUID[] importedInterfacesValues = (UUID[]) rs.getArray(&quot;importedInterfacesValues&quot;).getArray();</span>
+<span class="fc bfc" id="L353" title="All 2 branches covered.">				for (int i = 0; i &lt; importedInterfacesFirstKey.length; ++i) {</span>
+<span class="fc" id="L354">					final InterfaceID ifaceID = new InterfaceID(importedInterfacesFirstKey[i]);</span>
+<span class="fc" id="L355">					final ContractID contractID = new ContractID(importedInterfacesSecondKey[i]);</span>
+<span class="fc" id="L356">					final ImportedInterface importedInterface = this.getImportedInterfaceByID(importedInterfacesValues[i]);</span>
+<span class="fc" id="L357">					importedInterfaces.put(new Tuple&lt;&gt;(ifaceID, contractID), importedInterface);</span>
+
+				}
+			}
+
+<span class="fc" id="L362">			final Langs language = Langs.valueOf(rs.getString(&quot;language&quot;));</span>
+
+<span class="fc" id="L364">			result = new Namespace(name, providerAccountName, language);</span>
+<span class="fc" id="L365">			result.setDataClayID(namespaceID);</span>
+<span class="fc" id="L366">			result.setImportedInterfaces(importedInterfaces);</span>
+<span class="fc" id="L367">			result.setProviderAccountID(responsibleAccountID);</span>
+
+<span class="nc" id="L369">		} catch (final SQLException e) {</span>
+<span class="nc" id="L370">			e.printStackTrace();</span>
+<span class="fc" id="L371">		}</span>
+<span class="fc" id="L372">		return result;</span>
+	}
+
+	/**
+	 * Get by ID
+	 * @param uuid
+	 *            ID of object
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	private ImportedInterface getImportedInterfaceByID(final UUID uuid) throws SQLException {
+<span class="fc" id="L384">		ResultSet rs = null;</span>
+<span class="fc" id="L385">		ImportedInterface result = null;</span>
+<span class="fc" id="L386">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L388">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L389">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.SELECT_IMPORTEDIFACE.getSqlStatement());</span>
+
+<span class="fc" id="L391">			selectStatement.setObject(1, uuid);</span>
+<span class="pc bpc" id="L392" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L393">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L395">			rs = selectStatement.executeQuery();</span>
+<span class="pc bpc" id="L396" title="1 of 2 branches missed.">			if (rs.next()) {</span>
+<span class="fc" id="L397">				result = deserializeImportedInterface(rs);</span>
+
+			}
+<span class="nc" id="L400">		} catch (final SQLException e) {</span>
+<span class="nc" id="L401">			throw e;</span>
+		} finally {
+			try {
+<span class="fc" id="L404">				rs.close();</span>
+<span class="pc bpc" id="L405" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L406">					conn.close();</span>
+				}
+<span class="nc" id="L408">			} catch (final SQLException e) {</span>
+<span class="nc" id="L409">				e.printStackTrace();</span>
+<span class="fc" id="L410">			}</span>
+		}
+
+<span class="fc" id="L413">		return result;</span>
+	}
+
+	/**
+	 * Get by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	public Namespace getNamespaceByID(final NamespaceID namespaceID) {
+<span class="fc" id="L425">		ResultSet rs = null;</span>
+<span class="fc" id="L426">		Namespace result = null;</span>
+<span class="fc" id="L427">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L429">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L430">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.SELECT_NAMESPACE.getSqlStatement());</span>
+
+<span class="fc" id="L432">			selectStatement.setObject(1, namespaceID.getId());</span>
+<span class="pc bpc" id="L433" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L434">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L436">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L437" title="All 2 branches covered.">			if (rs.next()) {</span>
+<span class="fc" id="L438">				result = deserializeNamespace(rs);</span>
+
+			}
+<span class="nc" id="L441">		} catch (final SQLException e) {</span>
+			// ignore
+
+		} finally {
+			try {
+<span class="pc bpc" id="L446" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L447">					rs.close();</span>
+				}
+<span class="pc bpc" id="L449" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L450">					conn.close();</span>
+				}
+<span class="nc" id="L452">			} catch (final SQLException e) {</span>
+<span class="nc" id="L453">				e.printStackTrace();</span>
+<span class="fc" id="L454">			}</span>
+		}
+
+<span class="fc" id="L457">		return result;</span>
+	}
+
+	/**
+	 * Delete by ID
+	 * @param uuid
+	 *            ID of object
+	 */
+	private void deleteImportedInterfaceByID(final UUID uuid) {
+
+<span class="fc" id="L467">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L469">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L470">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.DELETE_IMPORTEDIFACE.getSqlStatement());</span>
+<span class="fc" id="L471">			selectStatement.setObject(1, uuid);</span>
+<span class="pc bpc" id="L472" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L473">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L475">			selectStatement.executeUpdate();</span>
+
+<span class="nc" id="L477">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L482" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L483">					conn.close();</span>
+				}
+<span class="nc" id="L485">			} catch (final SQLException e) {</span>
+<span class="nc" id="L486">				e.printStackTrace();</span>
+<span class="fc" id="L487">			}</span>
+		}
+
+<span class="fc" id="L490">	}</span>
+
+	/**
+	 * Delete by ID
+	 * @param namespaceID
+	 *            ID of object
+	 */
+	public void deleteNamespaceByID(final NamespaceID namespaceID) {
+
+<span class="fc" id="L499">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="pc bpc" id="L500" title="1 of 2 branches missed.">		for (final ImportedInterface importedIface : namespace.getImportedInterfaces().values()) {</span>
+<span class="nc" id="L501">			this.deleteImportedInterfaceByID(importedIface.getId());</span>
+<span class="nc" id="L502">		}</span>
+
+<span class="fc" id="L504">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L506">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L507">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.DELETE_NAMESPACE.getSqlStatement());</span>
+<span class="fc" id="L508">			selectStatement.setObject(1, namespaceID.getId());</span>
+<span class="pc bpc" id="L509" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L510">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L512">			selectStatement.executeUpdate();</span>
+
+<span class="nc" id="L514">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L519" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L520">					conn.close();</span>
+				}
+<span class="nc" id="L522">			} catch (final SQLException e) {</span>
+<span class="nc" id="L523">				e.printStackTrace();</span>
+<span class="fc" id="L524">			}</span>
+		}
+
+<span class="fc" id="L527">	}</span>
+
+	/**
+	 * Get by name
+	 * @param name
+	 *            the name
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	public Set&lt;String&gt; getNamespacesNames() {
+<span class="fc" id="L538">		ResultSet rs = null;</span>
+<span class="fc" id="L539">		final Set&lt;String&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L540">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L542">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L543">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.SELECT_NAMESPACES_NAMES.getSqlStatement());</span>
+
+<span class="pc bpc" id="L545" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L546">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L548">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L549" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L550">				result.add(rs.getString(1));</span>
+			}
+<span class="nc" id="L552">		} catch (final SQLException e) {</span>
+			// ignore
+		} finally {
+			try {
+<span class="pc bpc" id="L556" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L557">					rs.close();</span>
+				}
+<span class="pc bpc" id="L559" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L560">					conn.close();</span>
+				}
+<span class="nc" id="L562">			} catch (final SQLException e) {</span>
+<span class="nc" id="L563">				e.printStackTrace();</span>
+<span class="fc" id="L564">			}</span>
+		}
+
+<span class="fc" id="L567">		return result;</span>
+	}
+
+	/**
+	 * Get by name
+	 * @param name
+	 *            the name
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	public Namespace getNamespaceByName(final String name) {
+<span class="fc" id="L579">		ResultSet rs = null;</span>
+<span class="fc" id="L580">		Namespace result = null;</span>
+<span class="fc" id="L581">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L583">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L584">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.SELECT_NAMESPACE_BY_NAME.getSqlStatement());</span>
+
+<span class="fc" id="L586">			selectStatement.setString(1, name);</span>
+<span class="pc bpc" id="L587" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L588">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L590">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L591" title="All 2 branches covered.">			if (rs.next()) {</span>
+<span class="fc" id="L592">				result = deserializeNamespace(rs);</span>
+
+			}
+<span class="nc" id="L595">		} catch (final SQLException e) {</span>
+			// ignore
+		} finally {
+			try {
+<span class="pc bpc" id="L599" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L600">					rs.close();</span>
+				}
+<span class="pc bpc" id="L602" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L603">					conn.close();</span>
+				}
+<span class="nc" id="L605">			} catch (final SQLException e) {</span>
+<span class="nc" id="L606">				e.printStackTrace();</span>
+<span class="fc" id="L607">			}</span>
+		}
+
+<span class="fc" id="L610">		return result;</span>
+	}
+
+	/**
+	 * Get by name and id
+	 * @param name
+	 *            the name
+	 * @param namespaceID
+	 *            ID of the namespace
+	 * @return The object
+	 * @throws SQLException
+	 *             if not found
+	 */
+	public Namespace getNamespaceByNameAndID(final String name, final NamespaceID namespaceID) {
+<span class="nc" id="L624">		ResultSet rs = null;</span>
+<span class="nc" id="L625">		Namespace result = null;</span>
+<span class="nc" id="L626">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L628">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L629">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.SELECT_ALL_NAMESPACES_OF_ACCOUNT_AND_ID.getSqlStatement());</span>
+
+<span class="nc" id="L631">			selectStatement.setString(1, name);</span>
+<span class="nc" id="L632">			selectStatement.setObject(2, namespaceID.getId());</span>
+<span class="nc bnc" id="L633" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L634">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="nc" id="L636">			rs = selectStatement.executeQuery();</span>
+<span class="nc bnc" id="L637" title="All 2 branches missed.">			if (rs.next()) {</span>
+<span class="nc" id="L638">				result = deserializeNamespace(rs);</span>
+
+			}
+<span class="nc" id="L641">		} catch (final SQLException e) {</span>
+			// ignore
+		} finally {
+			try {
+<span class="nc bnc" id="L645" title="All 2 branches missed.">				if (rs != null) {</span>
+<span class="nc" id="L646">					rs.close();</span>
+				}
+<span class="nc bnc" id="L648" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L649">					conn.close();</span>
+				}
+<span class="nc" id="L651">			} catch (final SQLException e) {</span>
+<span class="nc" id="L652">				e.printStackTrace();</span>
+<span class="nc" id="L653">			}</span>
+		}
+
+<span class="nc" id="L656">		return result;</span>
+	}
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param importedIface
+	 *            Iface added
+	 */
+	public void updateNamespaceAddImport(final NamespaceID namespaceID, final ImportedInterface importedIface) {
+
+<span class="fc" id="L668">		final UUID importedIfaceUUID = this.store(importedIface);</span>
+<span class="fc" id="L669">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L671">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L672">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_NAMESPACE_ADD_IMPORTEDIFACE.getSqlStatement());</span>
+
+<span class="fc" id="L674">			stmt.setObject(1, importedIface.getInterfaceID().getId());</span>
+<span class="fc" id="L675">			stmt.setObject(2, importedIface.getContractID().getId());</span>
+<span class="fc" id="L676">			stmt.setObject(3, importedIfaceUUID);</span>
+<span class="fc" id="L677">			stmt.setObject(4, namespaceID.getId());</span>
+<span class="pc bpc" id="L678" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L679">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L681">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L683">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L688" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L689">					conn.close();</span>
+				}
+<span class="nc" id="L691">			} catch (final SQLException e) {</span>
+<span class="nc" id="L692">				e.printStackTrace();</span>
+<span class="fc" id="L693">			}</span>
+		}
+
+<span class="fc" id="L696">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 */
+	public void updateNamespaceRemoveImport(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID) {
+
+<span class="fc" id="L709">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L710">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L711">		this.deleteImportedInterfaceByID(importedIface.getId());</span>
+
+<span class="fc" id="L713">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L715">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L716">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_NAMESPACE_REMOVE_IMPORTEDIFACE.getSqlStatement());</span>
+
+<span class="fc" id="L718">			stmt.setObject(1, ifaceID.getId());</span>
+<span class="fc" id="L719">			stmt.setObject(2, contractID.getId());</span>
+<span class="fc" id="L720">			stmt.setObject(3, importedIface.getId());</span>
+<span class="fc" id="L721">			stmt.setObject(4, namespaceID.getId());</span>
+<span class="pc bpc" id="L722" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L723">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L725">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L727">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L732" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L733">					conn.close();</span>
+				}
+<span class="nc" id="L735">			} catch (final SQLException e) {</span>
+<span class="nc" id="L736">				e.printStackTrace();</span>
+<span class="fc" id="L737">			}</span>
+		}
+
+<span class="fc" id="L740">	}</span>
+
+	/**
+	 * Get Namespaces containing provider
+	 * @param providerAccountID
+	 *            Account ID
+	 * @return The Namespace
+	 */
+	public List&lt;Namespace&gt; getNamespacesWithProvider(final AccountID providerAccountID) {
+<span class="fc" id="L749">		ResultSet rs = null;</span>
+<span class="fc" id="L750">		final List&lt;Namespace&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L751">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L753">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L754">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.SELECT_ALL_NAMESPACES_OF_ACCOUNT.getSqlStatement());</span>
+<span class="fc" id="L755">			selectStatement.setObject(1, providerAccountID.getId());</span>
+<span class="pc bpc" id="L756" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L757">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="fc" id="L759">			rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L760" title="All 2 branches covered.">			while (rs.next()) {</span>
+<span class="fc" id="L761">				result.add(deserializeNamespace(rs));</span>
+			}
+<span class="nc" id="L763">		} catch (final SQLException e) {</span>
+<span class="nc" id="L764">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="pc bpc" id="L767" title="1 of 2 branches missed.">				if (rs != null) {</span>
+<span class="fc" id="L768">					rs.close();</span>
+				}
+<span class="pc bpc" id="L770" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L771">					conn.close();</span>
+				}
+<span class="nc" id="L773">			} catch (final SQLException e) {</span>
+<span class="nc" id="L774">				e.printStackTrace();</span>
+<span class="fc" id="L775">			}</span>
+		}
+
+<span class="fc" id="L778">		return result;</span>
+	}
+
+	/**
+	 * Get Namespaces using class
+	 * @param classID
+	 *            class id
+	 * @return The Namespace
+	 */
+	public List&lt;Namespace&gt; getAllNamespacesImportingClass(final MetaClassID classID) {
+<span class="nc" id="L788">		ResultSet rs = null;</span>
+<span class="nc" id="L789">		final List&lt;Namespace&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L790">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L792">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L793">			final PreparedStatement selectStatement = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.SELECT_ALL_NAMESPACES_IMPORT_IFACE.getSqlStatement());</span>
+<span class="nc" id="L794">			selectStatement.setObject(1, classID.getId());</span>
+<span class="nc bnc" id="L795" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L796">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+			}
+<span class="nc" id="L798">			rs = selectStatement.executeQuery();</span>
+<span class="nc bnc" id="L799" title="All 2 branches missed.">			while (rs.next()) {</span>
+<span class="nc" id="L800">				result.add(deserializeNamespace(rs));</span>
+			}
+<span class="nc" id="L802">		} catch (final SQLException e) {</span>
+<span class="nc" id="L803">			e.printStackTrace();</span>
+		} finally {
+			try {
+<span class="nc bnc" id="L806" title="All 2 branches missed.">				if (rs != null) {</span>
+<span class="nc" id="L807">					rs.close();</span>
+				}
+<span class="nc bnc" id="L809" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L810">					conn.close();</span>
+				}
+<span class="nc" id="L812">			} catch (final SQLException e) {</span>
+<span class="nc" id="L813">				e.printStackTrace();</span>
+<span class="nc" id="L814">			}</span>
+		}
+
+<span class="nc" id="L817">		return result;</span>
+	}
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param propertyID
+	 *            Property ID
+	 */
+	public void updateImportedInterfaceAddProperty(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final PropertyID propertyID) {
+
+<span class="fc" id="L834">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L835">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L836">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="fc" id="L838">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L840">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L841">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_ADD_PROPERTY.getSqlStatement());</span>
+<span class="fc" id="L842">			stmt.setObject(1, propertyID.getId());</span>
+<span class="fc" id="L843">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="pc bpc" id="L844" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L845">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L847">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L849">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L854" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L855">					conn.close();</span>
+				}
+<span class="nc" id="L857">			} catch (final SQLException e) {</span>
+<span class="nc" id="L858">				e.printStackTrace();</span>
+<span class="fc" id="L859">			}</span>
+		}
+
+<span class="fc" id="L862">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param operationID
+	 *            Operation ID
+	 */
+	public void updateImportedInterfaceAddOperation(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final OperationID operationID) {
+
+<span class="fc" id="L878">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L879">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L880">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="fc" id="L882">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L884">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L885">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_ADD_OPERATION.getSqlStatement());</span>
+<span class="fc" id="L886">			stmt.setObject(1, operationID.getId());</span>
+<span class="fc" id="L887">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="pc bpc" id="L888" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L889">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L891">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L893">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L898" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L899">					conn.close();</span>
+				}
+<span class="nc" id="L901">			} catch (final SQLException e) {</span>
+<span class="nc" id="L902">				e.printStackTrace();</span>
+<span class="fc" id="L903">			}</span>
+		}
+
+<span class="fc" id="L906">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param implementationID
+	 *            Implementation ID
+	 */
+	public void updateImportedInterfaceAddImplementation(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final ImplementationID implementationID) {
+
+<span class="fc" id="L922">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L923">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L924">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="fc" id="L926">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L928">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L929">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_ADD_IMPLEMENTATION.getSqlStatement());</span>
+<span class="fc" id="L930">			stmt.setObject(1, implementationID.getId());</span>
+<span class="fc" id="L931">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="pc bpc" id="L932" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L933">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L935">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L937">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L942" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L943">					conn.close();</span>
+				}
+<span class="nc" id="L945">			} catch (final SQLException e) {</span>
+<span class="nc" id="L946">				e.printStackTrace();</span>
+<span class="fc" id="L947">			}</span>
+		}
+
+<span class="fc" id="L950">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param subClassID
+	 *            MetaClass ID
+	 */
+	public void updateImportedInterfaceAddSubClass(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final MetaClassID subClassID) {
+
+<span class="fc" id="L966">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L967">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L968">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="fc" id="L970">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L972">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L973">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_ADD_SUBCLASS.getSqlStatement());</span>
+<span class="fc" id="L974">			stmt.setObject(1, subClassID.getId());</span>
+<span class="fc" id="L975">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="pc bpc" id="L976" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L977">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L979">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L981">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L986" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L987">					conn.close();</span>
+				}
+<span class="nc" id="L989">			} catch (final SQLException e) {</span>
+<span class="nc" id="L990">				e.printStackTrace();</span>
+<span class="fc" id="L991">			}</span>
+		}
+
+<span class="fc" id="L994">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param propertyID
+	 *            Property ID
+	 */
+	public void updateImportedInterfaceRemoveProperty(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final PropertyID propertyID) {
+
+<span class="nc" id="L1010">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="nc" id="L1011">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="nc" id="L1012">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="nc" id="L1014">		Connection conn = null;</span>
+		try {
+<span class="nc" id="L1016">			conn = dataSource.getConnection();</span>
+<span class="nc" id="L1017">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_REMOVE_PROPERTY.getSqlStatement());</span>
+<span class="nc" id="L1018">			stmt.setObject(1, propertyID.getId());</span>
+<span class="nc" id="L1019">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="nc bnc" id="L1020" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1021">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="nc" id="L1023">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L1025">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="nc bnc" id="L1030" title="All 2 branches missed.">				if (conn != null) {</span>
+<span class="nc" id="L1031">					conn.close();</span>
+				}
+<span class="nc" id="L1033">			} catch (final SQLException e) {</span>
+<span class="nc" id="L1034">				e.printStackTrace();</span>
+<span class="nc" id="L1035">			}</span>
+		}
+
+<span class="nc" id="L1038">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param operationID
+	 *            Operation ID
+	 */
+	public void updateImportedInterfaceRemoveOperation(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final OperationID operationID) {
+
+<span class="fc" id="L1054">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L1055">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L1056">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="fc" id="L1058">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L1060">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L1061">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_REMOVE_OPERATION.getSqlStatement());</span>
+<span class="fc" id="L1062">			stmt.setObject(1, operationID.getId());</span>
+<span class="fc" id="L1063">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="pc bpc" id="L1064" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1065">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L1067">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L1069">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L1074" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L1075">					conn.close();</span>
+				}
+<span class="nc" id="L1077">			} catch (final SQLException e) {</span>
+<span class="nc" id="L1078">				e.printStackTrace();</span>
+<span class="fc" id="L1079">			}</span>
+		}
+
+<span class="fc" id="L1082">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param implementationID
+	 *            Implementation ID
+	 */
+	public void updateImportedInterfaceRemoveImplementation(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final ImplementationID implementationID) {
+
+<span class="fc" id="L1098">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L1099">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L1100">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="fc" id="L1102">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L1104">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L1105">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_REMOVE_IMPLEMENTATION.getSqlStatement());</span>
+<span class="fc" id="L1106">			stmt.setObject(1, implementationID.getId());</span>
+<span class="fc" id="L1107">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="pc bpc" id="L1108" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1109">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L1111">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L1113">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L1118" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L1119">					conn.close();</span>
+				}
+<span class="nc" id="L1121">			} catch (final SQLException e) {</span>
+<span class="nc" id="L1122">				e.printStackTrace();</span>
+<span class="fc" id="L1123">			}</span>
+		}
+
+<span class="fc" id="L1126">	}</span>
+
+	/**
+	 * Update by ID
+	 * @param namespaceID
+	 *            ID of object
+	 * @param ifaceID
+	 *            Iface ID
+	 * @param contractID
+	 *            Contract ID
+	 * @param subClassID
+	 *            MetaClass ID
+	 */
+	public void updateImportedInterfaceRemoveSubClass(final NamespaceID namespaceID, final InterfaceID ifaceID, final ContractID contractID,
+			final MetaClassID subClassID) {
+
+<span class="fc" id="L1142">		final Namespace namespace = this.getNamespaceByID(namespaceID);</span>
+<span class="fc" id="L1143">		final ImportedInterface importedIface = namespace.getImportedInterface(ifaceID, contractID);</span>
+<span class="fc" id="L1144">		final UUID importedIfaceUUID = importedIface.getId();</span>
+
+<span class="fc" id="L1146">		Connection conn = null;</span>
+		try {
+<span class="fc" id="L1148">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L1149">			final PreparedStatement stmt = conn.prepareStatement(NamespaceManagerSQLStatements.SqlStatements.UPDATE_IMPORTEDIFACE_REMOVE_SUBCLASS.getSqlStatement());</span>
+<span class="fc" id="L1150">			stmt.setObject(1, subClassID.getId());</span>
+<span class="fc" id="L1151">			stmt.setObject(2, importedIfaceUUID);</span>
+<span class="pc bpc" id="L1152" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1153">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
+			}
+<span class="fc" id="L1155">			stmt.executeUpdate();</span>
+
+<span class="nc" id="L1157">		} catch (final SQLException e) {</span>
+			// not found, ignore
+			// e.printStackTrace();
+		} finally {
+			try {
+<span class="pc bpc" id="L1162" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L1163">					conn.close();</span>
+				}
+<span class="nc" id="L1165">			} catch (final SQLException e) {</span>
+<span class="nc" id="L1166">				e.printStackTrace();</span>
+<span class="fc" id="L1167">			}</span>
+		}
+
+<span class="fc" id="L1170">	}</span>
+
+	/**
+	 * Close DB.
+	 */
+	public void close() {
+		try {
+<span class="fc" id="L1177">			dataSource.close();</span>
+<span class="nc" id="L1178">		}catch(Exception e) {</span>
+			// TODO
+<span class="nc" id="L1180">			e.printStackTrace();</span>
+<span class="fc" id="L1181">		}</span>
+<span class="fc" id="L1182">	}</span>
+
+	/**
+	 * Check if namespace exists
+	 * @param dataClayID
+	 *            ID of namespace
+	 * @return TRUE if exists.
+	 */
+	public boolean existsObjectByID(final NamespaceID dataClayID) {
+<span class="fc bfc" id="L1191" title="All 2 branches covered.">		return this.getNamespaceByID(dataClayID) != null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

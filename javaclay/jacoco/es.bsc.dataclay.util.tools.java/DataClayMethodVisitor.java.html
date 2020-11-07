@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayMethodVisitor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.tools.java</a> &gt; <span class="el_source">DataClayMethodVisitor.java</span></div><h1>DataClayMethodVisitor.java</h1><pre class="source lang-java linenums">
+/**
+ *
+ */
+package es.bsc.dataclay.util.tools.java;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+import org.objectweb.asm.AnnotationVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+
+import es.bsc.dataclay.util.management.classmgr.AccessedImplementation;
+import es.bsc.dataclay.util.management.classmgr.AccessedProperty;
+import es.bsc.dataclay.util.management.classmgr.Annotation;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.classmgr.Type;
+import es.bsc.dataclay.util.management.classmgr.features.LanguageFeature;
+import es.bsc.dataclay.util.management.classmgr.features.QualitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.QuantitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.Feature.FeatureType;
+import es.bsc.dataclay.util.management.classmgr.java.JavaAnnotationInfo;
+import es.bsc.dataclay.util.management.classmgr.java.JavaImplementation;
+import es.bsc.dataclay.util.reflection.Reflector;
+
+/**
+ * DataClay Method analyzer.
+ */
+public final class DataClayMethodVisitor extends MethodVisitor {
+
+	/** Operation being created. */
+	private final Operation operation;
+
+	/** Java implementation. */
+	private final JavaImplementation implementation;
+
+	/** Class visitor. For using parsing utility functions. */
+	private final DataClayClassVisitor cv;
+
+	/** Current param index being analyzed. */
+<span class="nc" id="L42">	private int curParamIdx = 0;</span>
+
+	/** Class loader containing the class to analyze. */
+	private final ClassLoader classLoader;
+
+	/**
+	 * Constructs a new method visitor
+	 * @param thecv
+	 *            Class visitor. For using parsing utility functions.
+	 * @param newoperation
+	 *            Operation in which to add information of methods.
+	 * @param newclassLoader
+	 *            Class loader containing analyzed classes.
+	 */
+	public DataClayMethodVisitor(final DataClayClassVisitor thecv, final Operation newoperation,
+			final ClassLoader newclassLoader) {
+<span class="nc" id="L58">		super(Opcodes.ASM5);</span>
+<span class="nc" id="L59">		operation = newoperation;</span>
+<span class="nc" id="L60">		final int implNum = operation.getImplementations().size();</span>
+<span class="nc" id="L61">		implementation = new JavaImplementation(implNum, new ArrayList&lt;AccessedProperty&gt;(),</span>
+				new ArrayList&lt;AccessedImplementation&gt;(), new ArrayList&lt;Type&gt;(),
+				null, new HashMap&lt;FeatureType, QuantitativeFeature&gt;(),
+				new HashMap&lt;FeatureType, QualitativeFeature&gt;(),
+<span class="nc" id="L65">				operation.getNamespace(), operation.getClassName(), operation.getNameAndDescriptor());</span>
+<span class="nc" id="L66">		implementation.getRequiredQualitativeFeatures().put(FeatureType.LANGUAGE,</span>
+				new LanguageFeature(&quot;Java&quot;, &quot;1.7&quot;));
+<span class="nc" id="L68">		operation.addImplementation(implementation);</span>
+<span class="nc" id="L69">		cv = thecv;</span>
+<span class="nc" id="L70">		classLoader = newclassLoader;</span>
+<span class="nc" id="L71">	}</span>
+
+	@Override
+	public void visitFieldInsn(final int opcode, final String owner, final String name, final String desc) {
+<span class="nc" id="L75">		newAccessedProperty(opcode, owner, name, desc);</span>
+<span class="nc" id="L76">	}</span>
+
+	@Override
+	public void visitMethodInsn(final int opcode, final String owner, final String name, final String desc) {
+<span class="nc" id="L80">		newAccessedImplementation(opcode, owner, name, desc);</span>
+<span class="nc" id="L81">	}</span>
+
+	/**
+	 * Get the number of a stub method identified by signature provided and specified in stub information.
+	 * @param className
+	 *            Name of class
+	 * @param opNameAndSignature
+	 *            Name and Signature of the operation
+	 * @return the number of a stub method identified by signature provided and specified in stub information.
+	 */
+	public int getStubMethodNumber(final String className, final String opNameAndSignature) {
+		// TODO: Revie this for ENRICHMENT stuff (jmarti 2018)
+		// final boolean isStub = Reflector.isStub(className, classLoader);
+<span class="nc" id="L94">		final int id = 0;</span>
+		// if (isStub) {
+
+		// First check if it is present in current metaClass
+		// StubInfo stubInfoSpec = DataClayObject.getStubInfoFromClass(className);
+		// id = stubInfoSpec.getImplementationByNameAndSignature(opNameAndSignature).getImplPosition();
+		// }
+<span class="nc" id="L101">		return id;</span>
+	}
+
+	/**
+	 * Creates new accessed property
+	 * @param opcode
+	 *            Opcode
+	 * @param owner
+	 *            Owner class
+	 * @param name
+	 *            Method name
+	 * @param desc
+	 *            Method descriptor
+	 */
+	private void newAccessedProperty(final int opcode, final String owner,
+			final String name, final String desc) {
+
+		// Accessed property
+<span class="nc" id="L119">		final String typeName = Reflector.getTypeNameFromInternalName(owner);</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (!Reflector.isJavaTypeName(typeName)) {</span>
+<span class="nc" id="L121">			final String actualTypeName = getClassWithProperty(typeName, name);</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">			if (JavaSpecGenerator.DC_CLASSES.contains(actualTypeName)</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">					|| desc.equals(DataClayClassVisitor.ECA_SIGNATURE)) {</span>
+				// Ignore accesses to DataClay properties
+<span class="nc" id="L125">				return;</span>
+			}
+<span class="nc" id="L127">			final String typeNamespace = cv.getClassNamespace(actualTypeName);</span>
+<span class="nc" id="L128">			final AccessedProperty accProperty = new AccessedProperty(typeNamespace, actualTypeName, name);</span>
+<span class="nc" id="L129">			implementation.getAccessedProperties().add(accProperty);</span>
+			// Dependencies
+<span class="nc bnc" id="L131" title="All 2 branches missed.">			if (!Reflector.isJavaPrimitiveOrArrayTypeName(actualTypeName)) {</span>
+<span class="nc" id="L132">				cv.getDependencies().add(actualTypeName);</span>
+			}
+		}
+
+<span class="nc" id="L136">	}</span>
+
+	/**
+	 * Creates new accessed implementation
+	 * @param opcode
+	 *            Opcode
+	 * @param owner
+	 *            Owner class
+	 * @param name
+	 *            Method name
+	 * @param desc
+	 *            Method descriptor
+	 */
+	private void newAccessedImplementation(final int opcode, final String owner,
+			final String name, final String desc) {
+
+		// Accessed implementation
+<span class="nc" id="L153">		final String typeName = Reflector.getTypeNameFromInternalName(owner);</span>
+<span class="nc bnc" id="L154" title="All 4 branches missed.">		if (!Reflector.isJavaTypeName(typeName) &amp;&amp; !Reflector.isArrayTypeName(typeName)) {</span>
+<span class="nc" id="L155">			final String actualTypeName = getClassWithMethod(typeName, name, desc);</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">			if (JavaSpecGenerator.DC_CLASSES.contains(actualTypeName)) {</span>
+				// Ignore accesses to DataClay methods (makePersistent, ...)
+<span class="nc" id="L158">				return;</span>
+			}
+<span class="nc" id="L160">			final String typeNamespace = cv.getClassNamespace(actualTypeName);</span>
+
+<span class="nc" id="L162">			final int actualPos = this.getStubMethodNumber(actualTypeName, name + desc);</span>
+
+<span class="nc" id="L164">			final AccessedImplementation accImplementation = new AccessedImplementation(typeNamespace,</span>
+					actualTypeName, name + desc, actualPos);
+<span class="nc" id="L166">			implementation.getAccessedImplementations().add(accImplementation);</span>
+			// Dependencies
+<span class="nc bnc" id="L168" title="All 2 branches missed.">			if (!Reflector.isJavaPrimitiveOrArrayTypeName(actualTypeName)) {</span>
+<span class="nc" id="L169">				cv.getDependencies().add(actualTypeName);</span>
+			}
+		}
+
+<span class="nc" id="L173">	}</span>
+
+	/**
+	 * Get class containing method with name and descriptor provided
+	 * @param classToAnalyze
+	 *            Name of the class
+	 * @param methodName
+	 *            Method name
+	 * @param methodDesc
+	 *            Method descriptor
+	 * @return Name of the class containing method.
+	 */
+	private String getClassWithMethod(final String classToAnalyze, final String methodName,
+			final String methodDesc) {
+<span class="nc" id="L187">		String classWithMethod = classToAnalyze;</span>
+		try {
+<span class="nc" id="L189">			final org.objectweb.asm.Type[] paramTypes = org.objectweb.asm.Type.getArgumentTypes(methodDesc);</span>
+<span class="nc" id="L190">			final Class&lt;?&gt;[] javaClassParams = new Class&lt;?&gt;[paramTypes.length];</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">			for (int i = 0; i &lt; paramTypes.length; ++i) {</span>
+<span class="nc" id="L192">				javaClassParams[i] = Reflector.getClassFromSignatureAndArray(paramTypes[i].getDescriptor(),</span>
+						classLoader);
+			}
+			// Check if method is in current class
+<span class="nc" id="L196">			Class&lt;?&gt; currentClass = classLoader.loadClass(classToAnalyze);</span>
+<span class="nc" id="L197">			boolean found = false;</span>
+<span class="nc bnc" id="L198" title="All 4 branches missed.">			while (!found &amp;&amp; currentClass != null) {</span>
+				try {
+<span class="nc bnc" id="L200" title="All 2 branches missed.">					if (methodName.equals(&quot;&lt;init&gt;&quot;)) {</span>
+<span class="nc" id="L201">						currentClass.getConstructor(javaClassParams);</span>
+					} else {
+<span class="nc" id="L203">						currentClass.getDeclaredMethod(methodName, javaClassParams);</span>
+					}
+<span class="nc" id="L205">					classWithMethod = currentClass.getName();</span>
+<span class="nc" id="L206">					found = true;</span>
+<span class="nc" id="L207">				} catch (final NoSuchMethodException e) {</span>
+<span class="nc" id="L208">					currentClass = currentClass.getSuperclass();</span>
+<span class="nc" id="L209">				}</span>
+			}
+
+<span class="nc" id="L212">		} catch (final Exception e) {</span>
+<span class="nc" id="L213">			e.printStackTrace();</span>
+<span class="nc" id="L214">		}</span>
+
+<span class="nc" id="L216">		return classWithMethod;</span>
+	}
+
+	/**
+	 * Get class containing property with name provided
+	 * @param classToAnalyze
+	 *            Name of the class
+	 * @param propertyName
+	 *            Property name
+	 * @return Name of the class containing property.
+	 */
+	private String getClassWithProperty(final String classToAnalyze, final String propertyName) {
+<span class="nc" id="L228">		String classWithMethod = classToAnalyze;</span>
+		try {
+			// Check if method is in current class
+<span class="nc" id="L231">			Class&lt;?&gt; currentClass = classLoader.loadClass(classToAnalyze);</span>
+<span class="nc" id="L232">			boolean found = false;</span>
+<span class="nc bnc" id="L233" title="All 4 branches missed.">			while (!found &amp;&amp; currentClass != null) {</span>
+				try {
+<span class="nc" id="L235">					currentClass.getDeclaredField(propertyName);</span>
+<span class="nc" id="L236">					classWithMethod = currentClass.getName();</span>
+<span class="nc" id="L237">					found = true;</span>
+<span class="nc" id="L238">				} catch (final NoSuchFieldException e) {</span>
+<span class="nc" id="L239">					currentClass = currentClass.getSuperclass();</span>
+<span class="nc" id="L240">				}</span>
+			}
+
+<span class="nc" id="L243">		} catch (final Exception e) {</span>
+<span class="nc" id="L244">			e.printStackTrace();</span>
+<span class="nc" id="L245">		}</span>
+
+<span class="nc" id="L247">		return classWithMethod;</span>
+	}
+
+	@Override
+	public void visitMethodInsn(final int opcode, final String owner, final String name, final String desc, final boolean itf) {
+<span class="nc" id="L252">		newAccessedImplementation(opcode, owner, name, desc);</span>
+<span class="nc" id="L253">	}</span>
+
+	@Override
+	public void visitParameter(final String name, final int access) {
+		// Since parameters are analyzed in order, we can modify names in Operation args specified
+		// during class visitor.
+<span class="nc" id="L259">		final String paramPrevName = &quot;param&quot; + curParamIdx;</span>
+<span class="nc" id="L260">		final Type paramType = operation.getParams().get(paramPrevName);</span>
+<span class="nc" id="L261">		operation.getParams().remove(paramPrevName);</span>
+<span class="nc" id="L262">		operation.getParams().put(name, paramType);</span>
+<span class="nc" id="L263">		operation.getParamsOrder().set(curParamIdx, name);</span>
+<span class="nc" id="L264">		curParamIdx++;</span>
+<span class="nc" id="L265">	}</span>
+
+	@Override
+	public AnnotationVisitor visitAnnotation(final String desc, final boolean visible) {
+<span class="nc" id="L269">		final Annotation annotation = new Annotation(desc);</span>
+
+<span class="nc" id="L271">		final JavaAnnotationInfo langInfo = new JavaAnnotationInfo(visible);</span>
+<span class="nc" id="L272">		annotation.addLanguageDepInfo(langInfo);</span>
+
+<span class="nc" id="L274">		operation.addAnnotation(annotation);</span>
+
+<span class="nc" id="L276">		return new DataClayAnnotationVisitor(annotation);</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

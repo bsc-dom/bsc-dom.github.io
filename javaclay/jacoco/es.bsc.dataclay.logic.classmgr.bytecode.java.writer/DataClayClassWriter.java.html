@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayClassWriter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.writer</a> &gt; <span class="el_source">DataClayClassWriter.java</span></div><h1>DataClayClassWriter.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.logic.classmgr.bytecode.java.writer;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import org.objectweb.asm.ClassWriter;
+
+import es.bsc.dataclay.logic.classmgr.ClassManager;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.classmgr.UserType;
+import es.bsc.dataclay.util.reflection.Reflector;
+
+/**
+ * Specialization of ClassWriter for loading resources from our own class loader or Class Manager.
+ */
+public class DataClayClassWriter extends ClassWriter {
+
+	/** Class Manager used to extract class information. */
+	private final ClassManager classMgr;
+
+	/** MetaClass information of all included classes. Name -&gt; MetaClass or Namespace+Name -&gt; Metaclass if Exec. */
+	private final Map&lt;String, MetaClass&gt; includes;
+
+	/** Is execution class. */
+	private final boolean isExec;
+
+	/**
+	 * Constructor
+	 * @param flags
+	 *            Flags
+	 * @param theClassMgr
+	 *            Class Manager to use
+	 * @param theincludes
+	 *            MetaClass information of all included classes
+	 * @param theisExec
+	 *            Is execution class.
+	 */
+	public DataClayClassWriter(final int flags, final ClassManager theClassMgr,
+			final Map&lt;String, MetaClass&gt; theincludes, final boolean theisExec) {
+<span class="nc" id="L45">		super(flags);</span>
+<span class="nc" id="L46">		this.classMgr = theClassMgr;</span>
+<span class="nc" id="L47">		this.includes = theincludes;</span>
+<span class="nc" id="L48">		this.isExec = theisExec;</span>
+<span class="nc" id="L49">	}</span>
+
+	@Override
+	public final String getCommonSuperClass(final String type1, final String type2) {
+
+		// If exec. type1 and type2 will include the namespace, but our includes structure should be aware.
+<span class="nc" id="L55">		final String type1Name = Reflector.getTypeNameFromInternalName(type1);</span>
+<span class="nc" id="L56">		final String type2Name = Reflector.getTypeNameFromInternalName(type2);</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">		if (type1Name.equals(Object.class.getName())) {</span>
+<span class="nc" id="L58">			return type1;</span>
+		}
+<span class="nc bnc" id="L60" title="All 2 branches missed.">		if (type2Name.equals(Object.class.getName())) {</span>
+<span class="nc" id="L61">			return type2;</span>
+		}
+<span class="nc bnc" id="L63" title="All 4 branches missed.">		if (Reflector.isJavaPrimitiveOrArrayTypeName(type1Name) &amp;&amp; Reflector.isJavaPrimitiveOrArrayTypeName(type2Name)) {</span>
+<span class="nc" id="L64">			return super.getCommonSuperClass(type1, type2);</span>
+		}
+<span class="nc" id="L66">		MetaClass type1Class = includes.get(type1Name);</span>
+<span class="nc" id="L67">		MetaClass type2Class = includes.get(type2Name);</span>
+
+		// Look for common parent type
+<span class="nc bnc" id="L70" title="All 4 branches missed.">		if (type1Class.getParentType() == null || type2Class.getParentType() == null) {</span>
+<span class="nc" id="L71">			return &quot;java/lang/Object&quot;;</span>
+		}
+
+<span class="nc bnc" id="L74" title="All 2 branches missed.">		if (type1.equals(type2)) {</span>
+<span class="nc" id="L75">			return type1;</span>
+		}
+
+		// Get all parent names
+<span class="nc" id="L79">		final List&lt;String&gt; parent1Names = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">		while (type1Class.getParentType() != null) {</span>
+<span class="nc" id="L81">			final String parentTypeName = type1Class.getParentType().getTypeName();</span>
+<span class="nc" id="L82">			final UserType parentType = type1Class.getParentType();</span>
+			// Check if in includes
+<span class="nc" id="L84">			String key = null;</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">			if (isExec) {</span>
+<span class="nc" id="L86">				key = parentType.getNamespace() + &quot;.&quot; + parentType.getTypeName();</span>
+			} else {
+<span class="nc" id="L88">				key = parentType.getTypeName();</span>
+			}
+<span class="nc" id="L90">			type1Class = includes.get(key);</span>
+<span class="nc" id="L91">			parent1Names.add(key);</span>
+
+<span class="nc bnc" id="L93" title="All 2 branches missed.">			if (type1Class == null) {</span>
+<span class="nc" id="L94">				type1Class = classMgr.getMetaClassByNameAndNamespace(parentType.getNamespace(),</span>
+						parentTypeName);
+			}
+
+<span class="nc" id="L98">		}</span>
+
+		// Get all parent 2 names
+<span class="nc" id="L101">		final List&lt;String&gt; parent2Names = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">		while (type2Class.getParentType() != null) {</span>
+<span class="nc" id="L103">			final String parentTypeName = type2Class.getParentType().getTypeName();</span>
+<span class="nc" id="L104">			final UserType parentType = type2Class.getParentType();</span>
+			// Check if in includes
+<span class="nc" id="L106">			String key = null;</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">			if (isExec) {</span>
+<span class="nc" id="L108">				key = parentType.getNamespace() + &quot;.&quot; + parentType.getTypeName();</span>
+			} else {
+<span class="nc" id="L110">				key = parentType.getTypeName();</span>
+			}
+<span class="nc" id="L112">			type2Class = includes.get(key);</span>
+<span class="nc" id="L113">			parent2Names.add(key);</span>
+
+<span class="nc bnc" id="L115" title="All 2 branches missed.">			if (type2Class == null) {</span>
+<span class="nc" id="L116">				type2Class = classMgr.getMetaClassByNameAndNamespace(parentType.getNamespace(),</span>
+						parentTypeName);
+			}
+
+<span class="nc" id="L120">		}</span>
+
+		// Check if type 1 is same, superclass of type 2
+<span class="nc bnc" id="L123" title="All 2 branches missed.">		for (final String parent2Name : parent2Names) {</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">			if (type1.equals(parent2Name)) {</span>
+<span class="nc" id="L125">				final String internalName = Reflector.getInternalNameFromTypeName(type1);</span>
+<span class="nc" id="L126">				return internalName;</span>
+			}
+<span class="nc" id="L128">		}</span>
+
+		// Check if type 2 is same, superclass of type 2
+<span class="nc bnc" id="L131" title="All 2 branches missed.">		for (final String parent1Name : parent1Names) {</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			if (type2.equals(parent1Name)) {</span>
+<span class="nc" id="L133">				final String internalName = Reflector.getInternalNameFromTypeName(type2);</span>
+<span class="nc" id="L134">				return internalName;</span>
+			}
+<span class="nc" id="L136">		}</span>
+
+		// Check
+<span class="nc bnc" id="L139" title="All 2 branches missed.">		for (final String parent1Name : parent1Names) {</span>
+<span class="nc bnc" id="L140" title="All 2 branches missed.">			for (final String parent2Name : parent2Names) {</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">				if (parent1Name.equals(parent2Name)) {</span>
+<span class="nc" id="L142">					final String internalName = Reflector.getInternalNameFromTypeName(parent1Name);</span>
+<span class="nc" id="L143">					return internalName;</span>
+				}
+<span class="nc" id="L145">			}</span>
+<span class="nc" id="L146">		}</span>
+
+<span class="nc" id="L148">		return null;</span>
+
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

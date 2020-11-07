@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayException.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.exceptions</a> &gt; <span class="el_source">DataClayException.java</span></div><h1>DataClayException.java</h1><pre class="source lang-java linenums">
+/**
+ * @file GeneralException.java
+ * 
+ * @date Oct 22, 2012
+ */
+
+package es.bsc.dataclay.exceptions;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.IdentityHashMap;
+import java.util.ListIterator;
+import java.util.Map;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.exceptions.ErrorDefs.ERRORCODE;
+import es.bsc.dataclay.serialization.DataClaySerializable;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
+
+/**
+ * This class represents the exceptions produced.
+ */
+public class DataClayException extends RuntimeException implements DataClaySerializable {
+
+<span class="fc" id="L42">	private static final Logger logger = LogManager.getLogger(&quot;exceptions.DataClayException&quot;);</span>
+
+	/** Serial version UID. */
+	private static final long serialVersionUID = -8540632314951324280L;
+
+	/** Exception message. */
+	private String exceptionMessage;
+
+	/** Exception code. By default is a generic Language exception. */
+<span class="pc" id="L51">	private ERRORCODE errorCode = ERRORCODE.UNKNOWN_EXCEPTION;</span>
+
+	/**
+	 * Empty constructor used for deserialization.
+	 */
+	public DataClayException() {
+<span class="nc" id="L57">		super();</span>
+<span class="nc" id="L58">	}</span>
+
+	public DataClayException(Throwable e) {
+<span class="nc" id="L61">		super(e);</span>
+<span class="nc" id="L62">		this.exceptionMessage = this.getCause().getMessage();</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		if (e instanceof DataClayException) {</span>
+<span class="nc" id="L64">			this.errorCode = ((DataClayException) e).getErrorcode();</span>
+		}
+<span class="nc" id="L66">	}</span>
+
+	/**
+	 * DataClayException constructor
+	 * 
+	 * @param theerrorCode
+	 *            The error code
+	 */
+	public DataClayException(final ERRORCODE theerrorCode) {
+<span class="nc" id="L75">		super(&quot;DataClayException produced with error code: &quot; + theerrorCode.name());</span>
+<span class="nc" id="L76">		this.exceptionMessage = this.getMessage();</span>
+<span class="nc" id="L77">		this.setErrorCode(theerrorCode);</span>
+<span class="nc" id="L78">	}</span>
+
+	/**
+	 * DataClayException constructor
+	 * 
+	 * @param theerrorCode
+	 *            The error code
+	 * @param theexceptionMessage
+	 *            The exception message
+	 * @param verbose
+	 *            whether to pass cause of the exception or not
+	 */
+	public DataClayException(final ERRORCODE theerrorCode, final String theexceptionMessage, final boolean verbose) {
+<span class="fc" id="L91">		super(theexceptionMessage);</span>
+<span class="fc" id="L92">		this.setErrorCode(theerrorCode);</span>
+<span class="fc" id="L93">	}</span>
+
+	/**
+	 * Conversion from DataclayException to StatusRuntimeException for GRPC
+	 * 
+	 * @return the representation of this DataClayException in terms of GRPC
+	 */
+	public StatusRuntimeException asGrpcException() {
+<span class="nc" id="L101">		final StatusRuntimeException st = Status.INTERNAL</span>
+<span class="nc" id="L102">				.withDescription(&quot;CODE: &quot; + this.getErrorcode() + &quot;\nMSG: &quot; + this.getLocalizedMessage())</span>
+<span class="nc" id="L103">				.asRuntimeException();</span>
+<span class="nc" id="L104">		return st;</span>
+	}
+
+	@Override
+	public final String getLocalizedMessage() {
+<span class="nc" id="L109">		return exceptionMessage;</span>
+	}
+
+	/**
+	 * Set the DataClayException::exceptionMessage
+	 * 
+	 * @param newexceptionMessage
+	 *            the exceptionMessage to set
+	 */
+	public final void setExceptionMessage(final String newexceptionMessage) {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">		if (newexceptionMessage == null) {</span>
+<span class="nc" id="L120">			throw new IllegalArgumentException(&quot;Exception Message cannot be null&quot;);</span>
+		}
+<span class="nc" id="L122">		this.exceptionMessage = newexceptionMessage;</span>
+
+<span class="nc" id="L124">	}</span>
+
+	/**
+	 * Get the DataClayException::errorCode
+	 * 
+	 * @return the errorCode
+	 */
+	public final ERRORCODE getErrorcode() {
+<span class="nc" id="L132">		return errorCode;</span>
+	}
+
+	/**
+	 * Set the DataClayException::errorCode
+	 * 
+	 * @param newerrorCode
+	 *            the errorCode to set
+	 */
+	public final void setErrorCode(final ERRORCODE newerrorCode) {
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">		if (newerrorCode == null) {</span>
+<span class="nc" id="L143">			throw new IllegalArgumentException(&quot;ErrorCode cannot be null&quot;);</span>
+		}
+<span class="fc" id="L145">		this.errorCode = newerrorCode;</span>
+<span class="fc" id="L146">	}</span>
+
+	/**
+	 * Print stack trace
+	 */
+	@Override
+	public final void printStackTrace() {
+<span class="nc" id="L153">		super.printStackTrace();</span>
+<span class="nc" id="L154">	}</span>
+
+	@Override
+	public final int hashCode() {
+<span class="nc" id="L158">		return this.errorCode.hashCode();</span>
+	}
+
+	@Override
+	public final boolean equals(final Object candidate) {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">		if (candidate instanceof DataClayException) {</span>
+<span class="nc" id="L164">			final DataClayException candidateExc = (DataClayException) candidate;</span>
+<span class="nc" id="L165">			return this.getErrorcode().equals(candidateExc.getErrorcode());</span>
+		} else {
+<span class="nc" id="L167">			return false;</span>
+		}
+	}
+
+	// CHECKSTYLE:OFF
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+
+		// Serialize DataClay exception using Java serialization mechanism. This can be
+		// slow but
+		// we guarantee that all the exception is properly serialized (Inspired by
+		// JavaExecutionException code).
+
+<span class="nc" id="L182">		final ByteArrayOutputStream bos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L183">		ObjectOutput out = null;</span>
+		try {
+<span class="nc" id="L185">			out = new ObjectOutputStream(bos);</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">			if (this.getCause() == null) {</span>
+<span class="nc" id="L187">				out.writeObject(this);</span>
+			} else {
+<span class="nc" id="L189">				out.writeObject(this.getCause());</span>
+			}
+<span class="nc" id="L191">			out.flush();</span>
+<span class="nc" id="L192">			final byte[] yourBytes = bos.toByteArray();</span>
+
+			// Serialize error code
+<span class="nc" id="L195">			dcBuffer.writeInt(this.errorCode.ordinal());</span>
+
+			// Serialize bytes
+<span class="nc" id="L198">			dcBuffer.writeByteArray(yourBytes);</span>
+
+<span class="nc" id="L200">		} catch (final IOException ex) {</span>
+<span class="nc" id="L201">			ex.printStackTrace();</span>
+<span class="nc" id="L202">			throw new RuntimeException(ex);</span>
+		} finally {
+			try {
+<span class="nc bnc" id="L205" title="All 2 branches missed.">				if (out != null) {</span>
+<span class="nc" id="L206">					out.close();</span>
+				}
+<span class="nc" id="L208">			} catch (final IOException ex) {</span>
+				// ignore close exception
+<span class="nc" id="L210">				ex.printStackTrace();</span>
+<span class="nc" id="L211">			}</span>
+			try {
+<span class="nc" id="L213">				bos.close();</span>
+<span class="nc" id="L214">			} catch (final IOException ex) {</span>
+				// ignore close exception
+<span class="nc" id="L216">				ex.printStackTrace();</span>
+<span class="nc" id="L217">			}</span>
+		}
+
+<span class="nc" id="L220">	}</span>
+
+	@Override
+	public void deserialize(final DataClayByteBuffer dcByteBuffer, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata, final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+
+		// Deserialize error code
+<span class="nc" id="L227">		this.errorCode = ERRORCODE.values()[dcByteBuffer.readInt()];</span>
+
+		// Read bytes
+<span class="nc" id="L230">		final byte[] bytes = dcByteBuffer.readByteArray();</span>
+
+<span class="nc" id="L232">		final ByteArrayInputStream bis = new ByteArrayInputStream(bytes);</span>
+<span class="nc" id="L233">		ObjectInput in = null;</span>
+<span class="nc" id="L234">		RuntimeException re = null;</span>
+		try {
+<span class="nc" id="L236">			in = new ObjectInputStream(bis);</span>
+<span class="nc" id="L237">			Object o = in.readObject();</span>
+<span class="nc" id="L238">			re = (RuntimeException) o;</span>
+
+			// Deserialize exception
+<span class="nc" id="L241">			this.initCause(re);</span>
+
+<span class="nc" id="L243">		} catch (final Exception ex) {</span>
+<span class="nc" id="L244">			throw new RuntimeException(ex);</span>
+
+		} finally {
+			try {
+<span class="nc" id="L248">				bis.close();</span>
+<span class="nc" id="L249">			} catch (final IOException ex) {</span>
+				// ignore close exception
+<span class="nc" id="L251">			}</span>
+			try {
+<span class="nc bnc" id="L253" title="All 2 branches missed.">				if (in != null) {</span>
+<span class="nc" id="L254">					in.close();</span>
+				}
+<span class="nc" id="L256">			} catch (final IOException ex) {</span>
+				// ignore close exception
+<span class="nc" id="L258">			}</span>
+		}
+
+<span class="nc" id="L261">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

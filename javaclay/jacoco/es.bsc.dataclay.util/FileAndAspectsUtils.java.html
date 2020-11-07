@@ -1,0 +1,636 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileAndAspectsUtils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util</a> &gt; <span class="el_source">FileAndAspectsUtils.java</span></div><h1>FileAndAspectsUtils.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.lang.ProcessBuilder.Redirect;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.ToolProvider;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+/**
+ * Utility class for aspects and files.
+ */
+public final class FileAndAspectsUtils {
+<span class="nc" id="L40">	private static final Logger logger = LogManager.getLogger(&quot;util.FileAndAspectsUtils&quot;);</span>
+
+	/** Indicates error while analyzing package. */
+	private static final String BAD_PACKAGE_ERROR = &quot;Unable to get resources from path '%s'. &quot;
+			+ &quot;Are you sure the package '%s' exists?&quot;;
+
+	/**
+	 * Utility classes should have a private constructor.
+	 */
+	private FileAndAspectsUtils() {
+
+	}
+
+	/**
+	 * Method that creates a directory on the specified path (or does nothing if it already exists)
+	 * @param targetDirectoryPath
+	 *            the directory path
+	 */
+	public static void createDirectory(final String targetDirectoryPath) {
+		try {
+			// Create one directory
+<span class="nc" id="L61">			(new File(targetDirectoryPath)).mkdirs();</span>
+<span class="nc" id="L62">		} catch (final Exception e) {</span>
+<span class="nc" id="L63">			e.printStackTrace();</span>
+<span class="nc" id="L64">			logger.error(&quot;Exception in createDirectory&quot;, e);</span>
+<span class="nc" id="L65">		}</span>
+<span class="nc" id="L66">	}</span>
+
+	/**
+	 * This function deletes the files inside the folder provided
+	 * @param folder
+	 *            Folder containing files to delete
+	 */
+	public static void deleteFolderContent(final File folder) {
+		try {
+<span class="nc" id="L75">			FileUtils.cleanDirectory(folder);</span>
+<span class="nc" id="L76">		} catch (final Exception fe) {</span>
+			// ignore
+<span class="nc" id="L78">		}</span>
+<span class="nc" id="L79">	}</span>
+
+	/**
+	 * This function checks if there is any file in folder provided
+	 * @param folder
+	 *            Folder containing files to delete
+	 * @return TRUE if folder is empty
+	 */
+	public static boolean checkIfSomeFileExists(final File folder) {
+<span class="nc" id="L88">		final File[] files = folder.listFiles();</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		if (files != null) { // some JVMs return null for empty dirs</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">			if (files.length == 0) {</span>
+<span class="nc" id="L91">				logger.debug(&quot;Found no files&quot;);</span>
+<span class="nc" id="L92">				return true;</span>
+			} else {
+<span class="nc" id="L94">				logger.debug(&quot;Found #{} files&quot;, files.length);</span>
+<span class="nc" id="L95">				return false;</span>
+			}
+		} else {
+<span class="nc" id="L98">			return true;</span>
+		}
+
+	}
+
+	/**
+	 * Method that stores a class represented by the provided array of bytes with a certain name into a specific directory
+	 * @param targetDirectoryPath
+	 *            the directory path
+	 * @param className
+	 *            the file name for the class
+	 * @param bs
+	 *            Bytecode of the class to store
+	 * @return Path if it succeeds, null otherwise
+	 */
+	public static String storeClass(final String targetDirectoryPath,
+			final String className, final byte[] bs) {
+		try {
+<span class="nc" id="L116">			String filePath = targetDirectoryPath;</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">			if (className.contains(&quot;.&quot;)) {</span>
+<span class="nc" id="L118">				final String[] packages = className.split(&quot;\\.&quot;);</span>
+<span class="nc" id="L119">				String actualDir = targetDirectoryPath;</span>
+				// Take into account that if no package is defined the array
+				// must be &quot;className, '.class'&quot;
+<span class="nc bnc" id="L122" title="All 2 branches missed.">				for (int i = 0; i &lt; packages.length - 2; ++i) {</span>
+<span class="nc" id="L123">					actualDir += &quot;/&quot; + packages[i];</span>
+				}
+<span class="nc" id="L125">				new File(actualDir).mkdirs();</span>
+<span class="nc" id="L126">				filePath = actualDir + &quot;/&quot; + packages[packages.length - 2] + &quot;.&quot; + packages[packages.length - 1];</span>
+<span class="nc" id="L127">			} else {</span>
+<span class="nc" id="L128">				filePath += className;</span>
+			}
+
+			// String filename = fileName.substring(stubName.lastIndexOf(&quot;.&quot;) +
+			// 1, stubName.length());
+
+<span class="nc" id="L134">			final Path inputPath = Paths.get(filePath).normalize();</span>
+<span class="nc" id="L135">			final Path fullPath = inputPath.toAbsolutePath();</span>
+<span class="nc" id="L136">			final FileOutputStream fos = new FileOutputStream(fullPath.toString());</span>
+
+<span class="nc" id="L138">			fos.write(bs);</span>
+<span class="nc" id="L139">			fos.flush();</span>
+<span class="nc" id="L140">			fos.close();</span>
+<span class="nc" id="L141">			return filePath;</span>
+<span class="nc" id="L142">		} catch (final FileNotFoundException e) {</span>
+<span class="nc" id="L143">			e.printStackTrace();</span>
+<span class="nc" id="L144">			logger.error(&quot;FileNotFoundException in storeClass&quot;, e);</span>
+<span class="nc" id="L145">		} catch (final IOException e) {</span>
+<span class="nc" id="L146">			e.printStackTrace();</span>
+<span class="nc" id="L147">			logger.error(&quot;IOException in storeClass&quot;, e);</span>
+<span class="nc" id="L148">		}</span>
+<span class="nc" id="L149">		return null;</span>
+	}
+
+	/**
+	 * Copy folder
+	 * @param src
+	 *            Source folder
+	 * @param dest
+	 *            Dest folder
+	 * @throws IOException
+	 *             if some exception occurs
+	 */
+	public static void copyFolder(final File src, final File dest)
+			throws IOException {
+
+<span class="nc bnc" id="L164" title="All 2 branches missed.">		if (src.isDirectory()) {</span>
+			// if directory not exists, create it
+<span class="nc bnc" id="L166" title="All 2 branches missed.">			if (!dest.exists()) {</span>
+<span class="nc" id="L167">				dest.mkdir();</span>
+<span class="nc" id="L168">				logger.debug(&quot;Directory copied from {} to {}&quot;, src, dest);</span>
+			}
+
+			// list all the directory contents
+<span class="nc" id="L172">			final String[] files = src.list();</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">			for (final String file : files) {</span>
+				// construct the src and dest file structure
+<span class="nc" id="L175">				final File srcFile = new File(src, file);</span>
+<span class="nc" id="L176">				final File destFile = new File(dest, file);</span>
+				// recursive copy
+<span class="nc" id="L178">				copyFolder(srcFile, destFile);</span>
+			}
+
+<span class="nc" id="L181">		} else {</span>
+			// if file, then copy it
+			// Use bytes stream to support all file types
+<span class="nc" id="L184">			final InputStream in = new FileInputStream(src);</span>
+<span class="nc" id="L185">			final OutputStream out = new FileOutputStream(dest);</span>
+
+			// CHECKSTYLE:OFF
+<span class="nc" id="L188">			final byte[] buffer = new byte[1024];</span>
+			// CHECKSTYLE:ON
+
+			int length;
+			// copy the file content in bytes
+<span class="nc bnc" id="L193" title="All 2 branches missed.">			while ((length = in.read(buffer)) &gt; 0) {</span>
+<span class="nc" id="L194">				out.write(buffer, 0, length);</span>
+			}
+
+<span class="nc" id="L197">			in.close();</span>
+<span class="nc" id="L198">			out.close();</span>
+<span class="nc" id="L199">			logger.debug(&quot;File copied from {} to {}&quot;, src, dest);</span>
+		}
+<span class="nc" id="L201">	}</span>
+
+	/**
+	 * Get all classes in package
+	 * @param scannedPackage
+	 *            Package being scanned
+	 * @return List of classes in package
+	 */
+	public static List&lt;Class&lt;?&gt;&gt; find(final String scannedPackage) {
+<span class="nc" id="L210">		final String scannedPath = scannedPackage.replace(&quot;.&quot;, &quot;/&quot;);</span>
+<span class="nc" id="L211">		final URL scannedUrl = Thread.currentThread().getContextClassLoader().getResource(scannedPath);</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">		if (scannedUrl == null) {</span>
+<span class="nc" id="L213">			throw new IllegalArgumentException(String.format(BAD_PACKAGE_ERROR, scannedPath, scannedPackage));</span>
+		}
+<span class="nc" id="L215">		final File scannedDir = new File(scannedUrl.getFile());</span>
+<span class="nc" id="L216">		final List&lt;Class&lt;?&gt;&gt; classes = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">		for (final File file : scannedDir.listFiles()) {</span>
+<span class="nc" id="L218">			classes.addAll(find(file, scannedPackage));</span>
+		}
+<span class="nc" id="L220">		return classes;</span>
+	}
+
+	/**
+	 * Get all classes in package provided
+	 * @param file
+	 *            Directory or class to check
+	 * @param scannedPackage
+	 *            package being scanned
+	 * @return List of classes in package
+	 */
+	private static List&lt;Class&lt;?&gt;&gt; find(final File file, final String scannedPackage) {
+<span class="nc" id="L232">		final List&lt;Class&lt;?&gt;&gt; classes = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L233">		final String resource = scannedPackage + &quot;.&quot; + file.getName();</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">		if (file.isDirectory()) {</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">			for (final File child : file.listFiles()) {</span>
+<span class="nc" id="L236">				classes.addAll(find(child, resource));</span>
+			}
+<span class="nc bnc" id="L238" title="All 2 branches missed.">		} else if (resource.endsWith(&quot;.class&quot;)) {</span>
+<span class="nc" id="L239">			final int endIndex = resource.length() - &quot;.class&quot;.length();</span>
+<span class="nc" id="L240">			final String className = resource.substring(0, endIndex);</span>
+			try {
+<span class="nc" id="L242">				classes.add(Class.forName(className));</span>
+<span class="nc" id="L243">			} catch (final ClassNotFoundException ignore) {</span>
+<span class="nc" id="L244">			}</span>
+		}
+<span class="nc" id="L246">		return classes;</span>
+	}
+
+	/**
+	 * Apply aspects
+	 * @param binPath
+	 *            Path of classes to be weaved
+	 * @param aspectpath
+	 *            Aspects path
+	 * @param classPath
+	 *            Class path (aspects are not applied here)
+	 * @param destPath
+	 *            Destination path of the class with aspects
+	 */
+	public static void weaveAspects(final String binPath, final String aspectpath,
+			final String[] classPath, final String destPath) {
+		try {
+<span class="nc" id="L263">			char classPathToken = ':';</span>
+<span class="nc" id="L264">			final String opSystem = System.getProperty(&quot;os.name&quot;).toLowerCase();</span>
+<span class="nc" id="L265">			String app = Configuration.Flags.ASPECTS_HOME.getStringValue() + &quot;ajc&quot;;</span>
+<span class="nc" id="L266">			final boolean isWindows = opSystem.contains(&quot;win&quot;);</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">			if (isWindows) {</span>
+<span class="nc" id="L268">				classPathToken = ';';</span>
+<span class="nc" id="L269">				app = &quot;ajc.bat&quot;;</span>
+			}
+
+<span class="nc" id="L272">			String javaClassPath = &quot;&quot;;</span>
+<span class="nc bnc" id="L273" title="All 2 branches missed.">			for (final String curPath : classPath) {</span>
+<span class="nc" id="L274">				javaClassPath += curPath + classPathToken;</span>
+			}
+
+<span class="nc bnc" id="L277" title="All 2 branches missed.">			if (Configuration.Flags.PRINT_ASPECTS_INFO.getBooleanValue()) {</span>
+<span class="nc" id="L278">				System.out.println(&quot;** Weaving aspects... ** &quot;);</span>
+<span class="nc" id="L279">				System.out.println(&quot;AJC&gt; AspectJ Sourceroots &quot;</span>
+						+ &quot;(Find and build all .java or .aj source files under any directory listed in DirPaths. &quot;
+						+ &quot;DirPaths, like classpath, is a single argument containing a list of paths to directories, delimited &quot;
+						+ &quot;by the platform- specific classpath delimiter) &quot;);
+<span class="nc" id="L283">				System.out.println(&quot;AJC&gt; --- &quot; + aspectpath);</span>
+<span class="nc" id="L284">				System.out.println(&quot;AJC&gt; --- &quot; + &quot;Contents of Path: &quot;);</span>
+<span class="nc" id="L285">				final File folder = new File(aspectpath);</span>
+<span class="nc" id="L286">				final File[] files = folder.listFiles();</span>
+<span class="nc bnc" id="L287" title="All 2 branches missed.">				for (final File f : files) {</span>
+<span class="nc" id="L288">					System.out.println(&quot;AJC&gt; ------- &quot; + f.getName());</span>
+				}
+
+<span class="nc" id="L291">				System.out.println(&quot;AJC&gt; AspectJ ClassPath (Specify where to find user class files): &quot;);</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">				for (final String curPath : classPath) {</span>
+<span class="nc" id="L293">					System.out.println(&quot;AJC&gt; --- &quot; + curPath);</span>
+				}
+<span class="nc" id="L295">				System.out.println(&quot;AJC&gt; AspectJ In Path &quot;</span>
+						+ &quot;(Accept as source bytecode any .class files in the .jar files or directories on Path): &quot;);
+<span class="nc" id="L297">				System.out.println(&quot;AJC&gt; --- &quot; + binPath);</span>
+<span class="nc" id="L298">				System.out.println(&quot;AJC&gt; AspectJ Dest Path: &quot; + destPath);</span>
+			}
+<span class="nc" id="L300">			final String[] command = { app, &quot;-nowarn&quot;, &quot;-Xlint:ignore&quot;,</span>
+					// &quot;-g&quot;,
+					&quot;-sourceroots&quot;, aspectpath, &quot;-cp&quot;, javaClassPath,
+					&quot;-inpath&quot;, binPath, &quot;-d&quot;, destPath };
+			// String[] command = {app, &quot;-sourceroots&quot;, aspectpath, &quot;-cp&quot;, javaClassPath,
+			// &quot;-inpath&quot;, binPath, &quot;-d&quot;, destPath};
+<span class="nc" id="L306">			executeCommand(command, isWindows, Configuration.Flags.PRINT_ASPECTS_INFO.getBooleanValue(), null, null, null);</span>
+
+<span class="nc" id="L308">		} catch (final Exception e) {</span>
+<span class="nc" id="L309">			e.printStackTrace();</span>
+<span class="nc" id="L310">		}</span>
+<span class="nc" id="L311">	}</span>
+
+	/**
+	 * Execute command
+	 * @param command
+	 *            Command to execute
+	 * @param isWindows
+	 *            Indicates if windows or Linux
+	 * @param printOutput
+	 *            Print output
+	 * @param redirectedOutput
+	 *            Path to file in which to store output of the command
+	 * @param redirectedInput TODO
+	 * @param envVariables
+	 *            Environment variables for the command.
+	 */
+	public static String executeCommand(final String[] command, final boolean isWindows,
+			final boolean printOutput, final Path redirectedOutput, final String redirectedInput, final Map&lt;String, String&gt; envVariables) {
+<span class="nc" id="L329">		String result = null;</span>
+		try {
+<span class="nc" id="L331">			logger.debug(&quot;$&gt; Running command &quot; + Arrays.toString(command));</span>
+
+<span class="nc" id="L333">			final ProcessBuilder pb = new ProcessBuilder(command);</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">			if (redirectedOutput != null) {</span>
+<span class="nc" id="L335">			    pb.redirectOutput(Redirect.to(redirectedOutput.toFile()));</span>
+			}
+			
+			// set environment variables
+<span class="nc bnc" id="L339" title="All 2 branches missed.">			if (envVariables != null) {</span>
+<span class="nc" id="L340">				pb.environment().putAll(envVariables);</span>
+			}
+
+<span class="nc" id="L343">			final Process process = pb.start();</span>
+			
+<span class="nc bnc" id="L345" title="All 2 branches missed.">			if (redirectedInput != null) {</span>
+<span class="nc" id="L346">				final OutputStream os = process.getOutputStream();</span>
+<span class="nc" id="L347">		        final BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(os));</span>
+		        // this will send the string to command
+<span class="nc" id="L349">		        bw.write(redirectedInput);</span>
+<span class="nc" id="L350">		        bw.close();</span>
+			}
+<span class="nc" id="L352">	        final StringBuilder outputBuilder = new StringBuilder();</span>
+<span class="nc" id="L353">			final StreamGobbler errorGobbler = new StreamGobbler(process.getErrorStream(), &quot;ERROR&quot;, printOutput, outputBuilder);</span>
+<span class="nc" id="L354">			final StreamGobbler outputGobbler = new StreamGobbler(process.getInputStream(), &quot;INFO&quot;, printOutput, outputBuilder);</span>
+
+			// kick them off
+<span class="nc" id="L357">			errorGobbler.start();</span>
+<span class="nc" id="L358">			outputGobbler.start();</span>
+
+
+			// any error???
+<span class="nc" id="L362">			final int exitVal = process.waitFor();</span>
+<span class="nc bnc" id="L363" title="All 2 branches missed.">			if (printOutput) {</span>
+<span class="nc" id="L364">				logger.debug(&quot;ExitValue: &quot; + exitVal);</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">				if (exitVal != 0) { </span>
+<span class="nc" id="L366">					System.err.println(&quot;Command failed&quot;);</span>
+				}
+			}
+<span class="nc" id="L369">			errorGobbler.join();</span>
+<span class="nc" id="L370">			outputGobbler.join();</span>
+<span class="nc" id="L371">			result = outputBuilder.toString();</span>
+
+<span class="nc" id="L373">		} catch (final Throwable e) {</span>
+<span class="nc" id="L374">			logger.debug(&quot;Exception in executeCommand&quot;, e);</span>
+<span class="nc" id="L375">		}</span>
+
+<span class="nc" id="L377">		return result;</span>
+	}
+
+	/**
+	 * Get source files except ones in package provided
+	 * @param srcDirectory
+	 *            Source directories
+	 * @param excludedPackages
+	 *            Exclude packages
+	 * @return List of files
+	 * @throws FileNotFoundException
+	 */
+	private static ArrayList&lt;File&gt; getSourceFiles(final File srcDirectory, final Set&lt;String&gt; excludedPackages) throws FileNotFoundException {
+<span class="nc" id="L390">		final ArrayList&lt;File&gt; sourceFiles = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L391" title="All 2 branches missed.">		if (srcDirectory.isDirectory()) {</span>
+<span class="nc" id="L392">			boolean go = true;</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">			if (excludedPackages != null) {</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">				for (final String excludedPackage : excludedPackages) {</span>
+<span class="nc bnc" id="L395" title="All 2 branches missed.">					if (srcDirectory.getName().equals(excludedPackage)) {</span>
+<span class="nc" id="L396">						go = false;</span>
+<span class="nc" id="L397">						break;</span>
+					}
+<span class="nc" id="L399">				}</span>
+			}
+<span class="nc bnc" id="L401" title="All 2 branches missed.">			if (go) {</span>
+<span class="nc" id="L402">				final File[] files = srcDirectory.listFiles();</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">				if (files.length &gt; 0) {</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">					for (final File file : files) {</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">						if (file.isDirectory()) {</span>
+							// Loop through its listFiles() recursively.
+<span class="nc" id="L407">							sourceFiles.addAll(getSourceFiles(file, excludedPackages));</span>
+						} else {
+<span class="nc" id="L409">							final String name = file.getName();</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">							if (name.endsWith(&quot;.java&quot;)) {</span>
+<span class="nc" id="L411">								sourceFiles.add(file);</span>
+							}
+
+						}
+					}
+				}
+			}
+		}
+<span class="nc" id="L419">		return sourceFiles;</span>
+	}
+
+	/**
+	 * Compile classes
+	 * @param srcPath
+	 *            Source path
+	 * @param destPath
+	 *            Destination path
+	 * @param classPath
+	 *            Class path
+	 * @param excludePackages
+	 *            Packages to exclude
+	 * @throws Exception
+	 *             if some exception occurs
+	 */
+	public static void compileClasses(final String srcPath, final String destPath,
+			final String[] classPath, final String excludePackages)
+			throws Exception {
+<span class="nc" id="L438">		Set&lt;String&gt; excPackages = null;</span>
+<span class="nc bnc" id="L439" title="All 2 branches missed.">		if (excludePackages != null) {</span>
+<span class="nc" id="L440">			excPackages = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L441">			excPackages.add(excludePackages);</span>
+		}
+<span class="nc" id="L443">		compileClassesInternal(srcPath, destPath, classPath, excPackages);</span>
+<span class="nc" id="L444">	}</span>
+
+	/**
+	 * Compile classes
+	 * @param srcPath
+	 *            Source path
+	 * @param destPath
+	 *            Destination path
+	 * @param classPath
+	 *            Class path
+	 * @param excludePackages
+	 *            Packages to exclude
+	 * @throws Exception
+	 *             if some exception occurs
+	 */
+	public static void compileClassesExcluding(final String srcPath, final String destPath,
+			final String[] classPath, final Set&lt;String&gt; excludePackages)
+			throws Exception {
+<span class="nc" id="L462">		compileClassesInternal(srcPath, destPath, classPath, excludePackages);</span>
+<span class="nc" id="L463">	}</span>
+
+	/**
+	 * Compile classes
+	 * @param srcPath
+	 *            Source path
+	 * @param destPath
+	 *            Destination path
+	 * @param classPath
+	 *            Class path
+	 * @param excludePackages
+	 *            Packages to exclude
+	 * @throws Exception
+	 *             if some exception occurs
+	 */
+	private static void compileClassesInternal(final String srcPath, final String destPath,
+			final String[] classPath, final Set&lt;String&gt; excludePackages)
+			throws Exception {
+<span class="nc" id="L481">		char classPathToken = ':';</span>
+<span class="nc" id="L482">		final String opSystem = System.getProperty(&quot;os.name&quot;).toLowerCase();</span>
+<span class="nc bnc" id="L483" title="All 2 branches missed.">		if (opSystem.contains(&quot;win&quot;)) {</span>
+<span class="nc" id="L484">			classPathToken = ';';</span>
+		}
+
+<span class="nc" id="L487">		Path inputPath = Paths.get(srcPath).normalize();</span>
+<span class="nc" id="L488">		final Path fullSrcPath = inputPath.toAbsolutePath();</span>
+
+<span class="nc" id="L490">		inputPath = Paths.get(destPath).normalize();</span>
+<span class="nc" id="L491">		final Path fullDestPath = inputPath.toAbsolutePath();</span>
+
+		try {
+<span class="nc" id="L494">			deleteFolderContent(fullDestPath.toFile());</span>
+<span class="nc" id="L495">		} catch (final Exception e) { </span>
+			//ignore
+<span class="nc" id="L497">		}</span>
+		
+		// create destination
+<span class="nc" id="L500">		fullDestPath.toFile().mkdirs();</span>
+
+		
+<span class="nc" id="L503">		final File srcDir = new File(fullSrcPath.toString());</span>
+
+<span class="nc" id="L505">		Set&lt;String&gt; exPackage = null;</span>
+<span class="nc bnc" id="L506" title="All 2 branches missed.">		if (excludePackages != null) {</span>
+<span class="nc" id="L507">			exPackage = excludePackages;</span>
+		}
+
+<span class="nc" id="L510">		final File[] srcFiles = getSourceFiles(srcDir, exPackage).toArray(new File[0]);</span>
+		// ATTENTION EXCLUDE ALL SOURCE FILES THAT USES JUNIT
+<span class="nc bnc" id="L512" title="All 2 branches missed.">		if (srcFiles.length &gt; 0) {</span>
+<span class="nc" id="L513">			final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();</span>
+<span class="nc" id="L514">			final DiagnosticCollector&lt;JavaFileObject&gt; diagnostics = new DiagnosticCollector&lt;&gt;();</span>
+<span class="nc" id="L515">			final StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);</span>
+<span class="nc" id="L516">			String javaClassPath = &quot;&quot;;</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">			for (final String curPath : classPath) {</span>
+<span class="nc" id="L518">				inputPath = Paths.get(curPath).normalize();</span>
+<span class="nc" id="L519">				final Path fullClassPath = inputPath.toAbsolutePath();</span>
+<span class="nc" id="L520">				javaClassPath += fullClassPath.toString() + classPathToken;</span>
+			}
+<span class="nc" id="L522">			final String[] compileOptions = new String[] { &quot;-d&quot;, fullDestPath.toString(),</span>
+					&quot;-classpath&quot;, javaClassPath };
+
+<span class="nc" id="L525">			final Iterable&lt;String&gt; compilationOptions = Arrays.asList(compileOptions);</span>
+
+<span class="nc" id="L527">			final Iterable&lt;? extends JavaFileObject&gt; compilationUnits = fileManager.getJavaFileObjects(srcFiles);</span>
+<span class="nc" id="L528">			final CompilationTask task = compiler.getTask(null, null, diagnostics, compilationOptions, null, compilationUnits);</span>
+
+<span class="nc" id="L530">			task.call();</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">			for (final Diagnostic&lt;? extends JavaFileObject&gt; diagnostic : diagnostics.getDiagnostics()) {</span>
+
+<span class="nc" id="L533">				System.err.println(&quot;File name: &quot; + diagnostic.getSource().getName());</span>
+
+<span class="nc" id="L535">				System.err.println(diagnostic.getMessage(null));</span>
+<span class="nc bnc" id="L536" title="All 2 branches missed.">				if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {</span>
+<span class="nc" id="L537">					throw new Exception(&quot;Compilation failed&quot;);</span>
+				}
+<span class="nc" id="L539">			}</span>
+		}
+
+<span class="nc" id="L542">	}</span>
+
+	/**
+	 * Compile class
+	 * @param srcPath
+	 *            Source path
+	 * @param destPath
+	 *            Destination path
+	 * @param classPath
+	 *            Class path
+	 * @throws Exception
+	 *             if some exception occurs
+	 */
+	public static void compileClass(final String srcPath, final String destPath,
+			final String[] classPath)
+			throws Exception {
+<span class="nc" id="L558">		char classPathToken = ':';</span>
+<span class="nc" id="L559">		final String opSystem = System.getProperty(&quot;os.name&quot;).toLowerCase();</span>
+<span class="nc bnc" id="L560" title="All 2 branches missed.">		if (opSystem.contains(&quot;win&quot;)) {</span>
+<span class="nc" id="L561">			classPathToken = ';';</span>
+		}
+
+<span class="nc" id="L564">		String javaClassPath = &quot;&quot;;</span>
+<span class="nc bnc" id="L565" title="All 2 branches missed.">		for (final String curPath : classPath) {</span>
+<span class="nc" id="L566">			javaClassPath += curPath + classPathToken;</span>
+		}
+
+<span class="nc" id="L569">		final File[] srcFiles = new File[] { new File(srcPath) };</span>
+<span class="nc" id="L570">		final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();</span>
+<span class="nc" id="L571">		final DiagnosticCollector&lt;JavaFileObject&gt; diagnostics = new DiagnosticCollector&lt;&gt;();</span>
+<span class="nc" id="L572">		final StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, null, null);</span>
+<span class="nc" id="L573">		final String[] compileOptions = new String[] { &quot;-d&quot;, destPath, &quot;-classpath&quot;, javaClassPath };</span>
+<span class="nc" id="L574">		final Iterable&lt;String&gt; compilationOptions = Arrays.asList(compileOptions);</span>
+
+<span class="nc" id="L576">		final Iterable&lt;? extends JavaFileObject&gt; compilationUnits = fileManager.getJavaFileObjects(srcFiles);</span>
+<span class="nc" id="L577">		final CompilationTask task = compiler.getTask(null, null, diagnostics, compilationOptions, null, compilationUnits);</span>
+
+<span class="nc" id="L579">		task.call();</span>
+<span class="nc bnc" id="L580" title="All 2 branches missed.">		for (final Diagnostic&lt;? extends JavaFileObject&gt; diagnostic : diagnostics.getDiagnostics()) {</span>
+<span class="nc bnc" id="L581" title="All 2 branches missed.">			if (diagnostic.getKind() == Diagnostic.Kind.ERROR) {</span>
+<span class="nc" id="L582">				System.out.println(diagnostic.getLineNumber());</span>
+<span class="nc" id="L583">				System.out.println(diagnostic.getPosition());</span>
+<span class="nc" id="L584">				System.out.println(diagnostic.getStartPosition());</span>
+<span class="nc" id="L585">				System.out.println(diagnostic.getEndPosition());</span>
+<span class="nc" id="L586">				System.out.println(diagnostic.getSource());</span>
+
+<span class="nc" id="L588">				System.out.println(diagnostic.getMessage(null));</span>
+<span class="nc" id="L589">				throw new Exception(&quot;Compilation failed&quot;);</span>
+			}
+<span class="nc" id="L591">		}</span>
+<span class="nc" id="L592">	}</span>
+
+	/**
+	 * This function return a list of class names in a source path
+	 * @param dir
+	 *            Source path to analyze
+	 * @param isRoot
+	 *            Must be true, used for recursive analysis
+	 * @return List of classes found in source path
+	 */
+	public static ArrayList&lt;String&gt; getClassNamesFromSourcePath(final String dir, final boolean isRoot) {
+
+<span class="nc" id="L604">		final ArrayList&lt;String&gt; classNames = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L606">		final Path inputPath = Paths.get(dir).normalize();</span>
+<span class="nc" id="L607">		final Path fullSrcPath = inputPath.toAbsolutePath();</span>
+<span class="nc" id="L608">		final File folder = new File(fullSrcPath.toString());</span>
+
+<span class="nc" id="L610">		String classPackage = &quot;&quot;;</span>
+<span class="nc bnc" id="L611" title="All 2 branches missed.">		if (!isRoot) {</span>
+<span class="nc" id="L612">			classPackage = folder.getName() + &quot;.&quot;;</span>
+		}
+
+		// Check if there is a subfolder
+<span class="nc bnc" id="L616" title="All 2 branches missed.">		for (final File file : folder.listFiles()) {</span>
+
+<span class="nc bnc" id="L618" title="All 2 branches missed.">			if (file.isDirectory()) {</span>
+
+<span class="nc" id="L620">				classNames.addAll(getClassNamesFromSourcePath(file.getAbsolutePath(), false));</span>
+
+			} else {
+<span class="nc bnc" id="L623" title="All 2 branches missed.">				if (file.getName().endsWith(&quot;.java&quot;)) {</span>
+<span class="nc" id="L624">					final String className = classPackage + file.getName().replace(&quot;.java&quot;, &quot;&quot;);</span>
+<span class="nc" id="L625">					classNames.add(className);</span>
+				}
+			}
+
+		}
+
+<span class="nc" id="L631">		return classNames;</span>
+
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

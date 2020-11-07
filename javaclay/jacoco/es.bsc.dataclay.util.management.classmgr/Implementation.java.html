@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Implementation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr</a> &gt; <span class="el_source">Implementation.java</span></div><h1>Implementation.java</h1><pre class="source lang-java linenums">
+/**
+ * @file Implementation.java
+ *
+ * @date Sep 26, 2012
+ */
+package es.bsc.dataclay.util.management.classmgr;
+
+import java.util.List;
+import java.util.Map;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.util.MgrObject;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.management.classmgr.features.QualitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.QuantitativeFeature;
+import es.bsc.dataclay.util.management.classmgr.features.Feature.FeatureType;
+
+
+/**
+ * This class represents an Implementation.
+ *
+ */
+public abstract class Implementation
+extends MgrObject&lt;ImplementationID&gt; implements Comparable&lt;Implementation&gt; {
+
+	// === YAML SPECIFICATION === //
+	// Properties must be public for YAML parsing.
+	//CHECKSTYLE:OFF
+	/** Name of the registrator of the implementation. */
+	private String responsibleAccountName;
+	/** Name of namespace of the class of the operation. */
+	private String namespace;
+	/** Name of the class of the operation. */
+	private String className;
+	/** Name and descriptor of the operation. */
+	private String opNameAndDescriptor;
+	/** Position of implementation. */
+	private int position;
+	/** List of included classes. */
+	private List&lt;Type&gt; includes;
+	/** Accessed Properties. */
+	private List&lt;AccessedProperty&gt; accessedProperties;
+	/** Accessed Implementations. */
+	private List&lt;AccessedImplementation&gt; accessedImplementations;
+	/** Quantitative features required to execute this implementation. */
+	private Map&lt;FeatureType, QuantitativeFeature&gt; requiredQuantitativeFeatures;
+	/** Qualitative features required to execute this implementation. */
+	private Map&lt;FeatureType, QualitativeFeature&gt; requiredQualitativeFeatures;
+
+	//CHECKSTYLE:ON
+	// ==== DYNAMIC FIELDS ==== //
+	/** ID of the Operation containing the Implementation. */
+	private OperationID operationID;
+	/** ID of the Class containing the Implementation. */
+	private MetaClassID metaClassID;
+	/** Responsible of the implementation. */
+	private AccountID responsibleAccountID;
+	/** ID of the namespace in which the implementation has been created. */
+	private NamespaceID namespaceID;
+	/** Object containing all of the prefetching information. **/
+	private PrefetchingInformation prefetchingInfo;
+
+	/**
+	 * Creates an empty Method
+	 */
+<span class="fc" id="L71">	public Implementation() {</span>
+
+<span class="fc" id="L73">	}</span>
+
+	/**
+	 *
+	 * Implementation Specification constructor with provided specifications
+	 * @param newposition
+	 * 			  Position of the implementation
+	 * @param newaccessedProperties
+	 *            PropertyID of the properties accessed by the Implementation
+	 * @param newaccessedImplementations
+	 *            IDs of the implementations accessed by the Implementation
+	 * @param newincludes
+	 *            Includes of the implementation
+	 * @param newPrefetchingInfo
+	 *            An object of PrefetchingInformation
+	 * @param newReqQuantitativeFeatures
+	 *            Quantitative features required to execute the code
+	 * @param newReqQualitativeFeatures
+	 *            Qualitative features required to execute the code
+	 * @param newnamespace
+	 *            Namespace of the class containing the implementation
+	 * @param newclassName
+	 *            Class name of the class containing the implementation
+	 * @param newopNameAndDescriptor
+	 *            Name and Descriptor of the operation
+	 * @post Creates a new ImplementationSpec with provided specifications and generates a new ImplementationID.
+	 */
+	// CHECKSTYLE:OFF
+	public Implementation(final int newposition,
+			final List&lt;AccessedProperty&gt; newaccessedProperties,
+			final List&lt;AccessedImplementation&gt; newaccessedImplementations,
+			final List&lt;Type&gt; newincludes,
+			final PrefetchingInformation newPrefetchingInfo,
+			final Map&lt;FeatureType, QuantitativeFeature&gt; newReqQuantitativeFeatures,
+			final Map&lt;FeatureType, QualitativeFeature&gt; newReqQualitativeFeatures,
+			final String newnamespace, final String newclassName,
+<span class="fc" id="L109">			final String newopNameAndDescriptor) {</span>
+		// CHECKSTYLE:ON
+<span class="fc" id="L111">		this.setPosition(newposition);</span>
+<span class="fc" id="L112">		this.setPrefetchingInfo(newPrefetchingInfo);</span>
+<span class="fc" id="L113">		this.setRequiredQuantitativeFeatures(newReqQuantitativeFeatures);</span>
+<span class="fc" id="L114">		this.setRequiredQualitativeFeatures(newReqQualitativeFeatures);</span>
+<span class="fc" id="L115">		this.setIncludes(newincludes);</span>
+<span class="fc" id="L116">		this.setAccessedProperties(newaccessedProperties);</span>
+<span class="fc" id="L117">		this.setAccessedImplementations(newaccessedImplementations);</span>
+<span class="fc" id="L118">		this.setNamespace(newnamespace);</span>
+<span class="fc" id="L119">		this.setClassName(newclassName);</span>
+<span class="fc" id="L120">		this.setOpNameAndDescriptor(newopNameAndDescriptor);</span>
+<span class="fc" id="L121">	}</span>
+
+	/**
+	 * Retrieve the language for this implementation.
+	 * @return The Langs code for the specific implementation.
+	 */
+	public abstract Langs getLanguage();
+
+	@Override
+	public final int compareTo(final Implementation other) {
+<span class="fc" id="L131">		return this.getPosition() - other.getPosition();</span>
+	}
+
+	/**
+	 * Get the Implementation::responsibleAccountName
+	 * @return the responsibleAccountName
+	 */
+	public final String getResponsibleAccountName() {
+<span class="fc" id="L139">		return this.responsibleAccountName;</span>
+	}
+
+	/**
+	 * Set the Implementation::responsibleAccountName
+	 * @param newresponsibleAccountName the responsibleAccountName to set
+	 */
+	public final void setResponsibleAccountName(final String newresponsibleAccountName) {
+<span class="fc" id="L147">		this.responsibleAccountName = newresponsibleAccountName;</span>
+<span class="fc" id="L148">	}</span>
+
+	/**
+	 * Get the Implementation::namespace
+	 * @return the namespace
+	 */
+	public final String getNamespace() {
+<span class="fc" id="L155">		return this.namespace;</span>
+	}
+
+	/**
+	 * Set the Implementation::namespace
+	 * @param newnamespace the namespace to set
+	 */
+	public final void setNamespace(final String newnamespace) {
+<span class="fc" id="L163">		this.namespace = newnamespace;</span>
+<span class="fc" id="L164">	}</span>
+
+	/**
+	 * Get the Implementation::className
+	 * @return the className
+	 */
+	public final String getClassName() {
+<span class="fc" id="L171">		return this.className;</span>
+	}
+
+	/**
+	 * Set the Implementation::className
+	 * @param newclassName the className to set
+	 */
+	public final void setClassName(final String newclassName) {
+<span class="fc" id="L179">		this.className = newclassName;</span>
+<span class="fc" id="L180">	}</span>
+
+	/**
+	 * Get the Implementation::opNameAndDescriptor
+	 * @return the opNameAndDescriptor
+	 */
+	public final String getOpNameAndDescriptor() {
+<span class="fc" id="L187">		return this.opNameAndDescriptor;</span>
+	}
+
+	/**
+	 * Set the Implementation::opNameAndDescriptor
+	 * @param newopNameAndDescriptor the opNameAndDescriptor to set
+	 */
+	public final void setOpNameAndDescriptor(final String newopNameAndDescriptor) {
+<span class="fc" id="L195">		this.opNameAndDescriptor = newopNameAndDescriptor;</span>
+<span class="fc" id="L196">	}</span>
+
+	/**
+	 * Get the Implementation::position
+	 * @return the position
+	 */
+	public final int getPosition() {
+<span class="fc" id="L203">		return this.position;</span>
+	}
+
+	/**
+	 * Set the Implementation::position
+	 * @param newposition the position to set
+	 */
+	public final void setPosition(final int newposition) {
+<span class="fc" id="L211">		this.position = newposition;</span>
+<span class="fc" id="L212">	}</span>
+
+	/**
+	 * Get the Implementation::includes
+	 * @return the includes
+	 */
+	public final List&lt;Type&gt; getIncludes() {
+<span class="fc" id="L219">		return this.includes;</span>
+	}
+
+	/**
+	 * Set the Implementation::includes
+	 * @param newincludes the includes to set
+	 */
+	public final void setIncludes(final List&lt;Type&gt; newincludes) {
+<span class="fc" id="L227">		this.includes = newincludes;</span>
+<span class="fc" id="L228">	}</span>
+
+	/**
+	 * Get the Implementation::accessedProperties
+	 * @return the accessedProperties
+	 */
+	public final List&lt;AccessedProperty&gt; getAccessedProperties() {
+<span class="fc" id="L235">		return this.accessedProperties;</span>
+	}
+
+	/**
+	 * Set the Implementation::accessedProperties
+	 * @param newaccessedProperties the accessedProperties to set
+	 */
+	public final void setAccessedProperties(final List&lt;AccessedProperty&gt; newaccessedProperties) {
+<span class="fc" id="L243">		this.accessedProperties = newaccessedProperties;</span>
+<span class="fc" id="L244">	}</span>
+
+	/**
+	 * Get the Implementation::accessedImplementations
+	 * @return the accessedImplementations
+	 */
+	public final List&lt;AccessedImplementation&gt; getAccessedImplementations() {
+<span class="fc" id="L251">		return this.accessedImplementations;</span>
+	}
+
+	/**
+	 * Set the Implementation::accessedImplementations
+	 * @param newaccessedImplementations the accessedImplementations to set
+	 */
+	public final void setAccessedImplementations(final List&lt;AccessedImplementation&gt; newaccessedImplementations) {
+<span class="fc" id="L259">		this.accessedImplementations = newaccessedImplementations;</span>
+<span class="fc" id="L260">	}</span>
+
+	/**
+	 * Get the Implementation::requiredQuantitativeFeatures
+	 * @return the requiredQuantitativeFeatures
+	 */
+	public final Map&lt;FeatureType, QuantitativeFeature&gt; getRequiredQuantitativeFeatures() {
+<span class="fc" id="L267">		return this.requiredQuantitativeFeatures;</span>
+	}
+
+	/**
+	 * Set the Implementation::requiredQuantitativeFeatures
+	 * @param newrequiredQuantitativeFeatures the requiredQuantitativeFeatures to set
+	 */
+	public final void setRequiredQuantitativeFeatures(final Map&lt;FeatureType, QuantitativeFeature&gt; newrequiredQuantitativeFeatures) {
+<span class="fc" id="L275">		this.requiredQuantitativeFeatures = newrequiredQuantitativeFeatures;</span>
+<span class="fc" id="L276">	}</span>
+
+	/**
+	 * Get the Implementation::requiredQualitativeFeatures
+	 * @return the requiredQualitativeFeatures
+	 */
+	public final Map&lt;FeatureType, QualitativeFeature&gt; getRequiredQualitativeFeatures() {
+<span class="fc" id="L283">		return this.requiredQualitativeFeatures;</span>
+	}
+
+	/**
+	 * Set the Implementation::requiredQualitativeFeatures
+	 * @param newrequiredQualitativeFeatures the requiredQualitativeFeatures to set
+	 */
+	public final void setRequiredQualitativeFeatures(final Map&lt;FeatureType, QualitativeFeature&gt; newrequiredQualitativeFeatures) {
+<span class="fc" id="L291">		this.requiredQualitativeFeatures = newrequiredQualitativeFeatures;</span>
+<span class="fc" id="L292">	}</span>
+
+	/**
+	 * Get the Implementation::operationID
+	 * @return the operationID
+	 */
+	public final OperationID getOperationID() {
+<span class="fc" id="L299">		return this.operationID;</span>
+	}
+
+	/**
+	 * Set the Implementation::operationID
+	 * @param newoperationID the operationID to set
+	 */
+	public final void setOperationID(final OperationID newoperationID) {
+<span class="fc" id="L307">		this.operationID = newoperationID;</span>
+<span class="fc" id="L308">	}</span>
+
+	/**
+	 * Get the Implementation::metaClassID
+	 * @return the metaClassID
+	 */
+	public final MetaClassID getMetaClassID() {
+<span class="fc" id="L315">		return this.metaClassID;</span>
+	}
+
+	/**
+	 * Set the Implementation::metaClassID
+	 * @param newmetaClassID the metaClassID to set
+	 */
+	public final void setMetaClassID(final MetaClassID newmetaClassID) {
+<span class="fc" id="L323">		this.metaClassID = newmetaClassID;</span>
+<span class="fc" id="L324">	}</span>
+
+	/**
+	 * Get the Implementation::responsibleAccountID
+	 * @return the responsibleAccountID
+	 */
+	public final AccountID getResponsibleAccountID() {
+<span class="fc" id="L331">		return this.responsibleAccountID;</span>
+	}
+
+	/**
+	 * Set the Implementation::responsibleAccountID
+	 * @param newresponsibleAccountID the responsibleAccountID to set
+	 */
+	public final void setResponsibleAccountID(final AccountID newresponsibleAccountID) {
+<span class="fc" id="L339">		this.responsibleAccountID = newresponsibleAccountID;</span>
+<span class="fc" id="L340">	}</span>
+
+	/**
+	 * Get the Implementation::namespaceID
+	 * @return the namespaceID
+	 */
+	public final NamespaceID getNamespaceID() {
+<span class="fc" id="L347">		return this.namespaceID;</span>
+	}
+
+	/**
+	 * Set the Implementation::namespaceID
+	 * @param newnamespaceID the namespaceID to set
+	 */
+	public final void setNamespaceID(final NamespaceID newnamespaceID) {
+<span class="fc" id="L355">		this.namespaceID = newnamespaceID;</span>
+<span class="fc" id="L356">	}</span>
+
+	/**
+	 * Get the Implementation::prefetchingInfo
+	 * @return the prefetchingInfo
+	 */
+	public final PrefetchingInformation getPrefetchingInfo() {
+<span class="fc" id="L363">		return this.prefetchingInfo;</span>
+	}
+
+	/**
+	 * Set the Implementation::prefetchingInfo
+	 * @param newprefetchingInfo the prefetchingInfo to set
+	 */
+	public final void setPrefetchingInfo(final PrefetchingInformation newprefetchingInfo) {
+<span class="fc" id="L371">		this.prefetchingInfo = newprefetchingInfo;</span>
+<span class="fc" id="L372">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

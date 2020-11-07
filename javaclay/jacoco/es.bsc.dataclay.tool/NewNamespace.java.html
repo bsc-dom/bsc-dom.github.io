@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NewNamespace.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">NewNamespace.java</span></div><h1>NewNamespace.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.tool.Util.ERRCODE;
+import es.bsc.dataclay.tool.Util.LANGS;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.util.management.namespacemgr.Namespace;
+
+<span class="nc" id="L13">public class NewNamespace {</span>
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L15" title="All 2 branches missed.">		if (args.length != 4) {</span>
+<span class="nc" id="L16">			Util.finishErr(&quot;Bad arguments. Usage: \n\n &quot; + NewNamespace.class.getSimpleName()</span>
+<span class="nc" id="L17">					+ &quot; &lt;owner_name&gt; &lt;owner_pass&gt; &lt;namespace_name&gt; &lt;language&gt; ( language : &quot; + LANGS.getSupported() + &quot; )\n&quot;,</span>
+					ERRCODE.ERROR);
+<span class="nc" id="L19">			return;</span>
+		}
+		try {
+<span class="nc" id="L22">			Util.init();</span>
+
+<span class="nc" id="L24">			final String ownerName = args[0];</span>
+<span class="nc" id="L25">			final String ownerPass = args[1];</span>
+<span class="nc" id="L26">			final String namespaceName = args[2];</span>
+<span class="nc" id="L27">			final String language = args[3];</span>
+<span class="nc" id="L28">			final Langs lang = LANGS.getLang(language);</span>
+<span class="nc bnc" id="L29" title="All 2 branches missed.">			if (lang == null) {</span>
+<span class="nc" id="L30">				Util.finishErr(&quot;Unsupported language &quot; + language + &quot;. Supported ones are &quot; + LANGS.getSupported(), ERRCODE.ERROR);</span>
+<span class="nc" id="L31">				return;</span>
+			}
+
+			// Get accounts info
+<span class="nc" id="L35">			final AccountID ownerID = ClientManagementLib.getAccountID(ownerName);</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">			if (ownerID == null) {</span>
+<span class="nc" id="L37">				Util.finishErr(&quot;Invalid account&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L38">				return;</span>
+			}
+<span class="nc" id="L40">			final PasswordCredential ownerCredential = new PasswordCredential(ownerPass);</span>
+
+<span class="nc" id="L42">			NamespaceID namespaceID = ClientManagementLib.getNamespaceID(ownerID, ownerCredential, namespaceName);</span>
+<span class="nc bnc" id="L43" title="All 2 branches missed.">			if (namespaceID != null) {</span>
+<span class="nc" id="L44">				Util.finishErr(&quot;Namespace &quot; + namespaceName + &quot; already exists&quot;, ERRCODE.WARNING);</span>
+<span class="nc" id="L45">				return;</span>
+			}
+<span class="nc" id="L47">			final Namespace newNamespace = new Namespace(namespaceName, ownerName, lang);</span>
+<span class="nc" id="L48">			namespaceID = ClientManagementLib.newNamespace(ownerID, ownerCredential, newNamespace);</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">			if (namespaceID == null) {</span>
+<span class="nc" id="L50">				Util.finishErr(&quot;Cannot create namespace &quot; + namespaceName + &quot;. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L51">				return;</span>
+			}
+<span class="nc" id="L53">			Util.finishOut(&quot;Namespace &quot; + namespaceName + &quot; for &quot; + language + &quot; data model has been created.&quot;);</span>
+<span class="nc" id="L54">		} catch (final Exception ex) {</span>
+<span class="nc" id="L55">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L56">		}</span>
+<span class="nc" id="L57">		System.exit(0); // Call this to finish logging threads</span>
+<span class="nc" id="L58">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

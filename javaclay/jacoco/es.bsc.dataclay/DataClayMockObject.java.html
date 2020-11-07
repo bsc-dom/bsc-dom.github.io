@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayMockObject.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay</a> &gt; <span class="el_source">DataClayMockObject.java</span></div><h1>DataClayMockObject.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay;
+
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+
+/** DataClayObject class for mock tests. */
+public final class DataClayMockObject {
+
+	// CHECKSTYLE:OFF
+	/**
+	 * DataClay library to use. We use a map identified by thread in order to distinguish which DSLib to use per thread.
+	 */
+<span class="nc" id="L13">	private static transient ThreadLocal&lt;DataClayRuntime&gt; commonLibs = new ThreadLocal&lt;&gt;();</span>
+
+	// CHECKSTYLE:ON
+
+	/**
+	 * Utility classes should have private constructor.
+	 */
+	private DataClayMockObject() {
+
+	}
+
+	/**
+	 * Add common lib to use by current thread
+	 * @param threadID
+	 *            Thread id
+	 * @param dsLib
+	 *            DS lib to use
+	 */
+	public static void setCurrentThreadLib(final DataClayRuntime dsLib) {
+<span class="nc" id="L32">		commonLibs.set(dsLib);</span>
+<span class="nc" id="L33">	}</span>
+
+	/**
+	 * Remove common lib to use by current thread
+	 * @param threadID
+	 *            Thread id
+	 */
+	public static void removeCurrentThreadLib() {
+<span class="nc" id="L41">		commonLibs.remove();</span>
+<span class="nc" id="L42">	}</span>
+
+	/**
+	 * Get DataService client library
+	 * @return DataService client library
+	 */
+	public static DataClayRuntime getLib() {
+<span class="nc" id="L49">		final DataClayRuntime clib = commonLibs.get();</span>
+<span class="nc" id="L50">		return clib;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

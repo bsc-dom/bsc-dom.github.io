@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ECA.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.events.listeners</a> &gt; <span class="el_source">ECA.java</span></div><h1>ECA.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.events.listeners;
+
+import java.util.Objects;
+
+import es.bsc.dataclay.util.events.message.EventMessage;
+import es.bsc.dataclay.util.events.type.EventType;
+import es.bsc.dataclay.util.ids.ECAID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents an Event-Condition-Action specification.
+ */
+public final class ECA implements Comparable&lt;ECA&gt; {
+
+	/** Event listener id. */
+	private ECAID id;
+
+	/** Indicates the target class of objects that will execute the action if the event occurs and filter method succeeds. */
+	private MetaClassID targetClass;
+
+	/** Indicates event type. */
+	private EventType eventType;
+
+	/** Indicates the operation that must be executed in the producer when that event occurs. */
+	private OperationID filterMethod;
+
+	/** Signature of filter method. For ECAs defined in classes. Class containing method is the one with ECAs defined. */
+	private String filterMethodSignature;
+	
+	/** Indicates the operation that must be executed when that event occurs. */
+	private OperationID action;
+
+	/** Signature of action method. For ECAs defined in classes. Class containing method is the one with ECAs defined. */
+	private String actionSignature;
+	
+	/**
+	 * Constructor
+	 * @param neweventType
+	 *            Indicates event type
+	 * @param newtargetClass
+	 *            Indicates class of objects that are going to be target of the action.
+	 * @param newfilterMethod
+	 *            Indicates the implementation that must be executed in the producer when that event occurs
+	 * @param newaction
+	 *            Indicates the implementation that must be executed when that event occurs
+	 */
+	public ECA(final EventType neweventType,
+			final MetaClassID newtargetClass,
+<span class="nc" id="L52">			final OperationID newfilterMethod, final OperationID newaction) {</span>
+<span class="nc" id="L53">		this.setId(new ECAID());</span>
+<span class="nc" id="L54">		this.setTargetClass(newtargetClass);</span>
+<span class="nc" id="L55">		this.setEventType(neweventType);</span>
+<span class="nc" id="L56">		this.setFilterMethod(newfilterMethod);</span>
+<span class="nc" id="L57">		this.setAction(newaction);</span>
+<span class="nc" id="L58">	}</span>
+	
+	
+	/**
+	 * Constructor for ECAs defined in classes 
+	 * @param neweventType
+	 *            Indicates event type
+	 * @param newfilterMethodSignatureInThisClass
+	 *            Indicates the implementation that must be executed in the producer when that event occurs
+	 * @param newactionSingatureInThisClass
+	 *            Indicates the implementation that must be executed when that event occurs
+	 */
+	public ECA(final EventType neweventType,
+<span class="nc" id="L71">			final String newfilterMethodSignatureInThisClass, final String newactionSingatureInThisClass) {</span>
+<span class="nc" id="L72">		this.setId(new ECAID());</span>
+<span class="nc" id="L73">		this.setEventType(neweventType);</span>
+<span class="nc" id="L74">		this.setFilterMethodSignature(newfilterMethodSignatureInThisClass);</span>
+<span class="nc" id="L75">		this.setActionSignature(newactionSingatureInThisClass);</span>
+<span class="nc" id="L76">	}</span>
+
+	/**
+	 * Used for deserialization
+	 */
+<span class="nc" id="L81">	public ECA() {</span>
+
+<span class="nc" id="L83">	}</span>
+
+	/**
+	 * Get event type
+	 * @return Event Type
+	 */
+	public EventType getEventType() {
+<span class="nc" id="L90">		return eventType;</span>
+	}
+
+	/**
+	 * Set event type
+	 * @param newEventType
+	 *            Event type
+	 */
+	public void setEventType(final EventType newEventType) {
+<span class="nc" id="L99">		this.eventType = newEventType;</span>
+<span class="nc" id="L100">	}</span>
+
+	/**
+	 * Get the EventListener::action
+	 * @return the action
+	 */
+	public OperationID getAction() {
+<span class="nc" id="L107">		return action;</span>
+	}
+
+	/**
+	 * Set the EventListener::action
+	 * @param newaction
+	 *            the action to set
+	 */
+	public void setAction(final OperationID newaction) {
+<span class="nc" id="L116">		this.action = newaction;</span>
+<span class="nc" id="L117">	}</span>
+
+	/**
+	 * Get the EventListener::filterMethod
+	 * @return the filterMethod
+	 */
+	public OperationID getFilterMethod() {
+<span class="nc" id="L124">		return filterMethod;</span>
+	}
+
+	/**
+	 * Set the EventListener::filterMethod
+	 * @param newfilterMethod
+	 *            the filterMethod to set
+	 */
+	public void setFilterMethod(final OperationID newfilterMethod) {
+<span class="nc" id="L133">		this.filterMethod = newfilterMethod;</span>
+<span class="nc" id="L134">	}</span>
+
+	/**
+	 * Get the EventListenerImpl::id
+	 * @return the id
+	 */
+	public ECAID getId() {
+<span class="nc" id="L141">		return id;</span>
+	}
+
+	/**
+	 * Set the EventListenerImpl::id
+	 * @param newid
+	 *            the id to set
+	 */
+	public void setId(final ECAID newid) {
+<span class="nc" id="L150">		this.id = newid;</span>
+<span class="nc" id="L151">	}</span>
+
+	/**
+	 * Checks if message accomplishes event type
+	 * @param message
+	 *            Message to check.
+	 * @return TRUE if message accomplishes event type
+	 */
+	public boolean checkIsEventType(final EventMessage message) {
+<span class="nc" id="L160">		return this.eventType.checkIsEventType(message);</span>
+	}
+
+	@Override
+	public String toString() {
+<span class="nc" id="L165">		return CommonYAML.getYamlObject().dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L170">		return Objects.hash(this.eventType);</span>
+	}
+
+	@Override
+	public boolean equals(final Object obj) {
+		/**
+		 * Two ECAs are equals IF: They accomplish same event type, filter method and action
+		 */
+<span class="nc bnc" id="L178" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L179">			return false;</span>
+		}
+<span class="nc bnc" id="L181" title="All 2 branches missed.">		if (obj instanceof ECA) {</span>
+<span class="nc" id="L182">			final ECA candidate = (ECA) obj;</span>
+
+<span class="nc bnc" id="L184" title="All 4 branches missed.">			if (this.getFilterMethod() == null &amp;&amp; candidate.getFilterMethod() != null) {</span>
+<span class="nc" id="L185">				return false;</span>
+			}
+<span class="nc bnc" id="L187" title="All 4 branches missed.">			if (candidate.getFilterMethod() == null &amp;&amp; this.getFilterMethod() != null) {</span>
+<span class="nc" id="L188">				return false;</span>
+			}
+
+<span class="nc bnc" id="L191" title="All 2 branches missed.">			return candidate.getEventType().equals(this.getEventType())</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">					&amp;&amp; candidate.getAction().equals(this.getAction());</span>
+		}
+<span class="nc" id="L194">		return false;</span>
+	}
+
+	/**
+	 * The natural ordering for a class C is said to be consistent with equals if and only if e1.compareTo(e2) == 0 has the same
+	 * boolean value as e1.equals(e2) for every e1 and e2 of class C. Note that null is not an instance of any class, and
+	 * e.compareTo(null) should throw a NullPointerException even though e.equals(null) returns false.
+	 */
+	@Override
+	public int compareTo(final ECA other) {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		if (other == null) {</span>
+<span class="nc" id="L205">			throw new NullPointerException();</span>
+		}
+
+		// Return of this function, according to Java standars, are:
+		// Positive integer: LESS priority
+		// Negative integer: MORE priority
+		// Zero: same priority or same object.
+
+		// The Event Type has a priority
+<span class="nc" id="L214">		return other.getEventType().getPriority() - this.getEventType().getPriority();</span>
+	}
+
+	/**
+	 * Returns the ID of target class
+	 * @return the id of target class
+	 */
+	public MetaClassID getTargetClass() {
+<span class="nc" id="L222">		return targetClass;</span>
+	}
+
+	/**
+	 * Sets the ID of target class
+	 * @param newTargetClass
+	 *            new ID for targetClass
+	 */
+	public void setTargetClass(final MetaClassID newTargetClass) {
+<span class="nc" id="L231">		this.targetClass = newTargetClass;</span>
+<span class="nc" id="L232">	}</span>
+
+	/**
+	 * @return the filterMethodSignature
+	 */
+	public String getFilterMethodSignature() {
+<span class="nc" id="L238">		return filterMethodSignature;</span>
+	}
+
+	/**
+	 * @param newfilterMethodSignature the filterMethodSignature to set
+	 */
+	public void setFilterMethodSignature(final String newfilterMethodSignature) {
+<span class="nc" id="L245">		this.filterMethodSignature = newfilterMethodSignature;</span>
+<span class="nc" id="L246">	}</span>
+
+	/**
+	 * @return the actionSignature
+	 */
+	public String getActionSignature() {
+<span class="nc" id="L252">		return actionSignature;</span>
+	}
+
+	/**
+	 * @param newactionSignature the actionSignature to set
+	 */
+	public void setActionSignature(final String newactionSignature) {
+<span class="nc" id="L259">		this.actionSignature = newactionSignature;</span>
+<span class="nc" id="L260">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

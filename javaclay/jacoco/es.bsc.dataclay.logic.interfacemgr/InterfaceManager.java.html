@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>InterfaceManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.interfacemgr</a> &gt; <span class="el_source">InterfaceManager.java</span></div><h1>InterfaceManager.java</h1><pre class="source lang-java linenums">
+/**
+ * @file InterfaceManager.java
+ * @date Sep 21, 2012
+ */
+package es.bsc.dataclay.logic.interfacemgr;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import es.bsc.dataclay.exceptions.logicmodule.interfacemgr.InterfaceNotExistsException;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.InterfaceID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.NamespaceID;
+import es.bsc.dataclay.util.ids.OperationID;
+import es.bsc.dataclay.util.ids.PropertyID;
+import es.bsc.dataclay.util.management.AbstractManager;
+import es.bsc.dataclay.util.management.interfacemgr.Interface;
+import es.bsc.dataclay.util.structs.LruCache;
+
+/**
+ * This class is responsible to manage interfaces: add, remove and modify.
+ * 
+ */
+public final class InterfaceManager extends AbstractManager {
+
+	/** Logger. */
+<span class="fc" id="L36">	private static final Logger logger = LogManager.getLogger(&quot;managers.InterfaceManager&quot;);</span>
+
+	/** DbHandler for the management of Database. */
+	private final InterfaceManagerDB interfaceDB;
+
+	/** Interface cache . */
+	private final LruCache&lt;InterfaceID, Interface&gt; interfaceCache;
+
+	/**
+	 * Instantiates an Interface Manager that uses the Interface DB in the provided path.
+	 * @param managerName
+	 *            Manager/service name.
+	 * @post Creates an Interface manager with the provided db path.
+	 */
+	public InterfaceManager(final BasicDataSource dataSource) {
+<span class="fc" id="L51">		super(dataSource);</span>
+<span class="fc" id="L52">		this.interfaceDB = new InterfaceManagerDB(dataSource);</span>
+<span class="fc" id="L53">		this.interfaceDB.createTables();</span>
+
+		// Init cache
+<span class="fc" id="L56">		this.interfaceCache = new LruCache&lt;&gt;(</span>
+<span class="fc" id="L57">				Configuration.Flags.MAX_ENTRIES_INTERFACE_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L58">	}</span>
+
+	/**
+	 * This operation allows to register a new interface
+	 * @param newInterface
+	 *            Interface to register
+	 * @return ID of the new interface created
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public InterfaceID newInterface(final Interface newInterface) {
+
+<span class="fc" id="L70">		final InterfaceID ifaceID = new InterfaceID();</span>
+<span class="fc" id="L71">		newInterface.setDataClayID(ifaceID);</span>
+		// Register it into the database
+<span class="fc" id="L73">		interfaceDB.store(newInterface);</span>
+
+		// Update cache
+<span class="fc" id="L76">		this.interfaceCache.put(newInterface.getDataClayID(), newInterface);</span>
+
+<span class="fc" id="L78">		return newInterface.getDataClayID();</span>
+	}
+
+	/**
+	 * This operation removes a specific interface.
+	 * @param interfaceID
+	 *            The id of the interface to be removed.
+	 * @param namespaceID
+	 *            the ID of the namespace where interface is created
+	 * @returns true if the object has been removed properly, false if the object did not exist.
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             InterfaceNotExistsException: if the interface does not exist
+	 */
+	public void removeInterface(final NamespaceID namespaceID, final InterfaceID interfaceID) {
+<span class="fc" id="L93">		final Interface curInterface = interfaceDB.getInterfaceByID(interfaceID);</span>
+
+<span class="pc bpc" id="L95" title="1 of 4 branches missed.">		if (curInterface == null || !curInterface.getNamespaceID().equals(namespaceID)) {</span>
+<span class="fc" id="L96">			throw new InterfaceNotExistsException(interfaceID);</span>
+		} else {
+			// Remove the interface from the database
+<span class="fc" id="L99">			interfaceDB.deleteInterface(curInterface.getDataClayID());</span>
+
+			// Update cache
+<span class="fc" id="L102">			this.interfaceCache.remove(interfaceID);</span>
+		}
+<span class="fc" id="L104">	}</span>
+
+	// ============= OPERATIONS FOR CHECKING ================= //
+
+	/**
+	 * This operation verifies that all operations and properties can be accessed given the set of interfaces provided
+	 * @param interfacesIDs
+	 *            the interfaces ids
+	 * @param operationsIDs
+	 *            the set of operations
+	 * @param propertiesIDs
+	 *            the set of properties
+	 * @return TRUE if all he properties and operations can be accessed from any of the specified interfaces. FALSE otherwise.
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             InterfaceNotExistsException: if the interface does not exist
+	 */
+	public boolean checkPropertiesAndOperationsInAnyOfInterfaces(final Set&lt;InterfaceID&gt; interfacesIDs,
+			final Set&lt;OperationID&gt; operationsIDs, final Set&lt;PropertyID&gt; propertiesIDs) {
+
+<span class="nc" id="L124">		final HashSet&lt;OperationID&gt; totalOperationsIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L125">		final HashSet&lt;PropertyID&gt; totalPropertiesIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">		for (final InterfaceID curInterfaceID : interfacesIDs) {</span>
+			// Try looking for interface in cache
+<span class="nc" id="L128">			Interface curInterface = interfaceCache.get(curInterfaceID);</span>
+<span class="nc bnc" id="L129" title="All 2 branches missed.">			if (curInterface == null) {</span>
+				// Query in db
+<span class="nc" id="L131">				curInterface = interfaceDB.getInterfaceByID(curInterfaceID);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">				if (curInterface == null) {</span>
+<span class="nc" id="L133">					throw new InterfaceNotExistsException(curInterfaceID);</span>
+				} else {
+					// Update cache
+<span class="nc" id="L136">					this.interfaceCache.put(curInterfaceID, curInterface);</span>
+				}
+			}
+
+<span class="nc" id="L140">			totalOperationsIDs.addAll(curInterface.getOperationsIDs());</span>
+<span class="nc" id="L141">			totalPropertiesIDs.addAll(curInterface.getPropertiesIDs());</span>
+<span class="nc bnc" id="L142" title="All 4 branches missed.">			if (totalOperationsIDs.containsAll(operationsIDs) &amp;&amp; totalPropertiesIDs.containsAll(propertiesIDs)) {</span>
+<span class="nc" id="L143">				return true;</span>
+			}
+<span class="nc" id="L145">		}</span>
+<span class="nc" id="L146">		return false;</span>
+	}
+
+	// ============ ESPECIAL OPS ============ //
+
+	/**
+	 * This operation retrieves the interfaces of a specific class.
+	 * @param namespaceID
+	 *            The id of the namespace of the class
+	 * @param metaClassID
+	 *            The id of the metaClass
+	 * @return the list of interface ids related with the provided class
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public HashSet&lt;InterfaceID&gt; getInterfacesOfClass(final NamespaceID namespaceID, final MetaClassID metaClassID) {
+
+<span class="fc" id="L163">		final List&lt;Interface&gt; interfaces = interfaceDB.getInterfacesOfClass(namespaceID, metaClassID);</span>
+
+		// Init resulting list
+<span class="fc" id="L166">		final HashSet&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">		for (final Interface curInterface : interfaces) {</span>
+<span class="fc" id="L168">			final InterfaceID interfaceID = curInterface.getDataClayID();</span>
+<span class="fc" id="L169">			result.add(interfaceID);</span>
+
+			// Update cache
+<span class="pc bpc" id="L172" title="1 of 2 branches missed.">			if (!this.interfaceCache.containsKey(interfaceID)) {</span>
+<span class="fc" id="L173">				this.interfaceCache.put(interfaceID, curInterface);</span>
+			}
+<span class="fc" id="L175">		}</span>
+<span class="fc" id="L176">		return result;</span>
+	}
+
+	/**
+	 * This operation retrieves all the interfaces accessing a specific operation
+	 * @param namespaceID
+	 *            The id of the namespace of the metaclass (and the interface)
+	 * @param metaClassID
+	 *            The id of the metaclass of the operation (and the interface)
+	 * @param operationID
+	 *            The id of the operation to be looked for.
+	 * @return The set of interfaces that access the provided operation.
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public HashSet&lt;InterfaceID&gt; getInterfacesAccessingOperation(final NamespaceID namespaceID, final MetaClassID metaClassID,
+			final OperationID operationID) {
+
+<span class="fc" id="L194">		final List&lt;Interface&gt; interfaces = interfaceDB.getInterfacesOfClass(namespaceID, metaClassID);</span>
+
+		// Init resulting list
+<span class="fc" id="L197">		final HashSet&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L198" title="All 2 branches covered.">		for (final Interface curInterface : interfaces) {</span>
+			// Check which interfaces access the provided operation
+<span class="fc" id="L200">			final Set&lt;OperationID&gt; curInterfaceOps = curInterface.getOperationsIDs();</span>
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">			if (curInterfaceOps.contains(operationID)) {</span>
+<span class="fc" id="L202">				final InterfaceID interfaceID = curInterface.getDataClayID();</span>
+<span class="fc" id="L203">				result.add(interfaceID);</span>
+
+				// Update cache
+<span class="pc bpc" id="L206" title="1 of 2 branches missed.">				if (!this.interfaceCache.containsKey(interfaceID)) {</span>
+<span class="fc" id="L207">					this.interfaceCache.put(interfaceID, curInterface);</span>
+				}
+			}
+<span class="fc" id="L210">		}</span>
+<span class="fc" id="L211">		return result;</span>
+	}
+
+	/**
+	 * This operation retrieves the subset of interfaces (fromt he set specified) that belong to any of the given classes
+	 * @param interfacesIDs
+	 *            the set of interfaces to be checked
+	 * @param metaClassesIDs
+	 *            the set of metaclasses to be checked
+	 * @return The subset of interfaces that refer to any of the provided metaclasses.
+	 * @throws Exception
+	 *             if an exception occurs.
+	 */
+	public Set&lt;InterfaceID&gt; getSubsetInterfacesOfClasses(final Set&lt;InterfaceID&gt; interfacesIDs,
+			final Set&lt;MetaClassID&gt; metaClassesIDs) {
+<span class="fc" id="L226">		final Set&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L227" title="All 2 branches covered.">		for (final InterfaceID curInterfaceID : interfacesIDs) {</span>
+			// Get the current interface
+			// Try looking for interface in cache
+<span class="fc" id="L230">			Interface curInterface = interfaceCache.get(curInterfaceID);</span>
+<span class="fc bfc" id="L231" title="All 2 branches covered.">			if (curInterface == null) {</span>
+				// Query in db
+<span class="fc" id="L233">				curInterface = interfaceDB.getInterfaceByID(curInterfaceID);</span>
+			}
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">			if (curInterface != null) {</span>
+<span class="fc bfc" id="L236" title="All 2 branches covered.">				if (metaClassesIDs.contains(curInterface.getMetaClassID())) {</span>
+<span class="fc" id="L237">					result.add(curInterfaceID);</span>
+
+					// Update cache
+<span class="fc bfc" id="L240" title="All 2 branches covered.">					if (!this.interfaceCache.containsKey(curInterfaceID)) {</span>
+<span class="fc" id="L241">						this.interfaceCache.put(curInterfaceID, curInterface);</span>
+					}
+				}
+			}
+<span class="fc" id="L245">		}</span>
+<span class="fc" id="L246">		return result;</span>
+	}
+
+	// =============== OPS FOR RETRIEVING INFO ============== //
+
+	/**
+	 * This operation returns a reference to the metaclass associated with a specific interface
+	 * @param interfaceID
+	 *            The id of the interface
+	 * @return The id of the associated metaclass
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             InterfaceNotExistsException: if the interface does not exist
+	 */
+	public MetaClassID getMetaClassOfInterface(final InterfaceID interfaceID) {
+		// Try looking for interface in cache
+<span class="fc" id="L262">		Interface curInterface = interfaceCache.get(interfaceID);</span>
+<span class="pc bpc" id="L263" title="1 of 2 branches missed.">		if (curInterface == null) {</span>
+			// Query in db
+<span class="fc" id="L265">			curInterface = interfaceDB.getInterfaceByID(interfaceID);</span>
+<span class="pc bpc" id="L266" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
+<span class="nc" id="L267">				throw new InterfaceNotExistsException(interfaceID);</span>
+			} else {
+				// Update cache
+<span class="fc" id="L270">				this.interfaceCache.put(interfaceID, curInterface);</span>
+			}
+		}
+<span class="fc" id="L273">		return curInterface.getMetaClassID();</span>
+	}
+
+	/**
+	 * This operation returns all the information of a set of interfaces that belong to a specific namespace
+	 * @param namespaceID
+	 *            the id of the namespace
+	 * @param interfacesIDs
+	 *            the ids of the interfaces
+	 * @return the interfaces info
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             InterfaceNotExistsException: if the interface does not exist
+	 */
+	public Map&lt;InterfaceID, Interface&gt; getInterfacesOfNamespaceInfo(final NamespaceID namespaceID,
+			final Set&lt;InterfaceID&gt; interfacesIDs) {
+<span class="fc" id="L289">		final Map&lt;InterfaceID, Interface&gt; result = new HashMap&lt;&gt;();</span>
+
+<span class="fc bfc" id="L291" title="All 2 branches covered.">		for (final InterfaceID ifaceID : interfacesIDs) {</span>
+			// Get the current interface
+			// Try looking for interface in cache
+<span class="fc" id="L294">			Interface curInterface = interfaceCache.get(ifaceID);</span>
+<span class="pc bpc" id="L295" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
+				// Query in db
+<span class="fc" id="L297">				curInterface = interfaceDB.getInterfaceByID(ifaceID);</span>
+			}
+
+<span class="pc bpc" id="L300" title="2 of 4 branches missed.">			if (curInterface == null || !curInterface.getNamespaceID().equals(namespaceID)) {</span>
+<span class="nc" id="L301">				logger.error(&quot;About to launch InterfaceNotExistsException for InterfaceID {}. &quot;</span>
+						+ &quot;Current interface {} (namespace {})&quot;,
+<span class="nc" id="L303">						curInterface.getDataClayID(), namespaceID);</span>
+<span class="nc" id="L304">				throw new InterfaceNotExistsException(ifaceID);</span>
+			}
+
+			// Update cache
+<span class="pc bpc" id="L308" title="1 of 2 branches missed.">			if (!this.interfaceCache.containsKey(ifaceID)) {</span>
+<span class="fc" id="L309">				this.interfaceCache.put(ifaceID, curInterface);</span>
+			}
+
+<span class="fc" id="L312">			result.put(ifaceID, curInterface);</span>
+<span class="fc" id="L313">		}</span>
+
+<span class="fc" id="L315">		return result;</span>
+	}
+
+	/**
+	 * This operation returns all the information of the given interfaces
+	 * @param interfacesIDs
+	 *            the ids of the interfaces
+	 * @return the interfaces info
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             InterfaceNotExistsException: if the interface does not exist
+	 */
+	public Map&lt;InterfaceID, Interface&gt; getInterfacesInfo(final Set&lt;InterfaceID&gt; interfacesIDs) {
+<span class="fc" id="L328">		final Map&lt;InterfaceID, Interface&gt; result = new HashMap&lt;&gt;();</span>
+
+<span class="fc bfc" id="L330" title="All 2 branches covered.">		for (final InterfaceID ifaceID : interfacesIDs) {</span>
+			// Get the current interface
+			// Try looking for interface in cache
+<span class="fc" id="L333">			final Interface curInterface = getInterfaceInfo(ifaceID);</span>
+<span class="fc" id="L334">			result.put(ifaceID, curInterface);</span>
+<span class="fc" id="L335">		}</span>
+<span class="fc" id="L336">		return result;</span>
+	}
+
+	/**
+	 * This operation returns all the information of the given interface
+	 * @param ifaceID
+	 *            the id of the interfaces
+	 * @return the interface info
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             InterfaceNotExistsException: if the interface does not exist
+	 */
+	public Interface getInterfaceInfo(final InterfaceID ifaceID) {
+		// Get the current interface
+		// Try looking for interface in cache
+<span class="fc" id="L351">		Interface curInterface = interfaceCache.get(ifaceID);</span>
+<span class="pc bpc" id="L352" title="1 of 2 branches missed.">		if (curInterface == null) {</span>
+			// Query in db
+<span class="fc" id="L354">			curInterface = interfaceDB.getInterfaceByID(ifaceID);</span>
+<span class="pc bpc" id="L355" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
+<span class="nc" id="L356">				throw new InterfaceNotExistsException(ifaceID);</span>
+			} else {
+				// Update cache
+<span class="fc" id="L359">				this.interfaceCache.put(ifaceID, curInterface);</span>
+			}
+		}
+
+<span class="fc" id="L363">		return curInterface;</span>
+
+	}
+
+	/**
+	 * Get ID of interface with specifications provided.
+	 * @param providerAccount
+	 *            Name of the account providing the interface
+	 * @param namespace
+	 *            Namespace of the class of the interface
+	 * @param classname
+	 *            Classname of the class of the interface
+	 * @param propertiesInIface
+	 *            Properties in interface
+	 * @param operationsSignatureInIface
+	 *            Operations in interface
+	 * @return ID of the interface
+	 */
+	public InterfaceID getInterfaceID(final String providerAccount, final String namespace, final String classname,
+			final Set&lt;String&gt; propertiesInIface, final Set&lt;String&gt; operationsSignatureInIface) {
+<span class="nc" id="L383">		final Interface result = interfaceDB.getInterfaceByNames(providerAccount, namespace, classname, propertiesInIface,</span>
+				operationsSignatureInIface);
+<span class="nc" id="L385">		return result.getDataClayID();</span>
+	}
+
+	/**
+	 * Check if exists interface with specifications provided.
+	 * @param providerAccount
+	 *            Name of the account providing the interface
+	 * @param namespace
+	 *            Namespace of the class of the interface
+	 * @param classname
+	 *            Classname of the class of the interface
+	 * @param propertiesInIface
+	 *            Properties in interface
+	 * @param operationsSignatureInIface
+	 *            Operations in interface
+	 * @return TRUE if exists. FALSE otherwise.
+	 */
+	public boolean existsInterface(final String providerAccount, final String namespace, final String classname,
+			final Set&lt;String&gt; propertiesInIface, final Set&lt;String&gt; operationsSignatureInIface) {
+<span class="nc" id="L404">		final Interface result = interfaceDB.getInterfaceByNames(providerAccount, namespace, classname, propertiesInIface,</span>
+				operationsSignatureInIface);
+<span class="nc bnc" id="L406" title="All 2 branches missed.">		return result != null;</span>
+	}
+
+	// ======== OTHER ======= //
+
+	/**
+	 * Method used for unit testing.
+	 * @return The db handler reference of this manager.
+	 */
+	public InterfaceManagerDB getDbHandler() {
+<span class="fc" id="L416">		return interfaceDB;</span>
+	}
+
+	@Override
+	public void cleanCaches() {
+<span class="nc" id="L421">		this.interfaceCache.clear();</span>
+<span class="nc" id="L422">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GetNamespaceLang.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.tool</a> &gt; <span class="el_source">GetNamespaceLang.java</span></div><h1>GetNamespaceLang.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.tool;
+
+import es.bsc.dataclay.commonruntime.ClientManagementLib;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.tool.Util.ERRCODE;
+import es.bsc.dataclay.util.ids.AccountID;
+import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+
+<span class="nc" id="L10">public class GetNamespaceLang {</span>
+
+	public static void main(final String[] args) throws Exception {
+<span class="nc bnc" id="L13" title="All 2 branches missed.">		if (args.length != 3) {</span>
+<span class="nc" id="L14">			Util.finishErr(&quot;Bad arguments. Usage: \n\n &quot; + GetNamespaceLang.class.getSimpleName()</span>
+					+ &quot; &lt;applicant_username&gt; &lt;applicant_pass&gt; &lt;namespace_name&gt; \n&quot;, ERRCODE.ERROR);
+<span class="nc" id="L16">			return;</span>
+		}
+		try {
+<span class="nc" id="L19">			Util.init();</span>
+
+<span class="nc" id="L21">			final String applicantName = args[0];</span>
+<span class="nc" id="L22">			final String applicantPass = args[1];</span>
+<span class="nc" id="L23">			final String namespace = args[2];</span>
+
+			// Check account
+<span class="nc" id="L26">			final AccountID accountID = ClientManagementLib.getAccountID(applicantName);</span>
+<span class="nc bnc" id="L27" title="All 2 branches missed.">			if (accountID == null) {</span>
+<span class="nc" id="L28">				Util.finishErr(&quot;Invalid account&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L29">				return;</span>
+			}
+<span class="nc" id="L31">			final PasswordCredential accountCred = new PasswordCredential(applicantPass);</span>
+
+			// Check namespace
+<span class="nc" id="L34">			final Langs language = ClientManagementLib.getNamespaceLanguage(accountID, accountCred, namespace);</span>
+<span class="nc bnc" id="L35" title="All 2 branches missed.">			if (language == null) {</span>
+<span class="nc" id="L36">				Util.finishErr(&quot;Namespace &quot; + namespace + &quot; not found.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L37">				return;</span>
+			}
+
+			// TODO Notice that break line is needed for the global tool to &quot;tail&quot; the language
+<span class="nc" id="L41">			System.out.println(&quot;Language of namespace &quot; + namespace + &quot; is \n&quot; + language.name());</span>
+<span class="nc" id="L42">		} catch (final Exception ex) {</span>
+<span class="nc" id="L43">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L44">		}</span>
+<span class="nc" id="L45">		System.exit(0); // Call this to finish logging threads</span>
+<span class="nc" id="L46">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

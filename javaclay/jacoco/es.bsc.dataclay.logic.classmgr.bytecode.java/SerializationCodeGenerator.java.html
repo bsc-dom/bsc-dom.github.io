@@ -1,0 +1,932 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SerializationCodeGenerator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java</a> &gt; <span class="el_source">SerializationCodeGenerator.java</span></div><h1>SerializationCodeGenerator.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.logic.classmgr.bytecode.java;
+
+import java.lang.reflect.Modifier;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.InstructionAdapter;
+import org.objectweb.asm.commons.Method;
+
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethodsNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeTypes;
+import es.bsc.dataclay.serialization.java.lang.ObjectWrapper;
+import es.bsc.dataclay.util.management.classmgr.Property;
+import es.bsc.dataclay.util.reflection.Reflector;
+import es.bsc.dataclay.util.structs.Tuple;
+
+/**
+ * Serialization code generator for stubs and execution classes.
+ */
+public final class SerializationCodeGenerator {
+
+	/** Indicates maximum serialized fields per method. */
+	private static final int MAX_SERIALIZED_FIELDS_PER_METHOD = 10;
+
+	/** Deserialize name. */
+	public static final String DESERIALIZE_NAME = &quot;deserialize&quot;;
+
+	/** Deserialize signature. */
+<span class="nc" id="L42">	public static final String DESERIALIZE_DESCRIPTOR = Type.getMethodDescriptor(Type.VOID_TYPE,</span>
+			ByteCodeTypes.DC_BUF, ByteCodeTypes.MAP, ByteCodeTypes.DC_OBJECT_METADATA,
+			ByteCodeTypes.MAP);
+
+	/** Partial deserialize signature. Extracted from ASMifier. */
+	public static final String DESERIALIZE_SIGNATURE = &quot;(Les/bsc/dataclay/serialization/buffer/DataClayByteBuffer;Ljava/util/Map&lt;Les/bsc/dataclay/util/ids/MetaClassID;[B&gt;;&quot;
+			+ &quot;Les/bsc/dataclay/util/DataClayObjectMetaData;Ljava/util/Map&lt;Ljava/lang/Integer;Ljava/lang/Object;&gt;;&quot;
+			+ &quot;)V&quot;;
+
+	/** Partial deserialize descriptor. */
+<span class="nc" id="L52">	public static final String PARTIAL_DESERIALIZE_DESCRIPTOR = Type.getMethodDescriptor(Type.VOID_TYPE,</span>
+			ByteCodeTypes.DC_BUF, ByteCodeTypes.MAP,
+			ByteCodeTypes.DC_OBJECT_METADATA, ByteCodeTypes.BITSET, ByteCodeTypes.BITSET,
+			ByteCodeTypes.MAP);
+
+	/** Partial deserialize signature. Extracted from ASMifier. */
+	public static final String PARTIAL_DESERIALIZE_SIGNATURE = &quot;(Les/bsc/dataclay/serialization/buffer/DataClayByteBuffer;Ljava/util/Map&lt;Les/bsc/dataclay/util/ids/MetaClassID;[B&gt;;&quot;
+			+ &quot;Les/bsc/dataclay/util/DataClayObjectMetaData;Ljava/util/BitSet;Ljava/util/BitSet;&quot;
+			+ &quot;Ljava/util/Map&lt;Ljava/lang/Integer;Ljava/lang/Object;&gt;;)V&quot;;
+
+	/** Serialize name. */
+	public static final String SERIALIZE_NAME = &quot;serialize&quot;;
+
+	/** Serialize signature. */
+<span class="nc" id="L66">	public static final String SERIALIZE_DESCRIPTOR = Type.getMethodDescriptor(Type.VOID_TYPE,</span>
+			ByteCodeTypes.DC_BUF, Type.BOOLEAN_TYPE, ByteCodeTypes.MAP, ByteCodeTypes.IDENTITYMAP,
+			ByteCodeTypes.LISTITERATOR, ByteCodeTypes.REFERENCE_COUNTING);
+
+	/** Serialize signature. Extracted from ASMifier. */
+	public static final String SERIALIZE_SIGNATURE = &quot;(Les/bsc/dataclay/serialization/buffer/DataClayByteBuffer;ZLjava/util/Map&lt;Les/bsc/dataclay/util/ids/MetaClassID;[B&gt;;&quot;
+			+ &quot;Ljava/util/IdentityHashMap&lt;Ljava/lang/Object;Ljava/lang/Integer;&gt;;&quot;
+			+ &quot;Ljava/util/ListIterator&lt;Les/bsc/dataclay/DataClayObject;&gt;;Les/bsc/dataclay/util/ReferenceCounting;)V&quot;;
+
+	/** Partial serialize descriptor. */
+<span class="nc" id="L76">	public static final String PARTIAL_SERIALIZE_DESCRIPTOR = Type.getMethodDescriptor(Type.VOID_TYPE,</span>
+			ByteCodeTypes.DC_BUF, Type.BOOLEAN_TYPE,
+			ByteCodeTypes.MAP,
+			ByteCodeTypes.IDENTITYMAP,
+			ByteCodeTypes.BITSET, ByteCodeTypes.BITSET,
+			ByteCodeTypes.LISTITERATOR);
+
+	/** Partial serialize signature. Extracted from ASMifier. */
+	public static final String PARTIAL_SERIALIZE_SIGNATURE = &quot;(Les/bsc/dataclay/serialization/buffer/DataClayByteBuffer;ZLjava/util/Map&lt;Les/bsc/dataclay/util/ids/MetaClassID;[B&gt;;&quot;
+			+ &quot;Ljava/util/IdentityHashMap&lt;Ljava/lang/Object;Ljava/lang/Integer;&gt;;Ljava/util/BitSet;&quot;
+			+ &quot;Ljava/util/BitSet;Ljava/util/ListIterator&lt;Les/bsc/dataclay/DataClayObject;&gt;;)V&quot;;
+
+	/**
+	 * Utility classes should have a private constructor.
+	 */
+	private SerializationCodeGenerator() {
+
+	}
+
+	/**
+	 * Generate serialize method
+	 * @param classType
+	 *            Class type being created
+	 * @param parentInternalName
+	 *            Internal name of parent class
+	 * @param cv
+	 *            Class visitor used for method generation.
+	 * @param fields
+	 *            Fields to serialize
+	 */
+	public static void generateSerializeMethod(final ClassVisitor cv,
+			final Type classType,
+			final String parentInternalName,
+			final Set&lt;Property&gt; fields) {
+
+		// First, generate partial serialization methods
+<span class="nc" id="L112">		final Iterator&lt;Property&gt; fieldsIterator = fields.iterator();</span>
+<span class="nc" id="L113">		int curPartialMethod = 0;</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		while (fieldsIterator.hasNext()) {</span>
+<span class="nc" id="L115">			generatePartialSerializeMethod(cv, classType, fieldsIterator, curPartialMethod);</span>
+<span class="nc" id="L116">			curPartialMethod++;</span>
+		}
+
+		// Create method
+<span class="nc" id="L120">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, &quot;serialize&quot;,</span>
+				SERIALIZE_DESCRIPTOR, SERIALIZE_SIGNATURE, null);
+<span class="nc" id="L122">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC, &quot;serialize&quot;,</span>
+				SERIALIZE_DESCRIPTOR);
+<span class="nc" id="L124">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+		// CHECKSTYLE:OFF
+		// Calculate size of bitmap of null fields given the number of present fields
+<span class="nc" id="L128">		final int numFields = fields.size();</span>
+<span class="nc" id="L129">		int numBytes = 0;</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">		for (int i = 0; i &lt; numFields; ++i) {</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">			if (i % 8 == 0) {</span>
+<span class="nc" id="L132">				numBytes++;</span>
+			}
+		}
+
+		// Arguments
+<span class="nc" id="L137">		final int dcBufferArgIdx = 0;</span>
+<span class="nc" id="L138">		final int ignoreUserTypes = 1;</span>
+<span class="nc" id="L139">		final int ifaceBitMaps = 2;</span>
+<span class="nc" id="L140">		final int curSerializedObjs = 3;</span>
+<span class="nc" id="L141">		final int pendingObjs = 4;</span>
+		// CHECKSTYLE:ON
+
+<span class="nc" id="L144">		gn.visitCode();</span>
+<span class="nc" id="L145">		final Label startLabel = new Label();</span>
+<span class="nc" id="L146">		gn.visitLabel(startLabel);</span>
+
+		// Create not-nulls bitset
+		// CODE: BitSet notNullsBitSetVar = new BitSet(numFields);
+<span class="nc" id="L150">		gn.newInstance(ByteCodeTypes.BITSET);</span>
+<span class="nc" id="L151">		gn.dup();</span>
+<span class="nc" id="L152">		ia.iconst(numBytes);</span>
+<span class="nc" id="L153">		gn.invokeConstructor(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_CONSTRUCTOR);</span>
+<span class="nc" id="L154">		final int notNullsBitSetVar = gn.newLocal(ByteCodeTypes.BITSET);</span>
+<span class="nc" id="L155">		gn.storeLocal(notNullsBitSetVar);</span>
+<span class="nc" id="L156">		final Label nullBitSetCreatedLabel = new Label();</span>
+<span class="nc" id="L157">		gn.visitLabel(nullBitSetCreatedLabel);</span>
+
+		// Serialize bitmap length
+		// CODE: dcBuffer.writeVLQInt(numBytes);
+<span class="nc" id="L161">		gn.loadArg(dcBufferArgIdx); // Load dataCLay byte buffer</span>
+<span class="nc" id="L162">		ia.iconst(numBytes);</span>
+<span class="nc" id="L163">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_WRITE_VLQ_INT);</span>
+
+		// Store writer index into local variable
+		// CODE: int writerIndex = dcBuffer.writerIndex();
+<span class="nc" id="L167">		gn.loadArg(dcBufferArgIdx); // Load dataCLay byte buffer</span>
+<span class="nc" id="L168">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_WRITER_INDEX);</span>
+<span class="nc" id="L169">		final int writerIndex = gn.newLocal(Type.INT_TYPE);</span>
+<span class="nc" id="L170">		gn.storeLocal(writerIndex);</span>
+<span class="nc" id="L171">		final Label writerIndexCreatedLabel = new Label();</span>
+<span class="nc" id="L172">		gn.visitLabel(writerIndexCreatedLabel);</span>
+
+		// Serialize not-nulls bitmap to be updated at the end of the method
+		// CODE: dcBuffer.writeBytes(new byte[numFields]);
+<span class="nc" id="L176">		gn.loadArg(dcBufferArgIdx);</span>
+<span class="nc" id="L177">		ia.iconst(numBytes);</span>
+<span class="nc" id="L178">		gn.newArray(Type.BYTE_TYPE);</span>
+<span class="nc" id="L179">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_WRITE_BYTES);</span>
+
+		// Create bitset for interface
+<span class="nc" id="L182">		gn.visitInsn(Opcodes.ACONST_NULL);</span>
+<span class="nc" id="L183">		final int ifaceBitSet = gn.newLocal(ByteCodeTypes.BITSET);</span>
+<span class="nc" id="L184">		gn.storeLocal(ifaceBitSet, ByteCodeTypes.BITSET);</span>
+<span class="nc" id="L185">		final Label ifaceBitSetCreatedLabel = new Label();</span>
+<span class="nc" id="L186">		gn.visitLabel(ifaceBitSetCreatedLabel);</span>
+
+		// Check if interface bitmaps is null
+		// CODE: if (interfaceBitMaps != null) { ... }
+<span class="nc" id="L190">		gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L191">		final Label ifInterfaceBitMapIsNull = new Label();</span>
+<span class="nc" id="L192">		gn.ifNull(ifInterfaceBitMapIsNull);</span>
+
+		// If not null, load interface bitmap into the bitset
+		// CODE: BitSet ifaceBitSet = BitSet.valueOf(ifaceBitmaps.get(this.getMetaClassID()));
+<span class="nc" id="L196">		gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L197">		gn.loadThis();</span>
+		// gn.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L199">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL,</span>
+<span class="nc" id="L200">				classType.getInternalName(),</span>
+<span class="nc" id="L201">				ByteCodeMethods.DCOBJ_GET_METACLASSID.getName(),</span>
+<span class="nc" id="L202">				ByteCodeMethods.DCOBJ_GET_METACLASSID.getDescriptor(), false);</span>
+<span class="nc" id="L203">		gn.invokeInterface(ByteCodeTypes.MAP, ByteCodeMethods.MAP_GET);</span>
+<span class="nc" id="L204">		gn.checkCast(ByteCodeTypes.BYTE_ARRAY);</span>
+<span class="nc" id="L205">		gn.invokeStatic(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_VALUEOF);</span>
+<span class="nc" id="L206">		gn.storeLocal(ifaceBitSet);</span>
+
+		// Continue (is not an else since there is no GOTO instruction)
+		// CODE: } ...
+<span class="nc" id="L210">		gn.visitLabel(ifInterfaceBitMapIsNull);</span>
+
+		// Call all partial serialize methods
+<span class="nc bnc" id="L213" title="All 2 branches missed.">		for (int i = 0; i &lt; curPartialMethod; ++i) {</span>
+<span class="nc" id="L214">			gn.loadThis();</span>
+<span class="nc" id="L215">			gn.loadArg(dcBufferArgIdx);</span>
+<span class="nc" id="L216">			gn.loadArg(ignoreUserTypes);</span>
+<span class="nc" id="L217">			gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L218">			gn.loadArg(curSerializedObjs);</span>
+<span class="nc" id="L219">			gn.loadLocal(notNullsBitSetVar);</span>
+<span class="nc" id="L220">			gn.loadLocal(ifaceBitSet);</span>
+<span class="nc" id="L221">			gn.loadArg(pendingObjs);</span>
+<span class="nc" id="L222">			final Method partialMethod = new Method(ByteCodeMethodsNames.SERIALIZE_MTHD + i,</span>
+					PARTIAL_SERIALIZE_DESCRIPTOR);
+<span class="nc" id="L224">			gn.invokeVirtual(classType, partialMethod);</span>
+		}
+
+		// Update bitmap of not null fields
+		// Get writer index
+		// CODE: writerIndex2 wIndex2 = dcBuffer.writerIndex();
+<span class="nc" id="L230">		gn.loadArg(dcBufferArgIdx);</span>
+<span class="nc" id="L231">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_WRITER_INDEX);</span>
+<span class="nc" id="L232">		final int writerIndex2 = gn.newLocal(Type.INT_TYPE);</span>
+<span class="nc" id="L233">		gn.storeLocal(writerIndex2);</span>
+<span class="nc" id="L234">		final Label writerIndex2CreatedLabel = new Label();</span>
+<span class="nc" id="L235">		gn.visitLabel(writerIndex2CreatedLabel);</span>
+
+		// Set writer index to initial one
+		// CODE: dcBuffer.setWriterIndex(writerIndex);
+<span class="nc" id="L239">		gn.loadArg(dcBufferArgIdx);</span>
+<span class="nc" id="L240">		gn.loadLocal(writerIndex);</span>
+<span class="nc" id="L241">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_SET_WRITER_INDEX);</span>
+
+		// Serialize bit map of nulls again
+		// CODE: dcBuffer.writeBytes(notNullsBitSet.toByteArray());
+<span class="nc" id="L245">		gn.loadArg(dcBufferArgIdx);</span>
+<span class="nc" id="L246">		gn.loadLocal(notNullsBitSetVar);</span>
+<span class="nc" id="L247">		gn.invokeVirtual(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_TOBYTEARRAY);</span>
+<span class="nc" id="L248">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_WRITE_BYTES);</span>
+
+		// Move writer index again to normal position
+<span class="nc" id="L251">		gn.loadArg(dcBufferArgIdx);</span>
+<span class="nc" id="L252">		gn.loadLocal(writerIndex2);</span>
+<span class="nc" id="L253">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_SET_WRITER_INDEX);</span>
+
+		// Serialize parent fields
+<span class="nc" id="L256">		gn.loadThis();</span>
+<span class="nc" id="L257">		gn.loadArg(dcBufferArgIdx);</span>
+<span class="nc" id="L258">		gn.loadArg(ignoreUserTypes);</span>
+<span class="nc" id="L259">		gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L260">		gn.loadArg(curSerializedObjs);</span>
+<span class="nc" id="L261">		gn.loadArg(pendingObjs);</span>
+<span class="nc" id="L262">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL, parentInternalName,</span>
+				ByteCodeMethodsNames.SERIALIZE_MTHD, SERIALIZE_DESCRIPTOR, false);
+
+		// End of method
+<span class="nc" id="L266">		gn.returnValue();</span>
+
+<span class="nc" id="L268">		final Label endLabel = new Label();</span>
+<span class="nc" id="L269">		gn.visitLabel(endLabel);</span>
+
+		// Local variables
+		/*
+		 * mv.visitLocalVariable(&quot;this&quot;, classType.getDescriptor(), null, startLabel, endLabel, 0); mv.visitLocalVariable(&quot;dcBuffer&quot;,
+		 * ByteCodeTypes.DC_BUF.getDescriptor(), null, startLabel, endLabel, 1); mv.visitLocalVariable(&quot;ignoreUserTypes&quot;,
+		 * Type.BOOLEAN_TYPE.getDescriptor(), null, startLabel, endLabel, 2); mv.visitLocalVariable(&quot;ifaceBitMaps&quot;,
+		 * ByteCodeTypes.MAP.getDescriptor(), &quot;Ljava/util/Map&lt;Lutil/ids/MetaClassID;[B&gt;;&quot;, startLabel, endLabel, 3);
+		 * mv.visitLocalVariable(&quot;curSerializedObjs&quot;, ByteCodeTypes.IDENTITYMAP.getDescriptor(),
+		 * &quot;Ljava/util/IdentityHashMap&lt;Ljava/lang/Object;Ljava/lang/Integer;&gt;;&quot;, startLabel, endLabel, 4);
+		 * mv.visitLocalVariable(&quot;pendingObjs&quot;, ByteCodeTypes.LISTITERATOR.getDescriptor(),
+		 * &quot;Ljava/util/ListIterator&lt;Lserialization/DataClayObject;&gt;;&quot;, startLabel, endLabel, 5); mv.visitLocalVariable(&quot;nullsBitSet&quot;,
+		 * ByteCodeTypes.BITSET.getDescriptor(), null, nullBitSetCreatedLabel, endLabel, 6); mv.visitLocalVariable(&quot;j&quot;,
+		 * Type.INT_TYPE.getDescriptor(), null, writerIndexCreatedLabel, endLabel, 7); mv.visitLocalVariable(&quot;ifaceBitSet&quot;,
+		 * ByteCodeTypes.BITSET.getDescriptor(), null, ifaceBitSetCreatedLabel, endLabel, 8); mv.visitLocalVariable(&quot;k&quot;,
+		 * Type.INT_TYPE.getDescriptor(), null, writerIndex2CreatedLabel, endLabel, 9);
+		 */
+
+<span class="nc" id="L287">		gn.visitMaxs(-1, -1); // Automatically calculated</span>
+<span class="nc" id="L288">		mv.visitEnd();</span>
+
+<span class="nc" id="L290">	}</span>
+
+	/**
+	 * Generate partial serialize method
+	 * @param cv
+	 *            Class visitor used for method generation.
+	 * @param classType
+	 *            Class type being created
+	 * @param fieldsIterator
+	 *            Iterator of fields to serialize
+	 * @param curPartialMethod
+	 *            Current partial method
+	 */
+	private static void generatePartialSerializeMethod(final ClassVisitor cv,
+			final Type classType,
+			final Iterator&lt;Property&gt; fieldsIterator, final int curPartialMethod) {
+
+		// Create method
+<span class="nc" id="L308">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PRIVATE,</span>
+				ByteCodeMethodsNames.SERIALIZE_MTHD + curPartialMethod,
+				PARTIAL_SERIALIZE_DESCRIPTOR, PARTIAL_SERIALIZE_SIGNATURE, null);
+<span class="nc" id="L311">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PRIVATE,</span>
+				ByteCodeMethodsNames.SERIALIZE_MTHD + curPartialMethod,
+				PARTIAL_SERIALIZE_DESCRIPTOR);
+<span class="nc" id="L314">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+		// Arguments
+		// CHECKSTYLE:OFF
+<span class="nc" id="L318">		final int dcBuffer = 0;</span>
+<span class="nc" id="L319">		final int ignoreUserTypes = 1;</span>
+<span class="nc" id="L320">		final int ifaceBitMaps = 2;</span>
+<span class="nc" id="L321">		final int curSerializedObjs = 3;</span>
+<span class="nc" id="L322">		final int nullsBitSet = 4;</span>
+<span class="nc" id="L323">		final int ifaceBitSet = 5;</span>
+<span class="nc" id="L324">		final int pendingObjs = 6;</span>
+		// CHECKSTYLE:ON
+
+<span class="nc" id="L327">		gn.visitCode();</span>
+<span class="nc" id="L328">		final Label startLabel = new Label();</span>
+<span class="nc" id="L329">		gn.visitLabel(startLabel);</span>
+
+		// Serialize fields
+<span class="nc bnc" id="L332" title="All 4 branches missed.">		for (int i = 0; i &lt; MAX_SERIALIZED_FIELDS_PER_METHOD &amp;&amp; fieldsIterator.hasNext(); ++i) {</span>
+<span class="nc" id="L333">			final Property prop = fieldsIterator.next();</span>
+
+<span class="nc" id="L335">			final int modProp = prop.getJavaPropertyInfo().getModifier();</span>
+<span class="nc bnc" id="L336" title="All 4 branches missed.">			if (Modifier.isStatic(modProp) &amp;&amp; Modifier.isFinal(modProp)) {</span>
+<span class="nc" id="L337">				continue;</span>
+			}
+
+<span class="nc" id="L340">			final String fieldName = prop.getName();</span>
+<span class="nc" id="L341">			final int fieldPos = prop.getPosition();</span>
+<span class="nc" id="L342">			final String typeName = prop.getType().getTypeName(); // &quot;int&quot;, &quot;float&quot;, ... &quot;java.lang.Integer&quot;...</span>
+<span class="nc" id="L343">			final Type fieldType = Type.getType(prop.getType().getDescriptor());</span>
+
+			// Check if field is in bitmap of ifaces. First, Check if bitmap is null == it is in iface.
+			// CODE: if (ifaceBitSet == null ...
+<span class="nc" id="L347">			gn.loadArg(ifaceBitSet);</span>
+<span class="nc" id="L348">			final Label processField = new Label();</span>
+<span class="nc" id="L349">			gn.ifNull(processField);</span>
+
+			// Code: || ifaceBitSet.get(fieldPos)) {
+<span class="nc" id="L352">			gn.loadArg(ifaceBitSet);</span>
+<span class="nc" id="L353">			ia.iconst(fieldPos); // Use instruction adapter which will redirect call to Mv.</span>
+<span class="nc" id="L354">			gn.invokeVirtual(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_GET);</span>
+<span class="nc" id="L355">			final Label nextField = new Label();</span>
+<span class="nc" id="L356">			gn.ifZCmp(Opcodes.IFEQ, nextField);</span>
+
+			// Visit label
+<span class="nc" id="L359">			gn.visitLabel(processField);</span>
+
+			// Immutables and primitive fields are going to be &quot;unboxed&quot; into primitive fields for
+			// an easy serialization. However, immutables can be null and this might be taken into account.
+<span class="nc bnc" id="L363" title="All 2 branches missed.">			if (Reflector.isPrimitiveTypeName(typeName)) {</span>
+
+				// ==== PRIMITIVE TYPES ==== //
+				// All primitive are not null fields
+				// Set field as non null field
+<span class="nc" id="L368">				gn.loadArg(nullsBitSet);</span>
+<span class="nc" id="L369">				ia.iconst(fieldPos);</span>
+<span class="nc" id="L370">				gn.invokeVirtual(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_SET);</span>
+
+				// Create call to writeXXx in DataClayByteBuffer
+<span class="nc" id="L373">				callDcBufferWriteForPrimitiveAndImmutables(gn, dcBuffer, classType, fieldType, typeName,</span>
+						fieldName);
+
+			} else {
+				// ==== REFERENCE TYPES ==== //
+
+<span class="nc" id="L379">				final boolean isImmutable = Reflector.isImmutableTypeName(typeName);</span>
+<span class="nc bnc" id="L380" title="All 4 branches missed.">				final boolean isJavaType = Reflector.isArrayTypeName(typeName) || Reflector.isJavaTypeName(typeName);</span>
+
+				// Check if field must be added (depending on the flag ignoreUserTypes)
+<span class="nc bnc" id="L383" title="All 2 branches missed.">				if (!isJavaType) {</span>
+<span class="nc" id="L384">					gn.loadArg(ignoreUserTypes);</span>
+<span class="nc" id="L385">					gn.ifZCmp(Opcodes.IFNE, nextField); // if ignoreUserTypes != 0 != false, jump</span>
+				}
+
+				// Immutable types and any other type can be null
+
+				// Check if it is null
+<span class="nc" id="L391">				gn.loadThis();</span>
+<span class="nc" id="L392">				gn.getField(classType, fieldName, fieldType);</span>
+<span class="nc" id="L393">				gn.ifNull(nextField); // if field == null, jump</span>
+
+				// Not null, mark it
+<span class="nc" id="L396">				gn.loadArg(nullsBitSet);</span>
+<span class="nc" id="L397">				ia.iconst(fieldPos);</span>
+<span class="nc" id="L398">				gn.invokeVirtual(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_SET);</span>
+
+<span class="nc bnc" id="L400" title="All 2 branches missed.">				if (isImmutable) {</span>
+					// ==== IMMUTABLES ==== //
+					// Create call to writeXXx in DataClayByteBuffer
+<span class="nc" id="L403">					callDcBufferWriteForPrimitiveAndImmutables(gn, dcBuffer, classType, fieldType, typeName,</span>
+							fieldName);
+<span class="nc bnc" id="L405" title="All 2 branches missed.">				} else if (isJavaType) {</span>
+					// ==== JAVA TYPE ==== //
+
+					// Find wrapper type.
+<span class="nc" id="L409">					final Tuple&lt;Type, Type&gt; wrapperTypes = findWrapperType(typeName, prop.getType().getDescriptor());</span>
+<span class="nc" id="L410">					final Type wrapperType = wrapperTypes.getFirst();</span>
+<span class="nc" id="L411">					final Type paramType = wrapperTypes.getSecond();</span>
+					// Get constructor. Constructor always contains as the argument the original
+					// type to wrap.
+<span class="nc" id="L414">					final Method wrapperConstructor = new Method(ByteCodeMethodsNames.INIT_MTHD,</span>
+							Type.VOID_TYPE, new Type[] { paramType });
+
+					// Wrap field and call serializeJavaAssociation
+					// call serializeJavaField
+					// CODE: serializeJavaField(new Wrapper(field), dcBuffer, ignoreUserTypes, ...)
+<span class="nc" id="L420">					gn.newInstance(wrapperType);</span>
+<span class="nc" id="L421">					gn.dup();</span>
+<span class="nc" id="L422">					gn.loadThis();</span>
+<span class="nc" id="L423">					gn.getField(classType, fieldName, fieldType);</span>
+<span class="nc" id="L424">					gn.invokeConstructor(wrapperType, wrapperConstructor);</span>
+<span class="nc" id="L425">					gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L426">					gn.loadArg(ignoreUserTypes);</span>
+<span class="nc" id="L427">					gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L428">					gn.loadArg(curSerializedObjs);</span>
+<span class="nc" id="L429">					gn.loadArg(pendingObjs);</span>
+<span class="nc" id="L430">					gn.invokeStatic(ByteCodeTypes.DATACLAY_SERIALIZATION_LIB, ByteCodeMethods.SERIALIZE_JAVA_FIELD);</span>
+<span class="nc" id="L431">				} else {</span>
+					// DataClayObject
+					// CODE: serializeAssociation(field, ...)
+<span class="nc" id="L434">					gn.loadThis();</span>
+<span class="nc" id="L435">					gn.getField(classType, fieldName, fieldType);</span>
+<span class="nc" id="L436">					gn.checkCast(ByteCodeTypes.DCOBJ);</span>
+<span class="nc" id="L437">					gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L438">					gn.loadArg(ignoreUserTypes);</span>
+<span class="nc" id="L439">					gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L440">					gn.loadArg(curSerializedObjs);</span>
+<span class="nc" id="L441">					gn.loadArg(pendingObjs);</span>
+<span class="nc" id="L442">					gn.invokeStatic(ByteCodeTypes.DATACLAY_SERIALIZATION_LIB, ByteCodeMethods.SERIALIZE_ASSOC);</span>
+
+				}
+			}
+
+<span class="nc" id="L447">			gn.visitLabel(nextField);</span>
+			// next field
+		}
+
+		// End of method
+<span class="nc" id="L452">		final Label endLabel = new Label();</span>
+<span class="nc" id="L453">		gn.returnValue();</span>
+<span class="nc" id="L454">		gn.visitLabel(endLabel);</span>
+
+		// local variables scope
+		/*
+		 * gn.visitLocalVariable(&quot;this&quot;, classType.getDescriptor(), null, startLabel, endLabel, 0); gn.visitLocalVariable(&quot;dcBuffer&quot;,
+		 * ByteCodeTypes.DC_BUF.getDescriptor(), null, startLabel, endLabel, 1); mv.visitLocalVariable(&quot;ignoreUserTypes&quot;,
+		 * Type.BOOLEAN_TYPE.getDescriptor(), null, startLabel, endLabel, 2); mv.visitLocalVariable(&quot;ifaceBitMaps&quot;,
+		 * ByteCodeTypes.MAP.getDescriptor(), &quot;Ljava/util/Map&lt;Lutil/ids/MetaClassID;[B&gt;;&quot;, startLabel, endLabel, 3);
+		 * mv.visitLocalVariable(&quot;curSerializedObjs&quot;, ByteCodeTypes.IDENTITYMAP.getDescriptor(),
+		 * &quot;Ljava/util/IdentityHashMap&lt;Ljava/lang/Object;Ljava/lang/Integer;&gt;;&quot;, startLabel, endLabel, 4);
+		 * mv.visitLocalVariable(&quot;nullsBitSet&quot;, ByteCodeTypes.BITSET.getDescriptor(), null, startLabel, endLabel, 5);
+		 * mv.visitLocalVariable(&quot;ifaceBitSet&quot;, ByteCodeTypes.BITSET.getDescriptor(), null, startLabel, endLabel, 6);
+		 * mv.visitLocalVariable(&quot;pendingObjs&quot;, ByteCodeTypes.LISTITERATOR.getDescriptor(),
+		 * &quot;Ljava/util/ListIterator&lt;Lserialization/DataClayObject;&gt;;&quot;, startLabel, endLabel, 7);
+		 */
+
+<span class="nc" id="L470">		gn.visitMaxs(-1, -1); // Automatically calculated</span>
+<span class="nc" id="L471">		mv.visitEnd();</span>
+
+<span class="nc" id="L473">	}</span>
+
+	/**
+	 * Generate a call to writeXxx in DataClayByteBuffer for primitive and immutable types
+	 * @param gn
+	 *            Method generator
+	 * @param dcBuffer
+	 *            Index to dataclay byte buffer in code
+	 * @param classType
+	 *            Class type
+	 * @param fieldType
+	 *            Field type
+	 * @param typeName
+	 *            Type name (i.e. &quot;int&quot;, &quot;float&quot;, &quot;java.lang.String&quot;, ...)
+	 * @param fieldName
+	 *            Field name
+	 */
+	private static void callDcBufferWriteForPrimitiveAndImmutables(
+			final GeneratorAdapter gn, final int dcBuffer,
+			final Type classType, final Type fieldType,
+			final String typeName, final String fieldName) {
+		// IMPORTANT: This can be hacky. DataClayByteBuffer contains a set of instructions called
+		// writeXxx(...) where Xxx is the primitive type (Int, Float, ...) We will use this to
+		// avoid creating a switch-case.
+		// First capitalize first character
+<span class="nc" id="L498">		final String primitiveTypeName = Reflector.getPrimitiveTypeNameFromImmutableTypeName(typeName);</span>
+<span class="nc" id="L499">		String capitalizedTypeName = primitiveTypeName.substring(0, 1).toUpperCase()</span>
+<span class="nc" id="L500">				+ primitiveTypeName.substring(1);</span>
+<span class="nc bnc" id="L501" title="All 2 branches missed.">		if (typeName.equals(String.class.getName())) {</span>
+<span class="nc" id="L502">			capitalizedTypeName = &quot;String&quot;;</span>
+		}
+
+		// Now prepare method call
+<span class="nc" id="L506">		final String desc = Reflector.getSignatureFromTypeName(primitiveTypeName);</span>
+<span class="nc" id="L507">		final Type paramType = Type.getType(desc);</span>
+<span class="nc" id="L508">		final Method dcBufferWriteMethod = new Method(&quot;write&quot; + capitalizedTypeName, Type.VOID_TYPE,</span>
+				new Type[] { paramType });
+
+		// Now we invoke it
+		// CODE: dcBuffer.writeXxx(field)
+<span class="nc" id="L513">		gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L514">		gn.loadThis();</span>
+<span class="nc" id="L515">		gn.getField(classType, fieldName, fieldType);</span>
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		if (!fieldType.equals(paramType)) {</span>
+			// If field type is java immutable i.e. not same as param type, we must box it
+<span class="nc" id="L518">			gn.unbox(paramType);</span>
+		}
+<span class="nc" id="L520">		gn.invokeInterface(ByteCodeTypes.DC_BUF, dcBufferWriteMethod);</span>
+<span class="nc" id="L521">	}</span>
+
+	/**
+	 * Generate deserialize method
+	 * @param classType
+	 *            Class type being created
+	 * @param parentInternalName
+	 *            Internal name of parent class
+	 * @param cv
+	 *            Class visitor used for method generation.
+	 * @param fields
+	 *            Fields to deserialize
+	 */
+	public static void generateDeserializeMethod(final ClassVisitor cv,
+			final Type classType,
+			final String parentInternalName,
+			final Set&lt;Property&gt; fields) {
+		// First, generate partial deserialization methods
+<span class="nc" id="L539">		final Iterator&lt;Property&gt; fieldsIterator = fields.iterator();</span>
+<span class="nc" id="L540">		int curPartialMethod = 0;</span>
+<span class="nc bnc" id="L541" title="All 2 branches missed.">		while (fieldsIterator.hasNext()) {</span>
+<span class="nc" id="L542">			generatePartialDeserializeMethod(cv, classType, fieldsIterator, curPartialMethod);</span>
+<span class="nc" id="L543">			curPartialMethod++;</span>
+		}
+
+		// Create method
+<span class="nc" id="L547">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PUBLIC, &quot;deserialize&quot;,</span>
+				DESERIALIZE_DESCRIPTOR, DESERIALIZE_SIGNATURE, null);
+<span class="nc" id="L549">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PUBLIC, &quot;deserialize&quot;,</span>
+				DESERIALIZE_DESCRIPTOR);
+
+		// CHECKSTYLE:OFF
+		// Parameters
+<span class="nc" id="L554">		final int dcBuffer = 0;</span>
+<span class="nc" id="L555">		final int ifaceBitMaps = 1;</span>
+<span class="nc" id="L556">		final int metaData = 2;</span>
+<span class="nc" id="L557">		final int alreadyDeserializedObjs = 3;</span>
+		// CHECKSTYLE:ON
+
+<span class="nc" id="L560">		gn.visitCode();</span>
+<span class="nc" id="L561">		final Label startLabel = new Label();</span>
+<span class="nc" id="L562">		gn.visitLabel(startLabel);</span>
+
+		// Create nulls bitset
+<span class="nc" id="L565">		gn.visitInsn(Opcodes.ACONST_NULL);</span>
+<span class="nc" id="L566">		final int nullsBitSet = gn.newLocal(ByteCodeTypes.BITSET);</span>
+<span class="nc" id="L567">		gn.storeLocal(nullsBitSet, ByteCodeTypes.BITSET);</span>
+
+		// Create iface bitset
+<span class="nc" id="L570">		gn.visitInsn(Opcodes.ACONST_NULL);</span>
+<span class="nc" id="L571">		final int ifaceBitSet = gn.newLocal(ByteCodeTypes.BITSET);</span>
+<span class="nc" id="L572">		gn.storeLocal(ifaceBitSet, ByteCodeTypes.BITSET);</span>
+
+		// CODE: nullsBitMapSize = dcBuffer.readVLQInt()
+<span class="nc" id="L575">		gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L576">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_READ_VLQ_INT);</span>
+<span class="nc" id="L577">		final int nullsBitMapSize = gn.newLocal(Type.INT_TYPE);</span>
+<span class="nc" id="L578">		gn.storeLocal(nullsBitMapSize);</span>
+
+		// CODE: if (nullsBitMapSize != 0) { ...
+<span class="nc" id="L581">		gn.loadLocal(nullsBitMapSize);</span>
+<span class="nc" id="L582">		final Label noBitSetOfNulls = new Label();</span>
+<span class="nc" id="L583">		gn.ifZCmp(Opcodes.IFLE, noBitSetOfNulls);</span>
+
+		// Creat bitmap of nulls
+		// CODE: nullsBitSet = BitSet.valueOf(dcBuffer.readBytes(nullsBitMapSize));
+<span class="nc" id="L587">		gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L588">		gn.loadLocal(nullsBitMapSize);</span>
+<span class="nc" id="L589">		gn.invokeInterface(ByteCodeTypes.DC_BUF, ByteCodeMethods.DCBUFFER_READ_BYTES);</span>
+<span class="nc" id="L590">		gn.invokeStatic(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_VALUEOF);</span>
+<span class="nc" id="L591">		gn.storeLocal(nullsBitSet);</span>
+
+		// Continue
+<span class="nc" id="L594">		gn.visitLabel(noBitSetOfNulls);</span>
+
+		// CODE: if (ifaceBitMaps != null) { ... }
+<span class="nc" id="L597">		gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L598">		final Label ifaceMapsIsNull = new Label();</span>
+<span class="nc" id="L599">		gn.ifNull(ifaceMapsIsNull);</span>
+
+<span class="nc" id="L601">		gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L602">		gn.loadThis();</span>
+		// gn.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L604">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL,</span>
+<span class="nc" id="L605">				classType.getInternalName(),</span>
+<span class="nc" id="L606">				ByteCodeMethods.DCOBJ_GET_METACLASSID.getName(),</span>
+<span class="nc" id="L607">				ByteCodeMethods.DCOBJ_GET_METACLASSID.getDescriptor(), false);</span>
+<span class="nc" id="L608">		gn.invokeInterface(ByteCodeTypes.MAP, ByteCodeMethods.MAP_GET);</span>
+<span class="nc" id="L609">		gn.checkCast(ByteCodeTypes.BYTE_ARRAY);</span>
+<span class="nc" id="L610">		gn.invokeStatic(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_VALUEOF);</span>
+<span class="nc" id="L611">		gn.storeLocal(ifaceBitSet);</span>
+
+		// Continue
+<span class="nc" id="L614">		gn.visitLabel(ifaceMapsIsNull);</span>
+
+		// Deserialize each field
+<span class="nc bnc" id="L617" title="All 2 branches missed.">		for (int i = 0; i &lt; curPartialMethod; ++i) {</span>
+<span class="nc" id="L618">			gn.loadThis();</span>
+<span class="nc" id="L619">			gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L620">			gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L621">			gn.loadArg(metaData);</span>
+<span class="nc" id="L622">			gn.loadLocal(nullsBitSet);</span>
+<span class="nc" id="L623">			gn.loadLocal(ifaceBitSet);</span>
+<span class="nc" id="L624">			gn.loadArg(alreadyDeserializedObjs);</span>
+<span class="nc" id="L625">			final Method partialMethod = new Method(ByteCodeMethodsNames.DESERIALIZE_MTHD + i,</span>
+					PARTIAL_DESERIALIZE_DESCRIPTOR);
+<span class="nc" id="L627">			gn.invokeVirtual(classType, partialMethod);</span>
+		}
+
+		// Call parent deserialization
+<span class="nc" id="L631">		gn.loadThis();</span>
+<span class="nc" id="L632">		gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L633">		gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L634">		gn.loadArg(metaData);</span>
+<span class="nc" id="L635">		gn.loadArg(alreadyDeserializedObjs);</span>
+<span class="nc" id="L636">		gn.visitMethodInsn(Opcodes.INVOKESPECIAL, parentInternalName,</span>
+				ByteCodeMethodsNames.DESERIALIZE_MTHD, DESERIALIZE_DESCRIPTOR, false);
+
+		// End of method
+<span class="nc" id="L640">		gn.returnValue();</span>
+
+<span class="nc" id="L642">		final Label endLabel = new Label();</span>
+<span class="nc" id="L643">		gn.visitLabel(endLabel);</span>
+
+<span class="nc" id="L645">		gn.visitMaxs(-1, -1); // Automatically calculated</span>
+<span class="nc" id="L646">		mv.visitEnd();</span>
+<span class="nc" id="L647">	}</span>
+
+	/**
+	 * Generate partial deserialize method
+	 * @param cv
+	 *            Class visitor used for method generation.
+	 * @param classType
+	 *            Class type being created
+	 * @param fieldsIterator
+	 *            Iterator of fields to deserialize
+	 * @param curPartialMethod
+	 *            Current partial method
+	 */
+	private static void generatePartialDeserializeMethod(final ClassVisitor cv,
+			final Type classType,
+			final Iterator&lt;Property&gt; fieldsIterator, final int curPartialMethod) {
+
+		// Create method
+<span class="nc" id="L665">		final MethodVisitor mv = cv.visitMethod(Opcodes.ACC_PRIVATE,</span>
+				ByteCodeMethodsNames.DESERIALIZE_MTHD + curPartialMethod,
+				PARTIAL_DESERIALIZE_DESCRIPTOR, PARTIAL_DESERIALIZE_SIGNATURE, null);
+<span class="nc" id="L668">		final GeneratorAdapter gn = new GeneratorAdapter(mv, Opcodes.ACC_PRIVATE,</span>
+				ByteCodeMethodsNames.DESERIALIZE_MTHD + curPartialMethod,
+				PARTIAL_DESERIALIZE_DESCRIPTOR);
+<span class="nc" id="L671">		final InstructionAdapter ia = new InstructionAdapter(mv);</span>
+
+		// Arguments
+		// CHECKSTYLE:OFF
+<span class="nc" id="L675">		final int dcBuffer = 0;</span>
+<span class="nc" id="L676">		final int ifaceBitMaps = 1;</span>
+<span class="nc" id="L677">		final int metaData = 2;</span>
+<span class="nc" id="L678">		final int nullsBitSet = 3;</span>
+<span class="nc" id="L679">		final int ifaceBitSet = 4;</span>
+<span class="nc" id="L680">		final int alreadyDeserializedObjs = 5;</span>
+		// CHECKSTYLE:ON
+
+<span class="nc" id="L683">		gn.visitCode();</span>
+<span class="nc" id="L684">		final Label startLabel = new Label();</span>
+<span class="nc" id="L685">		gn.visitLabel(startLabel);</span>
+
+		// Deserialize fields
+<span class="nc bnc" id="L688" title="All 4 branches missed.">		for (int i = 0; i &lt; MAX_SERIALIZED_FIELDS_PER_METHOD &amp;&amp; fieldsIterator.hasNext(); ++i) {</span>
+<span class="nc" id="L689">			final Property prop = fieldsIterator.next();</span>
+
+<span class="nc" id="L691">			final int modProp = prop.getJavaPropertyInfo().getModifier();</span>
+<span class="nc bnc" id="L692" title="All 4 branches missed.">			if (Modifier.isStatic(modProp) &amp;&amp; Modifier.isFinal(modProp)) {</span>
+<span class="nc" id="L693">				continue;</span>
+			}
+
+<span class="nc" id="L696">			final String fieldName = prop.getName();</span>
+<span class="nc" id="L697">			final int fieldPos = prop.getPosition();</span>
+<span class="nc" id="L698">			final String typeName = prop.getType().getTypeName(); // &quot;int&quot;, &quot;float&quot;, ... &quot;java.lang.Integer&quot;...</span>
+<span class="nc" id="L699">			final Type fieldType = Type.getType(prop.getType().getDescriptor());</span>
+
+			// Check if field is in bitmap of ifaces. First, Check if bitmap is null == it is in iface.
+			// CODE: if (ifaceBitSet == null ...
+<span class="nc" id="L703">			gn.loadArg(ifaceBitSet);</span>
+<span class="nc" id="L704">			final Label processField = new Label();</span>
+<span class="nc" id="L705">			gn.ifNull(processField);</span>
+
+			// Code: || ifaceBitSet.get(fieldPos)) {
+<span class="nc" id="L708">			gn.loadArg(ifaceBitSet);</span>
+<span class="nc" id="L709">			ia.iconst(fieldPos); // Use instruction adapter which will redirect call to Mv.</span>
+<span class="nc" id="L710">			gn.invokeVirtual(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_GET);</span>
+<span class="nc" id="L711">			final Label nextField = new Label();</span>
+<span class="nc" id="L712">			gn.ifZCmp(Opcodes.IFEQ, nextField);</span>
+
+			// Visit label
+<span class="nc" id="L715">			gn.visitLabel(processField);</span>
+
+			// Check if field is null (primitive are marked as not null)
+<span class="nc" id="L718">			gn.loadArg(nullsBitSet);</span>
+<span class="nc" id="L719">			ia.iconst(fieldPos); // Use instruction adapter which will redirect call to Mv.</span>
+<span class="nc" id="L720">			gn.invokeVirtual(ByteCodeTypes.BITSET, ByteCodeMethods.BITSET_GET);</span>
+<span class="nc" id="L721">			gn.ifZCmp(Opcodes.IFEQ, nextField);</span>
+
+			// Immutables and primitive fields are going to be deserialized as Immutable fields and must be
+			// boxed if the actual type of field is primitive.
+<span class="nc bnc" id="L725" title="All 2 branches missed.">			if (Reflector.isPrimitiveTypeName(typeName)) {</span>
+
+				// ==== PRIMITIVE TYPES ==== //
+				// Create call to readXXx in DataClayByteBuffer
+<span class="nc" id="L729">				callDcBufferReadForPrimitiveAndImmutables(gn, dcBuffer, classType, fieldType, typeName,</span>
+						fieldName);
+
+			} else {
+				// ==== REFERENCE TYPES ==== //
+<span class="nc" id="L734">				final boolean isImmutable = Reflector.isImmutableTypeName(typeName);</span>
+<span class="nc bnc" id="L735" title="All 4 branches missed.">				final boolean isJavaType = Reflector.isArrayTypeName(typeName) || Reflector.isJavaTypeName(typeName);</span>
+<span class="nc bnc" id="L736" title="All 2 branches missed.">				if (isImmutable) {</span>
+					// ==== IMMUTABLES ==== //
+					// Create call to readXXx in DataClayByteBuffer
+<span class="nc" id="L739">					callDcBufferReadForPrimitiveAndImmutables(gn, dcBuffer, classType, fieldType,</span>
+							typeName,
+							fieldName);
+<span class="nc bnc" id="L742" title="All 2 branches missed.">				} else if (isJavaType) {</span>
+					// ==== JAVA TYPE ==== //
+
+					// Find wrapper type
+<span class="nc" id="L746">					final Tuple&lt;Type, Type&gt; wrapperTypes = findWrapperType(typeName, prop.getType().getDescriptor());</span>
+<span class="nc" id="L747">					final Type wrapperType = wrapperTypes.getFirst();</span>
+					// Get constructor.
+<span class="nc" id="L749">					final Method wrapperConstructor = new Method(ByteCodeMethodsNames.INIT_MTHD,</span>
+							Type.VOID_TYPE, new Type[] {});
+
+					// Wrap field and call deserializeJavaField
+					// CODE: this.field = deserializeJavaField(new Wrapper(field), dcBuffer, ...)
+
+					// deserializeJavaField(new Wrapper(), dcBuffer, ...)
+<span class="nc" id="L756">					gn.loadThis();</span>
+<span class="nc" id="L757">					gn.newInstance(wrapperType);</span>
+<span class="nc" id="L758">					gn.dup();</span>
+<span class="nc" id="L759">					gn.invokeConstructor(wrapperType, wrapperConstructor);</span>
+<span class="nc" id="L760">					gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L761">					gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L762">					gn.loadArg(metaData);</span>
+<span class="nc" id="L763">					gn.loadArg(alreadyDeserializedObjs);</span>
+<span class="nc" id="L764">					gn.invokeStatic(ByteCodeTypes.DATACLAY_SERIALIZATION_LIB, ByteCodeMethods.DESERIALIZE_JAVA_FIELD);</span>
+
+					// Store into field
+<span class="nc" id="L767">					gn.checkCast(fieldType);</span>
+<span class="nc" id="L768">					gn.putField(classType, fieldName, fieldType);</span>
+<span class="nc" id="L769">				} else {</span>
+					// DataClayObject
+					// CODE: this.field = deserializeAssociation(field, ...)
+
+					// deserializeAssociation(...)
+<span class="nc" id="L774">					gn.loadThis();</span>
+<span class="nc" id="L775">					gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L776">					gn.loadArg(ifaceBitMaps);</span>
+<span class="nc" id="L777">					gn.loadArg(metaData);</span>
+<span class="nc" id="L778">					gn.loadArg(alreadyDeserializedObjs);</span>
+<span class="nc" id="L779">					gn.invokeStatic(ByteCodeTypes.DCOBJ, ByteCodeMethods.DCBOBJ_GET_LIB);</span>
+<span class="nc" id="L780">					gn.invokeStatic(ByteCodeTypes.DATACLAY_SERIALIZATION_LIB, ByteCodeMethods.DESERIALIZE_ASSOC);</span>
+
+					// Store into field
+<span class="nc" id="L783">					gn.checkCast(fieldType);</span>
+<span class="nc" id="L784">					gn.putField(classType, fieldName, fieldType);</span>
+				}
+			}
+
+<span class="nc" id="L788">			gn.visitLabel(nextField);</span>
+			// next field
+		}
+
+		// End of method
+<span class="nc" id="L793">		final Label endLabel = new Label();</span>
+<span class="nc" id="L794">		gn.returnValue();</span>
+<span class="nc" id="L795">		gn.visitLabel(endLabel);</span>
+
+		/*
+		 * mv.visitLocalVariable(&quot;this&quot;, &quot;Lclassmgr_test/ASMifierSerialization;&quot;, null, l0, l1, 0); mv.visitLocalVariable(&quot;dcBuffer&quot;,
+		 * &quot;Lserialization/buffer/DataClayByteBuffer;&quot;, null, l0, l1, 1); mv.visitLocalVariable(&quot;ifaceBitMaps&quot;, &quot;Ljava/util/Map;&quot;,
+		 * &quot;Ljava/util/Map&lt;Lutil/ids/MetaClassID;[B&gt;;&quot;, l0, l1, 2); mv.visitLocalVariable(&quot;objMap&quot;, &quot;Ljava/util/Map;&quot;,
+		 * &quot;Ljava/util/Map&lt;Lutil/ids/ObjectID;Ljava/lang/ref/Reference&lt;Lserialization/DataClayObject;&gt;;&gt;;&quot;, l0, l1, 3);
+		 * mv.visitLocalVariable(&quot;medata&quot;, &quot;Lutil/DataClayObjectMetaData;&quot;, null, l0, l1, 4); mv.visitLocalVariable(&quot;nullsBitSet&quot;,
+		 * &quot;Ljava/util/BitSet;&quot;, null, l0, l1, 5); mv.visitLocalVariable(&quot;ifaceBitSet&quot;, &quot;Ljava/util/BitSet;&quot;, null, l0, l1, 6);
+		 * mv.visitLocalVariable(&quot;curDeserializedJavaObjs&quot;, &quot;Ljava/util/Map;&quot;, &quot;Ljava/util/Map&lt;Ljava/lang/Integer;Ljava/lang/Object;&gt;;&quot;,
+		 * l0, l1, 7); mv.visitLocalVariable(&quot;dsRef&quot;, &quot;Ldataservice/api/DataServiceAPI;&quot;, null, l0, l1, 8);
+		 */
+<span class="nc" id="L807">		gn.visitMaxs(-1, -1); // Automatically calculated</span>
+<span class="nc" id="L808">		mv.visitEnd();</span>
+
+<span class="nc" id="L810">	}</span>
+
+	/**
+	 * Generate a call to readXxx in DataClayByteBuffer for primitive and immutable types
+	 * @param gn
+	 *            Method generator
+	 * @param dcBuffer
+	 *            Index to dataclay byte buffer in code
+	 * @param classType
+	 *            Class type
+	 * @param fieldType
+	 *            Field type
+	 * @param typeName
+	 *            Type name (i.e. &quot;int&quot;, &quot;float&quot;, &quot;java.lang.String&quot;, ...)
+	 * @param fieldName
+	 *            Field name
+	 */
+	private static void callDcBufferReadForPrimitiveAndImmutables(
+			final GeneratorAdapter gn, final int dcBuffer,
+			final Type classType, final Type fieldType,
+			final String typeName, final String fieldName) {
+		// IMPORTANT: This can be hacky. DataClayByteBuffer contains a set of instructions called
+		// readXxx(...) where Xxx is the primitive type (Int, Float, ...) We will use this to
+		// avoid creating a switch-case.
+		// First capitalize first character
+<span class="nc" id="L835">		final String primitiveTypeName = Reflector.getPrimitiveTypeNameFromImmutableTypeName(typeName); // In case it's imm.</span>
+<span class="nc" id="L836">		String capitalizedTypeName = primitiveTypeName.substring(0, 1).toUpperCase() + primitiveTypeName.substring(1);</span>
+<span class="nc bnc" id="L837" title="All 2 branches missed.">		if (typeName.equals(String.class.getName())) {</span>
+<span class="nc" id="L838">			capitalizedTypeName = &quot;String&quot;;</span>
+		}
+
+		// Now prepare method call
+<span class="nc" id="L842">		final String desc = Reflector.getSignatureFromTypeName(primitiveTypeName);</span>
+<span class="nc" id="L843">		final Type returnType = Type.getType(desc);</span>
+<span class="nc" id="L844">		final Method dcBufferReadMethod = new Method(&quot;read&quot; + capitalizedTypeName, returnType,</span>
+				new Type[] {});
+
+		// Now we invoke it
+		// CODE: this.field = dcBuffer.readXxx();
+		// CODE for Primitive fields: this.primField = new Integer(dcBuffer.readXxx());
+<span class="nc" id="L850">		gn.loadThis();</span>
+<span class="nc" id="L851">		gn.loadArg(dcBuffer);</span>
+<span class="nc" id="L852">		gn.invokeInterface(ByteCodeTypes.DC_BUF, dcBufferReadMethod);</span>
+<span class="nc bnc" id="L853" title="All 2 branches missed.">		if (!fieldType.equals(returnType)) {</span>
+			// If field type is java immutable i.e. not same as return type, we must box it
+<span class="nc" id="L855">			gn.box(returnType);</span>
+		}
+<span class="nc" id="L857">		gn.putField(classType, fieldName, fieldType);</span>
+<span class="nc" id="L858">	}</span>
+
+	/**
+	 * Find wrapper type that must wrap the type with name provided
+	 * @param javaTypeName
+	 *            Java type name to wrap
+	 * @param javaTypeDescriptor
+	 *            Java type descriptor
+	 * @return Wrapper type and 'actual' java type for constructor
+	 */
+	public static Tuple&lt;Type, Type&gt; findWrapperType(final String javaTypeName, final String javaTypeDescriptor) {
+		// IMPORTANT: This can be hacky. Java types must be wrapped into
+		// special serialization classes, or wrapper types.
+		// Wrapper types are included in package &quot;serialization&quot;
+		// and they contain the same name and package than original java
+		// types with &quot;Wrapper&quot; in the end. Using this, we avoid creating
+		// a big switch-case.
+
+		// Get wrapper type
+<span class="nc" id="L877">		String actualTypeName = javaTypeName;</span>
+<span class="nc" id="L878">		Type actualJavaType = null;</span>
+<span class="nc bnc" id="L879" title="All 2 branches missed.">		if (Reflector.isPrimitiveTypeName(javaTypeName)) {</span>
+
+<span class="nc" id="L881">			actualTypeName = Reflector.getImmutableTypeNameFromPrimitiveTypeName(javaTypeName);</span>
+<span class="nc" id="L882">			actualJavaType = Type.getType(Reflector.getDescriptorFromTypeName(actualTypeName));</span>
+
+<span class="nc bnc" id="L884" title="All 2 branches missed.">		} else if (Reflector.isArrayTypeName(javaTypeName)) {</span>
+			// Since arrays are special types we change the name to find the proper
+			// wrapper. Imagine that all arrays belongs to class java.util.Array
+<span class="nc" id="L887">			actualTypeName = &quot;java.util.Array&quot;;</span>
+<span class="nc" id="L888">			actualJavaType = ByteCodeTypes.OBJECT;</span>
+		} else {
+			// For all non-final classes (i.e. classes implementing a super class in Java)
+			// we can share the same wrapper and because of that we should get this special case.
+
+<span class="nc" id="L893">			final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();</span>
+<span class="nc" id="L894">			final Class&lt;?&gt; javaType = Reflector.getClassFromSignatureAndArray(javaTypeDescriptor,</span>
+					classLoader);
+<span class="nc bnc" id="L896" title="All 2 branches missed.">			if (Map.class.isAssignableFrom(javaType)) {</span>
+<span class="nc" id="L897">				actualTypeName = Map.class.getName();</span>
+<span class="nc" id="L898">				actualJavaType = ByteCodeTypes.MAP;</span>
+<span class="nc bnc" id="L899" title="All 2 branches missed.">			} else if (Collection.class.isAssignableFrom(javaType)) {</span>
+<span class="nc" id="L900">				actualTypeName = Collection.class.getName();</span>
+<span class="nc" id="L901">				actualJavaType = ByteCodeTypes.COLL;</span>
+<span class="nc bnc" id="L902" title="All 2 branches missed.">			} else if (Map.Entry.class.isAssignableFrom(javaType)) {</span>
+<span class="nc" id="L903">				actualTypeName = Map.Entry.class.getName();</span>
+<span class="nc" id="L904">				actualJavaType = ByteCodeTypes.MAPENTRY;</span>
+			} else {
+<span class="nc" id="L906">				actualTypeName = javaTypeName;</span>
+<span class="nc" id="L907">				actualJavaType = Type.getType(Reflector.getDescriptorFromTypeName(actualTypeName));</span>
+			}
+
+		}
+<span class="nc" id="L911">		final String typePreffix = &quot;es.bsc.dataclay.serialization.&quot;;</span>
+<span class="nc" id="L912">		String wrapperTypeName = typePreffix + actualTypeName + &quot;Wrapper&quot;;</span>
+
+		// Check if wrapper exists
+		try {
+<span class="nc bnc" id="L916" title="All 2 branches missed.">			if (Class.forName(wrapperTypeName) == null) {</span>
+<span class="nc" id="L917">				wrapperTypeName = ObjectWrapper.class.getName();</span>
+<span class="nc" id="L918">				actualJavaType = Type.getType(Object.class);</span>
+			}
+<span class="nc" id="L920">		} catch (final ClassNotFoundException e) {</span>
+<span class="nc" id="L921">			wrapperTypeName = ObjectWrapper.class.getName();</span>
+<span class="nc" id="L922">			actualJavaType = Type.getType(Object.class);</span>
+<span class="nc" id="L923">		}</span>
+
+<span class="nc" id="L925">		final String descriptor = Reflector.getDescriptorFromTypeName(wrapperTypeName);</span>
+<span class="nc" id="L926">		final Type wrapperType = Type.getType(descriptor);</span>
+
+<span class="nc" id="L928">		return new Tuple&lt;&gt;(wrapperType, actualJavaType);</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

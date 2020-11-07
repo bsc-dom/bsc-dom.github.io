@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MapWrapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.java.util</a> &gt; <span class="el_source">MapWrapper.java</span></div><h1>MapWrapper.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.serialization.java.util;
+
+import java.util.Collection;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
+import es.bsc.dataclay.serialization.java.DataClayJavaWrapper;
+import es.bsc.dataclay.serialization.java.LanguageTypes;
+import es.bsc.dataclay.serialization.lib.DataClayDeserializationLib;
+import es.bsc.dataclay.util.DataClayObjectMetaData;
+import es.bsc.dataclay.util.ReferenceCounting;
+import es.bsc.dataclay.util.classloaders.DataClayClassLoader;
+import es.bsc.dataclay.util.classloaders.DataClayClassLoaderSrv;
+import es.bsc.dataclay.util.ids.MetaClassID;
+
+/**
+ * This class represents a java Map in DataClay.
+ */
+public final class MapWrapper extends DataClayJavaWrapper {
+
+	/** Map. */
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	private Map map;
+
+	/**
+	 * Constructor used for recursive deserialization
+	 */
+<span class="fc" id="L35">	public MapWrapper() {</span>
+
+<span class="fc" id="L37">	}</span>
+
+	/**
+	 * Constructor
+	 * @param newmap
+	 *            Map
+	 */
+	@SuppressWarnings(&quot;rawtypes&quot;)
+<span class="fc" id="L45">	public MapWrapper(final Map newmap) {</span>
+<span class="fc" id="L46">		this.setMap(newmap);</span>
+<span class="fc" id="L47">	}</span>
+
+	/**
+	 * Get the DataClayMap::map
+	 * @return the map
+	 */
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	@Override
+	public Map getJavaObject() {
+<span class="fc" id="L56">		return map;</span>
+	}
+
+	/**
+	 * Set the DataClayMap::map
+	 * @param newmap
+	 *            the map to set
+	 */
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	public void setMap(final Map newmap) {
+<span class="fc" id="L66">		this.map = newmap;</span>
+<span class="fc" id="L67">	}</span>
+
+	// CHECKSTYLE:OFF
+
+	/**
+	 * Create new collection
+	 * @param param
+	 *            Parameter for collection
+	 */
+	private CollectionWrapper newCollection(final Object param) {
+<span class="fc" id="L77">		return new CollectionWrapper((Collection&lt;?&gt;) param);</span>
+	}
+
+	/**
+	 * Create new collection
+	 */
+	private CollectionWrapper newCollection() {
+<span class="fc" id="L84">		return new CollectionWrapper();</span>
+	}
+
+	/**
+	 * Load class using proper class loader
+	 * @param className
+	 *            Name of class
+	 * @return
+	 */
+	private Class&lt;?&gt; loadClass(final String className) {
+<span class="fc" id="L94">		final String fullClassName = className;</span>
+<span class="fc" id="L95">		Class&lt;?&gt; clazz = null;</span>
+<span class="pc bpc" id="L96" title="2 of 4 branches missed.">		if (DataClayObject.getLib() != null &amp;&amp; DataClayObject.getLib().isDSLib()) {</span>
+<span class="nc" id="L97">			clazz = DataClayClassLoaderSrv.getClass(fullClassName);</span>
+		} else {
+<span class="fc" id="L99">			clazz = DataClayClassLoader.getClass(fullClassName);</span>
+		}
+
+<span class="fc" id="L102">		return clazz;</span>
+	}
+
+	/**
+	 * Load class using proper class loader
+	 * @param className
+	 *            Name of class
+	 * @return
+	 */
+	private Class&lt;?&gt; loadClass(final MetaClassID classID) {
+<span class="nc" id="L112">		Class&lt;?&gt; clazz = null;</span>
+<span class="nc bnc" id="L113" title="All 4 branches missed.">		if (DataClayObject.getLib() != null &amp;&amp; DataClayObject.getLib().isDSLib()) {</span>
+<span class="nc" id="L114">			clazz = DataClayClassLoaderSrv.getClass(classID);</span>
+		} else {
+<span class="nc" id="L116">			clazz = DataClayClassLoader.getClass(classID);</span>
+		}
+
+<span class="nc" id="L119">		return clazz;</span>
+	}
+
+	@SuppressWarnings(&quot;unchecked&quot;)
+	@Override
+	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final IdentityHashMap&lt;Object, Integer&gt; curSerializedObjs,
+			final ListIterator&lt;DataClayObject&gt; pendingObjs, ReferenceCounting referenceCounting) {
+
+		// Indicate if Java collection or not
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">		if (map instanceof DataClayObject) {</span>
+<span class="nc" id="L130">			dcBuffer.writeByte((byte) LanguageTypes.DATACLAYOBJ.ordinal());</span>
+<span class="nc" id="L131">			final DataClayObject mapDc = (DataClayObject) map;</span>
+<span class="nc" id="L132">			mapDc.getMetaClassID().serialize(dcBuffer, ignoreUserTypes,</span>
+					ifaceBitMaps, curSerializedObjs, pendingObjs, referenceCounting);
+<span class="nc" id="L134">		} else {</span>
+<span class="fc" id="L135">			dcBuffer.writeByte((byte) LanguageTypes.JAVA_MAP.ordinal());</span>
+<span class="fc" id="L136">			dcBuffer.writeString(map.getClass().getName());</span>
+		}
+
+<span class="fc" id="L139">		final LinkedList&lt;Object&gt; keys = new LinkedList&lt;&gt;();</span>
+<span class="fc" id="L140">		final LinkedList&lt;Object&gt; values = new LinkedList&lt;&gt;();</span>
+<span class="fc bfc" id="L141" title="All 2 branches covered.">		for (final Object entry : map.entrySet()) {</span>
+<span class="fc" id="L142">			final Entry&lt;Object, Object&gt; castEntry = (Entry&lt;Object, Object&gt;) entry;</span>
+<span class="fc" id="L143">			keys.add(castEntry.getKey());</span>
+<span class="fc" id="L144">			values.add(castEntry.getValue());</span>
+<span class="fc" id="L145">		}</span>
+
+		// Serialize keys
+<span class="fc" id="L148">		newCollection(keys).serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
+				curSerializedObjs, pendingObjs, referenceCounting);
+
+		// Serialize values
+<span class="fc" id="L152">		newCollection(values).serialize(dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
+				curSerializedObjs, pendingObjs, referenceCounting);
+
+<span class="fc" id="L155">	}</span>
+
+	@SuppressWarnings({ &quot;unchecked&quot;, &quot;rawtypes&quot; })
+	@Override
+	public void deserialize(final DataClayByteBuffer dcBuffer,
+			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final DataClayObjectMetaData metadata,
+			final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
+
+<span class="fc" id="L164">		final byte collType = dcBuffer.readByte();</span>
+<span class="pc bpc" id="L165" title="1 of 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L166">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection type deserialized: data=&quot;+  collType + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+		}
+<span class="pc bpc" id="L168" title="1 of 2 branches missed.">		if (collType == LanguageTypes.JAVA_MAP.ordinal()) {</span>
+<span class="fc" id="L169">			final String collName = dcBuffer.readString();</span>
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L171">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection name deserialized: data=&quot;+  collName + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+			// Instantiate map
+			try {
+<span class="fc" id="L175">				final Class&lt;?&gt; mapClass = loadClass(collName);</span>
+<span class="fc" id="L176">				map = (Map) mapClass.newInstance();</span>
+<span class="nc" id="L177">			} catch (final Exception e) {</span>
+<span class="nc" id="L178">				e.printStackTrace();</span>
+<span class="nc" id="L179">				throw new RuntimeException(e);</span>
+<span class="fc" id="L180">			}</span>
+<span class="fc" id="L181">		} else {</span>
+<span class="nc" id="L182">			final MetaClassID classID = new MetaClassID();</span>
+<span class="nc" id="L183">			classID.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L185">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Collection class id deserialized: data=&quot;+  classID + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+			}
+			try {
+<span class="nc" id="L188">				final Class&lt;?&gt; mapClass = loadClass(classID);</span>
+<span class="nc" id="L189">				map = (Map) mapClass.newInstance();</span>
+<span class="nc" id="L190">			} catch (final Exception e) {</span>
+<span class="nc" id="L191">				e.printStackTrace();</span>
+<span class="nc" id="L192">				throw new RuntimeException(e);</span>
+<span class="nc" id="L193">			}</span>
+		}
+
+		// Keys
+
+<span class="fc" id="L198">		final CollectionWrapper keysWrap = newCollection();</span>
+<span class="fc" id="L199">		keysWrap.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="fc" id="L200">		final LinkedList&lt;Object&gt; keys = (LinkedList&lt;Object&gt;) keysWrap.getJavaObject();</span>
+
+		// Values
+<span class="fc" id="L203">		final CollectionWrapper valuesWrap = newCollection();</span>
+<span class="fc" id="L204">		valuesWrap.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="fc" id="L205">		final LinkedList&lt;Object&gt; values = (LinkedList&lt;Object&gt;) valuesWrap.getJavaObject();</span>
+
+<span class="fc" id="L207">		final Iterator&lt;Object&gt; valuesIt = values.iterator();</span>
+<span class="fc bfc" id="L208" title="All 2 branches covered.">		for (final Object key : keys) {</span>
+<span class="fc" id="L209">			final Object value = valuesIt.next();</span>
+<span class="fc" id="L210">			map.put(key, value);</span>
+<span class="fc" id="L211">		}</span>
+<span class="fc" id="L212">	}</span>
+
+	@Override
+	public int hashCode() {
+<span class="nc" id="L216">		return map.hashCode();</span>
+	}
+
+	@SuppressWarnings(&quot;rawtypes&quot;)
+	@Override
+	public boolean equals(final Object object) {
+<span class="nc bnc" id="L222" title="All 2 branches missed.">		if (!(object instanceof MapWrapper)) {</span>
+<span class="nc" id="L223">			return false;</span>
+		}
+
+<span class="nc" id="L226">		final MapWrapper otherMap = (MapWrapper) object;</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		for (final Object entrySet : map.entrySet()) {</span>
+<span class="nc" id="L228">			final Map.Entry entry = (Map.Entry) entrySet;</span>
+<span class="nc" id="L229">			final Object key = entry.getKey();</span>
+<span class="nc" id="L230">			final Object value = entry.getValue();</span>
+<span class="nc" id="L231">			final Object otherValue = otherMap.getJavaObject().get(key);</span>
+<span class="nc bnc" id="L232" title="All 2 branches missed.">			if (value == null) {</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">				if (otherValue != null) {</span>
+<span class="nc" id="L234">					return false;</span>
+				}
+			} else {
+<span class="nc bnc" id="L237" title="All 2 branches missed.">				if (!otherMap.getJavaObject().get(key).equals(value)) {</span>
+<span class="nc" id="L238">					return false;</span>
+				}
+			}
+<span class="nc" id="L241">		}</span>
+<span class="nc" id="L242">		return true;</span>
+	}
+
+	@Override
+	public boolean isImmutable() {
+<span class="nc" id="L247">		return false;</span>
+	}
+
+	@Override
+	public boolean isNull() {
+<span class="nc bnc" id="L252" title="All 2 branches missed.">		return map == null;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

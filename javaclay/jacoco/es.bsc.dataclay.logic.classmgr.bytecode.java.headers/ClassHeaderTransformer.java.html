@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ClassHeaderTransformer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.headers</a> &gt; <span class="el_source">ClassHeaderTransformer.java</span></div><h1>ClassHeaderTransformer.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.java.headers;
+
+import java.util.Arrays;
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.commons.SignatureRemapper;
+import org.objectweb.asm.commons.SimpleRemapper;
+import org.objectweb.asm.signature.SignatureReader;
+import org.objectweb.asm.signature.SignatureWriter;
+
+import es.bsc.dataclay.DataClayExecutionObject;
+import es.bsc.dataclay.DataClayObject;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.methods.ConstructorMethodTransformer;
+import es.bsc.dataclay.util.reflection.Reflector;
+import es.bsc.dataclay.util.tools.java.DataClayRemapper;
+
+/**
+ * Class header transformer.
+ */
+public final class ClassHeaderTransformer extends ClassVisitor {
+
+	/** Descriptor name of class of method. */
+	private final String classDesc;
+
+	/** Indicates if we are creating execution class. */
+	private final boolean isExecClass;
+
+	/** Indicates if parent is object. */
+	private final boolean parentIsObject;
+
+	/** Renaming. */
+	private final Map&lt;String, String&gt; renaming;
+
+	/**
+	 * DataClay Class analyzer constructor
+	 * @param thecv
+	 *            ClassVisitor to delegate to.
+	 * @param newclassDesc
+	 *            Class descriptor
+	 * @param newisExecClass
+	 *            Indicates if method must be transformed into an execution class or not.
+	 * @param theparentIsObject
+	 *            Indicates if parent is object
+	 */
+	public ClassHeaderTransformer(final ClassVisitor thecv,
+			final String newclassDesc,
+			final boolean newisExecClass, final boolean theparentIsObject,
+			final Map&lt;String, String&gt; therenaming) {
+<span class="nc" id="L54">		super(Opcodes.ASM7, thecv);</span>
+<span class="nc" id="L55">		this.classDesc = newclassDesc;</span>
+<span class="nc" id="L56">		this.isExecClass = newisExecClass;</span>
+<span class="nc" id="L57">		this.parentIsObject = theparentIsObject;</span>
+<span class="nc" id="L58">		this.renaming = therenaming;</span>
+<span class="nc" id="L59">	}</span>
+
+	@Override
+	public void visit(final int version, final int access, final String name,
+			final String signature, final String superName, final String[] interfaces) {
+<span class="nc" id="L64">		String actualSuperName = superName;</span>
+<span class="nc" id="L65">		String actualSignature = signature;</span>
+
+		
+		
+<span class="nc bnc" id="L69" title="All 4 branches missed.">		if (superName.equals(&quot;java/lang/Object&quot;) || superName.equals(&quot;storage/StorageObject&quot;)</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">				|| superName.equals(&quot;es/bsc/dataclay/DataClayObject&quot;)) {</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">			if (isExecClass) {</span>
+<span class="nc" id="L72">				actualSuperName = Reflector.getInternalNameFromTypeName(DataClayExecutionObject.class.getName());</span>
+			} else {
+<span class="nc" id="L74">				actualSuperName = Reflector.getInternalNameFromTypeName(DataClayObject.class.getName());</span>
+			}
+<span class="nc bnc" id="L76" title="All 2 branches missed.">			if (signature != null) {</span>
+<span class="nc" id="L77">				final SignatureWriter sw = new SignatureWriter();</span>
+<span class="nc" id="L78">				final SignatureRemapper sm = new SignatureRemapper(sw, new SimpleRemapper(renaming));</span>
+<span class="nc" id="L79">				final SignatureHeaderTransformer sv = new SignatureHeaderTransformer(sm);</span>
+<span class="nc" id="L80">				final SignatureReader sr = new SignatureReader(signature);</span>
+<span class="nc" id="L81">				sr.accept(sv);</span>
+<span class="nc" id="L82">				actualSignature = sw.toString();</span>
+
+			}
+
+		}
+		
+<span class="nc" id="L88">		String[] newInterfaces = null;</span>
+<span class="nc bnc" id="L89" title="All 2 branches missed.">		if (interfaces != null) {</span>
+<span class="nc" id="L90">			newInterfaces = new String[interfaces.length];</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">			for (int i = 0; i &lt; interfaces.length; ++i) {</span>
+<span class="nc" id="L92">				String iface = interfaces[i];</span>
+<span class="nc" id="L93">				String renamedIface = renaming.get(iface);</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">				if (renamedIface != null) { </span>
+<span class="nc" id="L95">					newInterfaces[i] = renamedIface;</span>
+				} else { 
+<span class="nc" id="L97">					newInterfaces[i] = iface;</span>
+				}
+			}
+		}
+
+<span class="nc" id="L102">		cv.visit(version, access, name, actualSignature, actualSuperName, newInterfaces);</span>
+<span class="nc" id="L103">	}</span>
+
+	@Override
+	public MethodVisitor visitMethod(final int access, final String name,
+			final String desc, final String signature, final String[] exceptions) {
+
+		// if method is constructor, modify the invokespecial
+<span class="nc" id="L110">		final MethodVisitor mv = cv.visitMethod(access, name, desc, signature, exceptions);</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (name.equals(&quot;&lt;init&gt;&quot;)) {</span>
+<span class="nc" id="L112">			return new ConstructorMethodTransformer(mv, access, name, desc,</span>
+					classDesc, isExecClass, parentIsObject);
+		} else {
+<span class="nc" id="L115">			return mv;</span>
+		}
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

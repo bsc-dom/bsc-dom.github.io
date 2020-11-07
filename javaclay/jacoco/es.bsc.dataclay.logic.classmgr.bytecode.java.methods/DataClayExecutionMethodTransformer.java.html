@@ -1,0 +1,441 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayExecutionMethodTransformer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.classmgr.bytecode.java.methods</a> &gt; <span class="el_source">DataClayExecutionMethodTransformer.java</span></div><h1>DataClayExecutionMethodTransformer.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.logic.classmgr.bytecode.java.methods;
+
+import java.lang.reflect.Modifier;
+import java.util.List;
+
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
+
+import es.bsc.dataclay.logic.classmgr.bytecode.java.ByteCodeConstants;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeFieldNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethods;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeMethodsNames;
+import es.bsc.dataclay.logic.classmgr.bytecode.java.constants.ByteCodeTypes;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.management.classmgr.Annotation;
+import es.bsc.dataclay.util.management.classmgr.Implementation;
+import es.bsc.dataclay.util.management.classmgr.Operation;
+import es.bsc.dataclay.util.management.classmgr.Property;
+import es.bsc.dataclay.util.reflection.Reflector;
+import es.bsc.dataclay.util.replication.Replication;
+
+/**
+ * This class injects code in a concrete method that is executed in dataClay execution classes / stubs.
+ *
+ */
+public class DataClayExecutionMethodTransformer extends DataClayMethodTransformer {
+
+	/**
+	 * Constructor of the method transformer.
+	 * @param next Next visitor after the method is transformed (visitor pattern)
+	 * @param accessFlags Method access flags
+	 * @param methodName Method name being transformed
+	 * @param methodDescriptor Method descriptor 
+	 * @param newclassDesc Descriptor of the class containing the method
+	 * @param theoperation DataClay operation information
+	 * @param theimpl DataClay implementation information
+	 * @param properties DataClay properties
+	 */
+	public DataClayExecutionMethodTransformer(final MethodVisitor next, final int accessFlags, final String methodName,
+			final String methodDescriptor, final String newclassDesc, final Operation theoperation,
+			final Implementation theimpl, final List&lt;Property&gt; properties) {
+<span class="nc" id="L49">		super(next, accessFlags, methodName, methodDescriptor, newclassDesc, theoperation, theimpl, properties);</span>
+<span class="nc" id="L50">	}</span>
+
+	@Override
+	protected void onMethodEnter() {
+		// Code injection (in constructors, just after super call)
+<span class="nc bnc" id="L55" title="All 2 branches missed.">		if (operation.getName().equals(ByteCodeMethodsNames.INIT_MTHD)</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">				|| operation.getName().equals(ByteCodeMethodsNames.CLINIT_MTHD)</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">				|| Modifier.isStatic(operation.getJavaOperationInfo().getModifier())) {</span>
+			// Currently not injecting code for constructors or statics
+<span class="nc" id="L59">			return;</span>
+		}
+
+<span class="nc" id="L62">		ImplementationID implIDPF = null;</span>
+<span class="nc" id="L63">		MetaClassID classIDPF = null;</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">		if (implementation.getPrefetchingInfo() != null</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">				&amp;&amp; implementation.getPrefetchingInfo().getInjectPrefetchingCall()) {</span>
+<span class="nc" id="L66">			implIDPF = implementation.getPrefetchingInfo().getPrefetchingImplementationID();</span>
+<span class="nc" id="L67">			classIDPF = implementation.getPrefetchingInfo().getPrefetchingClassID();</span>
+		}
+
+<span class="nc" id="L70">		injectStartMethod(this, this.methodDesc, classDesc, operation.getName(), operation.getNameAndDescriptor(),</span>
+<span class="nc" id="L71">				implementation.getDataClayID().toString(), implIDPF, classIDPF);</span>
+
+<span class="nc" id="L73">	}</span>
+
+	/**
+	 * Inject code at the beginning of a dataClay setter ($$setField)
+	 * @param genAd ASM bytecode generator - helper
+	 * @param methodDescriptor Setter method descriptor
+	 * @param thisclassDesc Descriptor of the class containing the method
+	 * @param opName Setter operation name
+	 * @param opNameAndDesc Setter operation name and descriptor
+	 * @param implIDAsStr dataClay Implementation ID of the setter represented as string
+ 	 * @param annotations Annotations of the setter defined by the user 
+	 */
+	protected static void injectSetterStartMethod(final GeneratorAdapter genAd, final String methodDescriptor,
+			final String thisclassDesc, final String opName, final String opNameAndDesc, final String implIDAsStr,
+			final List&lt;Annotation&gt; annotations) {
+
+		/**
+		 * if (isPersistent) { Object[] params = ... super.executeRemote(signature, params); }
+		 */
+<span class="nc" id="L92">		final String setterOpNameAndDesc = &quot;$$set&quot; + opNameAndDesc;</span>
+		
+<span class="nc" id="L94">		final Type returnType = Type.getReturnType(methodDescriptor);</span>
+<span class="nc" id="L95">		final Type classType = Type.getType(thisclassDesc);</span>
+
+		// DEBUG
+<span class="nc bnc" id="L98" title="All 2 branches missed.">		if (Configuration.Flags.ADD_DEBUG_INFO_ON_METHODS.getBooleanValue()) {</span>
+<span class="nc" id="L99">			genAd.getStatic(ByteCodeTypes.DCOBJ, ByteCodeFieldNames.DEBUG_ENABLED_FIELDNAME, Type.BOOLEAN_TYPE);</span>
+<span class="nc" id="L100">			final Label isNotDebugLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L101">			genAd.ifZCmp(Opcodes.IFEQ, isNotDebugLabel); // Stack:</span>
+<span class="nc" id="L102">			genAd.loadThis();</span>
+<span class="nc" id="L103">			genAd.visitLdcInsn(setterOpNameAndDesc);</span>
+<span class="nc" id="L104">			genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_DEBUG_START);</span>
+<span class="nc" id="L105">			genAd.visitLabel(isNotDebugLabel);</span>
+
+		}
+		// Check if isPersistent
+<span class="nc" id="L109">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L111">		final Method methodToCall = ByteCodeMethods.DCOBJ_IS_LOADED;</span>
+<span class="nc" id="L112">		final int opCode = Opcodes.IFNE;</span>
+
+<span class="nc" id="L114">		genAd.invokeVirtual(classType, methodToCall);</span>
+<span class="nc" id="L115">		final Label execLocalLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L116">		genAd.ifZCmp(opCode, execLocalLabel); // Stack:</span>
+
+		// Call executeRemote
+<span class="nc" id="L119">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L121">		genAd.visitLdcInsn(setterOpNameAndDesc);</span>
+<span class="nc" id="L122">		genAd.visitLdcInsn(implIDAsStr);</span>
+<span class="nc" id="L123">		genAd.loadArgArray();</span>
+
+<span class="nc" id="L125">		genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_EXECUTE_IMPL); // Stack: &lt;ResultObj&gt;</span>
+		// Unbox: cast Object -&gt; Integer and then call intValue (for example)
+<span class="nc" id="L127">		genAd.unbox(returnType);</span>
+<span class="nc" id="L128">		genAd.pop();</span>
+
+<span class="nc" id="L130">		genAd.returnValue();</span>
+<span class="nc" id="L131">		genAd.visitLabel(execLocalLabel);</span>
+<span class="nc" id="L132">	}</span>
+
+	/**
+	 * Inject code at the beginning of a dataClay setter for replication ($$setUpdate$$Field)
+	 * @param genAd ASM bytecode generator - helper
+	 * @param methodDescriptor Setter method descriptor
+	 * @param thisclassDesc Descriptor of the class containing the method
+	 * @param opName Setter operation name
+	 * @param opNameAndDesc Setter operation name and descriptor
+	 * @param implIDAsStr dataClay Implementation ID of the setter represented as string
+ 	 * @param annotations Annotations of the setter defined by the user 
+	 */
+	protected static void injectReplicatedStartMethod(final GeneratorAdapter genAd, final String methodDescriptor,
+			final String thisclassDesc, final String opName, final String opNameAndDesc, final String implIDAsStr,
+			final List&lt;Annotation&gt; annotations) {
+<span class="nc" id="L147">		final String setterOpNameAndDesc = ByteCodeConstants.DATACLAY_SET_UPDATE_PREFIX + opNameAndDesc;</span>
+
+<span class="nc" id="L149">		final Type returnType = Type.getReturnType(methodDescriptor);</span>
+<span class="nc" id="L150">		final Type classType = Type.getType(thisclassDesc);</span>
+
+		// DEBUG
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		if (Configuration.Flags.ADD_DEBUG_INFO_ON_METHODS.getBooleanValue()) {</span>
+<span class="nc" id="L154">			genAd.getStatic(ByteCodeTypes.DCOBJ, ByteCodeFieldNames.DEBUG_ENABLED_FIELDNAME, Type.BOOLEAN_TYPE);</span>
+<span class="nc" id="L155">			final Label isNotDebugLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L156">			genAd.ifZCmp(Opcodes.IFEQ, isNotDebugLabel); // Stack:</span>
+<span class="nc" id="L157">			genAd.loadThis();</span>
+<span class="nc" id="L158">			genAd.visitLdcInsn(setterOpNameAndDesc);</span>
+<span class="nc" id="L159">			genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_DEBUG_START);</span>
+<span class="nc" id="L160">			genAd.visitLabel(isNotDebugLabel);</span>
+
+		}
+		
+<span class="nc" id="L164">		int opCode = Opcodes.IFNE;</span>
+
+		// genAd.invokeStatic(Type.getType(Boolean.class), new Method(&quot;valueOf&quot;,
+		// ByteCodeTypes.BOOLEAN, new Type[] { Type.BOOLEAN_TYPE
+		// }));
+<span class="nc" id="L169">		genAd.loadArg(1);</span>
+<span class="nc" id="L170">		genAd.unbox(Type.BOOLEAN_TYPE);</span>
+<span class="nc" id="L171">		final Label runRemote = genAd.newLabel();</span>
+<span class="nc" id="L172">		genAd.ifZCmp(opCode, runRemote);</span>
+
+<span class="nc" id="L174">		genAd.push(true);</span>
+<span class="nc" id="L175">		genAd.box(Type.BOOLEAN_TYPE);</span>
+<span class="nc" id="L176">		genAd.storeArg(1);</span>
+
+		// Call getMasterLocation
+<span class="nc" id="L179">		genAd.loadThis();</span>
+		// genAd.invokeVirtual(ByteCodeTypes.BackendID,
+		// ByteCodeMethods.DCOBJ_GET_MASTER_LOCATION);
+
+		// Call executeRemote
+<span class="nc" id="L184">		genAd.loadThis();</span>
+		// genAd.push(ByteCodeTypes.BackendID);
+<span class="nc" id="L186">		genAd.invokeVirtual(ByteCodeTypes.DCOBJ, ByteCodeMethods.DCOBJ_GET_MASTER_LOCATION);</span>
+<span class="nc" id="L187">		genAd.visitLdcInsn(implIDAsStr);</span>
+<span class="nc" id="L188">		genAd.loadArgArray();</span>
+
+<span class="nc" id="L190">		genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_RUN_REMOTE); </span>
+<span class="nc" id="L191">		genAd.unbox(returnType);</span>
+<span class="nc" id="L192">		genAd.pop();</span>
+
+<span class="nc" id="L194">		genAd.returnValue();</span>
+<span class="nc" id="L195">		genAd.visitLabel(runRemote);</span>
+
+		// Check if is loaded
+<span class="nc" id="L198">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L200">		opCode = Opcodes.IFNE;</span>
+
+<span class="nc" id="L202">		genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_IS_LOADED);</span>
+
+<span class="nc" id="L204">		final Label execLocal = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L205">		genAd.ifZCmp(opCode, execLocal); // Stack:</span>
+
+		// Call executeRemote
+<span class="nc" id="L208">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L210">		genAd.visitLdcInsn(setterOpNameAndDesc);</span>
+<span class="nc" id="L211">		genAd.visitLdcInsn(implIDAsStr);</span>
+<span class="nc" id="L212">		genAd.loadArgArray();</span>
+
+<span class="nc" id="L214">		genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_EXECUTE_IMPL); // Stack: &lt;ResultObj&gt;</span>
+		// Unbox: cast Object -&gt; Integer and then call intValue (for example)
+<span class="nc" id="L216">		genAd.unbox(returnType);</span>
+<span class="nc" id="L217">		genAd.pop();</span>
+
+<span class="nc" id="L219">		genAd.returnValue();</span>
+<span class="nc" id="L220">		genAd.visitLabel(execLocal);</span>
+<span class="nc" id="L221">	}</span>
+
+	/**
+	 * Inject code at the end of a dataClay setter for replication ($$setUpdate$$Field)
+	 * @param genAd ASM bytecode generator - helper
+	 * @param methodDescriptor Setter method descriptor
+	 * @param thisclassDesc Descriptor of the class containing the method
+	 * @param opNameAndDesc Setter operation name and descriptor
+	 * @param implIDAsStr dataClay Implementation ID of the setter represented as string
+	 * @param updateImplIDAsStr update implementation id of the setter as string
+ 	 * @param annotations Annotations of the setter defined by the user 
+	 */
+	public static void injectReplicatedEndMethod(final GeneratorAdapter genAd, final String methodDescriptor,
+			final String thisclassDesc, final String opNameAndDesc, final String implIDAsStr,
+			final String updateImplIDAsStr,
+			final List&lt;Annotation&gt; annotations) {
+<span class="nc" id="L237">		final String setterOpNameAndDesc = &quot;$$set&quot; + opNameAndDesc;</span>
+
+<span class="nc" id="L239">		final Type classType = Type.getType(thisclassDesc);</span>
+<span class="nc" id="L240">		final String desc = opNameAndDesc.split(&quot;\\(&quot;)[1];</span>
+<span class="nc" id="L241">		final String paramTypeDesc = desc.split(&quot;L&quot;)[0];</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		for (final Annotation a : annotations) {</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">			if (a.getDescr().equals(Replication.afterUpdateAnnotationDescr)) {</span>
+<span class="nc" id="L244">				injectMethodFromAnnotation(genAd, a, implIDAsStr, updateImplIDAsStr, paramTypeDesc);</span>
+<span class="nc" id="L245">				break;</span>
+			}
+<span class="nc" id="L247">		}</span>
+
+<span class="nc bnc" id="L249" title="All 2 branches missed.">		if (Configuration.Flags.ADD_DEBUG_INFO_ON_METHODS.getBooleanValue()) {</span>
+<span class="nc" id="L250">			genAd.getStatic(ByteCodeTypes.DCOBJ, ByteCodeFieldNames.DEBUG_ENABLED_FIELDNAME, Type.BOOLEAN_TYPE);</span>
+<span class="nc" id="L251">			final Label isNotDebugLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L252">			genAd.ifZCmp(Opcodes.IFEQ, isNotDebugLabel); // Stack:</span>
+<span class="nc" id="L253">			genAd.loadThis();</span>
+<span class="nc" id="L254">			genAd.visitLdcInsn(setterOpNameAndDesc);</span>
+<span class="nc" id="L255">			genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_DEBUG_END);</span>
+<span class="nc" id="L256">			genAd.visitLabel(isNotDebugLabel);</span>
+		}
+
+		/** endMethod(); */
+		// genAd.loadThis();
+		// genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_END_METHOD);
+<span class="nc" id="L262">	}</span>
+
+	/**
+	 * Inject call to a concrete method depending on the method defined in an annotation for a replication 
+	 * behaviour.
+	 * @param genAd ASM bytecode generator - helper
+	 * @param a Annotation of the method
+	 * @param implementationID dataClay Implementation ID of the setter represented as string
+	 * @param updateImplementationID dataClay Implementation ID of the set updated as string
+	 * @param propertyTypeDesc Descriptor of the type being replicated
+	 */
+	public static void injectMethodFromAnnotation(final GeneratorAdapter genAd, final Annotation a,
+			final String implementationID, final String updateImplementationID, final String propertyTypeDesc) {
+<span class="nc" id="L275">		genAd.loadThis();</span>
+<span class="nc" id="L276">		genAd.visitLdcInsn(implementationID);</span>
+<span class="nc" id="L277">		genAd.visitLdcInsn(updateImplementationID);</span>
+
+<span class="nc" id="L279">		genAd.loadArg(0);</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">		if (Reflector.isPrimitiveSignature(propertyTypeDesc)) { </span>
+<span class="nc" id="L281">			genAd.box(Type.getType(propertyTypeDesc));</span>
+		}
+		
+<span class="nc" id="L284">		final Method toCall = new Method(a.getParameter(&quot;method&quot;), Type.VOID_TYPE,</span>
+				new Type[] { ByteCodeTypes.DATACLAY_OBJECT, ByteCodeTypes.STRING, ByteCodeTypes.STRING, ByteCodeTypes.OBJECT });
+<span class="nc" id="L286">		final String paramTypeSignature = a.getParameter(&quot;clazz&quot;).replace('.', '/');</span>
+<span class="nc" id="L287">		final Type paramType = Type.getType(&quot;L&quot; + paramTypeSignature + &quot;;&quot;);</span>
+<span class="nc" id="L288">		genAd.invokeStatic(paramType, toCall);</span>
+<span class="nc" id="L289">	}</span>
+
+	/**
+	 * Inject code at the beginning of a dataClay registered method
+	 * @param genAd ASM bytecode generator - helper
+	 * @param methodDescriptor Setter method descriptor
+	 * @param thisclassDesc Descriptor of the class containing the method
+	 * @param opName Setter operation name
+	 * @param opNameAndDesc Setter operation name and descriptor
+	 * @param implIDAsStr dataClay Implementation ID of the setter represented as string
+ 	 * @param prefetchingID ID of implementation method to execute in case of prefetching 
+ 	 * @param prefetchingClassID ID of the class containing the prefetching method defined before
+	 */
+	protected static void injectStartMethod(final GeneratorAdapter genAd, final String methodDescriptor,
+			final String thisclassDesc, final String opName, final String opNameAndDesc, final String implIDAsStr,
+			final ImplementationID prefetchingID, final MetaClassID prefetchingClassID) {
+
+		/**
+		 * if (isPersistent) { Object[] params = ... super.executeRemote(signature, params); }
+		 */
+
+<span class="nc" id="L310">		final Type returnType = Type.getReturnType(methodDescriptor);</span>
+<span class="nc" id="L311">		final Type classType = Type.getType(thisclassDesc);</span>
+
+		// DEBUG
+<span class="nc bnc" id="L314" title="All 2 branches missed.">		if (Configuration.Flags.ADD_DEBUG_INFO_ON_METHODS.getBooleanValue()) {</span>
+<span class="nc" id="L315">			genAd.getStatic(ByteCodeTypes.DCOBJ, ByteCodeFieldNames.DEBUG_ENABLED_FIELDNAME, Type.BOOLEAN_TYPE);</span>
+<span class="nc" id="L316">			final Label isNotDebugLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L317">			genAd.ifZCmp(Opcodes.IFEQ, isNotDebugLabel); // Stack:</span>
+<span class="nc" id="L318">			genAd.loadThis();</span>
+<span class="nc" id="L319">			genAd.visitLdcInsn(opNameAndDesc);</span>
+<span class="nc" id="L320">			genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_DEBUG_START);</span>
+<span class="nc" id="L321">			genAd.visitLabel(isNotDebugLabel);</span>
+
+		}
+
+		// PREFETCHING TASK
+<span class="nc bnc" id="L326" title="All 2 branches missed.">		if (prefetchingID != null) {</span>
+<span class="nc bnc" id="L327" title="All 4 branches missed.">			if (!opName.startsWith(&quot;$$get&quot;) &amp;&amp; !opName.startsWith(&quot;$$set&quot;)) {</span>
+
+<span class="nc" id="L329">				genAd.loadThis(); // Stack: &lt;This&gt; final String pfClassDesc = &quot;L&quot; +</span>
+
+<span class="nc" id="L331">				genAd.loadThis(); // Stack: &lt;This&gt; final String pfClassDesc = &quot;L&quot; +</span>
+<span class="nc" id="L332">				genAd.getField(classType, ByteCodeFieldNames.OBJECTID_FIELDNAME, ByteCodeTypes.OBJID);</span>
+
+				// ==== IMPLID === /
+<span class="nc" id="L335">				genAd.newInstance(ByteCodeTypes.IMPLID);</span>
+<span class="nc" id="L336">				genAd.dup();</span>
+
+<span class="nc" id="L338">				genAd.newInstance(ByteCodeTypes.UUID);</span>
+<span class="nc" id="L339">				genAd.dup();</span>
+<span class="nc" id="L340">				genAd.visitLdcInsn(prefetchingID.getId().getMostSignificantBits());</span>
+<span class="nc" id="L341">				genAd.visitLdcInsn(prefetchingID.getId().getLeastSignificantBits());</span>
+<span class="nc" id="L342">				genAd.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.UUID.getInternalName(),</span>
+<span class="nc" id="L343">						ByteCodeMethods.UUID_INIT_METHOD.getName(), ByteCodeMethods.UUID_INIT_METHOD.getDescriptor(),</span>
+						false);
+
+<span class="nc" id="L346">				genAd.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.IMPLID.getInternalName(),</span>
+<span class="nc" id="L347">						ByteCodeMethods.IMPLID_INIT_METHOD.getName(),</span>
+<span class="nc" id="L348">						ByteCodeMethods.IMPLID_INIT_METHOD.getDescriptor(), false);</span>
+
+				// ==== CLASSID === /
+<span class="nc" id="L351">				genAd.newInstance(ByteCodeTypes.MCLASSID);</span>
+<span class="nc" id="L352">				genAd.dup();</span>
+
+<span class="nc" id="L354">				genAd.newInstance(ByteCodeTypes.UUID);</span>
+<span class="nc" id="L355">				genAd.dup();</span>
+<span class="nc" id="L356">				genAd.visitLdcInsn(prefetchingClassID.getId().getMostSignificantBits());</span>
+<span class="nc" id="L357">				genAd.visitLdcInsn(prefetchingClassID.getId().getLeastSignificantBits());</span>
+<span class="nc" id="L358">				genAd.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.UUID.getInternalName(),</span>
+<span class="nc" id="L359">						ByteCodeMethods.UUID_INIT_METHOD.getName(), ByteCodeMethods.UUID_INIT_METHOD.getDescriptor(),</span>
+						false);
+<span class="nc" id="L361">				genAd.visitMethodInsn(Opcodes.INVOKESPECIAL, ByteCodeTypes.MCLASSID.getInternalName(),</span>
+<span class="nc" id="L362">						ByteCodeMethods.MCLASSID_INIT_METHOD.getName(),</span>
+<span class="nc" id="L363">						ByteCodeMethods.MCLASSID_INIT_METHOD.getDescriptor(), false);</span>
+
+<span class="nc" id="L365">				genAd.visitMethodInsn(Opcodes.INVOKESPECIAL, classType.getInternalName(),</span>
+<span class="nc" id="L366">						ByteCodeMethods.DCOBJ_ADD_LAZY_TASK.getName(),</span>
+<span class="nc" id="L367">						ByteCodeMethods.DCOBJ_ADD_LAZY_TASK.getDescriptor(), false);</span>
+
+				// call super.add... genAd.invokeVirtual(classType,
+				// ByteCodeMethods.DCOBJ_ADD_LAZY_TASK);
+
+			}
+		}
+
+		// Check if isPersistent
+<span class="nc" id="L376">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L378">		final Method methodToCall = ByteCodeMethods.DCOBJ_IS_LOADED;</span>
+<span class="nc" id="L379">		final int opCode = Opcodes.IFNE;</span>
+
+<span class="nc" id="L381">		genAd.invokeVirtual(classType, methodToCall);</span>
+<span class="nc" id="L382">		final Label execLocalLabel = genAd.newLabel(); // Stack: Z</span>
+<span class="nc" id="L383">		genAd.ifZCmp(opCode, execLocalLabel); // Stack:</span>
+
+		// Call executeRemote
+<span class="nc" id="L386">		genAd.loadThis(); // Stack: &lt;This&gt;</span>
+		// this.checkCast(ByteCodeTypes.DCOBJ);
+<span class="nc" id="L388">		genAd.visitLdcInsn(opNameAndDesc);</span>
+<span class="nc" id="L389">		genAd.visitLdcInsn(implIDAsStr);</span>
+<span class="nc" id="L390">		genAd.loadArgArray();</span>
+
+<span class="nc" id="L392">		genAd.invokeVirtual(classType, ByteCodeMethods.DCOBJ_EXECUTE_IMPL); // Stack: &lt;ResultObj&gt;</span>
+		// Unbox: cast Object -&gt; Integer and then call intValue (for example)
+<span class="nc" id="L394">		genAd.unbox(returnType);</span>
+<span class="nc" id="L395">		genAd.returnValue();</span>
+<span class="nc" id="L396">		genAd.visitLabel(execLocalLabel);</span>
+<span class="nc" id="L397">	}</span>
+
+	@Override
+	public void visitFieldInsn(final int opcode, final String owner, final String name, final String desc) {
+		// Replace by setter and getter if not in $$set and $$get
+<span class="nc bnc" id="L402" title="All 2 branches missed.">		if (opcode == Opcodes.PUTFIELD) {</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">			if (name.startsWith(ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;set&quot;)) {</span>
+				// don't inject code, just put field
+<span class="nc" id="L405">				super.visitFieldInsn(opcode, owner, name, desc);</span>
+			} else {
+				// change to a method instruction
+<span class="nc" id="L408">				String setterName = ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;set&quot; + name;</span>
+<span class="nc" id="L409">				String setterDesc = &quot;(&quot; + desc + &quot;)V&quot;;</span>
+<span class="nc" id="L410">				boolean inMaster = false, isReplicated = false;</span>
+<span class="nc bnc" id="L411" title="All 2 branches missed.">				for (final Property p : properties) {</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">					if (p.getName().equals(name)) {</span>
+<span class="nc" id="L413">						isReplicated = p.isReplicated();</span>
+<span class="nc" id="L414">						inMaster = p.getInMaster();</span>
+<span class="nc" id="L415">						break;</span>
+					}
+<span class="nc" id="L417">				}</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">				if (isReplicated) {</span>
+<span class="nc" id="L419">					setterName = ByteCodeConstants.DATACLAY_SET_UPDATE_PREFIX + name;</span>
+<span class="nc" id="L420">					setterDesc = &quot;(&quot; + desc + &quot;Ljava/lang/Boolean;)V&quot;;</span>
+<span class="nc" id="L421">					super.push(inMaster);</span>
+<span class="nc" id="L422">					super.box(Type.BOOLEAN_TYPE);</span>
+				}
+<span class="nc" id="L424">				super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, owner, setterName, setterDesc, false);</span>
+<span class="nc" id="L425">			}</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">		} else if (opcode == Opcodes.GETFIELD) {</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">			if (name.startsWith(ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;get&quot;)) {</span>
+				// don't inject code, just put field
+<span class="nc" id="L429">				super.visitFieldInsn(opcode, owner, name, desc);</span>
+			} else {
+				// change to a method instruction
+<span class="nc" id="L432">				final String getterName = ByteCodeConstants.DATACLAY_PREFIX_MARK + &quot;get&quot; + name;</span>
+<span class="nc" id="L433">				final String getterDesc = &quot;()&quot; + desc;</span>
+<span class="nc" id="L434">				super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, owner, getterName, getterDesc, false);</span>
+<span class="nc" id="L435">			}</span>
+		} else {
+<span class="nc" id="L437">			super.visitFieldInsn(opcode, owner, name, desc);</span>
+		}
+<span class="nc" id="L439">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

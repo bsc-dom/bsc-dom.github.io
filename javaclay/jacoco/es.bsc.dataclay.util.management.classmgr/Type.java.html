@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Type.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.management.classmgr</a> &gt; <span class="el_source">Type.java</span></div><h1>Type.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.util.management.classmgr;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+
+import org.yaml.snakeyaml.Yaml;
+
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.exceptions.logicmodule.classmgr.TypeDepInfoAlreadyRegisteredException;
+import es.bsc.dataclay.util.management.classmgr.java.JavaTypeInfo;
+import es.bsc.dataclay.util.management.classmgr.python.PythonTypeInfo;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+
+/**
+ * This class represents a Type.
+ */
+public class Type {
+
+	/** ID. */
+	private UUID id;
+	// === YAML SPECIFICATION === //
+	// Properties must be public for YAML parsing.
+	// CHECKSTYLE:OFF
+	/** Descriptor of the type. */
+	public String descriptor;
+	/** Signature of the type. */
+	public String signature;
+	/** Type name. */
+	public String typeName;
+	/** List of sub-types of the type (like arrays, collections...). */
+	public List&lt;Type&gt; includes;
+	// CHECKSTYLE:ON
+	// ==== DYNAMIC FIELDS ==== //
+	/** Language dependant property information. */
+	private Map&lt;Langs, LanguageDependantTypeInfo&gt; languageDepInfos;
+
+	/**
+	 * Creates an empty Type
+	 * @note This function does not generate an TypeID. It is necessary for the queries by example used in db4o.
+	 * @see
+	 */
+<span class="fc" id="L46">	public Type() {</span>
+
+<span class="fc" id="L48">	}</span>
+
+	/**
+	 * Type constructor with provided descriptor and signature
+	 * @param newdescriptor
+	 *            Descriptor of the type
+	 * @param newsignature
+	 *            Signature of the type
+	 * @param newtypeName
+	 *            Type name
+	 */
+	public Type(final String newdescriptor, final String newsignature, final String newtypeName) {
+<span class="fc" id="L60">		this(newdescriptor, newsignature, newtypeName, null);</span>
+<span class="fc" id="L61">	}</span>
+
+	/**
+	 * Type constructor with provided signature
+	 * @param newdescriptor
+	 *            Descriptor of the type
+	 * @param newsignature
+	 *            Signature of the type
+	 * @param newtypeName
+	 *            Type name
+	 * @param newincludes
+	 *            Subtypes
+	 */
+	public Type(final String newdescriptor, final String newsignature, final String newtypeName,
+<span class="fc" id="L75">			final List&lt;Type&gt; newincludes) {</span>
+<span class="fc" id="L76">		this.setDescriptor(newdescriptor);</span>
+<span class="fc" id="L77">		this.setSignature(newsignature);</span>
+<span class="fc" id="L78">		this.setIncludes(newincludes);</span>
+<span class="fc" id="L79">		this.setTypeName(newtypeName);</span>
+<span class="fc" id="L80">		this.languageDepInfos = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L81">	}</span>
+
+	/**
+	 * Get the Type::languageDepInfos
+	 * @return the languageDepInfos
+	 */
+	public final Map&lt;Langs, LanguageDependantTypeInfo&gt; getLanguageDepInfos() {
+<span class="fc" id="L88">		return languageDepInfos;</span>
+	}
+
+	/**
+	 * Get Java language-dependant information of the Type
+	 * @return Java language-dependant information of the Type
+	 */
+	public final JavaTypeInfo getJavaTypeInfo() {
+<span class="nc" id="L96">		return (JavaTypeInfo) languageDepInfos.get(Langs.LANG_JAVA);</span>
+	}
+
+	/**
+	 * Get Python language-dependant information of the Type
+	 * @return Python language-dependant information of the Type
+	 */
+	public final PythonTypeInfo getPythonTypeInfo() {
+<span class="nc" id="L104">		return (PythonTypeInfo) languageDepInfos.get(Langs.LANG_PYTHON);</span>
+	}
+
+	/**
+	 * Get the Type::signature
+	 * @return the signature
+	 */
+	public final String getSignature() {
+<span class="fc" id="L112">		return this.signature;</span>
+	}
+
+	/**
+	 * Get the Type::signature or descriptor if null
+	 * @return the signature or descriptor if null
+	 */
+	public final String getSignatureOrDescriptor() {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">		if (this.signature != null) {</span>
+<span class="nc" id="L121">			return signature;</span>
+		} else {
+<span class="nc" id="L123">			return descriptor;</span>
+		}
+	}
+
+	/**
+	 * Set the Type::signature
+	 * @param newsignature
+	 *            the signature to set
+	 */
+	public final void setSignature(final String newsignature) {
+<span class="fc" id="L133">		this.signature = newsignature;</span>
+<span class="fc" id="L134">	}</span>
+
+	/**
+	 * Set the Type::languageDepInfos
+	 * @param newlanguageDepInfos
+	 *            the languageDepInfos to set
+	 */
+	public final void setLanguageDepInfos(final Map&lt;Langs, LanguageDependantTypeInfo&gt; newlanguageDepInfos) {
+<span class="fc" id="L142">		this.languageDepInfos = newlanguageDepInfos;</span>
+<span class="fc" id="L143">	}</span>
+
+	/**
+	 * Add language dependant information
+	 * @param langInfo
+	 *            Language information
+	 */
+	public final void addLanguageDepInfo(final LanguageDependantTypeInfo langInfo) {
+<span class="nc bnc" id="L151" title="All 2 branches missed.">		if (langInfo instanceof JavaTypeInfo) {</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_JAVA) != null) {</span>
+<span class="nc" id="L153">				throw new TypeDepInfoAlreadyRegisteredException(Langs.LANG_JAVA.name());</span>
+			} else {
+<span class="nc" id="L155">				this.languageDepInfos.put(Langs.LANG_JAVA, langInfo);</span>
+			}
+<span class="nc bnc" id="L157" title="All 2 branches missed.">		} else if (langInfo instanceof PythonTypeInfo) {</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_PYTHON) != null) {</span>
+<span class="nc" id="L159">				throw new TypeDepInfoAlreadyRegisteredException(Langs.LANG_PYTHON.name());</span>
+			} else {
+<span class="nc" id="L161">				this.languageDepInfos.put(Langs.LANG_PYTHON, langInfo);</span>
+			}
+		}
+<span class="nc" id="L164">	}</span>
+
+	/**
+	 * Get includes
+	 * @return the includes
+	 */
+	public final List&lt;Type&gt; getIncludes() {
+<span class="fc" id="L171">		return includes;</span>
+	}
+
+	/**
+	 * Set includes
+	 * @param newincludes
+	 *            the includes to set
+	 */
+	public final void setIncludes(final List&lt;Type&gt; newincludes) {
+<span class="fc" id="L180">		this.includes = newincludes;</span>
+<span class="fc" id="L181">	}</span>
+
+	// CHECKSTYLE:OFF
+
+	@Override
+	public String toString() {
+<span class="nc" id="L187">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L188">		return yaml.dump(this);</span>
+	}
+
+	@Override
+	public int hashCode() {
+<span class="fc" id="L193">		return Objects.hash(this.descriptor, this.signature);</span>
+	}
+
+	@Override
+	public boolean equals(final Object object) {
+<span class="nc bnc" id="L198" title="All 2 branches missed.">		if (object instanceof Type) {</span>
+<span class="nc" id="L199">			final Type other = (Type) object;</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">			if (this.descriptor != null) {</span>
+<span class="nc bnc" id="L201" title="All 2 branches missed.">				if (!this.descriptor.equals(other.getDescriptor())) {</span>
+<span class="nc" id="L202">					return false;</span>
+				}
+			} else {
+<span class="nc bnc" id="L205" title="All 2 branches missed.">				if (other.getDescriptor() != null) {</span>
+<span class="nc" id="L206">					return false;</span>
+				}
+			}
+<span class="nc bnc" id="L209" title="All 2 branches missed.">			if (this.signature != null) {</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">				if (!this.signature.equals(other.getSignature())) {</span>
+<span class="nc" id="L211">					return false;</span>
+				}
+			} else {
+<span class="nc bnc" id="L214" title="All 2 branches missed.">				if (other.getSignature() != null) {</span>
+<span class="nc" id="L215">					return false;</span>
+				}
+			}
+		}
+<span class="nc" id="L219">		return false;</span>
+	}
+
+	/**
+	 * Get descriptor
+	 * @return the descriptor
+	 */
+	public String getDescriptor() {
+<span class="fc" id="L227">		return descriptor;</span>
+	}
+
+	/**
+	 * Set descriptor
+	 * @param newdescriptor
+	 *            the descriptor to set
+	 */
+	public void setDescriptor(final String newdescriptor) {
+<span class="fc" id="L236">		this.descriptor = newdescriptor;</span>
+<span class="fc" id="L237">	}</span>
+
+	/**
+	 * @return the typeName
+	 */
+	public String getTypeName() {
+<span class="fc" id="L243">		return typeName;</span>
+	}
+
+	/**
+	 * @param typeName
+	 *            the typeName to set
+	 */
+	public void setTypeName(final String typeName) {
+<span class="fc" id="L251">		this.typeName = typeName;</span>
+<span class="fc" id="L252">	}</span>
+
+	/**
+	 * @return the id
+	 */
+	public UUID getId() {
+<span class="fc" id="L258">		return id;</span>
+	}
+
+	/**
+	 * @param id
+	 *            the id to set
+	 */
+	public void setId(final UUID id) {
+<span class="fc" id="L266">		this.id = id;</span>
+<span class="fc" id="L267">	}</span>
+
+	// CHECKSTYLE:ON
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

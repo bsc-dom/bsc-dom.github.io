@@ -1,0 +1,1121 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataServiceService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.communication.grpc.services.dataservice</a> &gt; <span class="el_source">DataServiceService.java</span></div><h1>DataServiceService.java</h1><pre class="source lang-java linenums">
+/**
+ * 
+ */
+package es.bsc.dataclay.communication.grpc.services.dataservice;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.google.protobuf.ByteString;
+
+import es.bsc.dataclay.communication.grpc.Utils;
+import es.bsc.dataclay.communication.grpc.generated.dataservice.DataServiceGrpc;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EmptyMessage;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExceptionInfo;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.GetTracesResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ActivateTracingRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.CloseSessionInDSRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ConsolidateVersionRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.DeployClassesRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.DeployMetaClassesRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.EnrichClassRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExecuteImplementationRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.ExecuteImplementationResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.FederateRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.FilterObjectRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.FilterObjectResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetClassIDFromObjectInMemoryRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetClassIDFromObjectInMemoryResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetCopyOfObjectRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetCopyOfObjectResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetFederatedObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetFederatedObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetFromDBResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetReferencedObjectIDsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetReferencedObjectIDsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetRetainedReferencesResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.InitBackendIDRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MakePersistentRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MigrateObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MigrateObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MigratedObjects;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MoveObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.MoveObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewMetaDataRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewPersistentInstanceRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewPersistentInstanceResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewReplicaRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewReplicaResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewVersionRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.NewVersionResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.RemoveObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.RemoveObjectsResponse;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.StoreObjectsRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UnfederateRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpdateObjectRequest;
+import es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpsertObjectsRequest;
+import es.bsc.dataclay.dataservice.DataService;
+import es.bsc.dataclay.serialization.lib.ObjectWithDataParamOrReturn;
+import es.bsc.dataclay.serialization.lib.SerializedParametersOrReturn;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
+import es.bsc.dataclay.util.ids.ImplementationID;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.util.ids.SessionID;
+import es.bsc.dataclay.util.ids.StorageLocationID;
+import es.bsc.dataclay.util.info.VersionInfo;
+import es.bsc.dataclay.util.management.classmgr.MetaClass;
+import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
+import es.bsc.dataclay.util.management.metadataservice.StorageLocation;
+import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.util.yaml.CommonYAML;
+import io.grpc.stub.StreamObserver;
+
+/**
+ * Implements all DataService GRPC methods.
+ */
+public final class DataServiceService extends DataServiceGrpc.DataServiceImplBase {
+
+	/** Logger. */
+<span class="nc" id="L94">	private static final Logger LOGGER = LogManager.getLogger(&quot;communication.LogicModule.service&quot;);</span>
+
+	/** Actual DataService implementation. */
+	private final DataService dataService;
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L99">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/**
+	 * Constructor
+	 * 
+	 * @param thedataService
+	 *            Dataservice to process calls
+	 */
+<span class="nc" id="L107">	public DataServiceService(final DataService thedataService) {</span>
+<span class="nc" id="L108">		this.dataService = thedataService;</span>
+<span class="nc" id="L109">		LOGGER.info(&quot;Initialized DataServiceService&quot;);</span>
+<span class="nc" id="L110">	}</span>
+
+	@Override
+	public void initBackendID(final InitBackendIDRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L116">			dataService.initBackendID(Utils.getID(request.getBackendID()));</span>
+<span class="nc" id="L117">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L118">			responseObserver.onCompleted();</span>
+<span class="nc" id="L119">		} catch (final Exception e) {</span>
+<span class="nc" id="L120">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L121">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L122">			responseObserver.onCompleted();</span>
+<span class="nc" id="L123">		}</span>
+<span class="nc" id="L124">	}</span>
+
+	@Override
+	public void deployMetaClasses(final DeployMetaClassesRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L130">			final Map&lt;String, MetaClass&gt; deploymentPack = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">			for (final Entry&lt;String, String&gt; entry : request.getDeploymentPackMap().entrySet()) {</span>
+<span class="nc" id="L132">				final MetaClass mClass = (MetaClass) CommonYAML.getYamlObject().load(entry.getValue());</span>
+<span class="nc" id="L133">				deploymentPack.put(entry.getKey(), mClass);</span>
+<span class="nc" id="L134">			}</span>
+<span class="nc" id="L135">			dataService.deployMetaClasses(request.getNamespace(), deploymentPack);</span>
+<span class="nc" id="L136">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L137">			responseObserver.onCompleted();</span>
+<span class="nc" id="L138">		} catch (final Exception e) {</span>
+<span class="nc" id="L139">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L140">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L141">			responseObserver.onCompleted();</span>
+<span class="nc" id="L142">		}</span>
+<span class="nc" id="L143">	}</span>
+
+	@Override
+	public void deployClasses(final DeployClassesRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L149">			final Map&lt;Tuple&lt;String, MetaClassID&gt;, byte[]&gt; newClasses = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">			for (final Entry&lt;String, ByteString&gt; entry : request.getClassesToDeployMap().entrySet()) {</span>
+<span class="nc" id="L151">				final String className = entry.getKey();</span>
+<span class="nc" id="L152">				final MetaClassID classID = Utils.getID(request.getClassIdsMap().get(className));</span>
+<span class="nc" id="L153">				newClasses.put(new Tuple&lt;&gt;(className, classID), entry.getValue().toByteArray());</span>
+<span class="nc" id="L154">			}</span>
+
+<span class="nc" id="L156">			final Map&lt;String, byte[]&gt; aspects = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">			for (final Entry&lt;String, ByteString&gt; entry : request.getAspectsMap().entrySet()) {</span>
+<span class="nc" id="L158">				aspects.put(entry.getKey(), entry.getValue().toByteArray());</span>
+<span class="nc" id="L159">			}</span>
+
+<span class="nc" id="L161">			final Map&lt;String, byte[]&gt; yamls = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L162" title="All 2 branches missed.">			for (final Entry&lt;String, ByteString&gt; entry : request.getYamlsMap().entrySet()) {</span>
+<span class="nc" id="L163">				yamls.put(entry.getKey(), entry.getValue().toByteArray());</span>
+<span class="nc" id="L164">			}</span>
+<span class="nc" id="L165">			dataService.deployClasses(request.getNamespace(), newClasses, aspects, yamls);</span>
+<span class="nc" id="L166">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L167">			responseObserver.onCompleted();</span>
+<span class="nc" id="L168">		} catch (final Exception e) {</span>
+<span class="nc" id="L169">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L170">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L171">			responseObserver.onCompleted();</span>
+<span class="nc" id="L172">		}</span>
+<span class="nc" id="L173">	}</span>
+
+	@Override
+	public void enrichClass(final EnrichClassRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L180">			dataService.enrichClass(request.getNamespace(), request.getClassname(),</span>
+<span class="nc" id="L181">					request.getClassToDeploy().toByteArray(), request.getAspect().toByteArray(),</span>
+<span class="nc" id="L182">					request.getYaml().toByteArray());</span>
+<span class="nc" id="L183">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L184">			responseObserver.onCompleted();</span>
+<span class="nc" id="L185">		} catch (final Exception e) {</span>
+<span class="nc" id="L186">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L187">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L188">			responseObserver.onCompleted();</span>
+<span class="nc" id="L189">		}</span>
+<span class="nc" id="L190">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Storage Location.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void newPersistentInstance(final NewPersistentInstanceRequest request,
+			final io.grpc.stub.StreamObserver&lt;NewPersistentInstanceResponse&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L203">			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">			for (final Entry&lt;String, ByteString&gt; entry : request.getIfaceBitMapsMap().entrySet()) {</span>
+<span class="nc" id="L205">				ifaceBitMaps.put(Utils.getMetaClassIDFromUUID(entry.getKey()), entry.getValue().toByteArray());</span>
+<span class="nc" id="L206">			}</span>
+
+<span class="nc" id="L208">			SerializedParametersOrReturn params = null;</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">			if (request.hasParams()) {</span>
+<span class="nc" id="L210">				params = Utils.getParamsOrReturn(request.getParams());</span>
+			}
+<span class="nc" id="L212">			final ObjectID oid = dataService.newPersistentInstance(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L213">					Utils.getID(request.getClassID()), Utils.getID(request.getImplementationID()), ifaceBitMaps,</span>
+					params);
+
+<span class="nc" id="L216">			final NewPersistentInstanceResponse resp = NewPersistentInstanceResponse.newBuilder()</span>
+<span class="nc" id="L217">					.setObjectID(Utils.getMsgID(oid)).build();</span>
+<span class="nc" id="L218">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L219">			responseObserver.onCompleted();</span>
+<span class="nc" id="L220">		} catch (final Exception e) {</span>
+<span class="nc" id="L221">			final NewPersistentInstanceResponse.Builder builder = NewPersistentInstanceResponse.newBuilder();</span>
+<span class="nc" id="L222">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L223">			final NewPersistentInstanceResponse resp = builder.build();</span>
+<span class="nc" id="L224">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L225">			responseObserver.onCompleted();</span>
+<span class="nc" id="L226">		}</span>
+<span class="nc" id="L227">	}</span>
+
+	@Override
+	public void storeObjects(final StoreObjectsRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L234">			final List&lt;ObjectWithDataParamOrReturn&gt; objects = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">			for (final CommonMessages.ObjectWithDataParamOrReturn volParam : request.getObjectsList()) {</span>
+<span class="nc" id="L236">				objects.add(Utils.getObjectWithDataParamOrReturn(volParam));</span>
+<span class="nc" id="L237">			}</span>
+<span class="nc" id="L238">			final Set&lt;ObjectID&gt; idsWithAlias = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">			if (request.getIdsWithAliasCount() &gt; 0) {</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">				for (final CommonMessages.ObjectID idWithAlias : request.getIdsWithAliasList()) {</span>
+<span class="nc" id="L241">					idsWithAlias.add(Utils.getID(idWithAlias));</span>
+<span class="nc" id="L242">				}</span>
+			}
+
+<span class="nc" id="L245">			dataService.storeObjects(Utils.getID(request.getSessionID()), objects, request.getMoving(), idsWithAlias);</span>
+<span class="nc" id="L246">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L247">			responseObserver.onCompleted();</span>
+<span class="nc" id="L248">		} catch (final Exception ex) {</span>
+<span class="nc" id="L249">			LOGGER.debug(&quot;storeObjects DataClay native error&quot;, ex);</span>
+<span class="nc" id="L250">			final ExceptionInfo resp = Utils.serializeException(ex);</span>
+<span class="nc" id="L251">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L252">			responseObserver.onCompleted();</span>
+<span class="nc" id="L253">		}</span>
+
+<span class="nc" id="L255">	}</span>
+
+	@Override
+	public void getCopyOfObject(final GetCopyOfObjectRequest request,
+			final io.grpc.stub.StreamObserver&lt;GetCopyOfObjectResponse&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L263">			final SerializedParametersOrReturn result = dataService.getCopyOfObject(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L264">					Utils.getID(request.getObjectID()), request.getRecursive());</span>
+
+<span class="nc" id="L266">			final GetCopyOfObjectResponse.Builder builder = GetCopyOfObjectResponse.newBuilder();</span>
+<span class="nc" id="L267">			builder.setRet(Utils.getParamsOrReturn(result));</span>
+
+<span class="nc" id="L269">			final GetCopyOfObjectResponse resp = builder.build();</span>
+<span class="nc" id="L270">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L271">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L273">		} catch (final Exception e) {</span>
+<span class="nc" id="L274">			final GetCopyOfObjectResponse.Builder builder = GetCopyOfObjectResponse.newBuilder();</span>
+<span class="nc" id="L275">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L276">			final GetCopyOfObjectResponse resp = builder.build();</span>
+<span class="nc" id="L277">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L278">			responseObserver.onCompleted();</span>
+<span class="nc" id="L279">		}</span>
+<span class="nc" id="L280">	}</span>
+
+	@Override
+	public void updateObject(final UpdateObjectRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L288">			dataService.updateObject(Utils.getID(request.getSessionID()), Utils.getID(request.getIntoObjectID()),</span>
+<span class="nc" id="L289">					Utils.getParamsOrReturn(request.getFromObject()));</span>
+
+<span class="nc" id="L291">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L292">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L294">		} catch (final Exception ex) {</span>
+<span class="nc" id="L295">			LOGGER.debug(&quot;putObject DataClay native error&quot;, ex);</span>
+<span class="nc" id="L296">			final ExceptionInfo resp = Utils.serializeException(ex);</span>
+<span class="nc" id="L297">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L298">			responseObserver.onCompleted();</span>
+<span class="nc" id="L299">		}</span>
+<span class="nc" id="L300">	}</span>
+
+	@Override
+	public void getObjects(final GetObjectsRequest request,
+			final io.grpc.stub.StreamObserver&lt;GetObjectsResponse&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L308">			final Set&lt;ObjectID&gt; objectIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">			for (final CommonMessages.ObjectID oid : request.getObjectIDSList()) {</span>
+<span class="nc" id="L310">				objectIDs.add(Utils.getID(oid));</span>
+<span class="nc" id="L311">			}</span>
+<span class="nc" id="L312">			final List&lt;ObjectWithDataParamOrReturn&gt; result = dataService.getObjects(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L313">					objectIDs, request.getRecursive(), request.getMoving());</span>
+
+<span class="nc" id="L315">			final GetObjectsResponse.Builder builder = GetObjectsResponse.newBuilder();</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">			for (final ObjectWithDataParamOrReturn entry : result) {</span>
+<span class="nc" id="L317">				builder.addObjects(Utils.getObjectWithDataParamOrReturn(entry));</span>
+<span class="nc" id="L318">			}</span>
+
+<span class="nc" id="L320">			final GetObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L321">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L322">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L324">		} catch (final Exception e) {</span>
+<span class="nc" id="L325">			final GetObjectsResponse.Builder builder = GetObjectsResponse.newBuilder();</span>
+<span class="nc" id="L326">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L327">			final GetObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L328">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L329">			responseObserver.onCompleted();</span>
+<span class="nc" id="L330">		}</span>
+<span class="nc" id="L331">	}</span>
+
+	@Override
+	public void getReferencedObjectsIDs(final GetReferencedObjectIDsRequest request,
+			final io.grpc.stub.StreamObserver&lt;GetReferencedObjectIDsResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L337">			final Set&lt;ObjectID&gt; objectIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L338" title="All 2 branches missed.">			for (final CommonMessages.ObjectID oid : request.getObjectIDSList()) {</span>
+<span class="nc" id="L339">				objectIDs.add(Utils.getID(oid));</span>
+<span class="nc" id="L340">			}</span>
+<span class="nc" id="L341">			final Set&lt;ObjectID&gt; result = dataService.getReferencedObjectsIDs(Utils.getID(request.getSessionID()),</span>
+					objectIDs);
+
+<span class="nc" id="L344">			final GetReferencedObjectIDsResponse.Builder builder = GetReferencedObjectIDsResponse.newBuilder();</span>
+<span class="nc bnc" id="L345" title="All 2 branches missed.">			for (final ObjectID entry : result) {</span>
+<span class="nc" id="L346">				builder.addObjectIDs(Utils.getMsgID(entry));</span>
+<span class="nc" id="L347">			}</span>
+
+<span class="nc" id="L349">			final GetReferencedObjectIDsResponse resp = builder.build();</span>
+<span class="nc" id="L350">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L351">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L353">		} catch (final Exception e) {</span>
+<span class="nc" id="L354">			final GetReferencedObjectIDsResponse.Builder builder = GetReferencedObjectIDsResponse.newBuilder();</span>
+<span class="nc" id="L355">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L356">			final GetReferencedObjectIDsResponse resp = builder.build();</span>
+<span class="nc" id="L357">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L358">			responseObserver.onCompleted();</span>
+<span class="nc" id="L359">		}</span>
+<span class="nc" id="L360">	}</span>
+
+	@Override
+	public void getFederatedObjects(final GetFederatedObjectsRequest request,
+			final io.grpc.stub.StreamObserver&lt;GetFederatedObjectsResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L366">			final Set&lt;ObjectID&gt; objectIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">			for (final CommonMessages.ObjectID oid : request.getObjectIDSList()) {</span>
+<span class="nc" id="L368">				objectIDs.add(Utils.getID(oid));</span>
+<span class="nc" id="L369">			}</span>
+<span class="nc" id="L370">			final List&lt;ObjectWithDataParamOrReturn&gt; result = dataService</span>
+<span class="nc" id="L371">					.getFederatedObjects(Utils.getID(request.getExtDataClayID()), objectIDs);</span>
+
+<span class="nc" id="L373">			final GetFederatedObjectsResponse.Builder builder = GetFederatedObjectsResponse.newBuilder();</span>
+<span class="nc bnc" id="L374" title="All 2 branches missed.">			for (final ObjectWithDataParamOrReturn entry : result) {</span>
+<span class="nc" id="L375">				builder.addObjects(Utils.getObjectWithDataParamOrReturn(entry));</span>
+<span class="nc" id="L376">			}</span>
+
+<span class="nc" id="L378">			final GetFederatedObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L379">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L380">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L382">		} catch (final Exception e) {</span>
+<span class="nc" id="L383">			final GetFederatedObjectsResponse.Builder builder = GetFederatedObjectsResponse.newBuilder();</span>
+<span class="nc" id="L384">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L385">			final GetFederatedObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L386">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L387">			responseObserver.onCompleted();</span>
+<span class="nc" id="L388">		}</span>
+<span class="nc" id="L389">	}</span>
+
+	@Override
+	public void filterObject(final FilterObjectRequest request,
+			final io.grpc.stub.StreamObserver&lt;FilterObjectResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L395">			final SerializedParametersOrReturn result = dataService.filterObject(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L396">					Utils.getID(request.getObjectID()), request.getConditions());</span>
+
+<span class="nc" id="L398">			final FilterObjectResponse.Builder builder = FilterObjectResponse.newBuilder();</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc" id="L400">				builder.setRet(Utils.getParamsOrReturn(result));</span>
+			}
+
+<span class="nc" id="L403">			final FilterObjectResponse resp = builder.build();</span>
+
+<span class="nc" id="L405">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L406">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L408">		} catch (final Exception e) {</span>
+<span class="nc" id="L409">			final FilterObjectResponse.Builder builder = FilterObjectResponse.newBuilder();</span>
+<span class="nc" id="L410">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L411">			final FilterObjectResponse resp = builder.build();</span>
+<span class="nc" id="L412">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L413">			responseObserver.onCompleted();</span>
+<span class="nc" id="L414">		}</span>
+<span class="nc" id="L415">	}</span>
+
+	@Override
+	public void newMetaData(final NewMetaDataRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L422">			final Map&lt;ObjectID, MetaDataInfo&gt; mdInfos = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">			for (final Entry&lt;String, String&gt; entry : request.getMdInfosMap().entrySet()) {</span>
+<span class="nc" id="L424">				mdInfos.put(Utils.getObjectIDFromUUID(entry.getKey()),</span>
+<span class="nc" id="L425">						(MetaDataInfo) CommonYAML.getYamlObject().load(entry.getValue()));</span>
+<span class="nc" id="L426">			}</span>
+<span class="nc" id="L427">			dataService.newMetaData(mdInfos);</span>
+<span class="nc" id="L428">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L429">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L431">		} catch (final Exception e) {</span>
+<span class="nc" id="L432">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L433">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L434">			responseObserver.onCompleted();</span>
+<span class="nc" id="L435">		}</span>
+
+<span class="nc" id="L437">	}</span>
+
+	@Override
+	public void newVersion(final NewVersionRequest request,
+			final io.grpc.stub.StreamObserver&lt;NewVersionResponse&gt; responseObserver) {
+
+		try {
+
+<span class="nc" id="L445">			final Tuple&lt;ObjectID, Map&lt;ObjectID, ObjectID&gt;&gt; result = dataService.newVersion(</span>
+<span class="nc" id="L446">					Utils.getID(request.getSessionID()), Utils.getID(request.getObjectID()),</span>
+<span class="nc" id="L447">					(MetaDataInfo) CommonYAML.getYamlObject().load(request.getMetadataInfo()));</span>
+
+<span class="nc" id="L449">			final NewVersionResponse.Builder builder = NewVersionResponse.newBuilder();</span>
+<span class="nc bnc" id="L450" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, ObjectID&gt; entry : result.getSecond().entrySet()) {</span>
+<span class="nc" id="L451">				builder.putVersionedIDs(entry.getKey().getId().toString(), entry.getValue().getId().toString());</span>
+<span class="nc" id="L452">			}</span>
+<span class="nc" id="L453">			builder.setObjectID(Utils.getMsgID(result.getFirst()));</span>
+
+<span class="nc" id="L455">			final NewVersionResponse resp = builder.build();</span>
+<span class="nc" id="L456">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L457">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L459">		} catch (final Exception e) {</span>
+<span class="nc" id="L460">			final NewVersionResponse.Builder builder = NewVersionResponse.newBuilder();</span>
+<span class="nc" id="L461">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L462">			final NewVersionResponse resp = builder.build();</span>
+<span class="nc" id="L463">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L464">			responseObserver.onCompleted();</span>
+<span class="nc" id="L465">		}</span>
+<span class="nc" id="L466">	}</span>
+
+	@Override
+	public void consolidateVersion(final ConsolidateVersionRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L473">			dataService.consolidateVersion(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L474">					(VersionInfo) CommonYAML.getYamlObject().load(request.getVersionInfo()));</span>
+<span class="nc" id="L475">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L476">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L478">		} catch (final Exception e) {</span>
+<span class="nc" id="L479">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L480">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L481">			responseObserver.onCompleted();</span>
+<span class="nc" id="L482">		}</span>
+<span class="nc" id="L483">	}</span>
+
+	@Override
+	public void upsertObjects(final UpsertObjectsRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L490">			final SessionID sessionID = Utils.getID(request.getSessionID());</span>
+<span class="nc" id="L491">			final List&lt;ObjectWithDataParamOrReturn&gt; objects = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">			for (final CommonMessages.ObjectWithDataParamOrReturn entry : request.getBytesUpdateList()) {</span>
+<span class="nc" id="L493">				objects.add(Utils.getObjectWithDataParamOrReturn(entry));</span>
+<span class="nc" id="L494">			}</span>
+<span class="nc" id="L495">			dataService.upsertObjects(sessionID, objects);</span>
+<span class="nc" id="L496">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L497">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L499">		} catch (final Exception e) {</span>
+<span class="nc" id="L500">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L501">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L502">			responseObserver.onCompleted();</span>
+<span class="nc" id="L503">		}</span>
+<span class="nc" id="L504">	}</span>
+
+	@Override
+	public void newReplica(final NewReplicaRequest request,
+			final io.grpc.stub.StreamObserver&lt;NewReplicaResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L511">			final Set&lt;ObjectID&gt; result = dataService.newReplica(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L512">					Utils.getID(request.getObjectID()), request.getRecursive());</span>
+
+<span class="nc" id="L514">			final NewReplicaResponse.Builder builder = NewReplicaResponse.newBuilder();</span>
+<span class="nc bnc" id="L515" title="All 2 branches missed.">			for (final ObjectID oid : result) {</span>
+<span class="nc" id="L516">				builder.addReplicatedIDs(Utils.getMsgID(oid));</span>
+<span class="nc" id="L517">			}</span>
+
+<span class="nc" id="L519">			final NewReplicaResponse resp = builder.build();</span>
+<span class="nc" id="L520">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L521">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L523">		} catch (final Exception e) {</span>
+<span class="nc" id="L524">			final NewReplicaResponse.Builder builder = NewReplicaResponse.newBuilder();</span>
+<span class="nc" id="L525">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L526">			final NewReplicaResponse resp = builder.build();</span>
+<span class="nc" id="L527">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L528">			responseObserver.onCompleted();</span>
+<span class="nc" id="L529">		}</span>
+<span class="nc" id="L530">	}</span>
+
+	@Override
+	public void moveObjects(final MoveObjectsRequest request,
+			final io.grpc.stub.StreamObserver&lt;MoveObjectsResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L537">			final Set&lt;ObjectID&gt; result = dataService.moveObjects(Utils.getID(request.getSessionID()),</span>
+<span class="nc" id="L538">					Utils.getID(request.getObjectID()), Utils.getID(request.getDestLocID()), request.getRecursive());</span>
+<span class="nc" id="L539">			final MoveObjectsResponse.Builder builder = MoveObjectsResponse.newBuilder();</span>
+<span class="nc bnc" id="L540" title="All 2 branches missed.">			for (final ObjectID oid : result) {</span>
+<span class="nc" id="L541">				builder.addMovedObjects(Utils.getMsgID(oid));</span>
+<span class="nc" id="L542">			}</span>
+
+<span class="nc" id="L544">			final MoveObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L545">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L546">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L548">		} catch (final Exception e) {</span>
+<span class="nc" id="L549">			final MoveObjectsResponse.Builder builder = MoveObjectsResponse.newBuilder();</span>
+<span class="nc" id="L550">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L551">			final MoveObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L552">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L553">			responseObserver.onCompleted();</span>
+<span class="nc" id="L554">		}</span>
+<span class="nc" id="L555">	}</span>
+
+	@Override
+	public void removeObjects(final RemoveObjectsRequest request,
+			final io.grpc.stub.StreamObserver&lt;RemoveObjectsResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L562">			final Set&lt;ObjectID&gt; objectIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L563" title="All 2 branches missed.">			for (final CommonMessages.ObjectID oid : request.getObjectIDsList()) {</span>
+<span class="nc" id="L564">				objectIDs.add(Utils.getID(oid));</span>
+<span class="nc" id="L565">			}</span>
+<span class="nc" id="L566">			final Map&lt;ObjectID, ExecutionEnvironmentID&gt; result = dataService.removeObjects(</span>
+<span class="nc" id="L567">					Utils.getID(request.getSessionID()), objectIDs, request.getRecursive(), request.getMoving(),</span>
+<span class="nc" id="L568">					Utils.getID(request.getNewHint()));</span>
+<span class="nc" id="L569">			final RemoveObjectsResponse.Builder builder = RemoveObjectsResponse.newBuilder();</span>
+<span class="nc bnc" id="L570" title="All 2 branches missed.">			for (final Entry&lt;ObjectID, ExecutionEnvironmentID&gt; entry : result.entrySet()) {</span>
+<span class="nc" id="L571">				builder.putRemovedObjects(entry.getKey().getId().toString(), entry.getValue().getId().toString());</span>
+<span class="nc" id="L572">			}</span>
+
+<span class="nc" id="L574">			final RemoveObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L575">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L576">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L578">		} catch (final Exception e) {</span>
+<span class="nc" id="L579">			final RemoveObjectsResponse.Builder builder = RemoveObjectsResponse.newBuilder();</span>
+<span class="nc" id="L580">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L581">			final RemoveObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L582">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L583">			responseObserver.onCompleted();</span>
+<span class="nc" id="L584">		}</span>
+<span class="nc" id="L585">	}</span>
+
+	@Override
+	public void migrateObjectsToBackends(final MigrateObjectsRequest request,
+			final io.grpc.stub.StreamObserver&lt;MigrateObjectsResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L592">			final Map&lt;StorageLocationID, StorageLocation&gt; backends = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L593" title="All 2 branches missed.">			for (final Entry&lt;String, String&gt; entry : request.getDestStorageLocsMap().entrySet()) {</span>
+<span class="nc" id="L594">				backends.put(Utils.getStorageLocationIDFromUUID(entry.getKey()),</span>
+<span class="nc" id="L595">						(StorageLocation) CommonYAML.getYamlObject().load(entry.getValue()));</span>
+<span class="nc" id="L596">			}</span>
+<span class="nc" id="L597">			final Tuple&lt;Map&lt;StorageLocationID, Set&lt;ObjectID&gt;&gt;, Set&lt;ObjectID&gt;&gt; result = dataService</span>
+<span class="nc" id="L598">					.migrateObjectsToBackends(backends);</span>
+
+<span class="nc" id="L600">			final MigrateObjectsResponse.Builder builder = MigrateObjectsResponse.newBuilder();</span>
+<span class="nc bnc" id="L601" title="All 2 branches missed.">			for (final Entry&lt;StorageLocationID, Set&lt;ObjectID&gt;&gt; entry : result.getFirst().entrySet()) {</span>
+<span class="nc" id="L602">				final MigratedObjects.Builder migratedObjsBuilder = MigratedObjects.newBuilder();</span>
+<span class="nc bnc" id="L603" title="All 2 branches missed.">				for (final ObjectID oid : entry.getValue()) {</span>
+<span class="nc" id="L604">					migratedObjsBuilder.addObjs(Utils.getMsgID(oid));</span>
+<span class="nc" id="L605">				}</span>
+<span class="nc" id="L606">				final MigratedObjects mObjs = migratedObjsBuilder.build();</span>
+<span class="nc" id="L607">				builder.putMigratedObjs(entry.getKey().getId().toString(), mObjs);</span>
+<span class="nc" id="L608">			}</span>
+
+<span class="nc" id="L610">			final MigratedObjects.Builder nonmigratedObjsBuilder = MigratedObjects.newBuilder();</span>
+<span class="nc bnc" id="L611" title="All 2 branches missed.">			for (final ObjectID oid : result.getSecond()) {</span>
+<span class="nc" id="L612">				nonmigratedObjsBuilder.addObjs(Utils.getMsgID(oid));</span>
+<span class="nc" id="L613">			}</span>
+<span class="nc" id="L614">			final MigratedObjects nonmObjs = nonmigratedObjsBuilder.build();</span>
+<span class="nc" id="L615">			builder.setNonMigratedObjs(nonmObjs);</span>
+
+<span class="nc" id="L617">			final MigrateObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L618">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L619">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L621">		} catch (final Exception e) {</span>
+<span class="nc" id="L622">			final MigrateObjectsResponse.Builder builder = MigrateObjectsResponse.newBuilder();</span>
+<span class="nc" id="L623">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L624">			final MigrateObjectsResponse resp = builder.build();</span>
+<span class="nc" id="L625">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L626">			responseObserver.onCompleted();</span>
+<span class="nc" id="L627">		}</span>
+<span class="nc" id="L628">	}</span>
+
+	@Override
+	public void getClassIDFromObjectInMemory(final GetClassIDFromObjectInMemoryRequest request,
+			final io.grpc.stub.StreamObserver&lt;GetClassIDFromObjectInMemoryResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L635">			final ObjectID oid = Utils.getID(request.getObjectID());</span>
+
+<span class="nc" id="L637">			final MetaClassID result = dataService.getClassIDFromObjectInMemory(oid);</span>
+
+			final GetClassIDFromObjectInMemoryResponse.Builder builder = GetClassIDFromObjectInMemoryResponse
+<span class="nc" id="L640">					.newBuilder();</span>
+<span class="nc bnc" id="L641" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc" id="L642">				builder.setClassID(Utils.getMsgID(result));</span>
+			}
+<span class="nc" id="L644">			final GetClassIDFromObjectInMemoryResponse resp = builder.build();</span>
+<span class="nc" id="L645">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L646">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L648">		} catch (final Exception e) {</span>
+			final GetClassIDFromObjectInMemoryResponse.Builder builder = GetClassIDFromObjectInMemoryResponse
+<span class="nc" id="L650">					.newBuilder();</span>
+<span class="nc" id="L651">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L652">			final GetClassIDFromObjectInMemoryResponse resp = builder.build();</span>
+<span class="nc" id="L653">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L654">			responseObserver.onCompleted();</span>
+<span class="nc" id="L655">		}</span>
+<span class="nc" id="L656">	}</span>
+
+	@Override
+	public void makePersistent(final MakePersistentRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+<span class="nc" id="L661">		LOGGER.debug(&quot;[==Serialization==] Received request for make persistent &quot;);</span>
+		try {
+<span class="nc" id="L663">			SerializedParametersOrReturn params = null;</span>
+<span class="nc bnc" id="L664" title="All 2 branches missed.">			if (request.hasParams()) {</span>
+<span class="nc" id="L665">				params = Utils.getParamsOrReturn(request.getParams());</span>
+			}
+<span class="nc bnc" id="L667" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L668">				LOGGER.debug(&quot;[==Serialization==] Received request for make persistent with params:&quot; + params);</span>
+			}
+<span class="nc" id="L670">			dataService.makePersistent(Utils.getID(request.getSessionID()), params);</span>
+
+<span class="nc" id="L672">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L673">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L675">		} catch (final Exception e) {</span>
+<span class="nc" id="L676">			e.printStackTrace();</span>
+<span class="nc" id="L677">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L678">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L679">			responseObserver.onCompleted();</span>
+<span class="nc" id="L680">		}</span>
+<span class="nc" id="L681">	}</span>
+
+	@Override
+	public void federate(final FederateRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L688">			SerializedParametersOrReturn params = null;</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">			if (request.hasParams()) {</span>
+<span class="nc" id="L690">				params = Utils.getParamsOrReturn(request.getParams());</span>
+			}
+
+<span class="nc" id="L693">			dataService.federate(Utils.getID(request.getSessionID()), params);</span>
+
+<span class="nc" id="L695">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L696">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L698">		} catch (final Exception e) {</span>
+<span class="nc" id="L699">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L700">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L701">			responseObserver.onCompleted();</span>
+<span class="nc" id="L702">		}</span>
+<span class="nc" id="L703">	}</span>
+
+	@Override
+	public void unfederate(final UnfederateRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L709">			final Set&lt;ObjectID&gt; objectIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L710" title="All 2 branches missed.">			for (final CommonMessages.ObjectID oid : request.getObjectIDsList()) {</span>
+<span class="nc" id="L711">				objectIDs.add(Utils.getID(oid));</span>
+<span class="nc" id="L712">			}</span>
+<span class="nc" id="L713">			dataService.unfederate(Utils.getID(request.getSessionID()), objectIDs);</span>
+<span class="nc" id="L714">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L715">			responseObserver.onCompleted();</span>
+<span class="nc" id="L716">		} catch (final Exception e) {</span>
+<span class="nc" id="L717">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L718">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L719">			responseObserver.onCompleted();</span>
+<span class="nc" id="L720">		}</span>
+<span class="nc" id="L721">	}</span>
+
+	@Override
+	public void executeImplementation(final ExecuteImplementationRequest request,
+			final io.grpc.stub.StreamObserver&lt;ExecuteImplementationResponse&gt; responseObserver) {
+		try {
+
+<span class="nc" id="L728">			SerializedParametersOrReturn params = null;</span>
+<span class="nc bnc" id="L729" title="All 2 branches missed.">			if (request.hasParams()) {</span>
+<span class="nc" id="L730">				params = Utils.getParamsOrReturn(request.getParams());</span>
+			}
+
+<span class="nc" id="L733">			final ObjectID objectID = Utils.getID(request.getObjectID());</span>
+<span class="nc" id="L734">			final ImplementationID implID = Utils.getID(request.getImplementationID());</span>
+
+<span class="nc" id="L736">			final SerializedParametersOrReturn result = dataService.executeImplementation(objectID, implID, params,</span>
+<span class="nc" id="L737">					Utils.getID(request.getSessionID()));</span>
+
+<span class="nc" id="L739">			final ExecuteImplementationResponse.Builder builder = ExecuteImplementationResponse.newBuilder();</span>
+<span class="nc bnc" id="L740" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc" id="L741">				builder.setRet(Utils.getParamsOrReturn(result));</span>
+			}
+
+<span class="nc" id="L744">			final ExecuteImplementationResponse resp = builder.build();</span>
+
+<span class="nc" id="L746">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L747">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L749">		} catch (final Exception e) {</span>
+<span class="nc" id="L750">			LOGGER.debug(&quot;executeImplementation DataClay native error&quot;, e);</span>
+<span class="nc" id="L751">			final ExecuteImplementationResponse.Builder builder = ExecuteImplementationResponse.newBuilder();</span>
+<span class="nc" id="L752">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L753">			final ExecuteImplementationResponse resp = builder.build();</span>
+<span class="nc" id="L754">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L755">			responseObserver.onCompleted();</span>
+<span class="nc" id="L756">		}</span>
+<span class="nc" id="L757">	}</span>
+
+	@Override
+	public void closeSessionInDS(final CloseSessionInDSRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L764">			dataService.closeSessionInDS(Utils.getID(request.getSessionID()));</span>
+<span class="nc" id="L765">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L766">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L768">		} catch (final Exception e) {</span>
+<span class="nc" id="L769">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L770">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L771">			responseObserver.onCompleted();</span>
+<span class="nc" id="L772">		}</span>
+<span class="nc" id="L773">	}</span>
+
+	@Override
+	public void updateRefs(
+			final es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.UpdateRefsRequest request,
+			final io.grpc.stub.StreamObserver&lt;es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L780">			final Map&lt;ObjectID, Integer&gt; updateRefs = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L781" title="All 2 branches missed.">			if (request.getRefsToUpdateCount() &gt; 0) {</span>
+<span class="nc bnc" id="L782" title="All 2 branches missed.">				for (final Entry&lt;String, Integer&gt; curEntry : request.getRefsToUpdateMap().entrySet()) {</span>
+<span class="nc" id="L783">					updateRefs.put(Utils.getObjectIDFromUUID(curEntry.getKey()), curEntry.getValue());</span>
+<span class="nc" id="L784">				}</span>
+			}
+
+<span class="nc" id="L787">			dataService.updateRefs(updateRefs);</span>
+<span class="nc" id="L788">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L789">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L791">		} catch (final Exception e) {</span>
+<span class="nc" id="L792">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L793">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L794">			responseObserver.onCompleted();</span>
+<span class="nc" id="L795">		}</span>
+<span class="nc" id="L796">	}</span>
+
+	@Override
+	public void getRetainedReferences(
+			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;es.bsc.dataclay.communication.grpc.messages.dataservice.DataserviceMessages.GetRetainedReferencesResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L803">			final Set&lt;ObjectID&gt; result = dataService.getRetainedReferences();</span>
+
+<span class="nc" id="L805">			final GetRetainedReferencesResponse.Builder builder = GetRetainedReferencesResponse.newBuilder();</span>
+<span class="nc bnc" id="L806" title="All 2 branches missed.">			for (final ObjectID oid : result) {</span>
+<span class="nc" id="L807">				builder.addRetainedReferences(Utils.getMsgID(oid));</span>
+<span class="nc" id="L808">			}</span>
+
+<span class="nc" id="L810">			final GetRetainedReferencesResponse resp = builder.build();</span>
+<span class="nc" id="L811">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L812">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L814">		} catch (final Exception ex) {</span>
+<span class="nc" id="L815">			LOGGER.debug(&quot;getRetainedReferences error&quot;, ex);</span>
+
+<span class="nc" id="L817">			final GetRetainedReferencesResponse.Builder builder = GetRetainedReferencesResponse.newBuilder();</span>
+<span class="nc" id="L818">			builder.setExcInfo(Utils.serializeException(ex));</span>
+<span class="nc" id="L819">			final GetRetainedReferencesResponse resp = builder.build();</span>
+<span class="nc" id="L820">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L821">			responseObserver.onCompleted();</span>
+<span class="nc" id="L822">		}</span>
+<span class="nc" id="L823">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Others.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void cleanExecutionClassDirectory(final CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L834">			dataService.cleanExecutionClassDirectory();</span>
+<span class="nc" id="L835">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L836">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L838">		} catch (final Exception e) {</span>
+<span class="nc" id="L839">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L840">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L841">			responseObserver.onCompleted();</span>
+<span class="nc" id="L842">		}</span>
+<span class="nc" id="L843">	}</span>
+
+	@Override
+	public void closeDbHandler(final CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L849">			dataService.closeDbHandler();</span>
+<span class="nc" id="L850">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L851">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L853">		} catch (final Exception e) {</span>
+<span class="nc" id="L854">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L855">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L856">			responseObserver.onCompleted();</span>
+<span class="nc" id="L857">		}</span>
+<span class="nc" id="L858">	}</span>
+
+	@Override
+	public void shutDown(final CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L864">			dataService.shutDown();</span>
+<span class="nc" id="L865">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L866">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L868">		} catch (final Exception e) {</span>
+<span class="nc" id="L869">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L870">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L871">			responseObserver.onCompleted();</span>
+<span class="nc" id="L872">		}</span>
+<span class="nc" id="L873">	}</span>
+
+	@Override
+	public void disconnectFromOthers(final CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L879">			dataService.disconnectFromOthers();</span>
+<span class="nc" id="L880">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L881">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L883">		} catch (final Exception e) {</span>
+<span class="nc" id="L884">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L885">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L886">			responseObserver.onCompleted();</span>
+<span class="nc" id="L887">		}</span>
+<span class="nc" id="L888">	}</span>
+
+	/**
+	 * &lt;pre&gt;
+	 * Paraver.
+	 * &lt;/pre&gt;
+	 */
+	@Override
+	public void cleanCaches(final CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L899">			dataService.cleanCaches();</span>
+<span class="nc" id="L900">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L901">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L903">		} catch (final Exception e) {</span>
+<span class="nc" id="L904">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L905">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L906">			responseObserver.onCompleted();</span>
+<span class="nc" id="L907">		}</span>
+<span class="nc" id="L908">	}</span>
+
+	@Override
+	public void activateTracing(final ActivateTracingRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+<span class="nc" id="L914">		final int currentAvailableTaskID = request.getTaskid();</span>
+		try {
+<span class="nc" id="L916">			dataService.activateTracing(currentAvailableTaskID);</span>
+<span class="nc" id="L917">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L918">			responseObserver.onCompleted();</span>
+<span class="nc" id="L919">		} catch (final Exception e) {</span>
+<span class="nc" id="L920">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L921">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L922">			responseObserver.onCompleted();</span>
+<span class="nc" id="L923">		}</span>
+<span class="nc" id="L924">	}</span>
+
+	@Override
+	public void deactivateTracing(final CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L930">			dataService.deactivateTracing();</span>
+<span class="nc" id="L931">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L932">			responseObserver.onCompleted();</span>
+<span class="nc" id="L933">		} catch (final Exception e) {</span>
+<span class="nc" id="L934">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L935">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L936">			responseObserver.onCompleted();</span>
+<span class="nc" id="L937">		}</span>
+<span class="nc" id="L938">	}</span>
+	
+	@Override
+	public void getTraces(final EmptyMessage request, final StreamObserver&lt;GetTracesResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L943">			final Map&lt;String, byte[]&gt; traces = dataService.getTraces();</span>
+<span class="nc" id="L944">			final GetTracesResponse.Builder builder = GetTracesResponse.newBuilder();</span>
+<span class="nc bnc" id="L945" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; entry : traces.entrySet()) {</span>
+<span class="nc" id="L946">				builder.putTraces(entry.getKey(), ByteString.copyFrom(entry.getValue()));</span>
+<span class="nc" id="L947">			}</span>
+
+<span class="nc" id="L949">			final GetTracesResponse resp = builder.build();</span>
+<span class="nc" id="L950">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L951">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L953">		} catch (final Exception e) {</span>
+<span class="nc" id="L954">			final GetTracesResponse.Builder builder = GetTracesResponse.newBuilder();</span>
+<span class="nc" id="L955">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L956">			final GetTracesResponse resp = builder.build();</span>
+<span class="nc" id="L957">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L958">			responseObserver.onCompleted();</span>
+<span class="nc" id="L959">		}</span>
+<span class="nc" id="L960">	}</span>
+
+	@Override
+	public void registerPendingObjects(final CommonMessages.EmptyMessage request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+
+		try {
+<span class="nc" id="L967">			dataService.registerPendingObjects();</span>
+<span class="nc" id="L968">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L969">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L971">		} catch (final Exception e) {</span>
+<span class="nc" id="L972">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L973">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L974">			responseObserver.onCompleted();</span>
+<span class="nc" id="L975">		}</span>
+<span class="nc" id="L976">	}</span>
+	
+	@Override
+	public void exists(final DataserviceMessages.ExistsRequest request,
+			final io.grpc.stub.StreamObserver&lt;DataserviceMessages.ExistsResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L982">			final ObjectID objectID = Utils.getID(request.getObjectID());</span>
+<span class="nc" id="L983">			final boolean result = dataService.existsInEE(objectID);</span>
+<span class="nc" id="L984">			final DataserviceMessages.ExistsResponse.Builder builder = DataserviceMessages.ExistsResponse.newBuilder();</span>
+<span class="nc" id="L985">			builder.setExists(result);</span>
+<span class="nc" id="L986">			final DataserviceMessages.ExistsResponse resp = builder.build();</span>
+<span class="nc" id="L987">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L988">			responseObserver.onCompleted();</span>
+<span class="nc" id="L989">		} catch (final Exception e) {</span>
+<span class="nc" id="L990">			final DataserviceMessages.ExistsResponse.Builder builder = DataserviceMessages.ExistsResponse.newBuilder();</span>
+<span class="nc" id="L991">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L992">			final DataserviceMessages.ExistsResponse resp = builder.build();</span>
+<span class="nc" id="L993">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L994">			responseObserver.onCompleted();</span>
+<span class="nc" id="L995">		}</span>
+<span class="nc" id="L996">	}</span>
+	
+	@Override
+	public void existsInDB(final DataserviceMessages.ExistsInDBRequest request,
+			final io.grpc.stub.StreamObserver&lt;DataserviceMessages.ExistsInDBResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1002">			final ObjectID objectID = Utils.getID(request.getObjectID());</span>
+
+<span class="nc" id="L1004">			final boolean result = dataService.exists(objectID);</span>
+			
+<span class="nc" id="L1006">			final DataserviceMessages.ExistsInDBResponse.Builder builder = DataserviceMessages.ExistsInDBResponse.newBuilder();</span>
+<span class="nc" id="L1007">			builder.setExists(result);</span>
+<span class="nc" id="L1008">			final DataserviceMessages.ExistsInDBResponse resp = builder.build();</span>
+<span class="nc" id="L1009">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1010">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1012">		} catch (final Exception e) {</span>
+<span class="nc" id="L1013">			final DataserviceMessages.ExistsInDBResponse.Builder builder = DataserviceMessages.ExistsInDBResponse.newBuilder();</span>
+<span class="nc" id="L1014">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1015">			final DataserviceMessages.ExistsInDBResponse resp = builder.build();</span>
+<span class="nc" id="L1016">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1017">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1018">		}</span>
+<span class="nc" id="L1019">	}</span>
+
+	@Override
+	public void storeToDB(final DataserviceMessages.StoreToDBRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1025">			final ExecutionEnvironmentID eeID = Utils.getID(request.getExecutionEnvironmentID());</span>
+<span class="nc" id="L1026">			final ObjectID objectID = Utils.getID(request.getObjectID());</span>
+<span class="nc" id="L1027">			final byte[] bytes = request.getObjBytes().toByteArray();</span>
+
+<span class="nc" id="L1029">			dataService.store(eeID, objectID, bytes);</span>
+<span class="nc" id="L1030">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1031">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1033">		} catch (final Exception e) {</span>
+<span class="nc" id="L1034">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1035">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1036">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1037">		}</span>
+<span class="nc" id="L1038">	}</span>
+
+	@Override
+	public void getFromDB(final DataserviceMessages.GetFromDBRequest request,
+			final io.grpc.stub.StreamObserver&lt;DataserviceMessages.GetFromDBResponse&gt; responseObserver) {
+		try {
+<span class="nc" id="L1044">			final ObjectID objectID = Utils.getID(request.getObjectID());</span>
+<span class="nc" id="L1045">			final ExecutionEnvironmentID eeID = Utils.getID(request.getExecutionEnvironmentID());</span>
+
+<span class="nc" id="L1047">			final byte[] getResult = dataService.get(eeID, objectID);</span>
+<span class="nc" id="L1048">			final ByteString result = ByteString.copyFrom(getResult);</span>
+
+<span class="nc" id="L1050">			final GetFromDBResponse.Builder builder = GetFromDBResponse.newBuilder();</span>
+<span class="nc bnc" id="L1051" title="All 2 branches missed.">			if (result != null) {</span>
+<span class="nc" id="L1052">				builder.setObjBytes((result));</span>
+			}
+
+<span class="nc" id="L1055">			final GetFromDBResponse resp = builder.build();</span>
+
+<span class="nc" id="L1057">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1058">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1060">		} catch (final Exception e) {</span>
+<span class="nc" id="L1061">			final GetFromDBResponse.Builder builder = GetFromDBResponse.newBuilder();</span>
+<span class="nc" id="L1062">			builder.setExcInfo(Utils.serializeException(e));</span>
+<span class="nc" id="L1063">			final GetFromDBResponse resp = builder.build();</span>
+<span class="nc" id="L1064">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1065">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1066">		}</span>
+<span class="nc" id="L1067">	}</span>
+
+	@Override
+	public void updateToDB(final DataserviceMessages.UpdateToDBRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1073">			final ExecutionEnvironmentID eeID = Utils.getID(request.getExecutionEnvironmentID());</span>
+<span class="nc" id="L1074">			final ObjectID objectID = Utils.getID(request.getObjectID());</span>
+<span class="nc" id="L1075">			final byte[] bytes = request.getObjBytes().toByteArray();</span>
+<span class="nc" id="L1076">			final boolean dirty = request.getDirty();</span>
+<span class="nc" id="L1077">			dataService.update(eeID, objectID, bytes, dirty);</span>
+<span class="nc" id="L1078">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1079">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1081">		} catch (final Exception e) {</span>
+<span class="nc" id="L1082">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1083">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1084">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1085">		}</span>
+<span class="nc" id="L1086">	}</span>
+
+	@Override
+	public void deleteToDB(final DataserviceMessages.DeleteToDBRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1092">			final ExecutionEnvironmentID eeID = Utils.getID(request.getExecutionEnvironmentID());</span>
+<span class="nc" id="L1093">			final ObjectID objectID = Utils.getID(request.getObjectID());</span>
+
+<span class="nc" id="L1095">			dataService.delete(eeID, objectID);</span>
+<span class="nc" id="L1096">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1097">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1099">		} catch (final Exception e) {</span>
+<span class="nc" id="L1100">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1101">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1102">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1103">		}</span>
+<span class="nc" id="L1104">	}</span>
+
+	@Override
+	public void associateExecutionEnvironment(final DataserviceMessages.AssociateExecutionEnvironmentRequest request,
+			final io.grpc.stub.StreamObserver&lt;CommonMessages.ExceptionInfo&gt; responseObserver) {
+		try {
+<span class="nc" id="L1110">			dataService.associateExecutionEnvironment(Utils.getID(request.getExecutionEnvironmentID()));</span>
+<span class="nc" id="L1111">			Utils.returnExceptionInfoMessage(responseObserver);</span>
+<span class="nc" id="L1112">			responseObserver.onCompleted();</span>
+
+<span class="nc" id="L1114">		} catch (final Exception e) {</span>
+<span class="nc" id="L1115">			final ExceptionInfo resp = Utils.serializeException(e);</span>
+<span class="nc" id="L1116">			responseObserver.onNext(resp);</span>
+<span class="nc" id="L1117">			responseObserver.onCompleted();</span>
+<span class="nc" id="L1118">		}</span>
+<span class="nc" id="L1119">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

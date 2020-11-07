@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SQLiteHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dbhandler.sql.sqlite</a> &gt; <span class="el_source">SQLiteHandler.java</span></div><h1>SQLiteHandler.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.dbhandler.sql.sqlite;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
+import javax.sql.DataSource;
+
+import org.apache.commons.dbcp2.BasicDataSource;
+import org.apache.commons.dbcp2.DelegatingConnection;
+import org.apache.commons.dbcp2.PoolableConnection;
+import org.apache.commons.dbcp2.PoolingDataSource;
+import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.sqlite.Function;
+
+import es.bsc.dataclay.dbhandler.sql.SQLHandler;
+import es.bsc.dataclay.dbhandler.sql.common.ConnectionWrapper;
+
+public class SQLiteHandler extends SQLHandler&lt;SQLiteHandlerConfig&gt; {
+	
+<span class="fc" id="L26">	private static final Logger LOGGER = LogManager.getLogger(SQLiteHandler.class);</span>
+
+	public SQLiteHandler(final SQLiteHandlerConfig connConfig) {
+<span class="fc" id="L29">		super(connConfig);</span>
+<span class="fc" id="L30">	}</span>
+
+	@Override
+	protected void initDataSource() {
+<span class="fc" id="L34">		this.dataSource = rootDataSource;</span>
+<span class="fc" id="L35">	}</span>
+
+	@Override
+	protected void initRootDataSource() {
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">		if (rootDataSource == null) {</span>
+<span class="fc" id="L40">			rootDataSource = new SQLiteDataSource();</span>
+<span class="fc" id="L41">			String url = &quot;jdbc:sqlite:&quot;;</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">			if(configuration.isInMemory()) {</span>
+<span class="fc" id="L43">				url += &quot;:memory:&quot;;</span>
+			}else {
+<span class="nc" id="L45">				url  += configuration.getDbPath();</span>
+			}
+<span class="fc" id="L47">			LOGGER.debug(&quot;SQLITE DB URL = &quot; + url);</span>
+<span class="fc" id="L48">			setConfiguration(rootDataSource, url);</span>
+		}
+<span class="fc" id="L50">	}</span>
+
+	@Override
+	public boolean databaseExists() {
+<span class="fc" id="L54">		return new File(configuration.getDbPath()).exists();</span>
+	}
+
+	@Override
+	public void createDatabase() {
+
+<span class="fc" id="L60">	}</span>
+
+	private void setConfiguration(final BasicDataSource ds, final String url) {
+<span class="fc" id="L63">		ds.setUrl(url);</span>
+<span class="fc" id="L64">		ds.setDriverClassName(ExtendedSQLiteDriver.class.getCanonicalName());</span>
+<span class="fc" id="L65">		ds.setMaxTotal(1); // KEEP MaxTotal TO 1 to avoid the exception &quot;[SQLITE_BUSY] database file is locked&quot;</span>
+<span class="fc" id="L66">	}</span>
+
+	@Override
+	public void dropAllDatabases() {
+		try {
+<span class="fc" id="L71">			FileUtils.deleteDirectory(new File(configuration.getFolder()));</span>
+<span class="nc" id="L72">		} catch (final IOException e) {</span>
+<span class="nc" id="L73">			e.printStackTrace();</span>
+<span class="fc" id="L74">		}</span>
+<span class="fc" id="L75">	}</span>
+}
+
+// Solves locking due to managers are opening more than one connection from the datasource
+<span class="fc" id="L79">class SQLiteDataSource extends BasicDataSource {</span>
+	
+<span class="fc" id="L81">	private UncloseableConnection connection = null;</span>
+
+	@Override
+	public Connection getConnection() throws SQLException {
+<span class="pc bpc" id="L85" title="1 of 4 branches missed.">		if(connection == null || connection.isClosed()) {</span>
+<span class="fc" id="L86">			final Connection conn = super.getConnection();</span>
+			// Getting the original SQLiteConnection to add the CHR function
+<span class="fc" id="L88">			final PoolableConnection poolableConn = (PoolableConnection)((DelegatingConnection&lt;?&gt;)conn).getDelegate();</span>
+<span class="fc" id="L89">			Function.create(poolableConn.getDelegate(), &quot;CHR&quot;, CHR);</span>
+<span class="fc" id="L90">			connection = new UncloseableConnection(conn);</span>
+		}
+<span class="fc" id="L92">		return connection;</span>
+	}
+
+	// Setting the delegating connection accessible
+	@Override
+	protected DataSource createDataSourceInstance() throws SQLException {
+<span class="fc" id="L98">		final PoolingDataSource&lt;?&gt; pds = (PoolingDataSource&lt;?&gt;)super.createDataSourceInstance();</span>
+<span class="fc" id="L99">		pds.setAccessToUnderlyingConnectionAllowed(true);</span>
+<span class="fc" id="L100">		return pds;</span>
+	}
+
+<span class="fc" id="L103">	private static final Function CHR = new Function(){</span>
+		// The CHR function is equivalent to sqlite's char function
+		// and it's created for compatibility with Postgres CHR
+		@Override
+		protected void xFunc() throws SQLException {
+<span class="fc" id="L108">			result((char)value_int(0) + &quot;&quot;);</span>
+<span class="fc" id="L109">		}</span>
+	};
+}
+
+// TODO managers should not close the connection to a sqlite db
+class UncloseableConnection extends ConnectionWrapper&lt;SQLiteHandlerConfig&gt;{
+	public UncloseableConnection(final Connection connection) {
+<span class="fc" id="L116">		super(connection);</span>
+<span class="fc" id="L117">	}</span>
+
+	@Override
+	public void close() {
+		// Ignore, needed because managers are closing the only possible sqlite connection
+<span class="fc" id="L122">	}</span>
+
+	public void closeForReal() throws SQLException{
+<span class="nc" id="L125">		super.close();</span>
+<span class="nc" id="L126">	}</span>
+
+	@Override
+	public PreparedStatement prepareStatement(final String sql) throws SQLException {
+<span class="fc" id="L130">		final PreparedStatement ps = super.prepareStatement(sql);</span>
+<span class="fc" id="L131">		return ps;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>
