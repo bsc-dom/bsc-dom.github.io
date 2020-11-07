@@ -1,4 +1,6 @@
 #!/bin/bash
+SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+BASEDIR=$SCRIPTDIR/..
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [[ "$BRANCH" != "master" ]]; then
   printError 'Branch is not master. Aborting script';
@@ -10,13 +12,15 @@ TMP_DIR=$(mktemp -d)
 git clone git@github.com:bsc-dom/javaclay.git $TMP_DIR
 
 # create javadoc
-cd $TMP_DIR
+pushd $TMP_DIR
 mvn site -Ppublish
+popd
 
 # copy here and push
-cp $TMP_DIR/target/site ./site
+rm -rf $BASEDIR/javaclay/*
+cp -r $TMP_DIR/target/site/* $BASEDIR/javaclay/
 
-git add ./site
+git add $BASEDIR/javaclay
 git commit -m "New release"
-git push origin HEAD:master
+git push
 
