@@ -1,0 +1,24 @@
+version: 2.6.dev.build{build}
+branches:
+  only:
+    - develop
+skip_tags: true
+skip_branch_with_pr: true
+image: Ubuntu1804
+environment:
+  MN_SALT:
+    secure: mfxxGVIGJAn/9bdDJuddZPelTGttAp5E/Zhp5gWAYMXK4vs0ZNG7Y1me51KAMohPm2LoBOlJJcXDiTzHArWHBA==
+  MN_SECRET:
+    secure: hSTFAA0tfcvWY5Z+UekLapymVeyo7HxGMW52TMM8O6g=
+  GITHUB_SALT:
+    secure: S1zz7Lb+U+bm5FrmnmYJe0xOLiHDGxaYyVkjjjob9ZTOhoZyv3O8LM+ounMYWiuzXp1H7kLPfM9K9Po/13s2rw==
+  GITHUB_SECRET:
+    secure: ke5w8k2aDpFvNR4dPgXFeRqa1M/6drIDnhFlowF8sRM=
+build_script:
+  - |
+    docker run -v $APPVEYOR_BUILD_FOLDER:$APPVEYOR_BUILD_FOLDER \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -e MN_SALT=$MN_SALT \
+      -e MN_SECRET=$MN_SECRET \
+      -w=$APPVEYOR_BUILD_FOLDER \
+      bscdataclay/continuous-integration:reporting
