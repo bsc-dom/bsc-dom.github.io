@@ -1,0 +1,39 @@
+version: '3.8'
+networks:
+  default:
+    external:
+      name: "dataclay-testing-network"
+services:
+  dsjava2:
+    image: "bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    platform: ${IMAGE_PLATFORM}
+    ports:
+      - "4127:4127"
+    command: ""
+    environment:
+      - DATASERVICE_NAME=DS2
+      - DATASERVICE_JAVA_PORT_TCP=4127
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: [ "CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh" ]
+
+  dspython2:
+    image: "bscdataclay/dspython:${PYCLAY_IMAGE}"
+    platform: ${IMAGE_PLATFORM}
+    command: ""
+    ports:
+      - "7867:7867"
+    environment:
+      - DATASERVICE_NAME=DS2
+      - DATASERVICE_PYTHON_PORT_TCP=7867
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]

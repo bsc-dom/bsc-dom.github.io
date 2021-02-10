@@ -1,0 +1,62 @@
+version: '3.4'
+networks:
+  default:
+    external:
+      name: "dataclay-testing-network"
+services:
+  logicmoduleA:
+    image: "bscdataclay/logicmodule:${JAVACLAY_IMAGE}"
+    platform: ${IMAGE_PLATFORM}
+    ports:
+      - "12034:12034"
+    command: "--debug"
+    environment:
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmoduleA
+      - DATACLAY_ADMIN_USER=admin
+      - DATACLAY_ADMIN_PASSWORD=admin
+      #- EXPOSED_IP_FOR_CLIENT=127.0.0.1
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+         
+  dsjavaA:
+    image: "bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    platform: ${IMAGE_PLATFORM}
+    ports:
+      - "3127:3127"
+    command: "--debug"
+    depends_on:
+      - logicmoduleA
+    environment:
+      - DATASERVICE_NAME=DS1
+      - DATASERVICE_JAVA_PORT_TCP=3127
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmoduleA
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dspythonA:
+    image: "bscdataclay/dspython:${PYCLAY_IMAGE}"
+    platform: ${IMAGE_PLATFORM}
+    ports:
+      - "6867:6867"
+    command: "--debug"
+    depends_on:
+      - logicmoduleA
+      - dsjavaA
+    environment:
+      - DATASERVICE_NAME=DS1
+      - DATASERVICE_PYTHON_PORT_TCP=6867
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmoduleA
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
