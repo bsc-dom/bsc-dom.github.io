@@ -41,6 +41,7 @@ echo " ** Generated report ** "
 # publish
 echo " ** Publishing ** "
 sed -i -e "s~base href=\"/\"~base href=\"/testing-report/\"~g" testing-report/index.html
+git remote set-url origin git@github.com:bsc-dom/bsc-dom.github.io.git
 git add -A
 git commit -m "Updating test report from Appveyor"
 git push origin HEAD:master
