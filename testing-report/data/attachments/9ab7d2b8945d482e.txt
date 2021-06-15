@@ -1,0 +1,201 @@
+version: '3.4'
+networks:
+  default:
+    external:
+      name: "dataclay-testing-network"
+services:
+  logicmodule:
+    image: "dom-ci.bsc.es/bscdataclay/logicmodule:${JAVACLAY_IMAGE}"
+    ports:
+      - "12034:12034"
+    command: "--debug"
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/new-replica
+        target: /dataclay/storage
+    environment:
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+      - DATACLAY_ADMIN_USER=admin
+      - DATACLAY_ADMIN_PASSWORD=admin
+    deploy:
+      resources:
+        limits:
+          memory: $LOGICMODULE_MAX_MEMORY
+        reservations:
+          memory: $LOGICMODULE_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+         
+  dsjava:
+    image: "dom-ci.bsc.es/bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    ports:
+      - "3127:3127"
+    command: "--debug"
+    depends_on:
+      - logicmodule
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/new-replica
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS1
+      - DATASERVICE_JAVA_PORT_TCP=3127
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    deploy:
+      resources:
+        limits:
+          memory: $DSJAVA_MAX_MEMORY
+        reservations:
+          memory: $DSJAVA_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dsjava2:
+    image: "dom-ci.bsc.es/bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    ports:
+      - "4127:4127"
+    command: "--debug"
+    depends_on:
+      - logicmodule
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/new-replica
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS2
+      - DATASERVICE_JAVA_PORT_TCP=4127
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    deploy:
+      resources:
+        limits:
+          memory: $DSJAVA_MAX_MEMORY
+        reservations:
+          memory: $DSJAVA_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dsjava3:
+    image: "dom-ci.bsc.es/bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    ports:
+      - "5127:5127"
+    command: "--debug"
+    depends_on:
+      - logicmodule
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/new-replica
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS3
+      - DATASERVICE_JAVA_PORT_TCP=5127
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    deploy:
+      resources:
+        limits:
+          memory: $DSJAVA_MAX_MEMORY
+        reservations:
+          memory: $DSJAVA_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dspython:
+    image: "dom-ci.bsc.es/bscdataclay/dspython:${PYCLAY_IMAGE}"
+    command: ""
+    ports:
+      - "6867:6867"
+    depends_on:
+      - logicmodule
+      - dsjava
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/new-replica
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS1
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    deploy:
+      resources:
+        limits:
+          memory: $DSPYTHON_MAX_MEMORY
+        reservations:
+          memory: $DSPYTHON_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dspython2:
+    image: "dom-ci.bsc.es/bscdataclay/dspython:${PYCLAY_IMAGE}"
+    command: ""
+    ports:
+      - "7867:7867"
+    depends_on:
+      - logicmodule
+      - dsjava2
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/new-replica
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS2
+      - DATASERVICE_PYTHON_PORT_TCP=7867
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    deploy:
+      resources:
+        limits:
+          memory: $DSPYTHON_MAX_MEMORY
+        reservations:
+          memory: $DSPYTHON_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dspython3:
+    image: "dom-ci.bsc.es/bscdataclay/dspython:${PYCLAY_IMAGE}"
+    command: ""
+    ports:
+      - "8867:8867"
+    depends_on:
+      - logicmodule
+      - dsjava2
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/new-replica
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS3
+      - DATASERVICE_PYTHON_PORT_TCP=8867
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmodule
+    deploy:
+      resources:
+        limits:
+          memory: $DSPYTHON_MAX_MEMORY
+        reservations:
+          memory: $DSPYTHON_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
