@@ -12,7 +12,7 @@ echo " ** Obtained results ** "
 echo " ** Getting history ** "
 HISTORY_DIR="testing-report/history"
 if [ -d "$HISTORY_DIR" ]; then
-	cp -R $HISTORY_DIR /tmp/allure-results/history
+	cp -R $HISTORY_DIR $HOME/all-allure-results/history
 fi
 echo " ** Obtained history ** "
 
@@ -25,7 +25,7 @@ EXECUTOR='{
 			"url": "https://ci.appveyor.com/",
 			"buildUrl": "https://ci.appveyor.com/"
 }'
-echo "$EXECUTOR" > /tmp/allure-results/executor.json
+echo "$EXECUTOR" > $HOME/all-allure-results/executor.json
 echo " ** Generated executor ** "
 
 # remove previous report
