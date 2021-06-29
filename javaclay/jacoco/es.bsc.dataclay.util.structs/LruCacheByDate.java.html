@@ -38,20 +38,20 @@ public final class LruCacheByDate&lt;A, B&gt; {
 	 * @param theMaxEntries
 	 *            Maximum entries in Cache.
 	 */
-<span class="fc" id="L41">	public LruCacheByDate(final int theMaxEntries) {</span>
-<span class="fc" id="L42">		map = Collections.synchronizedMap(</span>
-<span class="fc" id="L43">				new CacheLinkedHashMap&lt;A, B&gt;(theMaxEntries, Configuration.Flags.LRU_LOAD_FACTOR.getFloatValue(), </span>
+<span class="nc" id="L41">	public LruCacheByDate(final int theMaxEntries) {</span>
+<span class="nc" id="L42">		map = Collections.synchronizedMap(</span>
+<span class="nc" id="L43">				new CacheLinkedHashMap&lt;A, B&gt;(theMaxEntries, Configuration.Flags.LRU_LOAD_FACTOR.getFloatValue(), </span>
 						true));
-<span class="fc" id="L45">		final Runnable task = new Runnable() {</span>
+<span class="nc" id="L45">		final Runnable task = new Runnable() {</span>
 			@Override
 			public void run() {
-<span class="fc" id="L48">				cleanCache();</span>
-<span class="fc" id="L49">			}</span>
+<span class="nc" id="L48">				cleanCache();</span>
+<span class="nc" id="L49">			}</span>
 		};
-<span class="fc" id="L51">		execService = Executors.newSingleThreadScheduledExecutor();</span>
-<span class="fc" id="L52">		execService.scheduleAtFixedRate(task, 0, Configuration.Flags.LRU_BYDATE_TIMEUNIT_VALUE.getIntValue(),</span>
-<span class="fc" id="L53">				(TimeUnit) Configuration.Flags.LRU_BYDATE_TIMEUNIT.getValue());</span>
-<span class="fc" id="L54">	}</span>
+<span class="nc" id="L51">		execService = Executors.newSingleThreadScheduledExecutor();</span>
+<span class="nc" id="L52">		execService.scheduleAtFixedRate(task, 0, Configuration.Flags.LRU_BYDATE_TIMEUNIT_VALUE.getIntValue(),</span>
+<span class="nc" id="L53">				(TimeUnit) Configuration.Flags.LRU_BYDATE_TIMEUNIT.getValue());</span>
+<span class="nc" id="L54">	}</span>
 
 
 
@@ -60,9 +60,9 @@ public final class LruCacheByDate&lt;A, B&gt; {
 	 */
 	@SuppressWarnings(&quot;unchecked&quot;)
 	public void cleanCache() {
-<span class="fc" id="L63">		final boolean firstCheckDone = false;</span>
+<span class="nc" id="L63">		final boolean firstCheckDone = false;</span>
 		// We assume that type B of value is a Tuple&lt;X, Date&gt;
-<span class="pc bpc" id="L65" title="1 of 2 branches missed.">		for (A key : this.keySet()) {</span>
+<span class="nc bnc" id="L65" title="All 2 branches missed.">		for (A key : this.keySet()) {</span>
 			final Tuple&lt;Object, Calendar&gt; curValue;
 			if (firstCheckDone) {
 				curValue = (Tuple&lt;Object, Calendar&gt;) this.get(key);
@@ -82,15 +82,15 @@ public final class LruCacheByDate&lt;A, B&gt; {
 <span class="nc" id="L82">				this.remove(key);</span>
 			}
 <span class="nc" id="L84">		}</span>
-<span class="fc" id="L85">	}</span>
+<span class="nc" id="L85">	}</span>
 	
 	//CHECKSTYLE:OFF
 	public B put(final A key, final B value) {
-<span class="fc" id="L89">		return map.put(key, value);</span>
+<span class="nc" id="L89">		return map.put(key, value);</span>
 	}
 	
 	public B get(final A key) { 
-<span class="fc" id="L93">		return map.get(key);</span>
+<span class="nc" id="L93">		return map.get(key);</span>
 	}
 	
 	public B remove(final A key) { 
@@ -110,7 +110,7 @@ public final class LruCacheByDate&lt;A, B&gt; {
 	}
 	
 	public Set&lt;A&gt; keySet() { 
-<span class="fc" id="L113">		return map.keySet();</span>
+<span class="nc" id="L113">		return map.keySet();</span>
 	}
 	
 	public int size() { 

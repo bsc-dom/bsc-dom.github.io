@@ -29,8 +29,9 @@ import es.bsc.dataclay.util.management.AbstractManager;
 import es.bsc.dataclay.util.management.sessionmgr.SessionContract;
 import es.bsc.dataclay.util.management.sessionmgr.SessionDataContract;
 import es.bsc.dataclay.util.management.sessionmgr.SessionInfo;
-import es.bsc.dataclay.util.structs.LruCacheByDate;
+import es.bsc.dataclay.util.structs.MemoryCache;
 import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible to manage information related to sessions.
@@ -41,16 +42,16 @@ public final class SessionManager extends AbstractManager {
 	private Logger logger;
 
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L44">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="fc" id="L45">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** DbHandler for the management of Sessions. */
 	private final SessionManagerDB sessionDB;
 
 	/** Cache for sessions. */
-	private final LruCacheByDate&lt;SessionID, Tuple&lt;Session, Calendar&gt;&gt; sessionCache;
+	private MemoryCache&lt;SessionID, Tuple&lt;Session, Calendar&gt;&gt; sessionCache;
 
 	/** Cache for ext sessions. */
-	private final LruCacheByDate&lt;DataClayInstanceID, Tuple&lt;Session, Calendar&gt;&gt; extSessionCache;
+	private MemoryCache&lt;DataClayInstanceID, Tuple&lt;Session, Calendar&gt;&gt; extSessionCache;
 
 	/**
 	 * Instantiates an SessionManager that uses the Backend configuration provided.
@@ -59,20 +60,18 @@ public final class SessionManager extends AbstractManager {
 	 *            Manager/service name.
 	 * @post Creates an Class manager and hash initializes the backend.
 	 */
-	public SessionManager(final BasicDataSource dataSource) {
-<span class="fc" id="L63">		super(dataSource);</span>
-<span class="pc bpc" id="L64" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L65">			logger = LogManager.getLogger(&quot;LogicModule&quot;);</span>
+	public SessionManager(final SQLiteDataSource dataSource) {
+<span class="fc" id="L64">		super(dataSource);</span>
+<span class="pc bpc" id="L65" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L66">			logger = LogManager.getLogger(&quot;LogicModule&quot;);</span>
 		}
-<span class="fc" id="L67">		this.sessionDB = new SessionManagerDB(dataSource);</span>
-<span class="fc" id="L68">		this.sessionDB.createTables();</span>
+<span class="fc" id="L68">		this.sessionDB = new SessionManagerDB(dataSource);</span>
+<span class="fc" id="L69">		this.sessionDB.createTables();</span>
 
 		// Init caches
-<span class="fc" id="L71">		this.sessionCache = new LruCacheByDate&lt;&gt;(</span>
-<span class="fc" id="L72">				Configuration.Flags.MAX_ENTRIES_SESSION_MANAGER_CACHE.getIntValue());</span>
-<span class="fc" id="L73">		this.extSessionCache = new LruCacheByDate&lt;&gt;(</span>
-<span class="fc" id="L74">				Configuration.Flags.MAX_ENTRIES_SESSION_MANAGER_CACHE.getIntValue());</span>
-<span class="fc" id="L75">	}</span>
+<span class="fc" id="L72">		this.sessionCache = new MemoryCache&lt;&gt;();</span>
+<span class="fc" id="L73">		this.extSessionCache = new MemoryCache&lt;&gt;();</span>
+<span class="fc" id="L74">	}</span>
 
 	/**
 	 * Registers a new Session for the Account with ID provided and the information about the contracts (and interfaces,...) in
@@ -104,18 +103,18 @@ public final class SessionManager extends AbstractManager {
 
 		// TODO: Can we have more than one session with same AccountID and same contracts?
 
-<span class="fc" id="L107">		final Session session = new Session(newaccountID, newSessionContracts, newSessionDataContracts, dataContractIDofStore,</span>
+<span class="fc" id="L106">		final Session session = new Session(newaccountID, newSessionContracts, newSessionDataContracts, dataContractIDofStore,</span>
 				endDate, languageForSession, ifaceBitmaps);
-<span class="fc" id="L109">		session.setDataClayID(new SessionID());</span>
-<span class="fc" id="L110">		this.sessionDB.store(session);</span>
+<span class="fc" id="L108">		session.setDataClayID(new SessionID());</span>
+<span class="fc" id="L109">		this.sessionDB.store(session);</span>
 
 		// Update cache
-<span class="fc" id="L113">		sessionCache.put(session.getDataClayID(),</span>
-<span class="fc" id="L114">				new Tuple&lt;&gt;(session, session.getEndDate()));</span>
-<span class="fc" id="L115">		return new SessionInfo(session.getDataClayID(),</span>
-<span class="fc" id="L116">				session.getAccountID(), session.getPropertiesOfClasses(), session.getSessionContracts(),</span>
-<span class="fc" id="L117">				session.getSessionDataContracts(), session.getDataContractIDofStore(), session.getLanguage(),</span>
-<span class="fc" id="L118">				session.getIfaceBitmaps(), session.getEndDate());</span>
+		//sessionCache.put(session.getDataClayID(),
+		//		new Tuple&lt;&gt;(session, session.getEndDate()));
+<span class="fc" id="L114">		return new SessionInfo(session.getDataClayID(),</span>
+<span class="fc" id="L115">				session.getAccountID(), session.getPropertiesOfClasses(), session.getSessionContracts(),</span>
+<span class="fc" id="L116">				session.getSessionDataContracts(), session.getDataContractIDofStore(), session.getLanguage(),</span>
+<span class="fc" id="L117">				session.getIfaceBitmaps(), session.getEndDate());</span>
 	}
 
 	/**
@@ -128,23 +127,23 @@ public final class SessionManager extends AbstractManager {
 	 *             if an exception occurs.
 	 */
 	public SessionInfo newExtSession(final DataClayInstanceID extDataClayID, final AccountID accountID, final Langs language, final Calendar endDate) {
-<span class="nc" id="L131">		final Session session = new Session(extDataClayID, accountID, language, endDate);</span>
-<span class="nc" id="L132">		session.setDataClayID(new SessionID());</span>
+<span class="nc" id="L130">		final Session session = new Session(extDataClayID, accountID, language, endDate);</span>
+<span class="nc" id="L131">		session.setDataClayID(new SessionID());</span>
 
 		// Update db
 		try {
-<span class="nc" id="L136">			this.sessionDB.storeExt(session);</span>
-<span class="nc" id="L137">		} catch (final Exception ex) {</span>
+<span class="nc" id="L135">			this.sessionDB.storeExt(session);</span>
+<span class="nc" id="L136">		} catch (final Exception ex) {</span>
 			// retry in case it already exists an expired session
-<span class="nc" id="L139">			this.sessionDB.deleteExtSession(extDataClayID);</span>
-<span class="nc" id="L140">			this.sessionDB.storeExt(session);</span>
-<span class="nc" id="L141">		}</span>
+<span class="nc" id="L138">			this.sessionDB.deleteExtSession(extDataClayID);</span>
+<span class="nc" id="L139">			this.sessionDB.storeExt(session);</span>
+<span class="nc" id="L140">		}</span>
 
 		// Update cache
-<span class="nc" id="L144">		extSessionCache.put(extDataClayID,</span>
-<span class="nc" id="L145">				new Tuple&lt;&gt;(session, session.getEndDate()));</span>
+<span class="nc" id="L143">		extSessionCache.put(extDataClayID,</span>
+<span class="nc" id="L144">				new Tuple&lt;&gt;(session, session.getEndDate()));</span>
 
-<span class="nc" id="L147">		return new SessionInfo(session.getDataClayID(), session.getExtDataClayID(), session.getAccountID(), session.getLanguage(), session.getEndDate());</span>
+<span class="nc" id="L146">		return new SessionInfo(session.getDataClayID(), session.getExtDataClayID(), session.getAccountID(), session.getLanguage(), session.getEndDate());</span>
 	}
 
 	/**
@@ -164,7 +163,7 @@ public final class SessionManager extends AbstractManager {
 
 		// sessionDB.deleteSession(sessionID);
 		// sessionCache.remove(sessionID);
-<span class="nc" id="L167">	}</span>
+<span class="nc" id="L166">	}</span>
 
 	/**
 	 * Close external session
@@ -173,9 +172,9 @@ public final class SessionManager extends AbstractManager {
 	 *            ID of the external dataClay instance
 	 */
 	public void closeExtSession(final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L176">		sessionDB.deleteExtSession(extDataClayID);</span>
-<span class="nc" id="L177">		extSessionCache.remove(extDataClayID);</span>
-<span class="nc" id="L178">	}</span>
+<span class="nc" id="L175">		sessionDB.deleteExtSession(extDataClayID);</span>
+<span class="nc" id="L176">		extSessionCache.remove(extDataClayID);</span>
+<span class="nc" id="L177">	}</span>
 
 	/**
 	 * Retrieves the info of a session
@@ -191,59 +190,59 @@ public final class SessionManager extends AbstractManager {
 
 		// Try in cache
 		final Session session;
-<span class="fc" id="L194">		final Tuple&lt;Session, Calendar&gt; cacheEntry = sessionCache.get(sessionID);</span>
-<span class="pc bpc" id="L195" title="1 of 2 branches missed.">		if (cacheEntry == null) { // Not in cache</span>
-<span class="pc bpc" id="L196" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L197">				logger.debug(&quot;Querying session in DB with ID &quot; + sessionID);</span>
+<span class="fc" id="L193">		final Tuple&lt;Session, Calendar&gt; cacheEntry = sessionCache.get(sessionID);</span>
+<span class="pc bpc" id="L194" title="1 of 2 branches missed.">		if (cacheEntry == null) { // Not in cache</span>
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L196">				logger.debug(&quot;Querying session in DB with ID &quot; + sessionID);</span>
 			}
-<span class="fc" id="L199">			session = sessionDB.getSessionByID(sessionID);</span>
-<span class="fc bfc" id="L200" title="All 2 branches covered.">			if (session == null) {</span>
-<span class="fc" id="L201">				throw new SessionNotExistException(sessionID);</span>
+<span class="fc" id="L198">			session = sessionDB.getSessionByID(sessionID);</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">			if (session == null) {</span>
+<span class="fc" id="L200">				throw new SessionNotExistException(sessionID);</span>
 			}
 		} else {
-<span class="nc bnc" id="L204" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L205">				logger.debug(&quot;Session found in cache: &quot; + sessionID);</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L204">				logger.debug(&quot;Session found in cache: &quot; + sessionID);</span>
 			}
-<span class="nc" id="L207">			session = cacheEntry.getFirst();</span>
+<span class="nc" id="L206">			session = cacheEntry.getFirst();</span>
 		}
 
-<span class="pc bpc" id="L210" title="1 of 2 branches missed.">		if (!session.isActive()) {</span>
-<span class="nc" id="L211">			throw new SessionIsNotActiveException(sessionID);</span>
+<span class="pc bpc" id="L209" title="1 of 2 branches missed.">		if (!session.isActive()) {</span>
+<span class="nc" id="L210">			throw new SessionIsNotActiveException(sessionID);</span>
 		}
-<span class="pc bpc" id="L213" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L214">			logger.debug(&quot;Creating new session info: &quot; + sessionID);</span>
+<span class="pc bpc" id="L212" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L213">			logger.debug(&quot;Creating new session info: &quot; + sessionID);</span>
 		}
-<span class="fc" id="L216">		return new SessionInfo(sessionID,</span>
-<span class="fc" id="L217">				session.getAccountID(), session.getPropertiesOfClasses(), session.getSessionContracts(),</span>
-<span class="fc" id="L218">				session.getSessionDataContracts(), session.getDataContractIDofStore(), session.getLanguage(),</span>
-<span class="fc" id="L219">				session.getIfaceBitmaps(), session.getEndDate());</span>
+<span class="fc" id="L215">		return new SessionInfo(sessionID,</span>
+<span class="fc" id="L216">				session.getAccountID(), session.getPropertiesOfClasses(), session.getSessionContracts(),</span>
+<span class="fc" id="L217">				session.getSessionDataContracts(), session.getDataContractIDofStore(), session.getLanguage(),</span>
+<span class="fc" id="L218">				session.getIfaceBitmaps(), session.getEndDate());</span>
 	}
 
 	public SessionInfo getExtSessionInfo(final DataClayInstanceID extDataClayID) {
 		final Session session;
-<span class="nc" id="L224">		final Tuple&lt;Session, Calendar&gt; cacheEntry = extSessionCache.get(extDataClayID);</span>
-<span class="nc bnc" id="L225" title="All 2 branches missed.">		if (cacheEntry == null) {</span>
-<span class="nc bnc" id="L226" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L227">				logger.debug(&quot;Querying external session in DB for dataClay: &quot; + extDataClayID);</span>
+<span class="nc" id="L223">		final Tuple&lt;Session, Calendar&gt; cacheEntry = extSessionCache.get(extDataClayID);</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">		if (cacheEntry == null) {</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L226">				logger.debug(&quot;Querying external session in DB for dataClay: &quot; + extDataClayID);</span>
 			}
-<span class="nc" id="L229">			session = sessionDB.getExtSession(extDataClayID);</span>
-<span class="nc bnc" id="L230" title="All 2 branches missed.">			if (session == null) {</span>
-<span class="nc" id="L231">				throw new SessionExternalNotExistException(extDataClayID);</span>
+<span class="nc" id="L228">			session = sessionDB.getExtSession(extDataClayID);</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">			if (session == null) {</span>
+<span class="nc" id="L230">				throw new SessionExternalNotExistException(extDataClayID);</span>
 			}
 		} else {
-<span class="nc bnc" id="L234" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L235">				logger.debug(&quot;External session found in cache for dataClay: &quot; + extDataClayID);</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L234">				logger.debug(&quot;External session found in cache for dataClay: &quot; + extDataClayID);</span>
 			}
-<span class="nc" id="L237">			session = cacheEntry.getFirst();</span>
+<span class="nc" id="L236">			session = cacheEntry.getFirst();</span>
 		}
-<span class="nc bnc" id="L239" title="All 2 branches missed.">		if (!session.isActive()) {</span>
-<span class="nc" id="L240">			throw new SessionExternalIsNotActiveException(extDataClayID);</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">		if (!session.isActive()) {</span>
+<span class="nc" id="L239">			throw new SessionExternalIsNotActiveException(extDataClayID);</span>
 		}
-<span class="nc bnc" id="L242" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L243">			logger.debug(&quot;Creating new session info for external dataClay: &quot; + extDataClayID);</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L242">			logger.debug(&quot;Creating new session info for external dataClay: &quot; + extDataClayID);</span>
 		}
 
-<span class="nc" id="L246">		return new SessionInfo(session.getDataClayID(), extDataClayID, session.getAccountID(), session.getLanguage(), session.getEndDate());</span>
+<span class="nc" id="L245">		return new SessionInfo(session.getDataClayID(), extDataClayID, session.getAccountID(), session.getLanguage(), session.getEndDate());</span>
 	}
 
 	/**
@@ -254,7 +253,7 @@ public final class SessionManager extends AbstractManager {
 	 * @return all existing active sessions.
 	 */
 	public List&lt;Session&gt; getAllActiveSessionsOfAccount(final AccountID accountID) {
-<span class="nc" id="L257">		return sessionDB.getSessionsOfAccount(accountID);</span>
+<span class="nc" id="L256">		return sessionDB.getSessionsOfAccount(accountID);</span>
 	}
 
 	// ======== OTHER ======= //
@@ -265,25 +264,25 @@ public final class SessionManager extends AbstractManager {
 	 * @return The db handler reference of this manager.
 	 */
 	public SessionManagerDB getDbHandler() {
-<span class="fc" id="L268">		return sessionDB;</span>
+<span class="fc" id="L267">		return sessionDB;</span>
 	}
 
 	@Override
 	public void cleanCaches() {
-<span class="nc" id="L273">		sessionCache.clear();</span>
-<span class="nc" id="L274">	}</span>
+		//sessionCache.clear();
+<span class="nc" id="L273">	}</span>
 	/**
 	 * Finish cache threads.
 	 * 
 	 * @if some exception occurs
 	 */
 	public void finishCacheThreads() {
-		try {
-<span class="nc" id="L282">			this.sessionCache.finishCacheThreads();</span>
-<span class="nc" id="L283">		} catch (final InterruptedException e) {</span>
-<span class="nc" id="L284">			e.printStackTrace();</span>
-<span class="nc" id="L285">		}</span>
-<span class="nc" id="L286">	}</span>
+		//try {
+		//	this.sessionCache.finishCacheThreads();
+		//} catch (final InterruptedException e) {
+		//	e.printStackTrace();
+		//}
+<span class="nc" id="L285">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

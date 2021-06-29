@@ -1,58 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SequentialConsistency.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.replication</a> &gt; <span class="el_source">SequentialConsistency.java</span></div><h1>SequentialConsistency.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.util.replication;
 
+import java.lang.reflect.Executable;
 import java.util.Set;
 
 import es.bsc.dataclay.DataClayObject;
 import es.bsc.dataclay.api.BackendID;
 import es.bsc.dataclay.util.ids.DataClayInstanceID;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
 import es.bsc.dataclay.util.ids.ImplementationID;
 
-<span class="nc" id="L11">public abstract class SequentialConsistency {</span>
+<span class="nc" id="L13">public abstract class SequentialConsistency {</span>
 	public static void synchronize(final DataClayObject dataClayObject, final String setterID, final Object[] args) {
-
-		// Current dataClay replicas
-<span class="nc" id="L15">		final BackendID masterLocation = dataClayObject.getMasterLocation();</span>
-<span class="nc bnc" id="L16" title="All 2 branches missed.">		for (final BackendID replicaLocation : dataClayObject.getAllLocations()) {</span>
-<span class="nc bnc" id="L17" title="All 2 branches missed.">			if (!replicaLocation.equals(masterLocation)) {</span>
-				try {
-<span class="nc" id="L19">					dataClayObject.setInBackend(replicaLocation, setterID, args);</span>
-<span class="nc" id="L20">				} catch (final Exception e) {</span>
-<span class="nc" id="L21">					e.printStackTrace();</span>
-<span class="nc" id="L22">				}</span>
-			}
-<span class="nc" id="L24">		}</span>
-<span class="nc" id="L25">		return;</span>
-	}
-	
-	public static void synchronizeFederated(final DataClayObject dataClayObject, 
-			final String setterID, final String setUpdateID, final Object[] args) {
-<span class="nc" id="L30">		final Set&lt;DataClayInstanceID&gt; externalDcs = dataClayObject.getFederationTargets();</span>
-<span class="nc bnc" id="L31" title="All 2 branches missed.">		final boolean isFederated = externalDcs.size() != 0;</span>
-<span class="nc bnc" id="L32" title="All 2 branches missed.">		if (isFederated) {</span>
-<span class="nc bnc" id="L33" title="All 2 branches missed.">			for (final DataClayInstanceID dcID : externalDcs) {</span>
-					try {
-<span class="nc" id="L35">						dataClayObject.setInDataClayInstance(dcID, new ImplementationID(setterID), args);</span>
-<span class="nc" id="L36">					} catch (final Exception e) {</span>
-<span class="nc" id="L37">						e.printStackTrace();</span>
-<span class="nc" id="L38">					}</span>
-<span class="nc" id="L39">			}</span>
-		}
-		// send to original one
-<span class="nc" id="L42">		final DataClayInstanceID originalDc = dataClayObject.getFederationSource();</span>
-<span class="nc bnc" id="L43" title="All 2 branches missed.">		if (originalDc != null) {</span>
-<span class="nc" id="L44">			dataClayObject.setInDataClayInstance(originalDc, new ImplementationID(setUpdateID), </span>
-<span class="nc" id="L45">					new Object[] {args[0], true});</span>
-		}
-<span class="nc" id="L47">		return;</span>
-	}
+<span class="nc" id="L15">		dataClayObject.synchronize(new ImplementationID(setterID), args);</span>
+<span class="nc" id="L16">	}</span>
 
 	public static void replicateToDataClaysObjectIsFederatedWith(final DataClayObject o, final String setterID,  final String setUpdateID, final Object arg) {
-<span class="nc" id="L51">		synchronizeFederated(o, setterID, setUpdateID, new Object[] { arg });</span>
-<span class="nc" id="L52">	}</span>
+<span class="nc" id="L19">		synchronize(o, setterID, new Object[] { arg });</span>
+<span class="nc" id="L20">	}</span>
 	
 	public static void replicateToSlaves(final DataClayObject o, final String setterID, final String setUpdateID, final Object arg) {
-<span class="nc" id="L55">		synchronize(o, setterID, new Object[] { arg });</span>
-<span class="nc" id="L56">	}</span>
+<span class="nc" id="L23">		synchronize(o, setterID, new Object[] { arg });</span>
+<span class="nc" id="L24">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

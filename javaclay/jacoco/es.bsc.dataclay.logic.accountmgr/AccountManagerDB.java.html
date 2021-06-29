@@ -20,15 +20,16 @@ import es.bsc.dataclay.util.ids.CredentialID;
 import es.bsc.dataclay.util.management.accountmgr.Account;
 import es.bsc.dataclay.util.management.accountmgr.AccountRole;
 import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * Data base connection.
  */
 public final class AccountManagerDB {
-<span class="fc" id="L28">	private static final Logger logger = LogManager.getLogger(&quot;managers.AccountManager.DB&quot;);</span>
+<span class="fc" id="L29">	private static final Logger logger = LogManager.getLogger(&quot;managers.AccountManager.DB&quot;);</span>
 	
 	/** DataSource. */
-	private final BasicDataSource dataSource;
+	private final SQLiteDataSource dataSource;
 
 	/**
 	 * Constructor.
@@ -36,63 +37,70 @@ public final class AccountManagerDB {
 	 * @param dataSource
 	 *            Data base source.
 	 */
-<span class="fc" id="L39">	public AccountManagerDB(final BasicDataSource dataSource) {</span>
-<span class="fc" id="L40">		this.dataSource = dataSource;</span>
-<span class="fc" id="L41">	}</span>
+<span class="fc" id="L40">	public AccountManagerDB(final SQLiteDataSource dataSource) {</span>
+<span class="fc" id="L41">		this.dataSource = dataSource;</span>
+<span class="fc" id="L42">	}</span>
 
 	/**
 	 * Create tables of MDS.
 	 */
 	public void createTables() {
-<span class="fc" id="L47">		Connection conn = null;</span>
+<span class="fc" id="L48">		synchronized (dataSource) {</span>
+<span class="fc" id="L49">			Connection conn = null;</span>
 
-		try {
-<span class="fc" id="L50">			conn = dataSource.getConnection();</span>
-<span class="fc bfc" id="L51" title="All 2 branches covered.">			for (final AccountMgrSQLStatements.SqlStatements stmt : AccountMgrSQLStatements.SqlStatements.values()) {</span>
-<span class="fc bfc" id="L52" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
-<span class="fc" id="L53">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
-<span class="fc" id="L54">					updateStatement.execute();</span>
-				}
-			}
-<span class="nc" id="L57">		} catch (final SQLException e) {</span>
-<span class="nc" id="L58">			logger.debug(&quot;SQL error in createTables operation&quot;, e);</span>
-		} finally {
 			try {
-<span class="pc bpc" id="L61" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L62">					conn.close();</span>
+<span class="fc" id="L52">				conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">				for (final AccountMgrSQLStatements.SqlStatements stmt : AccountMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">					if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
+<span class="fc" id="L55">						final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L56">						updateStatement.execute();</span>
+<span class="fc" id="L57">						updateStatement.close();</span>
+					}
 				}
-<span class="nc" id="L64">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L65">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L66">			}</span>
-		}
-<span class="fc" id="L68">	}</span>
+<span class="nc" id="L60">			} catch (final SQLException e) {</span>
+<span class="nc" id="L61">				logger.debug(&quot;SQL error in createTables operation&quot;, e);</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L65">						conn.close();</span>
+					}
+<span class="nc" id="L67">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L68">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L69">				}</span>
+			}
+<span class="fc" id="L71">		}</span>
+<span class="fc" id="L72">	}</span>
 
 	/**
 	 * Delete the tables of MDS. Just the other way around of createTables --much simpler.
 	 */
 	public void dropTables() {
-<span class="fc" id="L74">		Connection conn = null;</span>
+<span class="fc" id="L78">		synchronized (dataSource) {</span>
 
-		try {
-<span class="fc" id="L77">			conn = dataSource.getConnection();</span>
-<span class="fc bfc" id="L78" title="All 2 branches covered.">			for (final AccountMgrSQLStatements.SqlStatements stmt : AccountMgrSQLStatements.SqlStatements.values()) {</span>
-<span class="fc bfc" id="L79" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
-<span class="fc" id="L80">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
-<span class="fc" id="L81">					updateStatement.execute();</span>
-				}
-			}
-<span class="nc" id="L84">		} catch (final SQLException e) {</span>
-<span class="nc" id="L85">			logger.debug(&quot;SQL error in dropTables operation&quot;, e);</span>
-		} finally {
+<span class="fc" id="L80">			Connection conn = null;</span>
+
 			try {
-<span class="pc bpc" id="L88" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L89">					conn.close();</span>
+<span class="fc" id="L83">				conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L84" title="All 2 branches covered.">				for (final AccountMgrSQLStatements.SqlStatements stmt : AccountMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">					if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
+<span class="fc" id="L86">						final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L87">						updateStatement.execute();</span>
+<span class="fc" id="L88">						updateStatement.close();</span>
+					}
 				}
-<span class="nc" id="L91">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L92">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L93">			}</span>
-		}
-<span class="fc" id="L95">	}</span>
+<span class="nc" id="L91">			} catch (final SQLException e) {</span>
+<span class="nc" id="L92">				logger.debug(&quot;SQL error in dropTables operation&quot;, e);</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L95" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L96">						conn.close();</span>
+					}
+<span class="nc" id="L98">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L99">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L100">				}</span>
+			}
+<span class="fc" id="L102">		}</span>
+<span class="fc" id="L103">	}</span>
 
 	/**
 	 * Store credential into database
@@ -100,30 +108,34 @@ public final class AccountManagerDB {
 	 *            Password credential
 	 */
 	public void store(final PasswordCredential passwordCredential) {
-<span class="fc" id="L103">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L105">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L106">			final PreparedStatement insertStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.INSERT_CREDENTIAL.getSqlStatement());</span>
-<span class="fc" id="L107">			insertStatement.setObject(1, passwordCredential.getDataClayID().getId());</span>
-			// CHECKSTYLE:OFF
-<span class="fc" id="L109">			insertStatement.setString(2, passwordCredential.getPassword());</span>
-			// CHECKSTYLE:ON
-<span class="fc" id="L111">			insertStatement.executeUpdate();</span>
+<span class="fc" id="L111">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L113">		} catch (final Exception e) {</span>
-<span class="nc" id="L114">			logger.debug(&quot;SQL error in store passwordCredential&quot;, e);</span>
-<span class="nc" id="L115">			throw new DbObjectAlreadyExistException(passwordCredential.getDataClayID());</span>
-		} finally {
+<span class="fc" id="L113">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L118" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L119">					conn.close();</span>
-				}
-<span class="nc" id="L121">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L122">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L123">			}</span>
-		}
+<span class="fc" id="L115">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L116">				final PreparedStatement insertStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.INSERT_CREDENTIAL.getSqlStatement());</span>
+<span class="fc" id="L117">				insertStatement.setObject(1, passwordCredential.getDataClayID().getId());</span>
+				// CHECKSTYLE:OFF
+<span class="fc" id="L119">				insertStatement.setString(2, passwordCredential.getPassword());</span>
+				// CHECKSTYLE:ON
+<span class="fc" id="L121">				insertStatement.executeUpdate();</span>
+<span class="fc" id="L122">				insertStatement.close();</span>
 
-<span class="fc" id="L126">	}</span>
+<span class="nc" id="L124">			} catch (final Exception e) {</span>
+<span class="nc" id="L125">				logger.debug(&quot;SQL error in store passwordCredential&quot;, e);</span>
+<span class="nc" id="L126">				throw new DbObjectAlreadyExistException(passwordCredential.getDataClayID());</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L130">						conn.close();</span>
+					}
+<span class="nc" id="L132">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L133">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L134">				}</span>
+			}
+<span class="fc" id="L136">		}</span>
+
+<span class="fc" id="L138">	}</span>
 
 	/**
 	 * Store Account into database
@@ -131,39 +143,40 @@ public final class AccountManagerDB {
 	 *            The account
 	 */
 	public void store(final Account account) {
+<span class="fc" id="L146">		synchronized (dataSource) {</span>
 
-<span class="pc bpc" id="L135" title="1 of 2 branches missed.">		if (account.getCredential().getDataClayID() == null) {</span>
-<span class="nc" id="L136">			account.getCredential().setDataClayID(new CredentialID());</span>
-		}
-<span class="fc" id="L138">		this.store((PasswordCredential) account.getCredential());</span>
+<span class="pc bpc" id="L148" title="1 of 2 branches missed.">			if (account.getCredential().getDataClayID() == null) {</span>
+<span class="nc" id="L149">				account.getCredential().setDataClayID(new CredentialID());</span>
+			}
+<span class="fc" id="L151">			this.store((PasswordCredential) account.getCredential());</span>
 
-<span class="fc" id="L140">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L142">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L143">			final PreparedStatement insertStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.INSERT_ACCOUNT.getSqlStatement());</span>
-<span class="fc" id="L144">			insertStatement.setObject(1, account.getDataClayID().getId());</span>
-			// CHECKSTYLE:OFF
-<span class="fc" id="L146">			insertStatement.setString(2, account.getUsername());</span>
-<span class="fc" id="L147">			insertStatement.setObject(3, account.getCredential().getDataClayID().getId());</span>
-<span class="fc" id="L148">			insertStatement.setString(4, account.getRole().name());</span>
-
-			// CHECKSTYLE:ON
-<span class="fc" id="L151">			insertStatement.executeUpdate();</span>
-
-<span class="nc" id="L153">		} catch (final Exception e) {</span>
-<span class="nc" id="L154">			logger.debug(&quot;SQL error in store account&quot;, e);</span>
-<span class="nc" id="L155">			throw new DbObjectAlreadyExistException(account.getDataClayID());</span>
-		} finally {
+<span class="fc" id="L153">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L158" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L159">					conn.close();</span>
-				}
-<span class="nc" id="L161">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L162">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L163">			}</span>
-		}
+<span class="fc" id="L155">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L156">				final PreparedStatement insertStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.INSERT_ACCOUNT.getSqlStatement());</span>
+<span class="fc" id="L157">				insertStatement.setObject(1, account.getDataClayID().getId());</span>
+				// CHECKSTYLE:OFF
+<span class="fc" id="L159">				insertStatement.setString(2, account.getUsername());</span>
+<span class="fc" id="L160">				insertStatement.setObject(3, account.getCredential().getDataClayID().getId());</span>
+<span class="fc" id="L161">				insertStatement.setString(4, account.getRole().name());</span>
 
-<span class="fc" id="L166">	}</span>
+				// CHECKSTYLE:ON
+<span class="fc" id="L164">				insertStatement.executeUpdate();</span>
+<span class="fc" id="L165">				insertStatement.close();</span>
+<span class="nc" id="L166">			} catch (final Exception e) {</span>
+<span class="nc" id="L167">				logger.debug(&quot;SQL error in store account&quot;, e);</span>
+<span class="nc" id="L168">				throw new DbObjectAlreadyExistException(account.getDataClayID());</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L172">						conn.close();</span>
+					}
+<span class="nc" id="L174">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L175">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L176">				}</span>
+			}
+<span class="fc" id="L178">		}</span>
+<span class="fc" id="L179">	}</span>
 
 	/**
 	 * Deserialize account
@@ -173,24 +186,24 @@ public final class AccountManagerDB {
 	 */
 	private Account deserializeAccount(
 			final ResultSet rs) {
-<span class="fc" id="L176">		Account account = null;</span>
+<span class="fc" id="L189">		Account account = null;</span>
 		try {
 			// CHECKSTYLE:OFF
-<span class="fc" id="L179">			final AccountID accountID = new AccountID((UUID)rs.getObject(&quot;id&quot;));</span>
-<span class="fc" id="L180">			final String accountName = rs.getString(&quot;username&quot;);</span>
-<span class="fc" id="L181">			final String accountRole = rs.getString(&quot;role&quot;);</span>
-<span class="fc" id="L182">			final AccountRole role = AccountRole.valueOf(accountRole);</span>
+<span class="fc" id="L192">			final AccountID accountID = new AccountID((UUID)rs.getObject(&quot;id&quot;));</span>
+<span class="fc" id="L193">			final String accountName = rs.getString(&quot;username&quot;);</span>
+<span class="fc" id="L194">			final String accountRole = rs.getString(&quot;role&quot;);</span>
+<span class="fc" id="L195">			final AccountRole role = AccountRole.valueOf(accountRole);</span>
 
 			// Query credential
-<span class="fc" id="L185">			final PasswordCredential passCred = getCredentialByID((UUID)rs.getObject(&quot;credential&quot;));</span>
+<span class="fc" id="L198">			final PasswordCredential passCred = getCredentialByID((UUID)rs.getObject(&quot;credential&quot;));</span>
 
-<span class="fc" id="L187">			account = new Account(accountName, role, passCred);</span>
-<span class="fc" id="L188">			account.setDataClayID(accountID);</span>
+<span class="fc" id="L200">			account = new Account(accountName, role, passCred);</span>
+<span class="fc" id="L201">			account.setDataClayID(accountID);</span>
 
-<span class="nc" id="L190">		} catch (final SQLException e) {</span>
-<span class="nc" id="L191">			logger.debug(&quot;SQL error in deserializeAccount&quot;, e);</span>
-<span class="fc" id="L192">		}</span>
-<span class="fc" id="L193">		return account;</span>
+<span class="nc" id="L203">		} catch (final SQLException e) {</span>
+<span class="nc" id="L204">			logger.debug(&quot;SQL error in deserializeAccount&quot;, e);</span>
+<span class="fc" id="L205">		}</span>
+<span class="fc" id="L206">		return account;</span>
 	}
 
 	/**
@@ -200,16 +213,16 @@ public final class AccountManagerDB {
 	 * @return PasswordCredential
 	 */
 	private PasswordCredential deserializePasswordCredential(final ResultSet rs) {
-<span class="fc" id="L203">		PasswordCredential passCred = null;</span>
+<span class="fc" id="L216">		PasswordCredential passCred = null;</span>
 		try {
-<span class="fc" id="L205">			final CredentialID credentialID = new CredentialID((UUID)rs.getObject(&quot;id&quot;));</span>
-<span class="fc" id="L206">			final String password = rs.getString(&quot;password&quot;);</span>
-<span class="fc" id="L207">			passCred = new PasswordCredential(password);</span>
-<span class="fc" id="L208">			passCred.setDataClayID(credentialID);</span>
-<span class="nc" id="L209">		} catch (final SQLException e) {</span>
-<span class="nc" id="L210">			logger.debug(&quot;SQL error in deserializePasswordCredential&quot;, e);</span>
-<span class="fc" id="L211">		}</span>
-<span class="fc" id="L212">		return passCred;</span>
+<span class="fc" id="L218">			final CredentialID credentialID = new CredentialID((UUID)rs.getObject(&quot;id&quot;));</span>
+<span class="fc" id="L219">			final String password = rs.getString(&quot;password&quot;);</span>
+<span class="fc" id="L220">			passCred = new PasswordCredential(password);</span>
+<span class="fc" id="L221">			passCred.setDataClayID(credentialID);</span>
+<span class="nc" id="L222">		} catch (final SQLException e) {</span>
+<span class="nc" id="L223">			logger.debug(&quot;SQL error in deserializePasswordCredential&quot;, e);</span>
+<span class="fc" id="L224">		}</span>
+<span class="fc" id="L225">		return passCred;</span>
 	}
 
 	/**
@@ -220,33 +233,32 @@ public final class AccountManagerDB {
 	 * @throws SQLException
 	 */
 	private PasswordCredential getCredentialByID(final UUID credentialID) throws SQLException {
-<span class="fc" id="L223">		ResultSet rs = null;</span>
-<span class="fc" id="L224">		PasswordCredential passCred = null;</span>
-<span class="fc" id="L225">		Connection conn = null;</span>
+<span class="fc" id="L236">		ResultSet rs = null;</span>
+<span class="fc" id="L237">		PasswordCredential passCred = null;</span>
+<span class="fc" id="L238">		Connection conn = null;</span>
 		try {
-<span class="fc" id="L227">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L228">			final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_CREDENTIAL.getSqlStatement());</span>
+<span class="fc" id="L240">			conn = dataSource.getConnection();</span>
+<span class="fc" id="L241">			final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_CREDENTIAL.getSqlStatement());</span>
 
-<span class="fc" id="L230">			selectStatement.setObject(1, credentialID);</span>
-<span class="fc" id="L231">			rs = selectStatement.executeQuery();</span>
-<span class="pc bpc" id="L232" title="1 of 2 branches missed.">			if (rs.next()) {</span>
-<span class="fc" id="L233">				passCred = deserializePasswordCredential(rs);</span>
+<span class="fc" id="L243">			selectStatement.setObject(1, credentialID);</span>
+<span class="fc" id="L244">			rs = selectStatement.executeQuery();</span>
+<span class="pc bpc" id="L245" title="1 of 2 branches missed.">			if (rs.next()) {</span>
+<span class="fc" id="L246">				passCred = deserializePasswordCredential(rs);</span>
 			}
-
-<span class="nc" id="L236">		} catch (final SQLException e) {</span>
-<span class="nc" id="L237">			throw e;</span>
+<span class="fc" id="L248">			selectStatement.close();</span>
+<span class="nc" id="L249">		} catch (final SQLException e) {</span>
+<span class="nc" id="L250">			throw e;</span>
 		} finally {
 			try {
-<span class="fc" id="L240">				rs.close();</span>
-<span class="pc bpc" id="L241" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L242">					conn.close();</span>
+<span class="pc bpc" id="L253" title="1 of 2 branches missed.">				if (conn != null) {</span>
+<span class="fc" id="L254">					conn.close();</span>
 				}
-<span class="nc" id="L244">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L245">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L246">			}</span>
+<span class="nc" id="L256">			} catch (final SQLException ex1) {</span>
+<span class="nc" id="L257">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L258">			}</span>
 		}
 
-<span class="fc" id="L249">		return passCred;</span>
+<span class="fc" id="L261">		return passCred;</span>
 	}
 
 	/**
@@ -256,75 +268,74 @@ public final class AccountManagerDB {
 	 * @return The Account
 	 */
 	public Account getByID(final AccountID accountID) {
-<span class="fc" id="L259">		ResultSet rs = null;</span>
-<span class="fc" id="L260">		Account account = null;</span>
-<span class="fc" id="L261">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L263">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L264">			final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_ACCOUNT.getSqlStatement());</span>
-
-<span class="fc" id="L266">			selectStatement.setObject(1, accountID.getId());</span>
-<span class="fc" id="L267">			rs = selectStatement.executeQuery();</span>
-<span class="fc bfc" id="L268" title="All 2 branches covered.">			if (rs.next()) {</span>
-<span class="fc" id="L269">				account = deserializeAccount(rs);</span>
-
-			}
-<span class="nc" id="L272">		} catch (final SQLException e) {</span>
-<span class="nc" id="L273">			logger.debug(&quot;SQL error in getByID&quot;, e);</span>
-<span class="nc" id="L274">			throw new DbObjectNotExistException(accountID);</span>
-		} finally {
+<span class="fc" id="L271">		synchronized (dataSource) {</span>
+<span class="fc" id="L272">			ResultSet rs = null;</span>
+<span class="fc" id="L273">			Account account = null;</span>
+<span class="fc" id="L274">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L277" title="1 of 2 branches missed.">				if (rs != null) {</span>
-<span class="fc" id="L278">					rs.close();</span>
-				}
-<span class="pc bpc" id="L280" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L281">					conn.close();</span>
-				}
-<span class="nc" id="L283">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L284">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L285">			}</span>
-		}
+<span class="fc" id="L276">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L277">				final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_ACCOUNT.getSqlStatement());</span>
 
-<span class="fc" id="L288">		return account;</span>
+<span class="fc" id="L279">				selectStatement.setObject(1, accountID.getId());</span>
+<span class="fc" id="L280">				rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L281" title="All 2 branches covered.">				if (rs.next()) {</span>
+<span class="fc" id="L282">					account = deserializeAccount(rs);</span>
+				}
+<span class="fc" id="L284">				selectStatement.close();</span>
+<span class="nc" id="L285">			} catch (final SQLException e) {</span>
+<span class="nc" id="L286">				logger.debug(&quot;SQL error in getByID&quot;, e);</span>
+<span class="nc" id="L287">				throw new DbObjectNotExistException(accountID);</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L290" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L291">						conn.close();</span>
+					}
+<span class="nc" id="L293">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L294">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L295">				}</span>
+			}
+
+<span class="fc" id="L298">			return account;</span>
+		}
 	}
 
 	/**
-	 * Get Account by ID
-	 * @param accountID
-	 *            ID of the Account
+	 * Get Account by name
+	 * @param accountName
+	 *            Name of the Account
 	 * @return The Account
 	 */
 	public Account getByName(final String accountName) {
-<span class="fc" id="L298">		ResultSet rs = null;</span>
-<span class="fc" id="L299">		Account account = null;</span>
-<span class="fc" id="L300">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L302">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L303">			final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_ACCOUNT_BY_NAME.getSqlStatement());</span>
+<span class="fc" id="L309">		synchronized (dataSource) {</span>
 
-<span class="fc" id="L305">			selectStatement.setString(1, accountName);</span>
-<span class="fc" id="L306">			rs = selectStatement.executeQuery();</span>
-<span class="pc bpc" id="L307" title="1 of 2 branches missed.">			if (rs.next()) {</span>
-<span class="fc" id="L308">				account = deserializeAccount(rs);</span>
+<span class="fc" id="L311">			ResultSet rs = null;</span>
+<span class="fc" id="L312">			Account account = null;</span>
+<span class="fc" id="L313">			Connection conn = null;</span>
+			try {
+<span class="fc" id="L315">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L316">				final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_ACCOUNT_BY_NAME.getSqlStatement());</span>
+
+<span class="fc" id="L318">				selectStatement.setString(1, accountName);</span>
+<span class="fc" id="L319">				rs = selectStatement.executeQuery();</span>
+<span class="pc bpc" id="L320" title="1 of 2 branches missed.">				if (rs.next()) {</span>
+<span class="fc" id="L321">					account = deserializeAccount(rs);</span>
+				}
+<span class="fc" id="L323">				selectStatement.close();</span>
+<span class="nc" id="L324">			} catch (final SQLException e) {</span>
+<span class="nc" id="L325">				logger.debug(&quot;SQL error in getByName&quot;, e);</span>
+<span class="nc" id="L326">				throw new DbObjectNotExistException();</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L329" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L330">						conn.close();</span>
+					}
+<span class="nc" id="L332">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L333">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L334">				}</span>
 			}
 
-<span class="nc" id="L311">		} catch (final SQLException e) {</span>
-<span class="nc" id="L312">			logger.debug(&quot;SQL error in getByName&quot;, e);</span>
-<span class="nc" id="L313">			throw new DbObjectNotExistException();</span>
-		} finally {
-			try {
-<span class="pc bpc" id="L316" title="1 of 2 branches missed.">				if (rs != null) {</span>
-<span class="fc" id="L317">					rs.close();</span>
-				}
-<span class="pc bpc" id="L319" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L320">					conn.close();</span>
-				}
-<span class="nc" id="L322">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L323">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L324">			}</span>
+<span class="fc" id="L337">			return account;</span>
 		}
-
-<span class="fc" id="L327">		return account;</span>
 	}
 
 	/**
@@ -335,32 +346,33 @@ public final class AccountManagerDB {
 	 */
 	public boolean existsAccountByName(final String accountName) {
 
-<span class="fc" id="L338">		ResultSet rs = null;</span>
-<span class="fc" id="L339">		boolean exists = false;</span>
-<span class="fc" id="L340">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L342">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L343">			final PreparedStatement existsStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.EXISTS_ACCOUNT_BY_NAME.getSqlStatement());</span>
-
-<span class="fc" id="L345">			existsStatement.setString(1, accountName);</span>
-<span class="fc" id="L346">			rs = existsStatement.executeQuery();</span>
-<span class="fc" id="L347">			rs.next();</span>
-<span class="fc" id="L348">			exists = rs.getBoolean(1);</span>
-
-<span class="nc" id="L350">		} catch (final Exception e) {</span>
-<span class="nc" id="L351">			logger.debug(&quot;existsAccountByName error&quot;, e);</span>
-		} finally {
+<span class="fc" id="L349">		synchronized (dataSource) {</span>
+<span class="fc" id="L350">			ResultSet rs = null;</span>
+<span class="fc" id="L351">			boolean exists = false;</span>
+<span class="fc" id="L352">			Connection conn = null;</span>
 			try {
-<span class="fc" id="L354">				rs.close();</span>
-<span class="pc bpc" id="L355" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L356">					conn.close();</span>
-				}
-<span class="nc" id="L358">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L359">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L360">			}</span>
-		}
+<span class="fc" id="L354">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L355">				final PreparedStatement existsStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.EXISTS_ACCOUNT_BY_NAME.getSqlStatement());</span>
 
-<span class="fc" id="L363">		return exists;</span>
+<span class="fc" id="L357">				existsStatement.setString(1, accountName);</span>
+<span class="fc" id="L358">				rs = existsStatement.executeQuery();</span>
+<span class="fc" id="L359">				rs.next();</span>
+<span class="fc" id="L360">				exists = rs.getBoolean(1);</span>
+<span class="fc" id="L361">				existsStatement.close();</span>
+<span class="nc" id="L362">			} catch (final Exception e) {</span>
+<span class="nc" id="L363">				logger.debug(&quot;existsAccountByName error&quot;, e);</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L366" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L367">						conn.close();</span>
+					}
+<span class="nc" id="L369">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L370">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L371">				}</span>
+			}
+
+<span class="fc" id="L374">			return exists;</span>
+		}
 	}
 
 	/**
@@ -370,33 +382,34 @@ public final class AccountManagerDB {
 	 * @return TRUE if exists. FALSE otherwise
 	 */
 	public boolean existsAccountByID(final AccountID accountID) {
-
-<span class="fc" id="L374">		ResultSet rs = null;</span>
-<span class="fc" id="L375">		boolean exists = false;</span>
-<span class="fc" id="L376">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L378">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L379">			final PreparedStatement existsStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.EXISTS_ACCOUNT_BY_ID.getSqlStatement());</span>
-
-<span class="fc" id="L381">			existsStatement.setObject(1, accountID.getId());</span>
-<span class="fc" id="L382">			rs = existsStatement.executeQuery();</span>
-<span class="fc" id="L383">			rs.next();</span>
-<span class="fc" id="L384">			exists = rs.getBoolean(1);</span>
-
-<span class="nc" id="L386">		} catch (final Exception e) {</span>
-<span class="nc" id="L387">			logger.debug(&quot;existsAccountByID error&quot;, e);</span>
-		} finally {
+<span class="fc" id="L385">		synchronized (dataSource) {</span>
+<span class="fc" id="L386">			ResultSet rs = null;</span>
+<span class="fc" id="L387">			boolean exists = false;</span>
+<span class="fc" id="L388">			Connection conn = null;</span>
 			try {
-<span class="fc" id="L390">				rs.close();</span>
-<span class="pc bpc" id="L391" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L392">					conn.close();</span>
-				}
-<span class="nc" id="L394">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L395">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L396">			}</span>
-		}
+<span class="fc" id="L390">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L391">				final PreparedStatement existsStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.EXISTS_ACCOUNT_BY_ID.getSqlStatement());</span>
 
-<span class="fc" id="L399">		return exists;</span>
+<span class="fc" id="L393">				existsStatement.setObject(1, accountID.getId());</span>
+<span class="fc" id="L394">				rs = existsStatement.executeQuery();</span>
+<span class="fc" id="L395">				rs.next();</span>
+<span class="fc" id="L396">				exists = rs.getBoolean(1);</span>
+<span class="fc" id="L397">				existsStatement.close();</span>
+
+<span class="nc" id="L399">			} catch (final Exception e) {</span>
+<span class="nc" id="L400">				logger.debug(&quot;existsAccountByID error&quot;, e);</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L403" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L404">						conn.close();</span>
+					}
+<span class="nc" id="L406">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L407">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L408">				}</span>
+			}
+
+<span class="fc" id="L411">			return exists;</span>
+		}
 	}
 
 	/**
@@ -404,33 +417,35 @@ public final class AccountManagerDB {
 	 * @return The accounts with normal role.
 	 */
 	public List&lt;Account&gt; getAllNormalAccounts() {
-<span class="fc" id="L407">		ResultSet rs = null;</span>
-<span class="fc" id="L408">		final ArrayList&lt;Account&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L409">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L411">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L412">			final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_ALL_NORMAL_ACCOUNTS.getSqlStatement());</span>
-
-<span class="fc" id="L414">			rs = selectStatement.executeQuery();</span>
-<span class="fc bfc" id="L415" title="All 2 branches covered.">			while (rs.next()) {</span>
-<span class="fc" id="L416">				final Account account = deserializeAccount(rs);</span>
-<span class="fc" id="L417">				resultList.add(account);</span>
-<span class="fc" id="L418">			}</span>
-
-<span class="nc" id="L420">		} catch (final SQLException e) {</span>
-<span class="nc" id="L421">			logger.debug(&quot;SQL error in getAllNormalAccounts&quot;, e);</span>
-		} finally {
+<span class="fc" id="L420">		synchronized (dataSource) {</span>
+<span class="fc" id="L421">			ResultSet rs = null;</span>
+<span class="fc" id="L422">			final ArrayList&lt;Account&gt; resultList = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L423">			Connection conn = null;</span>
 			try {
-<span class="fc" id="L424">				rs.close();</span>
-<span class="pc bpc" id="L425" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L426">					conn.close();</span>
-				}
-<span class="nc" id="L428">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L429">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L430">			}</span>
-		}
+<span class="fc" id="L425">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L426">				final PreparedStatement selectStatement = conn.prepareStatement(AccountMgrSQLStatements.SqlStatements.SELECT_ALL_NORMAL_ACCOUNTS.getSqlStatement());</span>
 
-<span class="fc" id="L433">		return resultList;</span>
+<span class="fc" id="L428">				rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L429" title="All 2 branches covered.">				while (rs.next()) {</span>
+<span class="fc" id="L430">					final Account account = deserializeAccount(rs);</span>
+<span class="fc" id="L431">					resultList.add(account);</span>
+<span class="fc" id="L432">				}</span>
+<span class="fc" id="L433">				selectStatement.close();</span>
+
+<span class="nc" id="L435">			} catch (final SQLException e) {</span>
+<span class="nc" id="L436">				logger.debug(&quot;SQL error in getAllNormalAccounts&quot;, e);</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L439" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L440">						conn.close();</span>
+					}
+<span class="nc" id="L442">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L443">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L444">				}</span>
+			}
+
+<span class="fc" id="L447">			return resultList;</span>
+		}
 	}
 
 	/**
@@ -438,11 +453,11 @@ public final class AccountManagerDB {
 	 */
 	public void close() {
 		try {
-<span class="fc" id="L441">			dataSource.close();</span>
-<span class="nc" id="L442">		} catch (SQLException e) {</span>
+<span class="fc" id="L456">			dataSource.close();</span>
+<span class="nc" id="L457">		} catch (SQLException e) {</span>
 			// TODO Auto-generated catch block
-<span class="nc" id="L444">			e.printStackTrace();</span>
-<span class="fc" id="L445">		}</span>
-<span class="fc" id="L446">	}</span>
+<span class="nc" id="L459">			e.printStackTrace();</span>
+<span class="fc" id="L460">		}</span>
+<span class="fc" id="L461">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

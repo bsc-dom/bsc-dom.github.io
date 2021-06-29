@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import es.bsc.dataclay.dataservice.server.DataServiceSrv;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,20 +16,18 @@ import es.bsc.dataclay.dbhandler.DBHandlerConf;
 import es.bsc.dataclay.exceptions.dbhandler.DbObjectNotExistException;
 import es.bsc.dataclay.util.Configuration;
 import es.bsc.dataclay.util.ids.ObjectID;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 public abstract class SQLHandler&lt;T extends DBHandlerConf&gt; implements DBHandler {
 
 	/** Logger. */
-<span class="fc" id="L22">	private static final Logger logger = LogManager.getLogger(&quot;SQLHandler&quot;);</span>
+<span class="fc" id="L24">	private static final Logger logger = LogManager.getLogger(&quot;SQLHandler&quot;);</span>
 
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L25">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="fc" id="L27">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** Data sources. */
-	protected BasicDataSource dataSource;
-
-	/** Root data source for superuser operations (drop db, create db...). */
-	protected BasicDataSource rootDataSource;
+	protected SQLiteDataSource dataSource;
 
 	/** Configuration of the connection. */
 	protected final T configuration;
@@ -39,33 +38,23 @@ public abstract class SQLHandler&lt;T extends DBHandlerConf&gt; implements DBHan
 	 * @param connConfig
 	 *            Configuration.
 	 */
-<span class="fc" id="L42">	public SQLHandler(final T connConfig) {</span>
-<span class="fc" id="L43">		this.configuration = connConfig;</span>
-<span class="fc" id="L44">	}</span>
+<span class="fc" id="L41">	public SQLHandler(final T connConfig) {</span>
+<span class="fc" id="L42">		this.configuration = connConfig;</span>
+<span class="fc" id="L43">	}</span>
 
 	/**
 	 * Open database.
 	 */
 	@Override
 	public void open() {
-<span class="fc" id="L51">		openRoot();</span>
-<span class="fc" id="L52">		initDataSource();</span>
-<span class="pc bpc" id="L53" title="1 of 2 branches missed.">		if (!databaseExists()) {</span>
-<span class="fc" id="L54">			createDatabase();</span>
+<span class="fc" id="L50">		initDataSource();</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">		if (!databaseExists()) {</span>
+<span class="fc" id="L52">			createDatabase();</span>
 		}
-<span class="fc" id="L56">		createTables();</span>
-<span class="fc" id="L57">	}</span>
-
-	/**
-	 * Open root session to database.
-	 */
-	public void openRoot() {
-<span class="fc" id="L63">		initRootDataSource();</span>
-<span class="fc" id="L64">	}</span>
+<span class="fc" id="L54">		createTables();</span>
+<span class="fc" id="L55">	}</span>
 
 	protected abstract void initDataSource();
-
-	protected abstract void initRootDataSource();
 
 	public abstract boolean databaseExists();
 
@@ -80,257 +69,321 @@ public abstract class SQLHandler&lt;T extends DBHandlerConf&gt; implements DBHan
 	 * Initialize database
 	 */
 	public void createTables() {
-<span class="fc" id="L83">		final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.CREATE_TABLE_DATASERVICE</span>
-<span class="fc" id="L84">				.getSqlStatement();</span>
-<span class="fc" id="L85">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L87">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L88">			final PreparedStatement createStatement = conn.prepareStatement(sqlStatementStr);</span>
-<span class="pc bpc" id="L89" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L90">				logger.debug(&quot;[==DB==] Executing {}&quot;, createStatement);</span>
-			}
-<span class="fc" id="L92">			createStatement.execute();</span>
-
-<span class="nc" id="L94">		} catch (final SQLException e) {</span>
-<span class="nc" id="L95">			logger.debug(&quot;[==DB==] Ignored exception in createTables&quot;, e);</span>
-		} finally {
+<span class="fc" id="L72">		synchronized (dataSource) {</span>
+<span class="fc" id="L73">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.CREATE_TABLE_DATASERVICE</span>
+<span class="fc" id="L74">					.getSqlStatement();</span>
+<span class="fc" id="L75">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L98" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L99">					conn.close();</span>
+<span class="fc" id="L77">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L78">				final PreparedStatement createStatement = conn.prepareStatement(sqlStatementStr);</span>
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L80">					logger.debug(&quot;[==DB==] Executing {}&quot;, createStatement);</span>
 				}
-<span class="nc" id="L101">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L102">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L103">			}</span>
-		}
-<span class="fc" id="L105">	}</span>
-
-	protected Connection getRootConnection() {
-<span class="nc" id="L108">		Connection conn = null;</span>
-<span class="nc" id="L109">		boolean connected = false;</span>
-<span class="nc" id="L110">		int retry = 0;</span>
-<span class="nc" id="L111">		final short maxRetries = Configuration.Flags.MAX_RETRY_DATABASE_CONN.getShortValue();</span>
-<span class="nc bnc" id="L112" title="All 2 branches missed.">		while (!connected) {</span>
-			try {
-<span class="nc" id="L114">				conn = rootDataSource.getConnection();</span>
-<span class="nc" id="L115">				connected = true;</span>
-<span class="nc" id="L116">			} catch (final SQLException e) {</span>
-<span class="nc" id="L117">				logger.debug(&quot;Catched exception in-mid retries&quot;, e);</span>
-<span class="nc" id="L118">				retry++;</span>
-<span class="nc bnc" id="L119" title="All 2 branches missed.">				if (retry &gt; maxRetries) {</span>
-<span class="nc" id="L120">					logger.error(&quot;maxRetries reached, aborting connection to database&quot;);</span>
-<span class="nc" id="L121">					return null;</span>
-				}
-<span class="nc" id="L123">				logger.info(&quot;DB not started yet. Retrying...&quot;);</span>
+<span class="fc" id="L82">				createStatement.execute();</span>
+<span class="fc" id="L83">				createStatement.close();</span>
+<span class="nc" id="L84">			} catch (final SQLException e) {</span>
+<span class="nc" id="L85">				logger.debug(&quot;[==DB==] Ignored exception in createTables&quot;, e);</span>
+			} finally {
 				try {
-<span class="nc" id="L125">					Thread.sleep(Configuration.Flags.RETRY_DATABASE_CONN_TIME.getLongValue());</span>
-<span class="nc" id="L126">				} catch (final InterruptedException interrupt_e) {</span>
-<span class="nc" id="L127">					logger.error(&quot;Interrupted while waiting between reconnection, aborting.&quot;, interrupt_e);</span>
-<span class="nc" id="L128">				}</span>
-<span class="nc" id="L129">			}</span>
-		}
-<span class="nc" id="L131">		return conn;</span>
-	}
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L89">						conn.close();</span>
+					}
+<span class="nc" id="L91">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L92">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="fc" id="L93">				}</span>
+			}
+<span class="fc" id="L95">		}</span>
+<span class="fc" id="L96">	}</span>
 
 	public T getConfiguration() {
-<span class="nc" id="L135">		return configuration;</span>
+<span class="nc" id="L99">		return configuration;</span>
 	}
 
 	// ======================= STORE ======================= //
 
 	@Override
 	public void store(final ObjectID objectID, final byte[] bytes) {
-<span class="fc" id="L142">		final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.INSERT_OBJECT.getSqlStatement();</span>
-<span class="fc" id="L143">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L145">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L146">			final PreparedStatement insertStatement = conn.prepareStatement(sqlStatementStr);</span>
-<span class="fc" id="L147">			insertStatement.setObject(1, objectID.getId());</span>
-<span class="fc" id="L148">			insertStatement.setBytes(2, bytes);</span>
-<span class="pc bpc" id="L149" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L150">				logger.debug(&quot;[==DB==] Executing {}&quot;, insertStatement);</span>
-			}
-<span class="fc" id="L152">			insertStatement.executeUpdate();</span>
-
-<span class="nc" id="L154">		} catch (final Exception e) {</span>
-			// Ignore
-			// FOR REPLICA DESIGN
-<span class="nc" id="L157">			logger.debug(&quot;[==DB==] Ignored exception&quot;, e);</span>
-		} finally {
+<span class="nc" id="L106">		synchronized (dataSource) {</span>
+<span class="nc" id="L107">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.INSERT_OBJECT.getSqlStatement();</span>
+<span class="nc" id="L108">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L160" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L161">					conn.close();</span>
+<span class="nc" id="L110">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L111">				final PreparedStatement insertStatement = conn.prepareStatement(sqlStatementStr);</span>
+<span class="nc" id="L112">				insertStatement.setObject(1, objectID.getId());</span>
+<span class="nc" id="L113">				insertStatement.setBytes(2, bytes);</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L115">					logger.debug(&quot;[==DB==] Executing {}&quot;, insertStatement);</span>
 				}
-<span class="nc" id="L163">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L164">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L165">			}</span>
-		}
-<span class="fc" id="L167">	}</span>
+<span class="nc" id="L117">				insertStatement.executeUpdate();</span>
+<span class="nc" id="L118">				insertStatement.close();</span>
+<span class="nc" id="L119">			} catch (final SQLException e) {</span>
+<span class="nc" id="L120">				logger.debug(&quot;SQL Exception while storing&quot;, e);</span>
+<span class="nc" id="L121">				DataServiceSrv.doExit(e.getErrorCode());</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L124" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L125">						conn.close();</span>
+					}
+<span class="nc" id="L127">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L128">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="nc" id="L129">					DataServiceSrv.doExit(ex1.getErrorCode());</span>
+<span class="nc" id="L130">				}</span>
+			}
+<span class="nc" id="L132">		}</span>
+<span class="nc" id="L133">	}</span>
 
 	@Override
 	public byte[] get(final ObjectID objectID) {
-<span class="fc" id="L171">		byte[] result = null;</span>
+<span class="nc" id="L137">		synchronized (dataSource) {</span>
+<span class="nc" id="L138">			byte[] result = null;</span>
 
-<span class="fc" id="L173">		final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.SELECT_OBJECT.getSqlStatement();</span>
-<span class="fc" id="L174">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L176">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L177">			final PreparedStatement selectStatement = conn.prepareStatement(sqlStatementStr);</span>
-<span class="fc" id="L178">			ResultSet resultSet = null;</span>
-<span class="fc" id="L179">			selectStatement.setObject(1, objectID.getId());</span>
-<span class="pc bpc" id="L180" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L181">				logger.debug(&quot;[==DB==] Executing {}&quot;, selectStatement);</span>
-			}
-<span class="fc" id="L183">			resultSet = selectStatement.executeQuery();</span>
-<span class="fc" id="L184">			final boolean hasResults = resultSet.next();</span>
-<span class="fc bfc" id="L185" title="All 2 branches covered.">			if (hasResults) {</span>
-<span class="fc" id="L186">				result = resultSet.getBytes(1);</span>
-			} else {
-<span class="fc" id="L188">				throw new DbObjectNotExistException(objectID);</span>
-			}
-<span class="nc" id="L190">		} catch (final SQLException e) {</span>
-<span class="nc" id="L191">			logger.debug(&quot;[==DB==] Ignored exception in get&quot;, e);</span>
-		} finally {
+<span class="nc" id="L140">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.SELECT_OBJECT.getSqlStatement();</span>
+<span class="nc" id="L141">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L194" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L195">					conn.close();</span>
+<span class="nc" id="L143">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L144">				final PreparedStatement selectStatement = conn.prepareStatement(sqlStatementStr);</span>
+<span class="nc" id="L145">				ResultSet resultSet = null;</span>
+<span class="nc" id="L146">				selectStatement.setObject(1, objectID.getId());</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L148">					logger.debug(&quot;[==DB==] Executing {}&quot;, selectStatement);</span>
 				}
-<span class="nc" id="L197">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L198">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L199">			}</span>
+<span class="nc" id="L150">				resultSet = selectStatement.executeQuery();</span>
+<span class="nc" id="L151">				final boolean hasResults = resultSet.next();</span>
+<span class="nc bnc" id="L152" title="All 2 branches missed.">				if (hasResults) {</span>
+<span class="nc" id="L153">					result = resultSet.getBytes(1);</span>
+				} else {
+<span class="nc" id="L155">					selectStatement.close();</span>
+<span class="nc" id="L156">					throw new DbObjectNotExistException(objectID);</span>
+				}
+<span class="nc" id="L158">				selectStatement.close();</span>
+<span class="nc" id="L159">			} catch (final SQLException e) {</span>
+<span class="nc" id="L160">				logger.debug(&quot;[==DB==] SQL exception in get&quot;, e);</span>
+<span class="nc" id="L161">				DataServiceSrv.doExit(e.getErrorCode());</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L164" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L165">						conn.close();</span>
+					}
+<span class="nc" id="L167">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L168">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="nc" id="L169">					DataServiceSrv.doExit(ex1.getErrorCode());</span>
+<span class="nc" id="L170">				}</span>
+			}
+<span class="nc" id="L172">			return result;</span>
 		}
-<span class="fc" id="L201">		return result;</span>
 	}
 
 	@Override
 	public boolean exists(final ObjectID objectID) {
-<span class="nc" id="L206">		boolean result = false;</span>
+<span class="nc" id="L178">		synchronized (dataSource) {</span>
+<span class="nc" id="L179">			boolean result = false;</span>
 
-<span class="nc" id="L208">		final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.EXISTS_OBJECT.getSqlStatement();</span>
-<span class="nc" id="L209">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L211">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L212">			final PreparedStatement selectStatement = conn.prepareStatement(sqlStatementStr);</span>
-<span class="nc" id="L213">			ResultSet resultSet = null;</span>
-<span class="nc" id="L214">			selectStatement.setObject(1, objectID.getId());</span>
-<span class="nc bnc" id="L215" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L216">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
-			}
-<span class="nc" id="L218">			resultSet = selectStatement.executeQuery();</span>
-<span class="nc" id="L219">			final boolean hasResults = resultSet.next();</span>
-<span class="nc bnc" id="L220" title="All 2 branches missed.">			if (hasResults) {</span>
-<span class="nc" id="L221">				result = resultSet.getBoolean(1);</span>
-			}
-<span class="nc bnc" id="L223" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L224">				logger.debug(&quot;[==DB==] Executed &quot; + selectStatement + &quot; with return &quot; + result);</span>
-			}
-
-<span class="nc" id="L227">		} catch (final SQLException e) {</span>
-<span class="nc" id="L228">			logger.debug(&quot;[==DB==] Ignored exception in get&quot;, e);</span>
-		} finally {
+<span class="nc" id="L181">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.EXISTS_OBJECT.getSqlStatement();</span>
+<span class="nc" id="L182">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L231" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L232">					conn.close();</span>
+<span class="nc" id="L184">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L185">				final PreparedStatement selectStatement = conn.prepareStatement(sqlStatementStr);</span>
+<span class="nc" id="L186">				ResultSet resultSet = null;</span>
+<span class="nc" id="L187">				selectStatement.setObject(1, objectID.getId());</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L189">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
 				}
-<span class="nc" id="L234">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L235">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="nc" id="L236">			}</span>
+<span class="nc" id="L191">				resultSet = selectStatement.executeQuery();</span>
+<span class="nc" id="L192">				final boolean hasResults = resultSet.next();</span>
+<span class="nc bnc" id="L193" title="All 2 branches missed.">				if (hasResults) {</span>
+<span class="nc" id="L194">					result = resultSet.getBoolean(1);</span>
+				}
+<span class="nc bnc" id="L196" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L197">					logger.debug(&quot;[==DB==] Executed &quot; + selectStatement + &quot; with return &quot; + result);</span>
+				}
+<span class="nc" id="L199">				selectStatement.close();</span>
+<span class="nc" id="L200">			} catch (final SQLException e) {</span>
+<span class="nc" id="L201">				logger.debug(&quot;[==DB==] SQL exception in get&quot;, e);</span>
+<span class="nc" id="L202">				DataServiceSrv.doExit(e.getErrorCode());</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L205" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L206">						conn.close();</span>
+					}
+<span class="nc" id="L208">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L209">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="nc" id="L210">					DataServiceSrv.doExit(ex1.getErrorCode());</span>
+<span class="nc" id="L211">				}</span>
+			}
+<span class="nc" id="L213">			return result;</span>
 		}
-<span class="nc" id="L238">		return result;</span>
+
+	}
+
+	@Override
+	public int count() {
+<span class="nc" id="L220">		synchronized (dataSource) {</span>
+<span class="nc" id="L221">			int result = -1;</span>
+
+<span class="nc" id="L223">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.COUNT_OBJECTS.getSqlStatement();</span>
+<span class="nc" id="L224">			Connection conn = null;</span>
+			try {
+<span class="nc" id="L226">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L227">				final PreparedStatement selectStatement = conn.prepareStatement(sqlStatementStr);</span>
+<span class="nc" id="L228">				ResultSet resultSet = null;</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L230">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+				}
+<span class="nc" id="L232">				resultSet = selectStatement.executeQuery();</span>
+<span class="nc" id="L233">				final boolean hasResults = resultSet.next();</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">				if (hasResults) {</span>
+<span class="nc" id="L235">					result = resultSet.getInt(1);</span>
+				}
+<span class="nc" id="L237">				selectStatement.close();</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L239">					logger.debug(&quot;[==DB==] Executed &quot; + selectStatement + &quot; with return &quot; + result);</span>
+				}
+
+<span class="nc" id="L242">			} catch (final SQLException e) {</span>
+<span class="nc" id="L243">				logger.debug(&quot;[==DB==] SQL exception in count&quot;, e);</span>
+<span class="nc" id="L244">				DataServiceSrv.doExit(e.getErrorCode());</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L247" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L248">						conn.close();</span>
+					}
+<span class="nc" id="L250">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L251">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="nc" id="L252">					DataServiceSrv.doExit(ex1.getErrorCode());</span>
+<span class="nc" id="L253">				}</span>
+			}
+<span class="nc" id="L255">			return result;</span>
+		}
 	}
 
 	@Override
 	public void update(final ObjectID objectID, final byte[] newbytes) {
-		// CHECKSTYLE:OFF
-<span class="fc" id="L244">		final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.UPDATE_OBJECT.getSqlStatement();</span>
-<span class="fc" id="L245">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L247">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L248">			final PreparedStatement updateStatement = conn.prepareStatement(sqlStatementStr);</span>
-
-<span class="fc" id="L250">			updateStatement.setBytes(1, newbytes);</span>
-<span class="fc" id="L251">			updateStatement.setObject(2, objectID.getId());</span>
-<span class="pc bpc" id="L252" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L253">				logger.debug(&quot;[==DB==] Executing &quot; + updateStatement);</span>
-			}
-<span class="fc" id="L255">			updateStatement.executeUpdate();</span>
-
-<span class="nc" id="L257">		} catch (final SQLException e) {</span>
-<span class="nc" id="L258">			logger.debug(&quot;SQL Exception while performing update operation on object {}&quot;, objectID);</span>
-<span class="nc" id="L259">			logger.debug(&quot;update received SQL error&quot;, e);</span>
-<span class="nc" id="L260">			throw new DbObjectNotExistException(objectID);</span>
-		} finally {
+<span class="nc" id="L261">		synchronized (dataSource) {</span>
+<span class="nc" id="L262">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.UPDATE_OBJECT.getSqlStatement();</span>
+<span class="nc" id="L263">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L263" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L264">					conn.close();</span>
+<span class="nc" id="L265">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L266">				final PreparedStatement updateStatement = conn.prepareStatement(sqlStatementStr);</span>
+
+<span class="nc" id="L268">				updateStatement.setBytes(1, newbytes);</span>
+<span class="nc" id="L269">				updateStatement.setObject(2, objectID.getId());</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L271">					logger.debug(&quot;[==DB==] Executing &quot; + updateStatement);</span>
 				}
-<span class="nc" id="L266">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L267">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L268">			}</span>
-		}
-		// CHECKSTYLE:ON
-<span class="fc" id="L271">	}</span>
+<span class="nc" id="L273">				updateStatement.executeUpdate();</span>
+<span class="nc" id="L274">				updateStatement.close();</span>
+<span class="nc" id="L275">			} catch (final SQLException e) {</span>
+<span class="nc" id="L276">				logger.debug(&quot;SQL Exception while performing update operation on object {}&quot;, objectID);</span>
+<span class="nc" id="L277">				logger.debug(&quot;update received SQL error&quot;, e);</span>
+<span class="nc" id="L278">				DataServiceSrv.doExit(e.getErrorCode());</span>
+				//throw new DbObjectNotExistException(objectID);
+			} finally {
+				try {
+<span class="nc bnc" id="L282" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L283">						conn.close();</span>
+					}
+<span class="nc" id="L285">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L286">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="nc" id="L287">					DataServiceSrv.doExit(ex1.getErrorCode());</span>
+<span class="nc" id="L288">				}</span>
+			}
+<span class="nc" id="L290">		}</span>
+<span class="nc" id="L291">	}</span>
 
 	@Override
 	public void delete(final ObjectID objectID) {
-<span class="fc" id="L275">		final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.DELETE_OBJECT.getSqlStatement();</span>
-<span class="fc" id="L276">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L278">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L279">			final PreparedStatement deleteStatement = conn.prepareStatement(sqlStatementStr);</span>
-<span class="fc" id="L280">			deleteStatement.setObject(1, objectID.getId());</span>
-<span class="pc bpc" id="L281" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L282">				logger.debug(&quot;[==DB==] Executing &quot; + deleteStatement);</span>
-			}
-<span class="fc" id="L284">			final int returnValue = deleteStatement.executeUpdate();</span>
-<span class="pc bpc" id="L285" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L286">				logger.debug(&quot;[==DB==] Executed &quot; + deleteStatement + &quot; with return &quot; + returnValue);</span>
-			}
-<span class="pc bpc" id="L288" title="1 of 2 branches missed.">			if (returnValue == 0) {</span>
-<span class="nc" id="L289">				throw new DbObjectNotExistException(objectID);</span>
-			}
-
-<span class="nc" id="L292">		} catch (final SQLException e) {</span>
-<span class="nc" id="L293">			logger.debug(&quot;[==DB==] Exception in delete&quot;, e);</span>
-<span class="nc" id="L294">			throw new DbObjectNotExistException(objectID);</span>
-		} finally {
+<span class="nc" id="L295">		synchronized (dataSource) {</span>
+<span class="nc" id="L296">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.DELETE_OBJECT.getSqlStatement();</span>
+<span class="nc" id="L297">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L297" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L298">					conn.close();</span>
+<span class="nc" id="L299">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L300">				final PreparedStatement deleteStatement = conn.prepareStatement(sqlStatementStr);</span>
+<span class="nc" id="L301">				deleteStatement.setObject(1, objectID.getId());</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L303">					logger.debug(&quot;[==DB==] Executing &quot; + deleteStatement);</span>
 				}
-<span class="nc" id="L300">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L301">				logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
-<span class="fc" id="L302">			}</span>
-		}
+<span class="nc" id="L305">				final int returnValue = deleteStatement.executeUpdate();</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L307">					logger.debug(&quot;[==DB==] Executed &quot; + deleteStatement + &quot; with return &quot; + returnValue);</span>
+				}
+<span class="nc" id="L309">				deleteStatement.close();</span>
+<span class="nc bnc" id="L310" title="All 2 branches missed.">				if (returnValue == 0) {</span>
+<span class="nc" id="L311">					throw new DbObjectNotExistException(objectID);</span>
+				}
 
-<span class="fc" id="L305">	}</span>
+<span class="nc" id="L314">			} catch (final SQLException e) {</span>
+<span class="nc" id="L315">				logger.debug(&quot;[==DB==] Exception in delete&quot;, e);</span>
+<span class="nc" id="L316">				DataServiceSrv.doExit(e.getErrorCode());</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L319" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L320">						conn.close();</span>
+					}
+<span class="nc" id="L322">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L323">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="nc" id="L324">					DataServiceSrv.doExit(ex1.getErrorCode());</span>
+<span class="nc" id="L325">				}</span>
+			}
+<span class="nc" id="L327">		}</span>
+
+<span class="nc" id="L329">	}</span>
+
+
+
+	@Override
+	public void vacuum() {
+<span class="nc" id="L335">		synchronized (dataSource) {</span>
+<span class="nc" id="L336">			final String sqlStatementStr = DataServiceDBSQLStatements.SqlStatements.VACUUM.getSqlStatement();</span>
+<span class="nc" id="L337">			Connection conn = null;</span>
+			try {
+<span class="nc" id="L339">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L340">				final PreparedStatement vacuumStatement = conn.prepareStatement(sqlStatementStr);</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L342">					logger.debug(&quot;[==DB==] Executing &quot; + vacuumStatement);</span>
+				}
+<span class="nc" id="L344">				vacuumStatement.executeUpdate();</span>
+<span class="nc" id="L345">				vacuumStatement.close();</span>
+<span class="nc" id="L346">			} catch (final SQLException e) {</span>
+<span class="nc" id="L347">				logger.debug(&quot;[==DB==] Exception in vacuum&quot;, e);</span>
+<span class="nc" id="L348">				DataServiceSrv.doExit(e.getErrorCode());</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L351" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L352">						conn.close();</span>
+					}
+<span class="nc" id="L354">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L355">					logger.debug(&quot;SQL Exception while closing connection&quot;, ex1);</span>
+<span class="nc" id="L356">					DataServiceSrv.doExit(ex1.getErrorCode());</span>
+<span class="nc" id="L357">				}</span>
+			}
+<span class="nc" id="L359">		}</span>
+
+<span class="nc" id="L361">	}</span>
+
 
 	@Override
 	public boolean isClosed() {
-<span class="nc" id="L309">		return dataSource.isClosed();</span>
+<span class="nc" id="L366">		return dataSource.isClosed();</span>
 	}
 
 	@Override
 	public boolean close() {
-<span class="fc" id="L314">		boolean closed = true;</span>
+<span class="fc" id="L371">		boolean closed = true;</span>
 		try {
 			// They can be null if not opened.
-<span class="pc bpc" id="L317" title="1 of 2 branches missed.">			if (dataSource != null) {</span>
-<span class="fc" id="L318">				dataSource.close();</span>
-<span class="pc bpc" id="L319" title="2 of 4 branches missed.">				closed = closed &amp;&amp; dataSource.isClosed();</span>
+<span class="pc bpc" id="L374" title="1 of 2 branches missed.">			if (dataSource != null) {</span>
+<span class="fc" id="L375">				dataSource.close();</span>
+<span class="pc bpc" id="L376" title="2 of 4 branches missed.">				closed = closed &amp;&amp; dataSource.isClosed();</span>
 			}
-<span class="pc bpc" id="L321" title="1 of 2 branches missed.">			if (rootDataSource != null) {</span>
-<span class="fc" id="L322">				rootDataSource.close();</span>
-<span class="pc bpc" id="L323" title="2 of 4 branches missed.">				closed = closed &amp;&amp; rootDataSource.isClosed();</span>
-			}
-<span class="nc" id="L325">		} catch (final Exception e) {</span>
-<span class="nc" id="L326">			logger.debug(&quot;Ignored exception&quot;, e);</span>
-<span class="nc" id="L327">			e.printStackTrace();</span>
-<span class="fc" id="L328">		}</span>
-<span class="fc" id="L329">		return closed;</span>
+<span class="nc" id="L378">		} catch (final Exception e) {</span>
+<span class="nc" id="L379">			logger.debug(&quot;Ignored exception&quot;, e);</span>
+<span class="nc" id="L380">			e.printStackTrace();</span>
+<span class="fc" id="L381">		}</span>
+<span class="fc" id="L382">		return closed;</span>
 	}
 
-	public BasicDataSource getDataSource() {
-<span class="fc" id="L333">		return dataSource;</span>
+	public SQLiteDataSource getDataSource() {
+<span class="fc" id="L386">		return dataSource;</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

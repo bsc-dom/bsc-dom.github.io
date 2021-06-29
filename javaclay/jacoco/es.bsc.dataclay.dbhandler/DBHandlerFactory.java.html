@@ -6,18 +6,19 @@ import java.lang.reflect.InvocationTargetException;
 
 import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteHandler;
 import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteHandlerConfig;
+import es.bsc.dataclay.util.Configuration;
 
 /**
  * Factory to return instances of specific DBHandlers, according to the provided type.
  */
-<span class="nc" id="L13">public class DBHandlerFactory {</span>
+<span class="nc" id="L14">public class DBHandlerFactory {</span>
 	private static final String NVRAM_HANDLER_CLASS_NAME = &quot;es.bsc.dataclay.dbhandler.nvram.NVRAMHandler&quot;;
 	
 	/**	All the supported DBHandler subtypes. */
-<span class="fc" id="L17">	public enum DBHandlerType {</span>
-<span class="fc" id="L18">			POSTGRES,</span>
-<span class="fc" id="L19">			SQLITE,</span>
-<span class="fc" id="L20">			NVRAM</span>
+<span class="fc" id="L18">	public enum DBHandlerType {</span>
+<span class="fc" id="L19">			POSTGRES,</span>
+<span class="fc" id="L20">			SQLITE,</span>
+<span class="fc" id="L21">			NVRAM</span>
 	}
 
 	/**
@@ -27,31 +28,31 @@ import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteHandlerConfig;
 	 * @return A DBHandler instance.
 	 */
 	public static DBHandler getDBHandler(DBHandlerType type) {
-<span class="nc bnc" id="L30" title="All 3 branches missed.">		switch(type){</span>
+<span class="nc bnc" id="L31" title="All 3 branches missed.">		switch(type){</span>
 			case SQLITE:
-<span class="nc" id="L32">				return new SQLiteHandler(new SQLiteHandlerConfig(&quot;test.db&quot;));</span>
+<span class="nc" id="L33">				return new SQLiteHandler(new SQLiteHandlerConfig(Configuration.Flags.STORAGE_PATH.getStringValue(), &quot;test.db&quot;,  Configuration.Flags.SQLITE_IN_MEMORY.getBooleanValue()));</span>
 			case NVRAM:
 				try {
-<span class="nc" id="L35">					final Class&lt;?&gt; nvramHandlerClass = Class.forName(NVRAM_HANDLER_CLASS_NAME);</span>
-<span class="nc bnc" id="L36" title="All 2 branches missed.">					if (DBHandler.class.isAssignableFrom(nvramHandlerClass)) {</span>
-<span class="nc" id="L37">						final Constructor&lt;?&gt; constructor = nvramHandlerClass.getConstructor();</span>
-<span class="nc" id="L38">						return (DBHandler) constructor.newInstance();</span>
+<span class="nc" id="L36">					final Class&lt;?&gt; nvramHandlerClass = Class.forName(NVRAM_HANDLER_CLASS_NAME);</span>
+<span class="nc bnc" id="L37" title="All 2 branches missed.">					if (DBHandler.class.isAssignableFrom(nvramHandlerClass)) {</span>
+<span class="nc" id="L38">						final Constructor&lt;?&gt; constructor = nvramHandlerClass.getConstructor();</span>
+<span class="nc" id="L39">						return (DBHandler) constructor.newInstance();</span>
 					} else {
-<span class="nc" id="L40">						throw new IllegalArgumentException(&quot;Class NVRAMHandlerClass is not a DBHandler&quot;);</span>
+<span class="nc" id="L41">						throw new IllegalArgumentException(&quot;Class NVRAMHandlerClass is not a DBHandler&quot;);</span>
 					}
-<span class="nc" id="L42">				} catch (final ClassNotFoundException ex) {</span>
-<span class="nc" id="L43">					throw new IllegalArgumentException(&quot;Could not import class for NVRAMHandler, dependencies error&quot;);</span>
-<span class="nc" id="L44">				} catch (final NoSuchMethodException ex) {</span>
-<span class="nc" id="L45">					throw new IllegalArgumentException(&quot;Could not call NVRAMHandler constructor&quot;);</span>
-<span class="nc" id="L46">				} catch (final InstantiationException ex) {</span>
-<span class="nc" id="L47">					throw new IllegalArgumentException(&quot;Could not instantiate a NVRAMHandler instance&quot;);</span>
-<span class="nc" id="L48">				} catch (final InvocationTargetException ex) {</span>
-<span class="nc" id="L49">					throw new IllegalArgumentException(&quot;Could not invocate the NVRAMHandler constructor&quot;);</span>
-<span class="nc" id="L50">				} catch (final IllegalAccessException ex) {</span>
-<span class="nc" id="L51">					throw new IllegalArgumentException(&quot;Could not legally access and call the NVRAMHandler constructor&quot;);</span>
+<span class="nc" id="L43">				} catch (final ClassNotFoundException ex) {</span>
+<span class="nc" id="L44">					throw new IllegalArgumentException(&quot;Could not import class for NVRAMHandler, dependencies error&quot;);</span>
+<span class="nc" id="L45">				} catch (final NoSuchMethodException ex) {</span>
+<span class="nc" id="L46">					throw new IllegalArgumentException(&quot;Could not call NVRAMHandler constructor&quot;);</span>
+<span class="nc" id="L47">				} catch (final InstantiationException ex) {</span>
+<span class="nc" id="L48">					throw new IllegalArgumentException(&quot;Could not instantiate a NVRAMHandler instance&quot;);</span>
+<span class="nc" id="L49">				} catch (final InvocationTargetException ex) {</span>
+<span class="nc" id="L50">					throw new IllegalArgumentException(&quot;Could not invocate the NVRAMHandler constructor&quot;);</span>
+<span class="nc" id="L51">				} catch (final IllegalAccessException ex) {</span>
+<span class="nc" id="L52">					throw new IllegalArgumentException(&quot;Could not legally access and call the NVRAMHandler constructor&quot;);</span>
 				}
 			default:
-<span class="nc" id="L54">				throw new IllegalArgumentException(type + &quot;is not currently a supported DBHandler&quot;);</span>
+<span class="nc" id="L55">				throw new IllegalArgumentException(type + &quot;is not currently a supported DBHandler&quot;);</span>
 		}
 	}
 }

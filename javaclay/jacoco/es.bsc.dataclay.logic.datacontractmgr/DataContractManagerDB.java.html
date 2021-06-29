@@ -25,6 +25,7 @@ import es.bsc.dataclay.util.ids.ContractID;
 import es.bsc.dataclay.util.ids.DataContractID;
 import es.bsc.dataclay.util.ids.DataSetID;
 import es.bsc.dataclay.util.management.datacontractmgr.DataContract;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * Data base connection.
@@ -35,77 +36,81 @@ public final class DataContractManagerDB {
 	private Logger logger;
 
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L38">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="fc" id="L39">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** BasicDataSource. */
-	private final BasicDataSource dataSource;
+	private final SQLiteDataSource dataSource;
 
 	/**
 	 * MetaDataServiceDB constructor.
 	 * 
-	 * @param managerName
+	 * @param dataSource
 	 *            Name of the LM service managing.
 	 */
-<span class="fc" id="L49">	public DataContractManagerDB(final BasicDataSource dataSource) {</span>
-<span class="fc" id="L50">		this.dataSource = dataSource;</span>
-<span class="pc bpc" id="L51" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L52">			logger = LogManager.getLogger(&quot;LMDB&quot;);</span>
+<span class="fc" id="L50">	public DataContractManagerDB(final SQLiteDataSource dataSource) {</span>
+<span class="fc" id="L51">		this.dataSource = dataSource;</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L53">			logger = LogManager.getLogger(&quot;LMDB&quot;);</span>
 		}
-<span class="fc" id="L54">	}</span>
+<span class="fc" id="L55">	}</span>
 
 	/**
 	 * Create tables of MDS.
 	 */
 	public void createTables() {
-
-<span class="fc" id="L61">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L63">			conn = dataSource.getConnection();</span>
-<span class="fc bfc" id="L64" title="All 2 branches covered.">			for (final DataContractManagerSQLStatements.SqlStatements stmt : DataContractManagerSQLStatements.SqlStatements.values()) {</span>
-<span class="fc bfc" id="L65" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
-<span class="fc" id="L66">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
-<span class="fc" id="L67">					updateStatement.execute();</span>
-				}
-			}
-<span class="nc" id="L70">		} catch (final SQLException e) {</span>
-<span class="nc" id="L71">			e.printStackTrace();</span>
-		} finally {
+<span class="fc" id="L61">		synchronized (dataSource) {</span>
+<span class="fc" id="L62">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L74" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L75">					conn.close();</span>
+<span class="fc" id="L64">				conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">				for (final DataContractManagerSQLStatements.SqlStatements stmt : DataContractManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">					if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
+<span class="fc" id="L67">						final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L68">						updateStatement.execute();</span>
+<span class="fc" id="L69">						updateStatement.close();</span>
+					}
 				}
-<span class="nc" id="L77">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L78">				ex1.printStackTrace();</span>
-<span class="fc" id="L79">			}</span>
-		}
-<span class="fc" id="L81">	}</span>
+<span class="nc" id="L72">			} catch (final SQLException e) {</span>
+<span class="nc" id="L73">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L77">						conn.close();</span>
+					}
+<span class="nc" id="L79">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L80">					ex1.printStackTrace();</span>
+<span class="fc" id="L81">				}</span>
+			}
+<span class="fc" id="L83">		}</span>
+<span class="fc" id="L84">	}</span>
 
 	/**
 	 * Delete the tables of MDS. Just the other way around of createTables --much simpler.
 	 */
 	public void dropTables() {
-
-<span class="fc" id="L88">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L90">			conn = dataSource.getConnection();</span>
-<span class="fc bfc" id="L91" title="All 2 branches covered.">			for (final DataContractManagerSQLStatements.SqlStatements stmt : DataContractManagerSQLStatements.SqlStatements.values()) {</span>
-<span class="fc bfc" id="L92" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
-<span class="fc" id="L93">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
-<span class="fc" id="L94">					updateStatement.execute();</span>
-				}
-			}
-<span class="nc" id="L97">		} catch (final SQLException e) {</span>
-<span class="nc" id="L98">			e.printStackTrace();</span>
-		} finally {
+<span class="fc" id="L90">		synchronized (dataSource) {</span>
+<span class="fc" id="L91">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L101" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L102">					conn.close();</span>
+<span class="fc" id="L93">				conn = dataSource.getConnection();</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">				for (final DataContractManagerSQLStatements.SqlStatements stmt : DataContractManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">					if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
+<span class="fc" id="L96">						final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="fc" id="L97">						updateStatement.execute();</span>
+<span class="fc" id="L98">						updateStatement.close();</span>
+					}
 				}
-<span class="nc" id="L104">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L105">				ex1.printStackTrace();</span>
-<span class="fc" id="L106">			}</span>
-		}
-<span class="fc" id="L108">	}</span>
+<span class="nc" id="L101">			} catch (final SQLException e) {</span>
+<span class="nc" id="L102">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L106">						conn.close();</span>
+					}
+<span class="nc" id="L108">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L109">					ex1.printStackTrace();</span>
+<span class="fc" id="L110">				}</span>
+			}
+<span class="fc" id="L112">		}</span>
+<span class="fc" id="L113">	}</span>
 
 	/**
 	 * Store datacontract into database
@@ -113,47 +118,49 @@ public final class DataContractManagerDB {
 	 *            datacontract
 	 */
 	public void store(final DataContract datacontract) {
-<span class="fc" id="L116">		final UUID[] accountsUUIDs = new UUID[datacontract.getApplicantsAccountsIDs().size()];</span>
-<span class="fc" id="L117">		int i = 0;</span>
-<span class="fc bfc" id="L118" title="All 2 branches covered.">		for (final AccountID accountID : datacontract.getApplicantsAccountsIDs()) {</span>
-<span class="fc" id="L119">			accountsUUIDs[i] = accountID.getId();</span>
-<span class="fc" id="L120">			i++;</span>
-<span class="fc" id="L121">		}</span>
+<span class="fc" id="L121">		synchronized (dataSource) {</span>
+<span class="fc" id="L122">			final UUID[] accountsUUIDs = new UUID[datacontract.getApplicantsAccountsIDs().size()];</span>
+<span class="fc" id="L123">			int i = 0;</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">			for (final AccountID accountID : datacontract.getApplicantsAccountsIDs()) {</span>
+<span class="fc" id="L125">				accountsUUIDs[i] = accountID.getId();</span>
+<span class="fc" id="L126">				i++;</span>
+<span class="fc" id="L127">			}</span>
 
-<span class="fc" id="L123">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L125">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L126">			final PreparedStatement insertStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.INSERT_DATACONTRACT.getSqlStatement());</span>
-<span class="fc" id="L127">			insertStatement.setObject(1, datacontract.getDataClayID().getId());</span>
-			// CHECKSTYLE:OFF
-<span class="fc" id="L129">			insertStatement.setTimestamp(2, new java.sql.Timestamp(datacontract.getBeginDate().getTimeInMillis()));</span>
-<span class="fc" id="L130">			insertStatement.setTimestamp(3, new java.sql.Timestamp(datacontract.getEndDate().getTimeInMillis()));</span>
-<span class="fc" id="L131">			insertStatement.setBoolean(4, datacontract.isPublicAvailable());</span>
-<span class="fc" id="L132">			insertStatement.setObject(5, datacontract.getProviderAccountID().getId());</span>
-<span class="fc" id="L133">			insertStatement.setObject(6, datacontract.getProviderDataSetID().getId());</span>
-
-<span class="fc" id="L135">			final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, accountsUUIDs);</span>
-<span class="fc" id="L136">			insertStatement.setArray(7, tArray);</span>
-
-			// CHECKSTYLE:ON
-<span class="pc bpc" id="L139" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L140">				logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
-			}
-<span class="fc" id="L142">			insertStatement.executeUpdate();</span>
-
-<span class="nc" id="L144">		} catch (final Exception e) {</span>
-<span class="nc" id="L145">			e.printStackTrace();</span>
-<span class="nc" id="L146">			throw new DbObjectAlreadyExistException(datacontract.getDataClayID());</span>
-		} finally {
+<span class="fc" id="L129">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L149" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L150">					conn.close();</span>
+<span class="fc" id="L131">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L132">				final PreparedStatement insertStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.INSERT_DATACONTRACT.getSqlStatement());</span>
+<span class="fc" id="L133">				insertStatement.setObject(1, datacontract.getDataClayID().getId());</span>
+				// CHECKSTYLE:OFF
+<span class="fc" id="L135">				insertStatement.setTimestamp(2, new java.sql.Timestamp(datacontract.getBeginDate().getTimeInMillis()));</span>
+<span class="fc" id="L136">				insertStatement.setTimestamp(3, new java.sql.Timestamp(datacontract.getEndDate().getTimeInMillis()));</span>
+<span class="fc" id="L137">				insertStatement.setBoolean(4, datacontract.isPublicAvailable());</span>
+<span class="fc" id="L138">				insertStatement.setObject(5, datacontract.getProviderAccountID().getId());</span>
+<span class="fc" id="L139">				insertStatement.setObject(6, datacontract.getProviderDataSetID().getId());</span>
+
+<span class="fc" id="L141">				final Array tArray = insertStatement.getConnection().createArrayOf(&quot;uuid&quot;, accountsUUIDs);</span>
+<span class="fc" id="L142">				insertStatement.setArray(7, tArray);</span>
+
+				// CHECKSTYLE:ON
+<span class="pc bpc" id="L145" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L146">					logger.debug(&quot;[==DB==] Executing &quot; + insertStatement);</span>
 				}
-<span class="nc" id="L152">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L153">				ex1.printStackTrace();</span>
-<span class="fc" id="L154">			}</span>
-		}
-<span class="fc" id="L156">	}</span>
+<span class="fc" id="L148">				insertStatement.executeUpdate();</span>
+<span class="fc" id="L149">				insertStatement.close();</span>
+<span class="nc" id="L150">			} catch (final Exception e) {</span>
+<span class="nc" id="L151">				e.printStackTrace();</span>
+<span class="nc" id="L152">				throw new DbObjectAlreadyExistException(datacontract.getDataClayID());</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L156">						conn.close();</span>
+					}
+<span class="nc" id="L158">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L159">					ex1.printStackTrace();</span>
+<span class="fc" id="L160">				}</span>
+			}
+<span class="fc" id="L162">		}</span>
+<span class="fc" id="L163">	}</span>
 
 	/**
 	 * Deserialize
@@ -163,37 +170,37 @@ public final class DataContractManagerDB {
 	 */
 	private DataContract deserializeDataContract(
 			final ResultSet rs) {
-<span class="fc" id="L166">		DataContract result = null;</span>
+<span class="fc" id="L173">		DataContract result = null;</span>
 		try {
 			// CHECKSTYLE:OFF
-<span class="fc" id="L169">			final DataContractID contractID = new DataContractID((UUID)rs.getObject(&quot;id&quot;));</span>
-<span class="fc" id="L170">			final Calendar beginDate = Calendar.getInstance();</span>
-<span class="fc" id="L171">			beginDate.setTimeInMillis(rs.getTimestamp(&quot;beginDate&quot;).getTime());</span>
-<span class="fc" id="L172">			final Calendar endDate = Calendar.getInstance();</span>
-<span class="fc" id="L173">			endDate.setTimeInMillis(rs.getTimestamp(&quot;endDate&quot;).getTime());</span>
-<span class="fc" id="L174">			final boolean publicAvailable = rs.getBoolean(&quot;publicAvailable&quot;);</span>
-<span class="fc" id="L175">			final AccountID providerAccountID = new AccountID((UUID)rs.getObject(&quot;providerAccountID&quot;));</span>
-<span class="fc" id="L176">			final DataSetID providerDataSetID = new DataSetID((UUID)rs.getObject(&quot;providerDataSetID&quot;));</span>
+<span class="fc" id="L176">			final DataContractID contractID = new DataContractID((UUID)rs.getObject(&quot;id&quot;));</span>
+<span class="fc" id="L177">			final Calendar beginDate = Calendar.getInstance();</span>
+<span class="fc" id="L178">			beginDate.setTimeInMillis(rs.getTimestamp(&quot;beginDate&quot;).getTime());</span>
+<span class="fc" id="L179">			final Calendar endDate = Calendar.getInstance();</span>
+<span class="fc" id="L180">			endDate.setTimeInMillis(rs.getTimestamp(&quot;endDate&quot;).getTime());</span>
+<span class="fc" id="L181">			final boolean publicAvailable = rs.getBoolean(&quot;publicAvailable&quot;);</span>
+<span class="fc" id="L182">			final AccountID providerAccountID = new AccountID((UUID)rs.getObject(&quot;providerAccountID&quot;));</span>
+<span class="fc" id="L183">			final DataSetID providerDataSetID = new DataSetID((UUID)rs.getObject(&quot;providerDataSetID&quot;));</span>
 
-<span class="fc" id="L178">			final UUID[] applicantsAccountsUUIDs = (UUID[]) rs.getArray(&quot;applicantsAccountsIDs&quot;).getArray();</span>
-<span class="fc" id="L179">			final Set&lt;AccountID&gt; applicantsAccountsIDs = new HashSet&lt;&gt;();</span>
-<span class="fc bfc" id="L180" title="All 2 branches covered.">			for (final UUID uuid : applicantsAccountsUUIDs) {</span>
-<span class="fc" id="L181">				applicantsAccountsIDs.add(new AccountID(uuid));</span>
+<span class="fc" id="L185">			final UUID[] applicantsAccountsUUIDs = (UUID[]) rs.getArray(&quot;applicantsAccountsIDs&quot;).getArray();</span>
+<span class="fc" id="L186">			final Set&lt;AccountID&gt; applicantsAccountsIDs = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L187" title="All 2 branches covered.">			for (final UUID uuid : applicantsAccountsUUIDs) {</span>
+<span class="fc" id="L188">				applicantsAccountsIDs.add(new AccountID(uuid));</span>
 			}
 
-<span class="fc" id="L184">			result = new DataContract();</span>
-<span class="fc" id="L185">			result.setApplicantsAccountsIDs(applicantsAccountsIDs);</span>
-<span class="fc" id="L186">			result.setBeginDate(beginDate);</span>
-<span class="fc" id="L187">			result.setEndDate(endDate);</span>
-<span class="fc" id="L188">			result.setDataClayID(contractID);</span>
-<span class="fc" id="L189">			result.setProviderAccountID(providerAccountID);</span>
-<span class="fc" id="L190">			result.setProviderDataSetID(providerDataSetID);</span>
-<span class="fc" id="L191">			result.setPublicAvailable(publicAvailable);</span>
+<span class="fc" id="L191">			result = new DataContract();</span>
+<span class="fc" id="L192">			result.setApplicantsAccountsIDs(applicantsAccountsIDs);</span>
+<span class="fc" id="L193">			result.setBeginDate(beginDate);</span>
+<span class="fc" id="L194">			result.setEndDate(endDate);</span>
+<span class="fc" id="L195">			result.setDataClayID(contractID);</span>
+<span class="fc" id="L196">			result.setProviderAccountID(providerAccountID);</span>
+<span class="fc" id="L197">			result.setProviderDataSetID(providerDataSetID);</span>
+<span class="fc" id="L198">			result.setPublicAvailable(publicAvailable);</span>
 
-<span class="nc" id="L193">		} catch (final SQLException e) {</span>
-<span class="nc" id="L194">			e.printStackTrace();</span>
-<span class="fc" id="L195">		}</span>
-<span class="fc" id="L196">		return result;</span>
+<span class="nc" id="L200">		} catch (final SQLException e) {</span>
+<span class="nc" id="L201">			e.printStackTrace();</span>
+<span class="fc" id="L202">		}</span>
+<span class="fc" id="L203">		return result;</span>
 	}
 
 	/**
@@ -205,38 +212,38 @@ public final class DataContractManagerDB {
 	 *             if not found
 	 */
 	public DataContract getDataContractByID(final DataContractID datacontractID) {
-<span class="fc" id="L208">		ResultSet rs = null;</span>
-<span class="fc" id="L209">		DataContract result = null;</span>
-<span class="fc" id="L210">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L212">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L213">			final PreparedStatement selectStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_DATACONTRACT.getSqlStatement());</span>
-
-<span class="fc" id="L215">			selectStatement.setObject(1, datacontractID.getId());</span>
-<span class="pc bpc" id="L216" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L217">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
-			}
-<span class="fc" id="L219">			rs = selectStatement.executeQuery();</span>
-<span class="pc bpc" id="L220" title="1 of 2 branches missed.">			if (rs.next()) {</span>
-<span class="fc" id="L221">				result = deserializeDataContract(rs);</span>
-
-			}
-<span class="nc" id="L224">		} catch (final SQLException e) {</span>
-<span class="nc" id="L225">			throw new DbObjectNotExistException(datacontractID);</span>
-		} finally {
+<span class="fc" id="L215">		synchronized (dataSource) {</span>
+<span class="fc" id="L216">			ResultSet rs = null;</span>
+<span class="fc" id="L217">			DataContract result = null;</span>
+<span class="fc" id="L218">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L228" title="1 of 2 branches missed.">				if (rs != null) {</span>
-<span class="fc" id="L229">					rs.close();</span>
-				}
-<span class="pc bpc" id="L231" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L232">					conn.close();</span>
-				}
-<span class="nc" id="L234">			} catch (final SQLException e) {</span>
-<span class="nc" id="L235">				e.printStackTrace();</span>
-<span class="fc" id="L236">			}</span>
-		}
+<span class="fc" id="L220">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L221">				final PreparedStatement selectStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_DATACONTRACT.getSqlStatement());</span>
 
-<span class="fc" id="L239">		return result;</span>
+<span class="fc" id="L223">				selectStatement.setObject(1, datacontractID.getId());</span>
+<span class="pc bpc" id="L224" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L225">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+				}
+<span class="fc" id="L227">				rs = selectStatement.executeQuery();</span>
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">				if (rs.next()) {</span>
+<span class="fc" id="L229">					result = deserializeDataContract(rs);</span>
+				}
+<span class="fc" id="L231">				selectStatement.close();</span>
+
+<span class="nc" id="L233">			} catch (final SQLException e) {</span>
+<span class="nc" id="L234">				throw new DbObjectNotExistException(datacontractID);</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L237" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L238">						conn.close();</span>
+					}
+<span class="nc" id="L240">				} catch (final SQLException e) {</span>
+<span class="nc" id="L241">					e.printStackTrace();</span>
+<span class="fc" id="L242">				}</span>
+			}
+
+<span class="fc" id="L245">			return result;</span>
+		}
 	}
 
 	/**
@@ -245,31 +252,32 @@ public final class DataContractManagerDB {
 	 *            ID of object
 	 */
 	public void deleteDataContractByID(final ContractID datacontractID) {
-
-<span class="nc" id="L249">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L251">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L252">			final PreparedStatement selectStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.DELETE_DATACONTRACT.getSqlStatement());</span>
-<span class="nc" id="L253">			selectStatement.setObject(1, datacontractID.getId());</span>
-<span class="nc bnc" id="L254" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L255">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
-			}
-<span class="nc" id="L257">			selectStatement.executeUpdate();</span>
-
-<span class="nc" id="L259">		} catch (final SQLException e) {</span>
-			// not found, ignore
-			// e.printStackTrace();
-		} finally {
+<span class="nc" id="L255">		synchronized (dataSource) {</span>
+<span class="nc" id="L256">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L264" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L265">					conn.close();</span>
+<span class="nc" id="L258">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L259">				final PreparedStatement selectStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.DELETE_DATACONTRACT.getSqlStatement());</span>
+<span class="nc" id="L260">				selectStatement.setObject(1, datacontractID.getId());</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L262">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
 				}
-<span class="nc" id="L267">			} catch (final SQLException e) {</span>
-<span class="nc" id="L268">				e.printStackTrace();</span>
-<span class="nc" id="L269">			}</span>
-		}
+<span class="nc" id="L264">				selectStatement.executeUpdate();</span>
+<span class="nc" id="L265">				selectStatement.close();</span>
 
-<span class="nc" id="L272">	}</span>
+<span class="nc" id="L267">			} catch (final SQLException e) {</span>
+				// not found, ignore
+				// e.printStackTrace();
+			} finally {
+				try {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L273">						conn.close();</span>
+					}
+<span class="nc" id="L275">				} catch (final SQLException e) {</span>
+<span class="nc" id="L276">					e.printStackTrace();</span>
+<span class="nc" id="L277">				}</span>
+			}
+<span class="nc" id="L279">		}</span>
+<span class="nc" id="L280">	}</span>
 
 	/**
 	 * Update by ID
@@ -277,32 +285,34 @@ public final class DataContractManagerDB {
 	 *            ID of object
 	 */
 	public void updateDataContractsAddApplicant(final DataContractID datacontractID, final AccountID applicantAccountID) {
-
-<span class="fc" id="L281">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L283">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L284">			final PreparedStatement stmt = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.UPDATE_DATACONTRACT_ADD_APPLICANT.getSqlStatement());</span>
-<span class="fc" id="L285">			stmt.setObject(1, applicantAccountID.getId());</span>
-<span class="fc" id="L286">			stmt.setObject(2, datacontractID.getId());</span>
-<span class="pc bpc" id="L287" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L288">				logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
-			}
-<span class="fc" id="L290">			stmt.executeUpdate();</span>
-
-<span class="nc" id="L292">		} catch (final SQLException e) {</span>
-			// not found, ignore
-			// e.printStackTrace();
-		} finally {
+<span class="fc" id="L288">		synchronized (dataSource) {</span>
+<span class="fc" id="L289">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L297" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L298">					conn.close();</span>
+<span class="fc" id="L291">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L292">				final PreparedStatement stmt = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.UPDATE_DATACONTRACT_ADD_APPLICANT.getSqlStatement());</span>
+<span class="fc" id="L293">				stmt.setObject(1, applicantAccountID.getId());</span>
+<span class="fc" id="L294">				stmt.setObject(2, datacontractID.getId());</span>
+<span class="pc bpc" id="L295" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L296">					logger.debug(&quot;[==DB==] Executing &quot; + stmt);</span>
 				}
-<span class="nc" id="L300">			} catch (final SQLException e) {</span>
-<span class="nc" id="L301">				e.printStackTrace();</span>
-<span class="fc" id="L302">			}</span>
-		}
+<span class="fc" id="L298">				stmt.executeUpdate();</span>
+<span class="fc" id="L299">				stmt.close();</span>
 
-<span class="fc" id="L305">	}</span>
+<span class="nc" id="L301">			} catch (final SQLException e) {</span>
+				// not found, ignore
+				// e.printStackTrace();
+			} finally {
+				try {
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L307">						conn.close();</span>
+					}
+<span class="nc" id="L309">				} catch (final SQLException e) {</span>
+<span class="nc" id="L310">					e.printStackTrace();</span>
+<span class="fc" id="L311">				}</span>
+			}
+<span class="fc" id="L313">		}</span>
+
+<span class="fc" id="L315">	}</span>
 
 	/**
 	 * Get contracts of dataset
@@ -311,36 +321,37 @@ public final class DataContractManagerDB {
 	 * @return The DataContracts
 	 */
 	public List&lt;DataContract&gt; getDataContractsOfDataSet(final DataSetID dataSetID) {
-<span class="fc" id="L314">		ResultSet rs = null;</span>
-<span class="fc" id="L315">		final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L316">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L318">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L319">			final PreparedStatement selectStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_OF_DATASET.getSqlStatement());</span>
-<span class="fc" id="L320">			selectStatement.setObject(1, dataSetID.getId());</span>
-<span class="pc bpc" id="L321" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L322">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
-			}
-<span class="fc" id="L324">			rs = selectStatement.executeQuery();</span>
-<span class="fc bfc" id="L325" title="All 2 branches covered.">			while (rs.next()) {</span>
-<span class="fc" id="L326">				result.add(deserializeDataContract(rs));</span>
-			}
-<span class="nc" id="L328">		} catch (final SQLException e) {</span>
-<span class="nc" id="L329">			e.printStackTrace();</span>
-		} finally {
+<span class="fc" id="L324">		synchronized (dataSource) {</span>
+<span class="fc" id="L325">			ResultSet rs = null;</span>
+<span class="fc" id="L326">			final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L327">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L332" title="1 of 2 branches missed.">				if (rs != null) {</span>
-<span class="fc" id="L333">					rs.close();</span>
+<span class="fc" id="L329">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L330">				final PreparedStatement selectStatement = conn.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_OF_DATASET.getSqlStatement());</span>
+<span class="fc" id="L331">				selectStatement.setObject(1, dataSetID.getId());</span>
+<span class="pc bpc" id="L332" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L333">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
 				}
-<span class="pc bpc" id="L335" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L336">					conn.close();</span>
+<span class="fc" id="L335">				rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L336" title="All 2 branches covered.">				while (rs.next()) {</span>
+<span class="fc" id="L337">					result.add(deserializeDataContract(rs));</span>
 				}
-<span class="nc" id="L338">			} catch (final SQLException e) {</span>
-<span class="nc" id="L339">				e.printStackTrace();</span>
-<span class="fc" id="L340">			}</span>
-		}
+<span class="fc" id="L339">				selectStatement.close();</span>
 
-<span class="fc" id="L343">		return result;</span>
+<span class="nc" id="L341">			} catch (final SQLException e) {</span>
+<span class="nc" id="L342">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L345" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L346">						conn.close();</span>
+					}
+<span class="nc" id="L348">				} catch (final SQLException e) {</span>
+<span class="nc" id="L349">					e.printStackTrace();</span>
+<span class="fc" id="L350">				}</span>
+			}
+
+<span class="fc" id="L353">			return result;</span>
+		}
 	}
 
 	/**
@@ -350,38 +361,39 @@ public final class DataContractManagerDB {
 	 * @return The Contracts
 	 */
 	public List&lt;DataContract&gt; getDataContractsWithApplicant(final AccountID applicantAccountID) {
-<span class="fc" id="L353">		ResultSet rs = null;</span>
-<span class="fc" id="L354">		final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L355">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L357">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L358">			final PreparedStatement selectStatement = conn</span>
-<span class="fc" id="L359">					.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_WITH_APPLICANT.getSqlStatement());</span>
-<span class="fc" id="L360">			final Array tArray = selectStatement.getConnection().createArrayOf(&quot;uuid&quot;, new UUID[] { applicantAccountID.getId() });</span>
-<span class="fc" id="L361">			selectStatement.setArray(1, tArray);</span>
-<span class="pc bpc" id="L362" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L363">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
-			}
-<span class="fc" id="L365">			rs = selectStatement.executeQuery();</span>
-<span class="fc bfc" id="L366" title="All 2 branches covered.">			while (rs.next()) {</span>
-<span class="fc" id="L367">				result.add(deserializeDataContract(rs));</span>
-			}
-<span class="nc" id="L369">		} catch (final SQLException e) {</span>
-<span class="nc" id="L370">			e.printStackTrace();</span>
-		} finally {
+<span class="fc" id="L364">		synchronized (dataSource) {</span>
+<span class="fc" id="L365">			ResultSet rs = null;</span>
+<span class="fc" id="L366">			final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L367">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L373" title="1 of 2 branches missed.">				if (rs != null) {</span>
-<span class="fc" id="L374">					rs.close();</span>
+<span class="fc" id="L369">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L370">				final PreparedStatement selectStatement = conn</span>
+<span class="fc" id="L371">						.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_WITH_APPLICANT.getSqlStatement());</span>
+<span class="fc" id="L372">				final Array tArray = selectStatement.getConnection().createArrayOf(&quot;uuid&quot;, new UUID[]{applicantAccountID.getId()});</span>
+<span class="fc" id="L373">				selectStatement.setArray(1, tArray);</span>
+<span class="pc bpc" id="L374" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L375">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
 				}
-<span class="pc bpc" id="L376" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L377">					conn.close();</span>
+<span class="fc" id="L377">				rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L378" title="All 2 branches covered.">				while (rs.next()) {</span>
+<span class="fc" id="L379">					result.add(deserializeDataContract(rs));</span>
 				}
-<span class="nc" id="L379">			} catch (final SQLException e) {</span>
-<span class="nc" id="L380">				e.printStackTrace();</span>
-<span class="fc" id="L381">			}</span>
-		}
+<span class="fc" id="L381">				selectStatement.close();</span>
 
-<span class="fc" id="L384">		return result;</span>
+<span class="nc" id="L383">			} catch (final SQLException e) {</span>
+<span class="nc" id="L384">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L387" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L388">						conn.close();</span>
+					}
+<span class="nc" id="L390">				} catch (final SQLException e) {</span>
+<span class="nc" id="L391">					e.printStackTrace();</span>
+<span class="fc" id="L392">				}</span>
+			}
+
+<span class="fc" id="L395">			return result;</span>
+		}
 	}
 
 	/**
@@ -391,83 +403,85 @@ public final class DataContractManagerDB {
 	 * @return The Contracts
 	 */
 	public List&lt;DataContract&gt; getDataContractsWithProvider(final AccountID providerAccountID) {
-<span class="nc" id="L394">		ResultSet rs = null;</span>
-<span class="nc" id="L395">		final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L396">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L398">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L399">			final PreparedStatement selectStatement = conn</span>
-<span class="nc" id="L400">					.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_WITH_PROVIDER.getSqlStatement());</span>
-<span class="nc" id="L401">			selectStatement.setObject(1, providerAccountID.getId());</span>
-<span class="nc bnc" id="L402" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L403">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
-			}
-<span class="nc" id="L405">			rs = selectStatement.executeQuery();</span>
-<span class="nc bnc" id="L406" title="All 2 branches missed.">			while (rs.next()) {</span>
-<span class="nc" id="L407">				result.add(deserializeDataContract(rs));</span>
-			}
-<span class="nc" id="L409">		} catch (final SQLException e) {</span>
-<span class="nc" id="L410">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L406">		synchronized (dataSource) {</span>
+<span class="nc" id="L407">			ResultSet rs = null;</span>
+<span class="nc" id="L408">			final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L409">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L413" title="All 2 branches missed.">				if (rs != null) {</span>
-<span class="nc" id="L414">					rs.close();</span>
+<span class="nc" id="L411">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L412">				final PreparedStatement selectStatement = conn</span>
+<span class="nc" id="L413">						.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_WITH_PROVIDER.getSqlStatement());</span>
+<span class="nc" id="L414">				selectStatement.setObject(1, providerAccountID.getId());</span>
+<span class="nc bnc" id="L415" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L416">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
 				}
-<span class="nc bnc" id="L416" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L417">					conn.close();</span>
+<span class="nc" id="L418">				rs = selectStatement.executeQuery();</span>
+<span class="nc bnc" id="L419" title="All 2 branches missed.">				while (rs.next()) {</span>
+<span class="nc" id="L420">					result.add(deserializeDataContract(rs));</span>
 				}
-<span class="nc" id="L419">			} catch (final SQLException e) {</span>
-<span class="nc" id="L420">				e.printStackTrace();</span>
-<span class="nc" id="L421">			}</span>
-		}
+<span class="nc" id="L422">				selectStatement.close();</span>
 
-<span class="nc" id="L424">		return result;</span>
+<span class="nc" id="L424">			} catch (final SQLException e) {</span>
+<span class="nc" id="L425">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L428" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L429">						conn.close();</span>
+					}
+<span class="nc" id="L431">				} catch (final SQLException e) {</span>
+<span class="nc" id="L432">					e.printStackTrace();</span>
+<span class="nc" id="L433">				}</span>
+			}
+
+<span class="nc" id="L436">			return result;</span>
+		}
 	}
 
 	/**
 	 * Get datacontracts containing applicant and data set
 	 * @param applicantAccountID
 	 *            Account ID
-	 * @param datasetID
+	 * @param dataSetID
 	 *            ID of dataset
 	 * @return The Contracts
 	 */
 	public List&lt;DataContract&gt; getContractsWithApplicantAndDataSet(final AccountID applicantAccountID,
 			final DataSetID dataSetID) {
-<span class="fc" id="L437">		ResultSet rs = null;</span>
-<span class="fc" id="L438">		final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L439">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L441">			conn = dataSource.getConnection();</span>
-<span class="fc" id="L442">			final PreparedStatement selectStatement = conn</span>
-<span class="fc" id="L443">					.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_WITH_APPLICANT_AND_DATASET.getSqlStatement());</span>
-
-<span class="fc" id="L445">			selectStatement.setObject(1, applicantAccountID.getId());</span>
-<span class="fc" id="L446">			selectStatement.setObject(2, dataSetID.getId());</span>
-
-<span class="pc bpc" id="L448" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L449">				logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
-			}
-<span class="fc" id="L451">			rs = selectStatement.executeQuery();</span>
-<span class="fc bfc" id="L452" title="All 2 branches covered.">			while (rs.next()) {</span>
-<span class="fc" id="L453">				result.add(deserializeDataContract(rs));</span>
-			}
-<span class="nc" id="L455">		} catch (final SQLException e) {</span>
-<span class="nc" id="L456">			e.printStackTrace();</span>
-		} finally {
+<span class="fc" id="L450">		synchronized (dataSource) {</span>
+<span class="fc" id="L451">			ResultSet rs = null;</span>
+<span class="fc" id="L452">			final List&lt;DataContract&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L453">			Connection conn = null;</span>
 			try {
-<span class="pc bpc" id="L459" title="1 of 2 branches missed.">				if (rs != null) {</span>
-<span class="fc" id="L460">					rs.close();</span>
-				}
-<span class="pc bpc" id="L462" title="1 of 2 branches missed.">				if (conn != null) {</span>
-<span class="fc" id="L463">					conn.close();</span>
-				}
-<span class="nc" id="L465">			} catch (final SQLException e) {</span>
-<span class="nc" id="L466">				e.printStackTrace();</span>
-<span class="fc" id="L467">			}</span>
-		}
+<span class="fc" id="L455">				conn = dataSource.getConnection();</span>
+<span class="fc" id="L456">				final PreparedStatement selectStatement = conn</span>
+<span class="fc" id="L457">						.prepareStatement(DataContractManagerSQLStatements.SqlStatements.SELECT_ALL_DATACONTRACTS_WITH_APPLICANT_AND_DATASET.getSqlStatement());</span>
 
-<span class="fc" id="L470">		return result;</span>
+<span class="fc" id="L459">				selectStatement.setObject(1, applicantAccountID.getId());</span>
+<span class="fc" id="L460">				selectStatement.setObject(2, dataSetID.getId());</span>
+
+<span class="pc bpc" id="L462" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L463">					logger.debug(&quot;[==DB==] Executing &quot; + selectStatement);</span>
+				}
+<span class="fc" id="L465">				rs = selectStatement.executeQuery();</span>
+<span class="fc bfc" id="L466" title="All 2 branches covered.">				while (rs.next()) {</span>
+<span class="fc" id="L467">					result.add(deserializeDataContract(rs));</span>
+				}
+<span class="fc" id="L469">				selectStatement.close();</span>
+
+<span class="nc" id="L471">			} catch (final SQLException e) {</span>
+<span class="nc" id="L472">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="pc bpc" id="L475" title="1 of 2 branches missed.">					if (conn != null) {</span>
+<span class="fc" id="L476">						conn.close();</span>
+					}
+<span class="nc" id="L478">				} catch (final SQLException e) {</span>
+<span class="nc" id="L479">					e.printStackTrace();</span>
+<span class="fc" id="L480">				}</span>
+			}
+
+<span class="fc" id="L483">			return result;</span>
+		}
 	}
 
 	/**
@@ -475,11 +489,11 @@ public final class DataContractManagerDB {
 	 */
 	public void close() {
 		try {
-<span class="fc" id="L478">			dataSource.close();</span>
-<span class="nc" id="L479">		}catch(Exception e) {</span>
+<span class="fc" id="L492">			dataSource.close();</span>
+<span class="nc" id="L493">		}catch(Exception e) {</span>
 			// TODO
-<span class="nc" id="L481">			e.printStackTrace();</span>
-<span class="fc" id="L482">		}</span>
-<span class="fc" id="L483">	}</span>
+<span class="nc" id="L495">			e.printStackTrace();</span>
+<span class="fc" id="L496">		}</span>
+<span class="fc" id="L497">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

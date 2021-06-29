@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataServiceRuntime.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.commonruntime</a> &gt; <span class="el_source">DataServiceRuntime.java</span></div><h1>DataServiceRuntime.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.commonruntime;
 
-import java.util.Calendar;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
+import es.bsc.dataclay.dataservice.api.DataServiceAPI;
+import es.bsc.dataclay.serialization.lib.SerializedParametersOrReturn;
+import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
+import es.bsc.dataclay.util.structs.MemoryCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,8 +35,7 @@ import es.bsc.dataclay.util.ids.ObjectID;
 import es.bsc.dataclay.util.ids.SessionID;
 import es.bsc.dataclay.util.management.metadataservice.RegistrationInfo;
 import es.bsc.dataclay.util.reflection.Reflector;
-import es.bsc.dataclay.util.structs.LruCache;
-import es.bsc.dataclay.util.structs.LruCacheByDate;
+import es.bsc.dataclay.util.structs.MemoryCache;
 import es.bsc.dataclay.util.structs.Tuple;
 
 /**
@@ -46,41 +43,41 @@ import es.bsc.dataclay.util.structs.Tuple;
  */
 public final class DataServiceRuntime extends DataClayRuntime {
 	/** Logger. */
-<span class="nc" id="L49">	private static final Logger LOGGER = LogManager.getLogger(&quot;DataServiceRuntime&quot;);</span>
+<span class="nc" id="L46">	private static final Logger LOGGER = LogManager.getLogger(&quot;DataServiceRuntime&quot;);</span>
 
 	/** Ref to DS if this lib serves to a DS. */
 	public DataService dsRef;
 
 	/** Information of session per thread. */
-<span class="nc" id="L55">	private final ThreadLocal&lt;SessionID&gt; dsSessionIDs = new ThreadLocal&lt;&gt;();</span>
+<span class="nc" id="L52">	private final ThreadLocal&lt;SessionID&gt; dsSessionIDs = new ThreadLocal&lt;&gt;();</span>
 
 	/** Cache of sessions. */
-	private final LruCacheByDate&lt;SessionID, Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt;&gt; sessionsCache;
+	private final MemoryCache&lt;SessionID, Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt;&gt; sessionsCache;
 
 	/** Cache of datasets. */
-	private final LruCache&lt;DataSetID, Boolean&gt; datasetsCache;
+	private final MemoryCache&lt;DataSetID, Boolean&gt; datasetsCache;
 
 	/**
 	 * References hold by sessions. Resource note: Maximum size of this map is maximum number of objects allowed in EE x
 	 * sessions. TODO: think about compressing it.
 	 */
-<span class="nc" id="L67">	private final Map&lt;ObjectID, Set&lt;SessionID&gt;&gt; referencesHoldBySessions = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L64">	private final Map&lt;ObjectID, Set&lt;SessionID&gt;&gt; referencesHoldBySessions = new ConcurrentHashMap&lt;&gt;();</span>
 
 	/**
 	 * Per each session, it's expiration date. This is used to control 'retained' objects from sessions in Garbage collection.
 	 */
-<span class="nc" id="L72">	private final Map&lt;SessionID, Date&gt; sessionsExpireDates = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L69">	private final Map&lt;SessionID, Date&gt; sessionsExpireDates = new ConcurrentHashMap&lt;&gt;();</span>
 
 	/**
 	 * Sessions in quarantine. note: maximum size of this map is max number of sessions per EE: This map is needed to solve a
 	 * race condition in Global Garbage collection (@see getReferenceCounting).
 	 */
-<span class="nc" id="L78">	private final Set&lt;SessionID&gt; quarantineSessions = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L75">	private final Set&lt;SessionID&gt; quarantineSessions = ConcurrentHashMap.newKeySet();</span>
 
 	/**
 	 * Indicates if tasks (garbage collectors,...) were scheduled or not. This is done to manage. multiple initializations.
 	 */
-<span class="nc" id="L83">	public boolean tasksScheduled = false;</span>
+<span class="nc" id="L80">	public boolean tasksScheduled = false;</span>
 
 	/**
 	 * Constructor.
@@ -88,24 +85,24 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 * @param newdsRef
 	 *            DS reference
 	 */
-<span class="nc" id="L91">	public DataServiceRuntime(final DataService newdsRef) {</span>
-<span class="nc" id="L92">		this.dsRef = newdsRef;</span>
+<span class="nc" id="L88">	public DataServiceRuntime(final DataService newdsRef) {</span>
+<span class="nc" id="L89">		this.dsRef = newdsRef;</span>
 
-<span class="nc" id="L94">		this.dataClayObjLoader = new ExecutionObjectLoader(this);</span>
-<span class="nc" id="L95">		this.dataClayHeapManager = new ExecutionEnvironmentHeapManager(this);</span>
-<span class="nc" id="L96">		this.sessionsCache = new LruCacheByDate&lt;&gt;(Configuration.Flags.MAX_ENTRIES_DATASERVICE_CACHE.getIntValue());</span>
-<span class="nc" id="L97">		this.datasetsCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_DATASERVICE_CACHE.getIntValue());</span>
+<span class="nc" id="L91">		this.dataClayObjLoader = new ExecutionObjectLoader(this);</span>
+<span class="nc" id="L92">		this.dataClayHeapManager = new ExecutionEnvironmentHeapManager(this);</span>
+<span class="nc" id="L93">		this.sessionsCache = new MemoryCache&lt;&gt;();</span>
+<span class="nc" id="L94">		this.datasetsCache = new MemoryCache&lt;&gt;();</span>
 
-<span class="nc" id="L99">		this.threadPool = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {</span>
+<span class="nc" id="L96">		this.threadPool = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {</span>
 			@Override
 			public Thread newThread(final Runnable r) {
-<span class="nc" id="L102">				final Thread t = Executors.defaultThreadFactory().newThread(r);</span>
-<span class="nc" id="L103">				t.setDaemon(true);</span>
-<span class="nc" id="L104">				t.setName(getDataService().dsName + &quot;-MemoryGC&quot;);</span>
-<span class="nc" id="L105">				return t;</span>
+<span class="nc" id="L99">				final Thread t = Executors.defaultThreadFactory().newThread(r);</span>
+<span class="nc" id="L100">				t.setDaemon(true);</span>
+<span class="nc" id="L101">				t.setName(getDataService().dsName + &quot;-MemoryGC&quot;);</span>
+<span class="nc" id="L102">				return t;</span>
 			}
 		});
-<span class="nc" id="L108">	}</span>
+<span class="nc" id="L105">	}</span>
 
 	/**
 	 * Initialize connections.
@@ -122,19 +119,19 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	@Override
 	public void initialize(final String logicModuleHost, final int logicModulePort, final String originHostName)
 			throws Exception {
-<span class="nc" id="L125">		super.initialize(logicModuleHost, logicModulePort, originHostName);</span>
-<span class="nc bnc" id="L126" title="All 4 branches missed.">		if (Configuration.Flags.MEMORY_GC_ENABLED.getBooleanValue() &amp;&amp; !tasksScheduled) {</span>
+<span class="nc" id="L122">		super.initialize(logicModuleHost, logicModulePort, originHostName);</span>
+<span class="nc bnc" id="L123" title="All 4 branches missed.">		if (Configuration.Flags.MEMORY_GC_ENABLED.getBooleanValue() &amp;&amp; !tasksScheduled) {</span>
 			// Create Repetitively task
-<span class="nc" id="L128">			this.threadPool.scheduleAtFixedRate(dataClayHeapManager, 0,</span>
-<span class="nc" id="L129">					Configuration.Flags.MEMMGMT_CHECK_TIME_INTERVAL.getLongValue(), TimeUnit.MILLISECONDS);</span>
-<span class="nc" id="L130">			tasksScheduled = true;</span>
+<span class="nc" id="L125">			this.threadPool.scheduleAtFixedRate(dataClayHeapManager, 0,</span>
+<span class="nc" id="L126">					Configuration.Flags.MEMMGMT_CHECK_TIME_INTERVAL.getLongValue(), TimeUnit.MILLISECONDS);</span>
+<span class="nc" id="L127">			tasksScheduled = true;</span>
 		}
-<span class="nc" id="L132">	}</span>
+<span class="nc" id="L129">	}</span>
 	
 	@Override
 	public DataClayExecutionObject getOrNewPersistentInstance(final MetaClassID classID, final ObjectID objectID,
 			final BackendID hint) {
-<span class="nc" id="L137">		return (DataClayExecutionObject) this.dataClayObjLoader.getOrNewPersistentInstance(classID, objectID, hint);</span>
+<span class="nc" id="L134">		return (DataClayExecutionObject) this.dataClayObjLoader.getOrNewPersistentInstance(classID, objectID, hint);</span>
 	}
 
 	/**
@@ -147,7 +144,7 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 * @return The the object.
 	 */
 	public DataClayExecutionObject getOrNewInstanceFromDB(final ObjectID objectID, final boolean retry) {
-<span class="nc" id="L150">		return ((ExecutionObjectLoader) dataClayObjLoader).getOrNewPersistentInstanceFromDB(objectID, retry);</span>
+<span class="nc" id="L147">		return ((ExecutionObjectLoader) dataClayObjLoader).getOrNewPersistentInstanceFromDB(objectID, retry);</span>
 	}
 
 	/**
@@ -169,7 +166,7 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	public DataClayObject getOrNewAndLoadVolatile(final MetaClassID classID, final ObjectID objectID,
 			final BackendID hint, final ObjectWithDataParamOrReturn objWithData,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps) {
-<span class="nc" id="L172">		return dataClayObjLoader.getOrNewAndLoadVolatile(classID, objectID, hint, objWithData, ifaceBitMaps);</span>
+<span class="nc" id="L169">		return dataClayObjLoader.getOrNewAndLoadVolatile(classID, objectID, hint, objWithData, ifaceBitMaps);</span>
 	}
 
 	/**
@@ -184,12 +181,12 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 */
 	public void deserializeDataIntoInstance(final DataClayExecutionObject instance,
 			final ObjectWithDataParamOrReturn data, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps) {
-<span class="nc" id="L187">		dataClayObjLoader.deserializeDataIntoInstance(instance, data, ifaceBitMaps);</span>
-<span class="nc" id="L188">	}</span>
+<span class="nc" id="L184">		dataClayObjLoader.deserializeDataIntoInstance(instance, data, ifaceBitMaps);</span>
+<span class="nc" id="L185">	}</span>
 
 	@Override
 	public SessionID getSessionID() {
-<span class="nc" id="L192">		return dsSessionIDs.get();</span>
+<span class="nc" id="L189">		return dsSessionIDs.get();</span>
 	}
 
 	/**
@@ -201,22 +198,22 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 *            id of the session
 	 */
 	public void checkSession(final DataSetID dataSetID, final SessionID sessionID) {
-<span class="nc" id="L204">		Boolean isPublic = datasetsCache.get(dataSetID);</span>
+<span class="nc" id="L201">		Boolean isPublic = datasetsCache.get(dataSetID);</span>
 		// TODO: Redudant check if at newSession time is already checking this (July
 		// 2018 jmarti)
-<span class="nc bnc" id="L207" title="All 2 branches missed.">		if (isPublic == null) {</span>
-<span class="nc" id="L208">			isPublic = getLogicModuleAPI().checkDataSetIsPublic(dataSetID);</span>
-<span class="nc" id="L209">			datasetsCache.put(dataSetID, isPublic);</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		if (isPublic == null) {</span>
+<span class="nc" id="L205">			isPublic = getLogicModuleAPI().checkDataSetIsPublic(dataSetID);</span>
+<span class="nc" id="L206">			datasetsCache.put(dataSetID, isPublic);</span>
 		}
-<span class="nc bnc" id="L211" title="All 2 branches missed.">		if (isPublic) {</span>
-<span class="nc" id="L212">			return;</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">		if (isPublic) {</span>
+<span class="nc" id="L209">			return;</span>
 		}
-<span class="nc" id="L214">		final Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt; sessionInfo = getSessionInfo(sessionID);</span>
-<span class="nc" id="L215">		final Set&lt;DataSetID&gt; accessibleDatasets = sessionInfo.getFirst().getSecond();</span>
-<span class="nc bnc" id="L216" title="All 2 branches missed.">		if (!accessibleDatasets.contains(dataSetID)) {</span>
-<span class="nc" id="L217">			throw new ExecuteMethodException(&quot;Inaccessible dataset &quot; + dataSetID);</span>
+<span class="nc" id="L211">		final Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt; sessionInfo = getSessionInfo(sessionID);</span>
+<span class="nc" id="L212">		final Set&lt;DataSetID&gt; accessibleDatasets = sessionInfo.getFirst().getSecond();</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">		if (!accessibleDatasets.contains(dataSetID)) {</span>
+<span class="nc" id="L214">			throw new ExecuteMethodException(&quot;Inaccessible dataset &quot; + dataSetID);</span>
 		}
-<span class="nc" id="L219">	}</span>
+<span class="nc" id="L216">	}</span>
 
 	/**
 	 * Get session info
@@ -226,12 +223,12 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 * @return Session info.
 	 */
 	private Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt; getSessionInfo(final SessionID sessionID) {
-<span class="nc" id="L229">		Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt; sessionInfo = sessionsCache.get(sessionID);</span>
-<span class="nc bnc" id="L230" title="All 2 branches missed.">		if (sessionInfo == null) {</span>
-<span class="nc" id="L231">			sessionInfo = getLogicModuleAPI().getInfoOfSessionForDS(sessionID);</span>
-<span class="nc" id="L232">			sessionsCache.put(sessionID, sessionInfo);</span>
+<span class="nc" id="L226">		Tuple&lt;Tuple&lt;DataSetID, Set&lt;DataSetID&gt;&gt;, Calendar&gt; sessionInfo = sessionsCache.get(sessionID);</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		if (sessionInfo == null) {</span>
+<span class="nc" id="L228">			sessionInfo = getLogicModuleAPI().getInfoOfSessionForDS(sessionID);</span>
+<span class="nc" id="L229">			sessionsCache.put(sessionID, sessionInfo);</span>
 		}
-<span class="nc" id="L234">		return sessionInfo;</span>
+<span class="nc" id="L231">		return sessionInfo;</span>
 	}
 
 	/**
@@ -243,39 +240,19 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 *            Hint to set into instance.
 	 */
 	public void setWeakProxy(final DataClayExecutionObject instance, final ExecutionEnvironmentID newHint) {
-<span class="nc" id="L246">		lock(instance.getObjectID());</span>
+<span class="nc" id="L243">		lock(instance.getObjectID());</span>
 		try {
-<span class="nc" id="L248">			instance.setLoaded(false);</span>
-<span class="nc bnc" id="L249" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L250">				LOGGER.debug(&quot;[==Hint==] Setting hint (setWeakProxy) on instance &quot; + instance.getObjectID()</span>
-<span class="nc" id="L251">						+ &quot; the hint : &quot; + getDSNameOfHint(newHint));</span>
+<span class="nc" id="L245">			instance.setLoaded(false);</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L247">				LOGGER.debug(&quot;[==Hint==] Setting hint (setWeakProxy) on instance &quot; + instance.getObjectID()</span>
+<span class="nc" id="L248">						+ &quot; the hint : &quot; + getDSNameOfHint(newHint));</span>
 			}
-<span class="nc" id="L253">			instance.setHint(newHint);</span>
-<span class="nc" id="L254">			Reflector.nullifyAllFields(instance);</span>
+<span class="nc" id="L250">			instance.setHint(newHint);</span>
+<span class="nc" id="L251">			Reflector.nullifyAllFields(instance);</span>
 		} finally {
-<span class="nc" id="L256">			unlock(instance.getObjectID());</span>
+<span class="nc" id="L253">			unlock(instance.getObjectID());</span>
 		}
-<span class="nc" id="L258">	}</span>
-
-	/**
-	 * All volatiles provided are under deserialization. This function solves problems of 'hashcode' and other special functions
-	 * needed during deserializations. See executeImpl.
-	 * 
-	 * @param volatileMap
-	 *            Volatiles under deserialization.
-	 */
-	@Override
-	public void addVolatileUnderDeserialization(final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volatileMap) {
-<span class="nc" id="L269">		underDeserializationVolatiles.put(Thread.currentThread().getId(), volatileMap);</span>
-<span class="nc" id="L270">	}</span>
-
-	/**
-	 * Remove volatiles under deserialization.
-	 */
-	@Override
-	public void removeVolatilesUnderDeserialization() {
-<span class="nc" id="L277">		underDeserializationVolatiles.remove(Thread.currentThread().getId());</span>
-<span class="nc" id="L278">	}</span>
+<span class="nc" id="L255">	}</span>
 
 	/**
 	 * Check if there is a volatile object with ID provided and if so, deserialize it since it is needed.
@@ -288,180 +265,186 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 */
 	private boolean checkAndFillVolatileUnderDeserialization(final DataClayExecutionObject volatileObj,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps) {
-<span class="nc" id="L291">		final ObjectID objectID = volatileObj.getObjectID();</span>
-<span class="nc" id="L292">		final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volatileMap = underDeserializationVolatiles</span>
-<span class="nc" id="L293">				.get(Thread.currentThread().getId());</span>
-<span class="nc bnc" id="L294" title="All 2 branches missed.">		if (volatileMap != null) {</span>
-<span class="nc bnc" id="L295" title="All 2 branches missed.">			for (final ObjectWithDataParamOrReturn volatileParamOrRet : volatileMap.values()) {</span>
-<span class="nc bnc" id="L296" title="All 2 branches missed.">				if (volatileParamOrRet.getObjectID().equals(objectID)) {</span>
-					// Deserialize it
-<span class="nc" id="L298">					getOrNewAndLoadVolatile(volatileObj.getMetaClassID(), objectID, volatileObj.getHint(),</span>
+<span class="nc" id="L268">		final ObjectID objectID = volatileObj.getObjectID();</span>
+<span class="nc" id="L269">		ObjectWithDataParamOrReturn volatileParamOrRet = underDeserializationVolatiles.get(objectID);</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">		if (volatileParamOrRet != null) {</span>
+			// Deserialize it
+<span class="nc" id="L272">			getOrNewAndLoadVolatile(volatileObj.getMetaClassID(), objectID, volatileObj.getHint(),</span>
 							volatileParamOrRet, ifaceBitMaps);
-<span class="nc" id="L300">					return true;</span>
-				}
-<span class="nc" id="L302">			}</span>
+<span class="nc" id="L274">			return true;</span>
 		}
-<span class="nc" id="L304">		return false;</span>
+<span class="nc" id="L276">		return false;</span>
 	}
 
 	@Override
 	protected Object executeRemoteImplementationInternal(final DataClayObject object, final ImplementationID implID,
 			final Object[] params) {
 
-<span class="nc bnc" id="L311" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L312">			LOGGER.debug(&quot;[==Execution==] Object &quot; + object.getObjectID()</span>
-<span class="nc" id="L313">					+ &quot; was unloaded. Checking reason. System.id = &quot; + System.identityHashCode(object));</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L284">			LOGGER.debug(&quot;[==Execution==] Object &quot; + object.getObjectID()</span>
+<span class="nc" id="L285">					+ &quot; was unloaded. Checking reason. System.id = &quot; + System.identityHashCode(object));</span>
 		}
 
-<span class="nc" id="L316">		final DataClayExecutionObject objectInWhichToExec = (DataClayExecutionObject) object;</span>
+<span class="nc" id="L288">		final DataClayExecutionObject objectInWhichToExec = (DataClayExecutionObject) object;</span>
 
 		// ============================== PARAMS/RETURNS ========================== //
 		// Check if object is being deserialized (params/returns)
-<span class="nc" id="L320">		boolean volatileUnderDeserialization = false;</span>
-<span class="nc" id="L321">		volatileUnderDeserialization = checkAndFillVolatileUnderDeserialization(objectInWhichToExec, null);</span>
+<span class="nc" id="L292">		boolean volatileUnderDeserialization = false;</span>
+<span class="nc" id="L293">		volatileUnderDeserialization = checkAndFillVolatileUnderDeserialization(objectInWhichToExec, null);</span>
 
-<span class="nc bnc" id="L323" title="All 2 branches missed.">		if (volatileUnderDeserialization) {</span>
-<span class="nc bnc" id="L324" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L325">				LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">		if (volatileUnderDeserialization) {</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L297">				LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
 						+ &quot; is a volatile under deserialization, executing in &quot; + &quot;System.id = &quot;
-<span class="nc" id="L327">						+ System.identityHashCode(objectInWhichToExec));</span>
+<span class="nc" id="L299">						+ System.identityHashCode(objectInWhichToExec));</span>
 			}
-<span class="nc" id="L329">			return this.dsRef.runImplementation(objectInWhichToExec, implID, params);</span>
+<span class="nc" id="L301">			return this.dsRef.runImplementation(objectInWhichToExec, implID, params);</span>
 		}
 
-<span class="nc" id="L332">		ExecutionEnvironmentID remoteLocID = null;</span>
-<span class="nc" id="L333">		boolean usingHint = false;</span>
-<span class="nc" id="L334">		boolean inThisLocation = false;</span>
-<span class="nc" id="L335">		final ObjectID objectID = objectInWhichToExec.getObjectID();</span>
+<span class="nc" id="L304">		ExecutionEnvironmentID remoteLocID = null;</span>
+<span class="nc" id="L305">		boolean usingHint = false;</span>
+<span class="nc" id="L306">		boolean inThisLocation = false;</span>
+<span class="nc" id="L307">		final ObjectID objectID = objectInWhichToExec.getObjectID();</span>
 
-<span class="nc bnc" id="L337" title="All 2 branches missed.">		if (objectInWhichToExec.getHint() != null) {</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">		if (objectInWhichToExec.getHint() != null) {</span>
 			// ==================================== HINT ===================================
 			// //
-<span class="nc" id="L340">			final ExecutionEnvironmentID hint = (ExecutionEnvironmentID) objectInWhichToExec.getHint();</span>
-<span class="nc" id="L341">			inThisLocation = hint.equals(this.dsRef.getExecutionEnvironmentID());</span>
-<span class="nc" id="L342">			remoteLocID = hint;</span>
-<span class="nc" id="L343">			usingHint = true;</span>
-<span class="nc bnc" id="L344" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc bnc" id="L345" title="All 2 branches missed.">				if (inThisLocation) {</span>
-<span class="nc" id="L346">					LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
+<span class="nc" id="L312">			final ExecutionEnvironmentID hint = (ExecutionEnvironmentID) objectInWhichToExec.getHint();</span>
+<span class="nc" id="L313">			inThisLocation = hint.equals(this.dsRef.getExecutionEnvironmentID());</span>
+<span class="nc" id="L314">			remoteLocID = hint;</span>
+<span class="nc" id="L315">			usingHint = true;</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">				if (inThisLocation) {</span>
+<span class="nc" id="L318">					LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
 							+ &quot; has a Hint, pointing to this node. System.id = &quot;
-<span class="nc" id="L348">							+ System.identityHashCode(objectInWhichToExec));</span>
+<span class="nc" id="L320">							+ System.identityHashCode(objectInWhichToExec));</span>
 				} else {
-<span class="nc" id="L350">					LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
+<span class="nc" id="L322">					LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
 							+ &quot; has a Hint, pointing to another node &quot; + &quot;(&quot; + remoteLocID + &quot;). System.id = &quot;
-<span class="nc" id="L352">							+ System.identityHashCode(objectInWhichToExec));</span>
+<span class="nc" id="L324">							+ System.identityHashCode(objectInWhichToExec));</span>
 				}
 			}
-<span class="nc" id="L355">		} else {</span>
+<span class="nc" id="L327">		} else {</span>
 			// Get
-<span class="nc" id="L357">			remoteLocID = (ExecutionEnvironmentID) getLocation(objectID);</span>
+<span class="nc" id="L329">			remoteLocID = (ExecutionEnvironmentID) getLocation(objectID);</span>
 			// remoteLocID = getExecutionEnvironmentLocation(objectID);
-<span class="nc" id="L359">			inThisLocation = remoteLocID.equals(this.dsRef.getExecutionEnvironmentID());</span>
-<span class="nc bnc" id="L360" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L361">				LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
+<span class="nc" id="L331">			inThisLocation = remoteLocID.equals(this.dsRef.getExecutionEnvironmentID());</span>
+<span class="nc bnc" id="L332" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L333">				LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
 						+ &quot; is not a proxy and has no hint. Obtained actual location = &quot; + remoteLocID + &quot; System.id = &quot;
-<span class="nc" id="L363">						+ System.identityHashCode(objectInWhichToExec));</span>
+<span class="nc" id="L335">						+ System.identityHashCode(objectInWhichToExec));</span>
 			}
 		}
 
 		// ==================================== THIS LOCATION
 		// =================================== //
-<span class="nc bnc" id="L369" title="All 2 branches missed.">		if (inThisLocation) {</span>
-<span class="nc bnc" id="L370" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L371">				LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">		if (inThisLocation) {</span>
+<span class="nc bnc" id="L342" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L343">				LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
 						+ &quot; is in this node. Loading it from Db. System.id = &quot;
-<span class="nc" id="L373">						+ System.identityHashCode(objectInWhichToExec));</span>
+<span class="nc" id="L345">						+ System.identityHashCode(objectInWhichToExec));</span>
 			}
 			try {
-<span class="nc" id="L376">				((ExecutionObjectLoader) this.dataClayObjLoader).loadDataClayObjectFromDb(objectInWhichToExec, true);</span>
-<span class="nc" id="L377">				return this.dsRef.runImplementation(objectInWhichToExec, implID, params);</span>
-<span class="nc" id="L378">			} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc bnc" id="L379" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L380">					LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
+<span class="nc" id="L348">				((ExecutionObjectLoader) this.dataClayObjLoader).loadDataClayObjectFromDb(objectInWhichToExec, true);</span>
+<span class="nc" id="L349">				return this.dsRef.runImplementation(objectInWhichToExec, implID, params);</span>
+<span class="nc" id="L350">			} catch (final DbObjectNotExistException dbe) {</span>
+<span class="nc bnc" id="L351" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L352">					LOGGER.debug(&quot;[==Execution==] Object &quot; + objectInWhichToExec.getObjectID()</span>
 							+ &quot; is NOT in this node. Maybe hint or metadata information was wrong due to a movement. &quot;
 							+ &quot; Obtaining exec.location again. &quot; + &quot; System.id = &quot;
-<span class="nc" id="L383">							+ System.identityHashCode(objectInWhichToExec));</span>
+<span class="nc" id="L355">							+ System.identityHashCode(objectInWhichToExec));</span>
 				}
 				// not actually here (maybe hint was wrong)
 				// remoteLocID = getExecutionEnvironmentLocation(objectID);
-<span class="nc" id="L387">				remoteLocID = (ExecutionEnvironmentID) getLocation(objectID);</span>
+<span class="nc" id="L359">				remoteLocID = (ExecutionEnvironmentID) getLocation(objectID);</span>
 			}
 
 		}
 
-<span class="nc bnc" id="L392" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L393">			final String methodSignature = objectInWhichToExec.getStubInfo().getImplementationByID(implID.toString())</span>
-<span class="nc" id="L394">					.getSignature();</span>
-<span class="nc" id="L395">			LOGGER.debug(&quot;[==JUMP==] Object &quot; + objectInWhichToExec.getObjectID() + &quot; of class &quot;</span>
-<span class="nc" id="L396">					+ objectInWhichToExec.getClass().getName()</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L365">			final String methodSignature = objectInWhichToExec.getStubInfo().getImplementationByID(implID.toString())</span>
+<span class="nc" id="L366">					.getSignature();</span>
+<span class="nc" id="L367">			LOGGER.debug(&quot;[==JUMP==] Object &quot; + objectInWhichToExec.getObjectID() + &quot; of class &quot;</span>
+<span class="nc" id="L368">					+ objectInWhichToExec.getClass().getName()</span>
 					+ &quot; is NOT in this node. Going to do a remote call. Method to call: &quot; + methodSignature
-<span class="nc" id="L398">					+ &quot;. System.id = &quot; + System.identityHashCode(objectInWhichToExec));</span>
+<span class="nc" id="L370">					+ &quot;. System.id = &quot; + System.identityHashCode(objectInWhichToExec));</span>
 		}
 		// ==================================== REMOTE LOCATION
 		// =================================== //
-<span class="nc" id="L402">		return callExecuteToDS(objectInWhichToExec, params, implID, remoteLocID, usingHint);</span>
+<span class="nc" id="L374">		return callExecuteToDS(objectInWhichToExec, params, implID, remoteLocID, usingHint);</span>
 
 	}
 
 	@Override
 	public BackendID makePersistent(final DataClayObject dcObject, final BackendID optionalDestBackendID,
 			final boolean recursive, final String alias) {
-<span class="nc bnc" id="L409" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L410">			LOGGER.debug(&quot;[==MakePersistent==] Starting make persistent of object &quot; + dcObject.getObjectID());</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L382">			LOGGER.debug(&quot;[==MakePersistent==] Starting make persistent of object &quot; + dcObject.getObjectID());</span>
 		}
-<span class="nc" id="L412">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L413">		final DataClayExecutionObject execObject = (DataClayExecutionObject) dcObject;</span>
+<span class="nc" id="L384">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
+<span class="nc" id="L385">		final DataClayExecutionObject execObject = (DataClayExecutionObject) dcObject;</span>
 
-<span class="nc" id="L415">		BackendID location = execObject.getHint();</span>
-<span class="nc bnc" id="L416" title="All 2 branches missed.">		if (location == null) {</span>
-<span class="nc" id="L417">			location = optionalDestBackendID;</span>
-<span class="nc bnc" id="L418" title="All 2 branches missed.">			if (location == null) {</span>
-<span class="nc" id="L419">				location = chooseLocation(dcObject, alias);</span>
+<span class="nc" id="L387">		BackendID location = execObject.getHint();</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">		if (location == null) {</span>
+<span class="nc" id="L389">			location = optionalDestBackendID;</span>
+<span class="nc bnc" id="L390" title="All 2 branches missed.">			if (location == null) {</span>
+<span class="nc" id="L391">				location = chooseLocation(dcObject, alias);</span>
 			}
 		}
 
-<span class="nc bnc" id="L423" title="All 4 branches missed.">		if (alias != null &amp;&amp; execObject.isPendingToRegister()) {</span>
-<span class="nc" id="L424">			final RegistrationInfo regInfo = new RegistrationInfo(execObject.getObjectID(),</span>
-<span class="nc" id="L425">					execObject.getMetaClassID(), sessionID, execObject.getDataSetID());</span>
+<span class="nc bnc" id="L395" title="All 4 branches missed.">		if (alias != null &amp;&amp; execObject.isPendingToRegister()) {</span>
+
+<span class="nc" id="L397">			final RegistrationInfo regInfo = new RegistrationInfo(execObject.getObjectID(),</span>
+<span class="nc" id="L398">					execObject.getMetaClassID(), sessionID, execObject.getDataSetID(), alias);</span>
+<span class="nc" id="L399">			List&lt;RegistrationInfo&gt; regInfos = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L400">			regInfos.add(regInfo);</span>
 			// Location of object is 'this' EE.
 			// TODO: Review if we use hint of the object or the hint of the runtime.
-<span class="nc" id="L428">			final ObjectID newID = logicModule.registerObject(regInfo, (ExecutionEnvironmentID) dcObject.getHint(), alias,</span>
-					Langs.LANG_JAVA);
-<span class="nc" id="L430">			this.updateObjectID(dcObject, newID);</span>
-<span class="nc" id="L431">			execObject.setPendingToRegister(false);</span>
+<span class="nc" id="L403">			final List&lt;ObjectID&gt; newID = logicModule.registerObjects(regInfos, (ExecutionEnvironmentID) dcObject.getHint(), Langs.LANG_JAVA);</span>
+<span class="nc" id="L404">			this.updateObjectID(dcObject, newID.get(0));</span>
+<span class="nc" id="L405">			execObject.setPendingToRegister(false);</span>
+<span class="nc" id="L406">			execObject.setAlias(alias);</span>
 		}
 
-<span class="nc" id="L434">		return location;</span>
+<span class="nc" id="L409">		return location;</span>
 	}
 
 	@Override
+	public final void synchronize(final DataClayObject dcObject, final Object[] params,
+								  final ImplementationID remoteImplID) {
+<span class="nc" id="L415">		final SessionID sessionID = checkAndGetSession(new String[] { }, new Object[] { });</span>
+
+		// ===== SERIALIZE PARAMETERS ===== //
+		// Serialize parameters
+<span class="nc" id="L419">		final SerializedParametersOrReturn serializedParams = serializeParams(dcObject, null, remoteImplID, params,</span>
+				false, null);
+<span class="nc" id="L421">		ObjectID objectID = dcObject.getObjectID();</span>
+<span class="nc" id="L422">		this.dsRef.synchronize(sessionID, objectID, remoteImplID, serializedParams, null);</span>
+<span class="nc" id="L423">	}</span>
+
+	@Override
 	public String getClassNameInternal(final MetaClassID classID) {
-<span class="nc" id="L439">		return DataClayClassLoaderSrv.getClass(classID).getName();</span>
+<span class="nc" id="L427">		return DataClayClassLoaderSrv.getClass(classID).getName();</span>
 	}
 
 	/**
 	 * Set session ID for thread
-	 * 
-	 * @param threadID
-	 *            ID of the thread
+	 *
 	 * @param sessionID
 	 *            ID of session
 	 */
 	public void setCurrentThreadSessionID(final SessionID sessionID) {
-<span class="nc bnc" id="L451" title="All 2 branches missed.">		if (sessionID != null) {</span>
-<span class="nc" id="L452">			dsSessionIDs.set(sessionID);</span>
+<span class="nc bnc" id="L437" title="All 2 branches missed.">		if (sessionID != null) {</span>
+<span class="nc" id="L438">			dsSessionIDs.set(sessionID);</span>
 		}
-<span class="nc" id="L454">	}</span>
+<span class="nc" id="L440">	}</span>
 
 	/**
 	 * Remove session ID for thread
-	 * 
-	 * @param threadID
-	 *            ID of thread
 	 */
 	public void removeCurrentThreadSessionID() {
-<span class="nc" id="L463">		dsSessionIDs.remove();</span>
-<span class="nc" id="L464">	}</span>
+<span class="nc" id="L446">		dsSessionIDs.remove();</span>
+<span class="nc" id="L447">	}</span>
 
 	// /**
 	// * Get ID of storage of this node.
@@ -478,7 +461,21 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 * @return execution environment id
 	 */
 	public ExecutionEnvironmentID getExecutionEnvironmentIDOfDS() {
-<span class="nc" id="L481">		return dsRef.getExecutionEnvironmentID();</span>
+<span class="nc" id="L464">		return dsRef.getExecutionEnvironmentID();</span>
+	}
+
+	/**
+	 * Get remote execution environment
+	 *
+	 * @param execLocationID
+	 *            ID of remote execution environment
+	 * @return Remote execution environment
+	 */
+	public final DataServiceAPI getRemoteDSAPI(final ExecutionEnvironmentID execLocationID) {
+<span class="nc bnc" id="L475" title="All 2 branches missed.">		if (execLocationID.equals(this.dsRef.getExecutionEnvironmentID())) {</span>
+<span class="nc" id="L476">			return dsRef;</span>
+		}
+<span class="nc" id="L478">		return super.getRemoteDSAPI(execLocationID);</span>
 	}
 
 	/**
@@ -491,13 +488,13 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 */
 	public void storeObjects(final SessionID sessionID, final List&lt;ObjectWithDataParamOrReturn&gt; objsToStore) {
 
-<span class="nc bnc" id="L494" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc bnc" id="L495" title="All 2 branches missed.">			for (final ObjectWithDataParamOrReturn obj : objsToStore) {</span>
-<span class="nc" id="L496">				LOGGER.debug(&quot;#Sending from client lib: &quot; + obj.getObjectID());</span>
-<span class="nc" id="L497">			}</span>
+<span class="nc bnc" id="L491" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">			for (final ObjectWithDataParamOrReturn obj : objsToStore) {</span>
+<span class="nc" id="L493">				LOGGER.debug(&quot;#Sending from client lib: &quot; + obj.getObjectID());</span>
+<span class="nc" id="L494">			}</span>
 		}
-<span class="nc" id="L499">		dsRef.storeObjects(sessionID, objsToStore, false, null);</span>
-<span class="nc" id="L500">	}</span>
+<span class="nc" id="L496">		dsRef.storeObjects(sessionID, objsToStore, false, null);</span>
+<span class="nc" id="L497">	}</span>
 
 	/**
 	 * Get Heap Manager
@@ -506,7 +503,7 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 */
 	@Override
 	public HeapManager getDataClayHeapManager() {
-<span class="nc" id="L509">		return this.dataClayHeapManager;</span>
+<span class="nc" id="L506">		return this.dataClayHeapManager;</span>
 	}
 
 	/**
@@ -518,8 +515,8 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 *            Object to add
 	 */
 	public void retainInHeap(final DataClayObject object) {
-<span class="nc" id="L521">		((ExecutionEnvironmentHeapManager) this.dataClayHeapManager).retainInHeap(object);</span>
-<span class="nc" id="L522">	}</span>
+<span class="nc" id="L518">		((ExecutionEnvironmentHeapManager) this.dataClayHeapManager).retainInHeap(object);</span>
+<span class="nc" id="L519">	}</span>
 
 	/**
 	 * Release hard reference to object with ID provided. Without hard reference, the object can be Garbage collected by Java
@@ -529,17 +526,69 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 *            ID of the object
 	 */
 	public void releaseFromHeap(final ObjectID objectID) {
-<span class="nc" id="L532">		((ExecutionEnvironmentHeapManager) this.dataClayHeapManager).releaseFromHeap(objectID);</span>
-<span class="nc" id="L533">	}</span>
+<span class="nc" id="L529">		((ExecutionEnvironmentHeapManager) this.dataClayHeapManager).releaseFromHeap(objectID);</span>
+<span class="nc" id="L530">	}</span>
+
+
+	@Override
+	public void detachObjectFromSession(final ObjectID objectID, final ExecutionEnvironmentID hint) {
+<span class="nc" id="L535">		final SessionID sessionID = getSessionID();</span>
+<span class="nc" id="L536">		Set&lt;SessionID&gt; objectSessions = this.referencesHoldBySessions.get(objectID);</span>
+<span class="nc bnc" id="L537" title="All 2 branches missed.">		if (objectSessions != null) {</span>
+<span class="nc" id="L538">			objectSessions.remove(sessionID);</span>
+<span class="nc" id="L539">			LOGGER.debug(&quot;Detached object {} from session {}&quot;, objectID, sessionID);</span>
+		}
+<span class="nc" id="L541">	}</span>
+
+	@Override
+	public void deleteAlias(final DataClayObject dcObject) {
+<span class="nc" id="L545">		LOGGER.debug(&quot;Removed alias from object &quot; + dcObject.getObjectID());</span>
+<span class="nc" id="L546">		String alias = dcObject.getAlias();</span>
+<span class="nc bnc" id="L547" title="All 2 branches missed.">		if (alias != null) {</span>
+<span class="nc" id="L548">			this.deleteAlias(alias);</span>
+		}
+<span class="nc" id="L550">		dcObject.setAlias(null);</span>
+<span class="nc" id="L551">		((DataClayExecutionObject) dcObject).setDirty(true);</span>
+
+<span class="nc" id="L553">	}</span>
+
+	@Override
+	public void federateToBackend(final DataClayObject dcObject,
+								  final ExecutionEnvironmentID externalExecutionEnvironmentID,
+								  final boolean recursive) {
+<span class="nc" id="L559">		ObjectID objectID = dcObject.getObjectID();</span>
+<span class="nc" id="L560">		ExecutionEnvironmentID objectHint = (ExecutionEnvironmentID) dcObject.getHint();</span>
+<span class="nc bnc" id="L561" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L562">			LOGGER.debug(&quot;[==FederateObject==] Starting federation of object &quot; + objectID + &quot; with ext.EE &quot;</span>
+					+ externalExecutionEnvironmentID);
+		}
+<span class="nc" id="L565">		final SessionID sessionID = this.getSessionID();</span>
+<span class="nc" id="L566">		this.dsRef.federate(sessionID, objectID, externalExecutionEnvironmentID, recursive);</span>
+<span class="nc" id="L567">	}</span>
+
+	@Override
+	public void unfederateFromBackend(final DataClayObject dcObject,
+									  final ExecutionEnvironmentID externalExecutionEnvironmentID,
+									  final boolean recursive) {
+<span class="nc" id="L573">		ObjectID objectID = dcObject.getObjectID();</span>
+<span class="nc" id="L574">		ExecutionEnvironmentID objectHint = (ExecutionEnvironmentID) dcObject.getHint();</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L576">			LOGGER.debug(&quot;[==UnfederateObject==] Starting unfederation of object &quot; + objectID + &quot; with ext.EE &quot;</span>
+					+ externalExecutionEnvironmentID);
+		}
+<span class="nc" id="L579">		final SessionID sessionID = this.getSessionID();</span>
+<span class="nc" id="L580">		this.dsRef.unfederate(sessionID, objectID, externalExecutionEnvironmentID, recursive);</span>
+
+<span class="nc" id="L582">	}</span>
 
 	@Override
 	public boolean isDSLib() {
-<span class="nc" id="L537">		return true;</span>
+<span class="nc" id="L586">		return true;</span>
 	}
 
 	@Override
 	public ExecutionEnvironmentID getLocalBackend() {
-<span class="nc" id="L542">		return null;</span>
+<span class="nc" id="L591">		return null;</span>
 	}
 
 	/**
@@ -548,30 +597,19 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 * @return DataService reference
 	 */
 	public DataService getDataService() {
-<span class="nc" id="L551">		return dsRef;</span>
+<span class="nc" id="L600">		return dsRef;</span>
 	}
 
 	@Override
 	public ExecutionEnvironmentID getHint() {
-<span class="nc" id="L556">		return dsRef.getExecutionEnvironmentID();</span>
+<span class="nc" id="L605">		return dsRef.getExecutionEnvironmentID();</span>
 	}
 
 	@Override
 	protected Map&lt;MetaClassID, byte[]&gt; getIfaceBitMaps() {
-<span class="nc" id="L561">		return null;</span>
+<span class="nc" id="L610">		return null;</span>
 	}
 
-	/**
-	 * Add +1 reference due to a new alias.
-	 * 
-	 * @param objectID
-	 *            ID of the object
-	 */
-	public void addAliasReference(final ObjectID objectID) {
-<span class="nc bnc" id="L571" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L572">			this.aliasReferences.add(objectID);</span>
-		}
-<span class="nc" id="L574">	}</span>
 
 	/**
 	 * Add +1 reference associated to thread session
@@ -581,30 +619,30 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 */
 	@Override
 	public void addSessionReference(final ObjectID objectID) {
-<span class="nc bnc" id="L584" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L585">			final SessionID sessionID = this.getSessionID();</span>
-<span class="nc bnc" id="L586" title="All 2 branches missed.">			if (sessionID == null) {</span>
-<span class="nc" id="L587">				return; // session ID can be null in case of whenFederated</span>
+<span class="nc bnc" id="L622" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L623">			final SessionID sessionID = this.getSessionID();</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">			if (sessionID == null) {</span>
+<span class="nc" id="L625">				return; // session ID can be null in case of whenFederated</span>
 			}
-<span class="nc bnc" id="L589" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L590">				LOGGER.debug(&quot;Object &quot; + objectID + &quot; is now being used by session &quot; + sessionID);</span>
+<span class="nc bnc" id="L627" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L628">				LOGGER.debug(&quot;Object &quot; + objectID + &quot; is now being used by session &quot; + sessionID);</span>
 			}
 
-<span class="nc" id="L593">			Set&lt;SessionID&gt; referencesInSession = this.referencesHoldBySessions.get(objectID);</span>
-<span class="nc bnc" id="L594" title="All 2 branches missed.">			if (referencesInSession == null) {</span>
+<span class="nc" id="L631">			Set&lt;SessionID&gt; referencesInSession = this.referencesHoldBySessions.get(objectID);</span>
+<span class="nc bnc" id="L632" title="All 2 branches missed.">			if (referencesInSession == null) {</span>
 				// race condition: two objects in same session creates set of object ids
-<span class="nc" id="L596">				this.lock(objectID);</span>
+<span class="nc" id="L634">				this.lock(objectID);</span>
 				try {
-<span class="nc" id="L598">					referencesInSession = this.referencesHoldBySessions.get(objectID);</span>
-<span class="nc bnc" id="L599" title="All 2 branches missed.">					if (referencesInSession == null) {</span>
-<span class="nc" id="L600">						referencesInSession = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L601">						this.referencesHoldBySessions.put(objectID, referencesInSession);</span>
+<span class="nc" id="L636">					referencesInSession = this.referencesHoldBySessions.get(objectID);</span>
+<span class="nc bnc" id="L637" title="All 2 branches missed.">					if (referencesInSession == null) {</span>
+<span class="nc" id="L638">						referencesInSession = ConcurrentHashMap.newKeySet();</span>
+<span class="nc" id="L639">						this.referencesHoldBySessions.put(objectID, referencesInSession);</span>
 					}
 				} finally {
-<span class="nc" id="L604">					this.unlock(objectID);</span>
+<span class="nc" id="L642">					this.unlock(objectID);</span>
 				}
 			}
-<span class="nc" id="L607">			referencesInSession.add(sessionID);</span>
+<span class="nc" id="L645">			referencesInSession.add(sessionID);</span>
 
 			// add expiration date of session if not present
 			// IMPORTANT: if CHECK_SESSION=FALSE then we use a default expiration date for
@@ -615,13 +653,13 @@ public final class DataServiceRuntime extends DataClayRuntime {
 			// Concurrency note: adding two times same expiration date is not a problem
 			// since exp. date is the same. We avoid
 			// locking.
-<span class="nc bnc" id="L618" title="All 2 branches missed.">			if (!sessionsExpireDates.containsKey(sessionID)) {</span>
+<span class="nc bnc" id="L656" title="All 2 branches missed.">			if (!sessionsExpireDates.containsKey(sessionID)) {</span>
 				final Date expirationDate;
-<span class="nc bnc" id="L620" title="All 2 branches missed.">				if (Configuration.Flags.CHECK_SESSION.getBooleanValue()) {</span>
-<span class="nc" id="L621">					final Calendar endDate = this.getSessionInfo(sessionID).getSecond();</span>
-<span class="nc" id="L622">					expirationDate = endDate.getTime();</span>
-<span class="nc" id="L623">				} else {</span>
-<span class="nc" id="L624">					expirationDate = Configuration.Flags.EXPIRATION_DATE_IF_NOCHECK_SESSION.getDate();</span>
+<span class="nc bnc" id="L658" title="All 2 branches missed.">				if (Configuration.Flags.CHECK_SESSION.getBooleanValue()) {</span>
+<span class="nc" id="L659">					final Calendar endDate = this.getSessionInfo(sessionID).getSecond();</span>
+<span class="nc" id="L660">					expirationDate = endDate.getTime();</span>
+<span class="nc" id="L661">				} else {</span>
+<span class="nc" id="L662">					expirationDate = Configuration.Flags.EXPIRATION_DATE_IF_NOCHECK_SESSION.getDate();</span>
 				}
 				// === concurrency note === //
 				// T1 is here, before put. This is a session that was already used and was
@@ -631,12 +669,12 @@ public final class DataServiceRuntime extends DataClayRuntime {
 				// Synchronization is needed to avoid this. It is not a big penalty if session
 				// expiration date was already
 				// added.
-<span class="nc" id="L634">				synchronized (sessionID) {</span>
-<span class="nc" id="L635">					sessionsExpireDates.put(sessionID, expirationDate);</span>
-<span class="nc" id="L636">				}</span>
+<span class="nc" id="L672">				synchronized (sessionID) {</span>
+<span class="nc" id="L673">					sessionsExpireDates.put(sessionID, expirationDate);</span>
+<span class="nc" id="L674">				}</span>
 			}
 		}
-<span class="nc" id="L639">	}</span>
+<span class="nc" id="L677">	}</span>
 
 	/**
 	 * Close session in EE. Subtract session references for GC.
@@ -645,14 +683,14 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 *            ID of session closing.
 	 */
 	public void closeSessionInEE(final SessionID sessionID) {
-<span class="nc bnc" id="L648" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L649">			LOGGER.debug(&quot;Closing session &quot; + sessionID);</span>
+<span class="nc bnc" id="L686" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L687">			LOGGER.debug(&quot;Closing session &quot; + sessionID);</span>
 		}
 
 		// Closing session means set expiration date to now
-<span class="nc" id="L653">		sessionsExpireDates.put(sessionID, new Date()); // new date means current date</span>
+<span class="nc" id="L691">		sessionsExpireDates.put(sessionID, new Date()); // new date means current date</span>
 
-<span class="nc" id="L655">	}</span>
+<span class="nc" id="L693">	}</span>
 
 	/**
 	 * Get IDs of references retained by EE.
@@ -660,37 +698,34 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 * @return References retained by EE (sessions, alias...)
 	 */
 	public Set&lt;ObjectID&gt; getRetainedReferences() {
+<span class="nc" id="L701">		LOGGER.debug(&quot;Getting retained references&quot;);</span>
 
-<span class="nc bnc" id="L664" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L665">			LOGGER.debug(&quot;Get retained references&quot;);</span>
-		}
+<span class="nc" id="L703">		final ExecutionEnvironmentHeapManager heapManger = (ExecutionEnvironmentHeapManager) this.dataClayHeapManager;</span>
 
-<span class="nc" id="L668">		final ExecutionEnvironmentHeapManager heapManger = (ExecutionEnvironmentHeapManager) this.dataClayHeapManager;</span>
-
-<span class="nc" id="L670">		final Set&lt;ObjectID&gt; retainedRefs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L705">		final Set&lt;ObjectID&gt; retainedRefs = new HashSet&lt;&gt;();</span>
 
 		// memory references
-<span class="nc bnc" id="L673" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L674">			LOGGER.debug(&quot;Adding memory references: &quot; + heapManger.getObjectIDsRetained());</span>
+<span class="nc bnc" id="L708" title="All 4 branches missed.">		if (DEBUG_ENABLED &amp;&amp; heapManger.getObjectIDsRetained().size() &gt; 0) {</span>
+<span class="nc" id="L709">			LOGGER.debug(&quot;Adding memory references: &quot; + heapManger.getObjectIDsRetained());</span>
 		}
-<span class="nc" id="L676">		retainedRefs.addAll(heapManger.getObjectIDsRetained());</span>
+<span class="nc" id="L711">		retainedRefs.addAll(heapManger.getObjectIDsRetained());</span>
 
-<span class="nc bnc" id="L678" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L679">			LOGGER.debug(&quot;Checking references hold by sessions: &quot; + this.referencesHoldBySessions.size());</span>
+<span class="nc bnc" id="L713" title="All 4 branches missed.">		if (DEBUG_ENABLED &amp;&amp; this.referencesHoldBySessions.size() &gt; 0) {</span>
+<span class="nc" id="L714">			LOGGER.debug(&quot;References hold by sessions: &quot; + this.referencesHoldBySessions.keySet());</span>
 		}
 		// session references
-<span class="nc" id="L682">		final Date now = new Date();</span>
-<span class="nc" id="L683">		final Set&lt;ObjectID&gt; oidsUsingSession = new HashSet&lt;&gt;(this.referencesHoldBySessions.keySet()); // create a copy</span>
-<span class="nc" id="L684">		oidsUsingSession.removeAll(retainedRefs); // ignore references already retained</span>
-<span class="nc" id="L685">		final Set&lt;SessionID&gt; sessionsToClose = new HashSet&lt;&gt;();</span>
-<span class="nc bnc" id="L686" title="All 2 branches missed.">		for (final ObjectID oid : oidsUsingSession) {</span>
-<span class="nc" id="L687">			final Set&lt;SessionID&gt; sessionsOfObj = this.referencesHoldBySessions.get(oid);</span>
-<span class="nc bnc" id="L688" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L689">				LOGGER.debug(&quot;Object {} is retained by sessions: {}&quot;, oid, sessionsOfObj);</span>
+<span class="nc" id="L717">		final Date now = new Date();</span>
+<span class="nc" id="L718">		final Set&lt;ObjectID&gt; oidsUsingSession = new HashSet&lt;&gt;(this.referencesHoldBySessions.keySet()); // create a copy</span>
+<span class="nc" id="L719">		oidsUsingSession.removeAll(retainedRefs); // ignore references already retained</span>
+<span class="nc" id="L720">		final Set&lt;SessionID&gt; sessionsToClose = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">		for (final ObjectID oid : oidsUsingSession) {</span>
+<span class="nc" id="L722">			final Set&lt;SessionID&gt; sessionsOfObj = this.referencesHoldBySessions.get(oid);</span>
+<span class="nc bnc" id="L723" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L724">				LOGGER.debug(&quot;Object {} is retained by sessions: {}&quot;, oid, sessionsOfObj);</span>
 			}
-<span class="nc" id="L691">			final Iterator&lt;SessionID&gt; iterator = sessionsOfObj.iterator(); // use iterator to remove while iterating</span>
-<span class="nc bnc" id="L692" title="All 2 branches missed.">			while (iterator.hasNext()) {</span>
-<span class="nc" id="L693">				final SessionID curSession = iterator.next();</span>
+<span class="nc" id="L726">			final Iterator&lt;SessionID&gt; iterator = sessionsOfObj.iterator(); // use iterator to remove while iterating</span>
+<span class="nc bnc" id="L727" title="All 2 branches missed.">			while (iterator.hasNext()) {</span>
+<span class="nc" id="L728">				final SessionID curSession = iterator.next();</span>
 
 				// ===== CHECK SESSION EXPIRED ===== //
 				// ==== session counting design - Race condition ==== //
@@ -710,60 +745,60 @@ public final class DataServiceRuntime extends DataClayRuntime {
 				// session
 				// so, even if session is in quarantine, we must check date.
 
-<span class="nc" id="L713">				boolean sessionExpired = false;</span>
-<span class="nc" id="L714">				final Date expireDate = this.sessionsExpireDates.get(curSession);</span>
-<span class="nc bnc" id="L715" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L716">					LOGGER.debug(&quot;Session {} expires at {}&quot;, curSession, expireDate);</span>
+<span class="nc" id="L748">				boolean sessionExpired = false;</span>
+<span class="nc" id="L749">				final Date expireDate = this.sessionsExpireDates.get(curSession);</span>
+<span class="nc bnc" id="L750" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L751">					LOGGER.debug(&quot;Session {} expires at {}&quot;, curSession, expireDate);</span>
 				}
-<span class="nc bnc" id="L718" title="All 4 branches missed.">				if (expireDate != null &amp;&amp; now.after(expireDate)) {</span>
-<span class="nc bnc" id="L719" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L720">						LOGGER.debug(&quot;Session {} is expired. It expired at {}&quot;, curSession, expireDate);</span>
+<span class="nc bnc" id="L753" title="All 4 branches missed.">				if (expireDate != null &amp;&amp; now.after(expireDate)) {</span>
+<span class="nc bnc" id="L754" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L755">						LOGGER.debug(&quot;Session {} is expired. It expired at {}&quot;, curSession, expireDate);</span>
 					}
-<span class="nc bnc" id="L722" title="All 2 branches missed.">					if (quarantineSessions.contains(curSession)) {</span>
-<span class="nc bnc" id="L723" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L724">							LOGGER.debug(&quot;Session &quot; + curSession + &quot; is in quarantine. Checking.&quot;);</span>
+<span class="nc bnc" id="L757" title="All 2 branches missed.">					if (quarantineSessions.contains(curSession)) {</span>
+<span class="nc bnc" id="L758" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L759">							LOGGER.debug(&quot;Session &quot; + curSession + &quot; is in quarantine. Checking.&quot;);</span>
 						}
 						// session is actually removed.
-<span class="nc" id="L727">						sessionExpired = true;</span>
-<span class="nc" id="L728">						quarantineSessions.remove(curSession);</span>
+<span class="nc" id="L762">						sessionExpired = true;</span>
+<span class="nc" id="L763">						quarantineSessions.remove(curSession);</span>
 
 						// check again expiration date to see if it is expired. If expired, remove.
-<span class="nc" id="L731">						final Date curExpireDate = this.sessionsExpireDates.get(curSession);</span>
-<span class="nc bnc" id="L732" title="All 4 branches missed.">						if (curExpireDate != null &amp;&amp; now.after(curExpireDate)) {</span>
-<span class="nc bnc" id="L733" title="All 2 branches missed.">							if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L734">								LOGGER.debug(&quot;Session &quot; + curSession + &quot; has actually expired.&quot;);</span>
+<span class="nc" id="L766">						final Date curExpireDate = this.sessionsExpireDates.get(curSession);</span>
+<span class="nc bnc" id="L767" title="All 4 branches missed.">						if (curExpireDate != null &amp;&amp; now.after(curExpireDate)) {</span>
+<span class="nc bnc" id="L768" title="All 2 branches missed.">							if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L769">								LOGGER.debug(&quot;Session &quot; + curSession + &quot; has actually expired.&quot;);</span>
 							}
 							// do not remove expiration date from session till there is no objects in that
 							// session
 							// add it to sessions to close after all processing
-<span class="nc" id="L739">							sessionsToClose.add(curSession);</span>
+<span class="nc" id="L774">							sessionsToClose.add(curSession);</span>
 						}
 
-<span class="nc" id="L742">					} else {</span>
-<span class="nc bnc" id="L743" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L744">							LOGGER.debug(&quot;Session &quot; + curSession + &quot; has expired.  Adding session to quarantine.&quot;);</span>
+<span class="nc" id="L777">					} else {</span>
+<span class="nc bnc" id="L778" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L779">							LOGGER.debug(&quot;Session &quot; + curSession + &quot; has expired.  Adding session to quarantine.&quot;);</span>
 						}
 						// add it to quarantine sessions
-<span class="nc" id="L747">						quarantineSessions.add(curSession);</span>
+<span class="nc" id="L782">						quarantineSessions.add(curSession);</span>
 					}
-<span class="nc bnc" id="L749" title="All 4 branches missed.">				} else if (expireDate != null &amp;&amp; !now.after(expireDate)) {</span>
-<span class="nc bnc" id="L750" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L751">						LOGGER.debug(&quot;Session &quot; + curSession + &quot; is not expired yet but has expiration date &quot;);</span>
+<span class="nc bnc" id="L784" title="All 4 branches missed.">				} else if (expireDate != null &amp;&amp; !now.after(expireDate)) {</span>
+<span class="nc bnc" id="L785" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L786">						LOGGER.debug(&quot;Session &quot; + curSession + &quot; is not expired yet but has expiration date &quot;);</span>
 					}
 					// check if session was in quarantine: if so, remove it from there (session
 					// restart)
-<span class="nc" id="L755">					quarantineSessions.remove(curSession);</span>
+<span class="nc" id="L790">					quarantineSessions.remove(curSession);</span>
 				} else {
-<span class="nc bnc" id="L757" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L758">						LOGGER.debug(&quot;Session &quot; + curSession + &quot; has no expiration date.&quot;);</span>
+<span class="nc bnc" id="L792" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L793">						LOGGER.debug(&quot;Session &quot; + curSession + &quot; has no expiration date.&quot;);</span>
 					}
 				}
-<span class="nc bnc" id="L761" title="All 2 branches missed.">				if (sessionExpired) {</span>
-<span class="nc bnc" id="L762" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L763">						LOGGER.debug(&quot;Session &quot; + curSession + &quot; is actually expired for oid &quot; + oid);</span>
+<span class="nc bnc" id="L796" title="All 2 branches missed.">				if (sessionExpired) {</span>
+<span class="nc bnc" id="L797" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L798">						LOGGER.debug(&quot;Session &quot; + curSession + &quot; is actually expired for oid &quot; + oid);</span>
 					}
 					// close session
-<span class="nc" id="L766">					iterator.remove(); // remove session reference from the object.</span>
+<span class="nc" id="L801">					iterator.remove(); // remove session reference from the object.</span>
 
 					// === concurrency note === //
 					// when should we remove an entry in the referencesHoldBySessions map?
@@ -772,53 +807,50 @@ public final class DataServiceRuntime extends DataClayRuntime {
 					// so, we check both here and we remove it if needed:
 					// TODO: review this, what if after the check, sessions are added and we remove
 					// it?
-<span class="nc bnc" id="L775" title="All 2 branches missed.">					if (sessionsOfObj.size() == 0) {</span>
-<span class="nc bnc" id="L776" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L777">							LOGGER.debug(&quot;Removing session reference to object {}&quot;, oid);</span>
+<span class="nc bnc" id="L810" title="All 2 branches missed.">					if (sessionsOfObj.size() == 0) {</span>
+<span class="nc bnc" id="L811" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L812">							LOGGER.debug(&quot;Removing session reference to object {}&quot;, oid);</span>
 						}
-<span class="nc" id="L779">						this.referencesHoldBySessions.remove(oid);</span>
-<span class="nc bnc" id="L780" title="All 2 branches missed.">					} else if (sessionsOfObj.size() &gt; 0) {</span>
-<span class="nc bnc" id="L781" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L782">							LOGGER.debug(&quot;Not removing session reference since object {} has more sessions&quot;, oid);</span>
+<span class="nc" id="L814">						this.referencesHoldBySessions.remove(oid);</span>
+<span class="nc bnc" id="L815" title="All 2 branches missed.">					} else if (sessionsOfObj.size() &gt; 0) {</span>
+<span class="nc bnc" id="L816" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L817">							LOGGER.debug(&quot;Not removing session reference since object {} has more sessions&quot;, oid);</span>
 						}
 					}
 
 				} else {
-<span class="nc bnc" id="L787" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L788">						LOGGER.debug(&quot;Adding session reference to: &quot; + oid);</span>
-					}
 					// add session reference
-<span class="nc" id="L791">					retainedRefs.add(oid);</span>
+<span class="nc" id="L823">					retainedRefs.add(oid);</span>
 				}
-<span class="nc" id="L793">			}</span>
-<span class="nc" id="L794">		}</span>
+<span class="nc" id="L825">			}</span>
+<span class="nc" id="L826">		}</span>
 
 		// Remove all expired sessions if, and only if, there is no object retained by
 		// it. TODO: improve this implementation.
-<span class="nc bnc" id="L798" title="All 2 branches missed.">		for (final SessionID sessionToClose : sessionsToClose) {</span>
-<span class="nc" id="L799">			boolean sessionBeingUsed = false;</span>
-<span class="nc bnc" id="L800" title="All 2 branches missed.">			for (final Set&lt;SessionID&gt; objSessions : referencesHoldBySessions.values()) {</span>
-<span class="nc bnc" id="L801" title="All 2 branches missed.">				if (objSessions.contains(sessionToClose)) {</span>
-<span class="nc" id="L802">					sessionBeingUsed = true;</span>
-<span class="nc" id="L803">					break;</span>
+<span class="nc bnc" id="L830" title="All 2 branches missed.">		for (final SessionID sessionToClose : sessionsToClose) {</span>
+<span class="nc" id="L831">			boolean sessionBeingUsed = false;</span>
+<span class="nc bnc" id="L832" title="All 2 branches missed.">			for (final Set&lt;SessionID&gt; objSessions : referencesHoldBySessions.values()) {</span>
+<span class="nc bnc" id="L833" title="All 2 branches missed.">				if (objSessions.contains(sessionToClose)) {</span>
+<span class="nc" id="L834">					sessionBeingUsed = true;</span>
+<span class="nc" id="L835">					break;</span>
 				}
-<span class="nc" id="L805">			}</span>
-<span class="nc bnc" id="L806" title="All 2 branches missed.">			if (!sessionBeingUsed) {</span>
-<span class="nc" id="L807">				this.sessionsExpireDates.remove(sessionToClose);</span>
+<span class="nc" id="L837">			}</span>
+<span class="nc bnc" id="L838" title="All 2 branches missed.">			if (!sessionBeingUsed) {</span>
+<span class="nc" id="L839">				this.sessionsExpireDates.remove(sessionToClose);</span>
 			}
-<span class="nc" id="L809">		}</span>
+<span class="nc" id="L841">		}</span>
 
-<span class="nc" id="L811">		return retainedRefs;</span>
+<span class="nc" id="L843">		return retainedRefs;</span>
 	}
 
-	@Override
+		@Override
 	protected DataClayObjectLoader getDataClayObjectLoader() {
-<span class="nc" id="L816">		return this.dataClayObjLoader;</span>
+<span class="nc" id="L848">		return this.dataClayObjLoader;</span>
 	}
 
 	@Override
 	public DataClayExecutionObject getFromHeap(final ObjectID objectID) {
-<span class="nc" id="L821">		return (DataClayExecutionObject) this.dataClayHeapManager.getObject(objectID);</span>
+<span class="nc" id="L853">		return (DataClayExecutionObject) this.dataClayHeapManager.getObject(objectID);</span>
 	}
 
 	/**
@@ -827,21 +859,21 @@ public final class DataServiceRuntime extends DataClayRuntime {
 	 * @if some exception occurs
 	 */
 	public void finishCacheThreads() {
-		try {
-<span class="nc" id="L831">			this.sessionsCache.finishCacheThreads();</span>
-<span class="nc" id="L832">		} catch (final InterruptedException ex) {</span>
-<span class="nc" id="L833">			LOGGER.debug(&quot;finishCacheThreads error&quot;, ex);</span>
-<span class="nc" id="L834">		}</span>
-<span class="nc" id="L835">	}</span>
+		//try {
+		//	this.sessionsCache.finishCacheThreads();
+		//} catch (final InterruptedException ex) {
+		//	LOGGER.debug(&quot;finishCacheThreads error&quot;, ex);
+		//}
+<span class="nc" id="L867">	}</span>
 
 	/**
 	 * Clean caches.
 	 */
 	public void cleanCaches() {
-<span class="nc" id="L841">		sessionsCache.clear();</span>
-<span class="nc" id="L842">		datasetsCache.clear();</span>
-<span class="nc" id="L843">		metaDataCache.clear();</span>
-<span class="nc" id="L844">	}</span>
+<span class="nc" id="L873">		sessionsCache.clear();</span>
+<span class="nc" id="L874">		datasetsCache.clear();</span>
+<span class="nc" id="L875">		metaDataCache.clear();</span>
+<span class="nc" id="L876">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

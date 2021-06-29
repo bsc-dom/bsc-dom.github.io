@@ -2,20 +2,7 @@
 
 import java.io.InputStream;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Queue;
-import java.util.Set;
-import java.util.Spliterator;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
@@ -23,6 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import es.bsc.dataclay.util.structs.MemoryCache;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
@@ -62,26 +50,26 @@ import storage.StubItf;
  */
 public class DataClayObject extends StorageObject implements DataClaySerializable, Serializable, StubItf {
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L65">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="fc" id="L53">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** Logger. */
-<span class="fc" id="L68">	public static final Logger logger = LogManager.getLogger(&quot;DataClayObject&quot;);</span>
+<span class="fc" id="L56">	public static final Logger logger = LogManager.getLogger(&quot;DataClayObject&quot;);</span>
 
 	/** Serial version UID. */
 	private static final long serialVersionUID = 1772790872967833442L;
 
 	// CHECKSTYLE:OF
 	/** Client runtime. */
-<span class="fc" id="L75">	public static DataClayRuntime clientRuntime = new ClientRuntime();</span>
+<span class="fc" id="L63">	public static DataClayRuntime clientRuntime = new ClientRuntime();</span>
 
 	/** ObjectID of the stub instance. */
 	protected ObjectID objectID;
 
 	/** Indicates if the object is registered or not. */
-<span class="nc" id="L81">	protected AtomicBoolean isPersistent = new AtomicBoolean(false);</span>
+<span class="nc" id="L69">	protected AtomicBoolean isPersistent = new AtomicBoolean(false);</span>
 
 	/** Indicates if the object was filled with data. */
-<span class="nc" id="L84">	protected AtomicBoolean isLoaded = new AtomicBoolean(false);</span>
+<span class="nc" id="L72">	protected AtomicBoolean isLoaded = new AtomicBoolean(false);</span>
 
 	/** HINT: Indicates object Execution Location. */
 	private BackendID hint;
@@ -92,10 +80,10 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	protected DataSetID dataSetID;
 
 	/** StubInfos cache. */
-<span class="fc" id="L95">	private static Map&lt;String, StubInfo&gt; stubInfosCache = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L83">	private static MemoryCache&lt;String, StubInfo&gt; stubInfosCache = new MemoryCache&lt;&gt;();</span>
 
 	/** Exec.StubInfos cache. */
-<span class="fc" id="L98">	private static Map&lt;String, StubInfo&gt; execStubInfosCache = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L86">	private static MemoryCache&lt;String, StubInfo&gt; execStubInfosCache = new MemoryCache&lt;&gt;();</span>
 
 	/** Main storage location for the object **/
 	private BackendID masterLocation;
@@ -103,29 +91,47 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	/** 'LOCAL' location */
 	public static BackendID LOCAL;
 
+	/** Alias of the object. */
+	private String alias;
+
+	/** Indicates if object is read only. */
+	private boolean isReadOnly;
+
 	/** dataClay instance */
 	private DataClayInstanceID externalDataClayID;
+
+	/** Original objectID if object was versioned. */
+	private ObjectID originalObjectID;
+
+	/** ID of original object location. */
+	private ExecutionEnvironmentID rootLocation;
+
+	/** ID of origin object location (replicas): origin of the replica. */
+	private ExecutionEnvironmentID originLocation;
+
+	/** IDs of locations this replica-object was replicated to. */
+	private Set&lt;ExecutionEnvironmentID&gt; replicaLocations;
 
 	/**
 	 * RT PREFETCHING FIELDS
 	 */
 
-<span class="fc" id="L113">	private static transient boolean isPrefetchingAccess = false;</span>
+<span class="fc" id="L119">	private static transient boolean isPrefetchingAccess = false;</span>
 	
-<span class="fc" id="L115">	private static transient long accessCount = 0;</span>
+<span class="fc" id="L121">	private static transient long accessCount = 0;</span>
 	
-<span class="fc" id="L117">	private static transient long hitCount = 0;</span>
+<span class="fc" id="L123">	private static transient long hitCount = 0;</span>
 
 	// CHECKSTYLE:ON
 
 	/**
 	 * Constructor
 	 */
-<span class="nc" id="L124">	public DataClayObject() {</span>
-<span class="nc" id="L125">		this.init(new ObjectID());</span>
+<span class="nc" id="L130">	public DataClayObject() {</span>
+<span class="nc" id="L131">		this.init(new ObjectID());</span>
 		// Initialize as volatile
-<span class="nc" id="L127">		initializeObjectAsVolatile();</span>
-<span class="nc" id="L128">	}</span>
+<span class="nc" id="L133">		initializeObjectAsVolatile();</span>
+<span class="nc" id="L134">	}</span>
 
 	/**
 	 * Constructor
@@ -133,9 +139,9 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @param theobjectID
 	 *            ID of the object
 	 */
-<span class="nc" id="L136">	public DataClayObject(final ObjectID theobjectID) {</span>
-<span class="nc" id="L137">		this.init(theobjectID);</span>
-<span class="nc" id="L138">	}</span>
+<span class="nc" id="L142">	public DataClayObject(final ObjectID theobjectID) {</span>
+<span class="nc" id="L143">		this.init(theobjectID);</span>
+<span class="nc" id="L144">	}</span>
 
 	/**
 	 * Initialize object
@@ -144,11 +150,11 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            ID of the object
 	 */
 	private void init(final ObjectID theobjectID) {
-<span class="nc" id="L147">		final ObjectID oid = theobjectID;</span>
-<span class="nc" id="L148">		this.setObjectIDUnsafe(oid);</span>
+<span class="nc" id="L153">		final ObjectID oid = theobjectID;</span>
+<span class="nc" id="L154">		this.setObjectIDUnsafe(oid);</span>
 		// Add object to dataClay's heap
-<span class="nc" id="L150">		getLib().addToHeap(this);</span>
-<span class="nc" id="L151">	}</span>
+<span class="nc" id="L156">		getLib().addToHeap(this);</span>
+<span class="nc" id="L157">	}</span>
 
 	/**
 	 * Initialize object with state 'persistent' with proper flags. See same function in DataClayExecutionObject for a different
@@ -156,8 +162,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * initializeObjectAsVolatile, this function 'overrides' flags set
 	 */
 	public void initializeObjectAsPersistent() {
-<span class="nc" id="L159">		this.setIsPersistent(true);</span>
-<span class="nc" id="L160">	}</span>
+<span class="nc" id="L165">		this.setIsPersistent(true);</span>
+<span class="nc" id="L166">	}</span>
 
 	/**
 	 * Initialize object with state 'volatile' with proper flags. Usually, volatile state is created by a stub, app, exec
@@ -165,8 +171,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * with object state.
 	 */
 	public void initializeObjectAsVolatile() {
-<span class="nc" id="L168">		this.setLoaded(true);</span>
-<span class="nc" id="L169">	}</span>
+<span class="nc" id="L174">		this.setLoaded(true);</span>
+<span class="nc" id="L175">	}</span>
 
 	/**
 	 * Set the DataClayObject::isLoaded
@@ -175,14 +181,14 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            the isLoaded to set
 	 */
 	public final void setLoaded(final boolean newisLoaded) {
-<span class="nc" id="L178">		this.isLoaded.set(newisLoaded);</span>
-<span class="nc" id="L179">	}</span>
+<span class="nc" id="L184">		this.isLoaded.set(newisLoaded);</span>
+<span class="nc" id="L185">	}</span>
 
 	/**
 	 * Generic static method to instantiate a DataClayObject by its alias
 	 * 
-	 * @param className
-	 *            real class of the instance
+	 * @param classID
+	 *            id of real class of the instance
 	 * @param alias
 	 *            alias of the instance
 	 * @param safe
@@ -190,7 +196,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return the reference to persistent object of given class with given alias
 	 */
 	protected static DataClayObject getByAlias(final MetaClassID classID, final String alias, boolean safe) {
-<span class="nc" id="L193">		return getLib().getObjectByAlias(alias, classID, safe);</span>
+<span class="nc" id="L199">		return getLib().getObjectByAlias(alias, classID, safe);</span>
 	}
 
 	
@@ -205,7 +211,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return The object identified by the provided alias
 	 */
 	public static &lt;E&gt; E getByAliasExt(final String alias) {
-<span class="nc" id="L208">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L214">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -221,7 +227,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return The object identified by the provided alias
 	 */
 	public static &lt;E&gt; E getByAliasExt(final String alias, boolean safe) {
-<span class="nc" id="L224">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L230">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 	
 	/**
@@ -233,11 +239,11 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            alias of the object
 	 */
 	public static void deleteAlias(final String className, final String alias) {
-<span class="nc bnc" id="L236" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L237">			logger.debug(&quot;Deleting alias &quot; + alias + &quot; of object of class &quot; + className);</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L243">			logger.debug(&quot;Deleting alias &quot; + alias + &quot; of object of class &quot; + className);</span>
 		}
-<span class="nc" id="L239">		getLib().deleteAlias(alias);</span>
-<span class="nc" id="L240">	}</span>
+<span class="nc" id="L245">		getLib().deleteAlias(alias);</span>
+<span class="nc" id="L246">	}</span>
 
 	/**
 	 * Method to be specialized
@@ -246,8 +252,22 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            alias to be removed from this object
 	 */
 	public static void deleteAlias(final String alias) {
-<span class="nc" id="L249">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
-	}
+<span class="nc bnc" id="L255" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L256">			logger.debug(&quot;Deleting alias &quot; + alias);</span>
+		}
+<span class="nc" id="L258">		getLib().deleteAlias(alias);</span>
+<span class="nc" id="L259">	}</span>
+
+
+	/**
+	 * Delete object's alias
+	 */
+	public void deleteAlias() {
+<span class="nc bnc" id="L266" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L267">			logger.debug(&quot;Deleting alias in backend: &quot; + alias);</span>
+		}
+<span class="nc" id="L269">		getLib().deleteAlias(this);</span>
+<span class="nc" id="L270">	}</span>
 
 	/**
 	 * Set the object's id
@@ -262,8 +282,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *        The ObjectID to set
 	 */
 	public void setObjectIDUnsafe(final ObjectID newObjectID) {
-<span class="nc" id="L265">		this.objectID = newObjectID;</span>
-<span class="nc" id="L266">	}</span>
+<span class="nc" id="L285">		this.objectID = newObjectID;</span>
+<span class="nc" id="L286">	}</span>
 
 	/**
 	 * Debug start of running method
@@ -272,8 +292,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            Operation name and descriptor
 	 */
 	public final void debugStart(final String opNameAndDesc) {
-<span class="nc" id="L275">		logger.debug(&quot;[==Internal Exec==] Starting method &quot; + opNameAndDesc + &quot; for &quot; + objectID);</span>
-<span class="nc" id="L276">	}</span>
+<span class="nc" id="L295">		logger.debug(&quot;[==Internal Exec==] Starting method &quot; + opNameAndDesc + &quot; for &quot; + objectID);</span>
+<span class="nc" id="L296">	}</span>
 
 	/**
 	 * Debug end of running method
@@ -282,15 +302,15 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            Operation name and descriptor
 	 */
 	public final void debugEnd(final String opNameAndDesc) {
-<span class="nc" id="L285">		logger.debug(&quot;[==Internal Exec==] Finished method &quot; + opNameAndDesc + &quot; for &quot; + objectID);</span>
-<span class="nc" id="L286">	}</span>
+<span class="nc" id="L305">		logger.debug(&quot;[==Internal Exec==] Finished method &quot; + opNameAndDesc + &quot; for &quot; + objectID);</span>
+<span class="nc" id="L306">	}</span>
 
 	/**
 	 * Set a new object ID (used for remove objects)
 	 */
 	public final void setNewObjectID() {
-<span class="nc" id="L292">		this.objectID = new ObjectID();</span>
-<span class="nc" id="L293">	}</span>
+<span class="nc" id="L312">		this.objectID = new ObjectID();</span>
+<span class="nc" id="L313">	}</span>
 
 	/**
 	 * Get DataService client library
@@ -298,18 +318,18 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return DataService client library
 	 */
 	public static final DataClayRuntime getLib() {
-<span class="pc bpc" id="L301" title="1 of 2 branches missed.">		if (Configuration.mockTesting) {</span>
-<span class="nc" id="L302">			final DataClayRuntime mockLib = DataClayMockObject.getLib();</span>
-<span class="nc bnc" id="L303" title="All 2 branches missed.">			if (mockLib == null) {</span>
+<span class="pc bpc" id="L321" title="1 of 2 branches missed.">		if (Configuration.mockTesting) {</span>
+<span class="nc" id="L322">			final DataClayRuntime mockLib = DataClayMockObject.getLib();</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">			if (mockLib == null) {</span>
 				// WARNING: this is intended to support client threads apps simulation
 				// since in a real environment clientLib static field is not overriden
 				// by servers lib.
-<span class="nc" id="L307">				return clientRuntime;</span>
+<span class="nc" id="L327">				return clientRuntime;</span>
 			} else {
-<span class="nc" id="L309">				return mockLib;</span>
+<span class="nc" id="L329">				return mockLib;</span>
 			}
 		} else {
-<span class="fc" id="L312">			return clientRuntime;</span>
+<span class="fc" id="L332">			return clientRuntime;</span>
 		}
 
 	}
@@ -321,9 +341,9 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            the runtime to set
 	 */
 	public static void setLib(final DataClayRuntime theruntime) {
-<span class="nc" id="L324">		clientRuntime = theruntime;</span>
-<span class="nc" id="L325">		LOCAL = clientRuntime.getLocalBackend();</span>
-<span class="nc" id="L326">	}</span>
+<span class="nc" id="L344">		clientRuntime = theruntime;</span>
+<span class="nc" id="L345">		LOCAL = clientRuntime.getLocalBackend();</span>
+<span class="nc" id="L346">	}</span>
 
 	/**
 	 * Get the ObjectID of the instance
@@ -332,7 +352,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final ObjectID getObjectID() {
-<span class="nc" id="L335">		return objectID;</span>
+<span class="nc" id="L355">		return objectID;</span>
 	}
 
 	/**
@@ -341,7 +361,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return TRUE if it is persistent. FALSE otherwise.
 	 */
 	public final boolean isPersistent() {
-<span class="nc" id="L344">		return this.isPersistent.get();</span>
+<span class="nc" id="L364">		return this.isPersistent.get();</span>
 	}
 
 	/**
@@ -351,8 +371,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            the isPersistent to set
 	 */
 	public final void setIsPersistent(final boolean newisPersistent) {
-<span class="nc" id="L354">		this.isPersistent.set(newisPersistent);</span>
-<span class="nc" id="L355">	}</span>
+<span class="nc" id="L374">		this.isPersistent.set(newisPersistent);</span>
+<span class="nc" id="L375">	}</span>
 
 	// CHECKSTYLE:OFF
 
@@ -363,11 +383,11 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public MetaClassID getMetaClassID() {
-<span class="nc" id="L366">		final StubInfo stubInfo = getStubInfo();</span>
-<span class="nc bnc" id="L367" title="All 2 branches missed.">		if (stubInfo == null) {</span>
-<span class="nc" id="L368">			return null;</span>
+<span class="nc" id="L386">		final StubInfo stubInfo = getStubInfo();</span>
+<span class="nc bnc" id="L387" title="All 2 branches missed.">		if (stubInfo == null) {</span>
+<span class="nc" id="L388">			return null;</span>
 		}
-<span class="nc" id="L370">		return stubInfo.getClassID();</span>
+<span class="nc" id="L390">		return stubInfo.getClassID();</span>
 	}
 
 	/**
@@ -378,7 +398,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return ID of the class
 	 */
 	public static MetaClassID getMetaClassID(final String className) {
-<span class="nc" id="L381">		return getStubInfoFromClass(className).getClassID();</span>
+<span class="nc" id="L401">		return getStubInfoFromClass(className).getClassID();</span>
 	}
 
 	/**
@@ -391,38 +411,19 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return Result of the method
 	 */
 	public Object run(final ImplementationID implID, final Object[] params) {
-<span class="nc" id="L394">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L414">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
-	 * Runs the method with ID provided and params specified on a specific backend
-	 * 
-	 * @param location
-	 *            target backend of execution
-	 * @param implID
-	 *            ID of the method to invoke
-	 * @param params
-	 *            Parameters of the method
-	 * @return Result of the method
-	 */
-	public Object setInBackend(final BackendID location, final String implID, final Object[] params) {
-<span class="nc" id="L409">		return getLib().callExecuteToDS(this, params, new ImplementationID(implID), location, false);</span>
-	}
-
-	/**
-	 * Runs the method with ID provided and params specified on external dataClays where object is federated
-	 * This function is only intended for calls in federation - replicated fields. 
-	 * NOTE: A real call to remote dataClay would require a new design of exceptions/volatiles between dataClays.
-	 * @param dcID
-	 *            External dataClay where to call this
+	 * Synchronize
 	 * @param implID
 	 *            implementation ID to be invoked on federated object
 	 * @param params
 	 *            Parameters of the method
 	 */
-	public void setInDataClayInstance(final DataClayInstanceID dcID, final ImplementationID implID, final Object[] params) {
-<span class="nc" id="L424">		getLib().synchronizeFederated(this, params, implID, dcID, true);</span>
-<span class="nc" id="L425">	}</span>
+	public void synchronize(final ImplementationID implID, final Object[] params) {
+<span class="nc" id="L425">		getLib().synchronize(this, params, implID);</span>
+<span class="nc" id="L426">	}</span>
 
 	/**
 	 * Wraps fields for serialization
@@ -431,7 +432,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            [out] Wrapped fields
 	 */
 	public void wrapFieldsSerialization(final List&lt;DataClaySerializable&gt; wrapFields) {
-<span class="nc" id="L434">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L435">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -441,7 +442,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            [out] Wrapped fields
 	 */
 	public void wrapFieldsDeserialization(final List&lt;DataClaySerializable&gt; wrapFields) {
-<span class="nc" id="L444">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L445">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -451,7 +452,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            Fields to set, in order.
 	 */
 	public void setFieldsDeserialization(final Queue&lt;Object&gt; fieldsToSet) {
-<span class="nc" id="L454">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L455">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -464,7 +465,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return Wrapped parameters
 	 */
 	public List&lt;DataClaySerializable&gt; wrapParameters(final ImplementationID implID, final Object[] params) {
-<span class="nc" id="L467">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L468">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -477,7 +478,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return Wrapped return
 	 */
 	public List&lt;DataClaySerializable&gt; wrapReturn(final ImplementationID implID, final Object ret) {
-<span class="nc" id="L480">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L481">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -489,7 +490,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            Wrapped Parameters of the method
 	 */
 	public void setWrappersParams(final ImplementationID implID, final SerializedParametersOrReturn wrapParams) {
-<span class="nc" id="L492">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L493">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -501,7 +502,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            Wrapped return of the method
 	 */
 	public void setWrappersReturn(final ImplementationID implID, final SerializedParametersOrReturn wrapReturn) {
-<span class="nc" id="L504">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L505">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -511,7 +512,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            object with values of fields to set.
 	 */
 	public void setAll(final DataClayObject otherObject) {
-<span class="nc" id="L514">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
+<span class="nc" id="L515">		throw new UnsupportedOperationException(&quot;DataClayObject must be specialized&quot;);</span>
 	}
 
 	/**
@@ -520,7 +521,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return a non-persistent copy of this object
 	 */
 	public DataClayObject dcClone() {
-<span class="nc" id="L523">		return DataClayObject.getLib().getCopyOfObject(this.objectID, false);</span>
+<span class="nc" id="L524">		return DataClayObject.getLib().getCopyOfObject(this.objectID, false);</span>
 	}
 
 	/**
@@ -531,7 +532,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return a non-persistent copy of this object
 	 */
 	public DataClayObject dcClone(final boolean recursive) {
-<span class="nc" id="L534">		return DataClayObject.getLib().getCopyOfObject(this.objectID, recursive);</span>
+<span class="nc" id="L535">		return DataClayObject.getLib().getCopyOfObject(this.objectID, recursive);</span>
 	}
 
 	/**
@@ -542,8 +543,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return a non-persistent copy of this object
 	 */
 	public static DataClayObject dcCloneByAlias(final String alias) {
-<span class="nc" id="L545">		final DataClayObject byAlias = DataClayObject.getLib().getObjectByAlias(alias);</span>
-<span class="nc" id="L546">		return byAlias.dcClone();</span>
+<span class="nc" id="L546">		final DataClayObject byAlias = DataClayObject.getLib().getObjectByAlias(alias);</span>
+<span class="nc" id="L547">		return byAlias.dcClone();</span>
 	}
 
 	/**
@@ -556,8 +557,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return a non-persistent copy of this object
 	 */
 	public static DataClayObject dcCloneByAlias(final String alias, final boolean recursive) {
-<span class="nc" id="L559">		final DataClayObject byAlias = DataClayObject.getLib().getObjectByAlias(alias);</span>
-<span class="nc" id="L560">		return byAlias.dcClone(recursive);</span>
+<span class="nc" id="L560">		final DataClayObject byAlias = DataClayObject.getLib().getObjectByAlias(alias);</span>
+<span class="nc" id="L561">		return byAlias.dcClone(recursive);</span>
 	}
 
 	/**
@@ -567,11 +568,11 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            object to be copied to this object
 	 */
 	public final void dcUpdate(final DataClayObject fromObject) {
-<span class="nc bnc" id="L570" title="All 2 branches missed.">		if (fromObject == null) {</span>
-<span class="nc" id="L571">			return;</span>
+<span class="nc bnc" id="L571" title="All 2 branches missed.">		if (fromObject == null) {</span>
+<span class="nc" id="L572">			return;</span>
 		}
-<span class="nc" id="L573">		DataClayObject.getLib().updateObject(this.getObjectID(), fromObject);</span>
-<span class="nc" id="L574">	}</span>
+<span class="nc" id="L574">		DataClayObject.getLib().updateObject(this.getObjectID(), fromObject);</span>
+<span class="nc" id="L575">	}</span>
 
 	/**
 	 * Updates the object identified by the given alias with the values in argument object
@@ -582,9 +583,9 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            object to be copied to this object
 	 */
 	public static final void dcUpdateByAlias(final String alias, final DataClayObject fromObject) {
-<span class="nc" id="L585">		final DataClayObject byAlias = DataClayObject.getLib().getObjectByAlias(alias);</span>
-<span class="nc" id="L586">		byAlias.dcUpdate(fromObject);</span>
-<span class="nc" id="L587">	}</span>
+<span class="nc" id="L586">		final DataClayObject byAlias = DataClayObject.getLib().getObjectByAlias(alias);</span>
+<span class="nc" id="L587">		byAlias.dcUpdate(fromObject);</span>
+<span class="nc" id="L588">	}</span>
 
 	/**
 	 * Equivalent to {@link #makePersistent(String) makePersistent}
@@ -593,8 +594,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            alias for the object
 	 */
 	public final void dcPut(final String alias) {
-<span class="nc" id="L596">		this.makePersistent(alias);</span>
-<span class="nc" id="L597">	}</span>
+<span class="nc" id="L597">		this.makePersistent(alias);</span>
+<span class="nc" id="L598">	}</span>
 
 	/**
 	 * Equivalent to {@link #makePersistent(String, BackendID) makePersistent}
@@ -605,8 +606,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            optional backend where to persist this object
 	 */
 	public final void dcPut(final String alias, final BackendID optBackendID) {
-<span class="nc" id="L608">		this.makePersistent(alias, optBackendID);</span>
-<span class="nc" id="L609">	}</span>
+<span class="nc" id="L609">		this.makePersistent(alias, optBackendID);</span>
+<span class="nc" id="L610">	}</span>
 
 	/**
 	 * Equivalent to {@link #makePersistent(String, boolean) makePersistent}
@@ -617,8 +618,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            whether subobjects are also persisted or not
 	 */
 	public final void dcPut(final String alias, final boolean recursive) {
-<span class="nc" id="L620">		this.makePersistent(alias, recursive);</span>
-<span class="nc" id="L621">	}</span>
+<span class="nc" id="L621">		this.makePersistent(alias, recursive);</span>
+<span class="nc" id="L622">	}</span>
 
 	/**
 	 * Equivalent to {@link #makePersistent(String, BackendID, boolean) makePersistent}
@@ -631,44 +632,44 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            whether subobjects are also persisted or not
 	 */
 	public final void dcPut(final String alias, final BackendID optBackendID, final boolean recursive) {
-<span class="nc" id="L634">		this.makePersistent(alias, optBackendID, recursive);</span>
-<span class="nc" id="L635">	}</span>
+<span class="nc" id="L635">		this.makePersistent(alias, optBackendID, recursive);</span>
+<span class="nc" id="L636">	}</span>
 
 	@Override
 	public String getID() {
-<span class="nc bnc" id="L639" title="All 2 branches missed.">		if (isPersistent.get()) {</span>
-<span class="nc" id="L640">			return DataClay.ids2String(this.objectID, this.hint, this.getMetaClassID());</span>
+<span class="nc bnc" id="L640" title="All 2 branches missed.">		if (isPersistent.get()) {</span>
+<span class="nc" id="L641">			return DataClay.ids2String(this.objectID, this.hint, this.getMetaClassID());</span>
 		} else {
-<span class="nc" id="L642">			return null;</span>
+<span class="nc" id="L643">			return null;</span>
 		}
 	}
 
 	@Override
 	public final void makePersistent() {
-<span class="nc" id="L648">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, true, null);</span>
-<span class="nc bnc" id="L649" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L650">			masterLocation = backendID;</span>
+<span class="nc" id="L649">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, true, null);</span>
+<span class="nc bnc" id="L650" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L651">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L652">	}</span>
+<span class="nc" id="L653">	}</span>
 
 	@Override
 	public final void makePersistent(final BackendID optBackendID) {
-<span class="nc" id="L656">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, optBackendID, true, null);</span>
-<span class="nc bnc" id="L657" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L658">			masterLocation = backendID;</span>
+<span class="nc" id="L657">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, optBackendID, true, null);</span>
+<span class="nc bnc" id="L658" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L659">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L660">	}</span>
+<span class="nc" id="L661">	}</span>
 
 	@Override
 	public final void makePersistent(final String alias) {
-<span class="nc bnc" id="L664" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
-<span class="nc" id="L665">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
+<span class="nc bnc" id="L665" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
+<span class="nc" id="L666">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
 		}
-<span class="nc" id="L667">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, true, alias);</span>
-<span class="nc bnc" id="L668" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L669">			masterLocation = backendID;</span>
+<span class="nc" id="L668">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, true, alias);</span>
+<span class="nc bnc" id="L669" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L670">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L671">	}</span>
+<span class="nc" id="L672">	}</span>
 
 	/**
 	 * Store this object into DataClay.
@@ -680,11 +681,11 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void makePersistent(final boolean recursive) {
-<span class="nc" id="L683">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, recursive, null);</span>
-<span class="nc bnc" id="L684" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L685">			masterLocation = backendID;</span>
+<span class="nc" id="L684">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, recursive, null);</span>
+<span class="nc bnc" id="L685" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L686">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L687">	}</span>
+<span class="nc" id="L688">	}</span>
 
 	/**
 	 * Store this object into DataClay.
@@ -698,11 +699,11 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void makePersistent(final boolean recursive, final BackendID optionalBackendID) {
-<span class="nc" id="L701">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, optionalBackendID, recursive, null);</span>
-<span class="nc bnc" id="L702" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L703">			masterLocation = backendID;</span>
+<span class="nc" id="L702">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, optionalBackendID, recursive, null);</span>
+<span class="nc bnc" id="L703" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L704">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L705">	}</span>
+<span class="nc" id="L706">	}</span>
 
 	/**
 	 * Store this object into DataClay.
@@ -714,14 +715,14 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void makePersistent(final String alias, final BackendID destBackendID) {
-<span class="nc bnc" id="L717" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
-<span class="nc" id="L718">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
+<span class="nc bnc" id="L718" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
+<span class="nc" id="L719">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
 		}
-<span class="nc" id="L720">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, destBackendID, true, alias);</span>
-<span class="nc bnc" id="L721" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L722">			masterLocation = backendID;</span>
+<span class="nc" id="L721">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, destBackendID, true, alias);</span>
+<span class="nc bnc" id="L722" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L723">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L724">	}</span>
+<span class="nc" id="L725">	}</span>
 
 	/**
 	 * Store this object into DataClay.
@@ -735,14 +736,14 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void makePersistent(final String alias, final boolean recursive) {
-<span class="nc bnc" id="L738" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
-<span class="nc" id="L739">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
+<span class="nc bnc" id="L739" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
+<span class="nc" id="L740">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
 		}
-<span class="nc" id="L741">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, recursive, alias);</span>
-<span class="nc bnc" id="L742" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L743">			masterLocation = backendID;</span>
+<span class="nc" id="L742">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, null, recursive, alias);</span>
+<span class="nc bnc" id="L743" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L744">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L745">	}</span>
+<span class="nc" id="L746">	}</span>
 
 	/**
 	 * Store this object into DataClay.
@@ -758,35 +759,37 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void makePersistent(final String alias, final BackendID destBackendID, final boolean recursive) {
-<span class="nc bnc" id="L761" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
-<span class="nc" id="L762">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
+<span class="nc bnc" id="L762" title="All 4 branches missed.">		if (alias != null &amp;&amp; alias.isEmpty()) {</span>
+<span class="nc" id="L763">			throw new IllegalArgumentException(&quot;Alias cannot be empty&quot;);</span>
 		}
-<span class="nc" id="L764">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, destBackendID, recursive, alias);</span>
-<span class="nc bnc" id="L765" title="All 2 branches missed.">		if (masterLocation == null) {</span>
-<span class="nc" id="L766">			masterLocation = backendID;</span>
+<span class="nc" id="L765">		final BackendID backendID = DataClayObject.getLib().makePersistent(this, destBackendID, recursive, alias);</span>
+<span class="nc bnc" id="L766" title="All 2 branches missed.">		if (masterLocation == null) {</span>
+<span class="nc" id="L767">			masterLocation = backendID;</span>
 		}
-<span class="nc" id="L768">	}</span>
+<span class="nc" id="L769">	}</span>
 
 	/**
 	 * Creates a new replica of this persistent object and its subobjects in a certain backend.
-	 * 
+	 *
 	 * @return The ID of the backend in which the replica was created.
 	 */
 	@Override
 	public final BackendID newReplica() {
-<span class="nc" id="L777">		return DataClayObject.getLib().newReplica(this.objectID, this.getMetaClassID(), this.hint, null, true);</span>
+<span class="nc" id="L778">		return DataClayObject.getLib().newReplica(this.objectID, this.hint, null,</span>
+				null,true);
 	}
 
 	/**
 	 * Creates a new replica of this persistent object in a certain backend.
-	 * 
+	 *
 	 * @param recursive
 	 *            Indicates if all sub-objects must be replicated as well.
 	 * @return The ID of the backend in which the replica was created.
 	 */
 	@Override
 	public final BackendID newReplica(final boolean recursive) {
-<span class="nc" id="L789">		return DataClayObject.getLib().newReplica(this.objectID, this.getMetaClassID(), this.hint, null, recursive);</span>
+<span class="nc" id="L791">		return DataClayObject.getLib().newReplica(this.objectID, this.hint,</span>
+				null, null, recursive);
 	}
 
 	/**
@@ -799,8 +802,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final BackendID newReplica(final BackendID optionalBackendID) {
-<span class="nc" id="L802">		return DataClayObject.getLib().newReplica(this.objectID, this.getMetaClassID(), this.hint, optionalBackendID,</span>
-				true);
+<span class="nc" id="L805">		return DataClayObject.getLib().newReplica(this.objectID, this.hint,</span>
+				optionalBackendID, null, true);
 	}
 
 	/**
@@ -815,8 +818,9 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final BackendID newReplica(final BackendID optionalBackendID, final boolean recursive) {
-<span class="nc" id="L818">		return DataClayObject.getLib().newReplica(this.objectID, this.getMetaClassID(), this.hint, optionalBackendID,</span>
-				recursive);
+<span class="nc" id="L821">		return DataClayObject.getLib().newReplica(this.objectID, this.hint,</span>
+				optionalBackendID,
+				null, recursive);
 	}
 
 	/**
@@ -830,11 +834,11 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void moveObject(final BackendID srcLocID, final BackendID destLocID) {
-<span class="nc" id="L833">		DataClayObject.getLib().moveObject(this.objectID, this.getMetaClassID(), this.hint, srcLocID, destLocID, true);</span>
-<span class="nc bnc" id="L834" title="All 4 branches missed.">		if (masterLocation != null &amp;&amp; srcLocID.equals(masterLocation)) {</span>
-<span class="nc" id="L835">			masterLocation = destLocID;</span>
+<span class="nc" id="L837">		DataClayObject.getLib().moveObject(this.objectID, this.getMetaClassID(), this.hint, srcLocID, destLocID, true);</span>
+<span class="nc bnc" id="L838" title="All 4 branches missed.">		if (masterLocation != null &amp;&amp; srcLocID.equals(masterLocation)) {</span>
+<span class="nc" id="L839">			masterLocation = destLocID;</span>
 		}
-<span class="nc" id="L837">	}</span>
+<span class="nc" id="L841">	}</span>
 
 	/**
 	 * Moves a persistent object from the source location to the destination location specified. If the object is not persistent
@@ -849,12 +853,12 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void moveObject(final BackendID srcLocID, final BackendID destLocID, final boolean recursive) {
-<span class="nc" id="L852">		DataClayObject.getLib().moveObject(this.objectID, this.getMetaClassID(), this.hint, srcLocID, destLocID,</span>
+<span class="nc" id="L856">		DataClayObject.getLib().moveObject(this.objectID, this.getMetaClassID(), this.hint, srcLocID, destLocID,</span>
 				recursive);
-<span class="nc bnc" id="L854" title="All 4 branches missed.">		if (masterLocation != null &amp;&amp; srcLocID.equals(masterLocation)) {</span>
-<span class="nc" id="L855">			masterLocation = destLocID;</span>
+<span class="nc bnc" id="L858" title="All 4 branches missed.">		if (masterLocation != null &amp;&amp; srcLocID.equals(masterLocation)) {</span>
+<span class="nc" id="L859">			masterLocation = destLocID;</span>
 		}
-<span class="nc" id="L857">	}</span>
+<span class="nc" id="L861">	}</span>
 
 	/**
 	 * Sets this persistent object to be read only. If the object is not persistent i.e. does not contain a DataClay objectID
@@ -863,8 +867,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	@Override
 	public final void setObjectReadOnly() {
 		// Make sure object is registered
-<span class="nc" id="L866">		DataClayObject.getLib().setObjectReadOnly(this.objectID, this.getMetaClassID(), this.hint);</span>
-<span class="nc" id="L867">	}</span>
+<span class="nc" id="L870">		DataClayObject.getLib().setObjectReadOnly(this.objectID, this.getMetaClassID(), this.hint);</span>
+<span class="nc" id="L871">	}</span>
 
 	/**
 	 * Sets this persistent object to be read write. If the object is not persistent i.e. does not contain a DataClay objectID
@@ -872,8 +876,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final void setObjectReadWrite() {
-<span class="nc" id="L875">		DataClayObject.getLib().setObjectReadWrite(this.objectID, this.getMetaClassID(), this.hint);</span>
-<span class="nc" id="L876">	}</span>
+<span class="nc" id="L879">		DataClayObject.getLib().setObjectReadWrite(this.objectID, this.getMetaClassID(), this.hint);</span>
+<span class="nc" id="L880">	}</span>
 
 	/**
 	 * Gets the location of this persistent object.
@@ -883,7 +887,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final BackendID getLocation() {
-<span class="nc" id="L886">		return DataClayObject.getLib().getLocation(this.objectID);</span>
+<span class="nc" id="L890">		return DataClayObject.getLib().getLocation(this.objectID);</span>
 	}
 
 	/**
@@ -894,7 +898,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	@Override
 	public final Set&lt;BackendID&gt; getAllLocations() {
-<span class="nc" id="L897">		return new HashSet&lt;&gt;(DataClayObject.getLib().getAllLocations(this.objectID));</span>
+<span class="nc" id="L901">		return new HashSet&lt;&gt;(DataClayObject.getLib().getAllLocations(this.objectID));</span>
 	}
 
 	/**
@@ -906,9 +910,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            whether to federate recursively or not
 	 */
 	public void federate(final DataClayInstanceID extDataClayID, final boolean recursive) {
-<span class="nc" id="L909">		DataClayObject.getLib().federateObject(this.objectID, extDataClayID, recursive, this.getMetaClassID(),</span>
-<span class="nc" id="L910">				this.getHint());</span>
-<span class="nc" id="L911">	}</span>
+<span class="nc" id="L913">		DataClayObject.getLib().federateObject(this, extDataClayID, recursive);</span>
+<span class="nc" id="L914">	}</span>
 	
 	/**
 	 * Unfederate this object with the provided external dataClay
@@ -916,9 +919,10 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @param recursive
 	 *            whether to unfederate recursively or not
 	 */
-	public void unfederate(final DataClayInstanceID extDataClayID, final boolean recursive) { 
-<span class="nc" id="L920">		DataClayObject.getLib().unfederateObject(this.objectID, extDataClayID, recursive);</span>
-<span class="nc" id="L921">	}</span>
+	public void unfederate(final DataClayInstanceID extDataClayID, final boolean recursive) {
+		//FIXME: specific unfederation
+<span class="nc" id="L924">		DataClayObject.getLib().unfederateObject(this, null, recursive);</span>
+<span class="nc" id="L925">	}</span>
 
 	/**
 	 * Unfederate this object with all external dataClays is registered with
@@ -926,8 +930,8 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            whether to unfederate recursively or not
 	 */
 	public void unfederate(final boolean recursive) { 
-<span class="nc" id="L929">		DataClayObject.getLib().unfederateObjectWithAllDCs(this.objectID, recursive);</span>
-<span class="nc" id="L930">	}</span>
+<span class="nc" id="L933">		DataClayObject.getLib().unfederateObject(this, null, recursive);</span>
+<span class="nc" id="L934">	}</span>
 	
 	/**
 	 * Federates this object with an external dataClay instance
@@ -936,36 +940,68 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            id of the external dataClay instance
 	 */
 	public void federate(final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L939">		DataClayObject.getLib().federateObject(this.objectID, extDataClayID, true, this.getMetaClassID(),</span>
-<span class="nc" id="L940">				this.getHint());</span>
-<span class="nc" id="L941">	}</span>
+<span class="nc" id="L943">		DataClayObject.getLib().federateObject(this, extDataClayID, true);</span>
+<span class="nc" id="L944">	}</span>
+
 
 	/**
 	 * Unfederate this object with the provided external dataClay
 	 * @param extDataClayID  id of the external dataClay instance
 	 */
-	public void unfederate(final DataClayInstanceID extDataClayID) { 
-<span class="nc" id="L948">		DataClayObject.getLib().unfederateObject(this.objectID, extDataClayID, true);</span>
-<span class="nc" id="L949">	}</span>
-	
+	public void unfederate(final DataClayInstanceID extDataClayID) {
+		//FIXME: specific unfederation
+<span class="nc" id="L953">		DataClayObject.getLib().unfederateObject(this, null, true);</span>
+<span class="nc" id="L954">	}</span>
+
 	/**
-	 * Retrieve dataClay instances where this object is federated
-	 * 
-	 * @return set of dataClay instances id
+	 * Federates this object with an external backend instance
+	 *
+	 * @param extBackendID
+	 *            id of the external backend to federate
 	 */
-	public final Set&lt;DataClayInstanceID&gt; getFederationTargets() {
-<span class="nc" id="L957">		return getLib().getLogicModuleAPI().getDataClaysObjectIsFederatedWith(this.getObjectID());</span>
-	}
-	
+	public void federateToBackend(final BackendID extBackendID) {
+<span class="nc" id="L963">		DataClayObject.getLib().federateToBackend(this,</span>
+				(ExecutionEnvironmentID) extBackendID, true);
+<span class="nc" id="L965">	}</span>
+
 	/**
-	 * Retrieve dataClay instances where a federated object comes from or NULL if object is from current dc.
-	 * 
-	 * @return id of origin dataclay of the object or null
+	 * Federates this object with an external backend instance
+	 *
+	 * @param extBackendID
+	 *            id of the external backend to federate
+	 * @param recursive Indicates if federation is recursive or not
 	 */
-	public final DataClayInstanceID getFederationSource() {
-<span class="nc" id="L966">		return getLib().getLogicModuleAPI().getExternalSourceDataClayOfObject(this.getObjectID());</span>
-	}
-	
+	public void federateToBackend(final BackendID extBackendID, final boolean recursive) {
+<span class="nc" id="L975">		DataClayObject.getLib().federateToBackend(this,</span>
+				(ExecutionEnvironmentID) extBackendID, recursive);
+<span class="nc" id="L977">	}</span>
+
+	/**
+	 * Unfederates this object with an external backend instance
+	 *
+	 * @param extBackendID
+	 *            id of the external backend to federate
+	 */
+	public void unfederateFromBackend(final BackendID extBackendID) {
+<span class="nc" id="L986">		DataClayObject.getLib().unfederateFromBackend(this,</span>
+				(ExecutionEnvironmentID) extBackendID, true);
+<span class="nc" id="L988">	}</span>
+
+
+	/**
+	 * Unfederates this object with an external backend instance
+	 *
+	 * @param extBackendID
+	 *            id of the external backend to federate
+	 * @param recursive Indicates if unfederation is recursive or not
+
+	 */
+	public void unfederateFromBackend(final BackendID extBackendID, final boolean recursive) {
+<span class="nc" id="L1000">		DataClayObject.getLib().unfederateFromBackend(this,</span>
+				(ExecutionEnvironmentID) extBackendID, recursive);
+<span class="nc" id="L1002">	}</span>
+
+
 	/**
 	 * Retrieve dataClay ID
 	 * @param hostname Name of external dataclay 
@@ -973,147 +1009,39 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return ID of external dataclay
 	 */
 	public final DataClayInstanceID getExternalDataClayID(final String hostname, final int port) {
-<span class="nc" id="L976">		return getLib().getExternalDataClayID(hostname, port);</span>
+<span class="nc" id="L1012">		return getLib().getExternalDataClayID(hostname, port);</span>
 	}
+
+
+	/**
+	 * Detach object from session, i.e. remove reference from current session provided to current object,
+	 * &quot;dear garbage-collector, the current session is not using this object anymore&quot;
+	 *
+	 */
+	public final void sessionDetach() {
+<span class="nc" id="L1022">		getLib().detachObjectFromSession(this.getObjectID(), (ExecutionEnvironmentID) this.getHint());</span>
+<span class="nc" id="L1023">	}</span>
 
 	/**
 	 * Override this function with code to be executed when a federated object arrives into a destination dataClay.
 	 */
 	public void whenFederated() {
-<span class="nc bnc" id="L983" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L984">			logger.debug(</span>
-<span class="nc" id="L985">					&quot;[==Federation==] Class &quot; + this.getClass().getName() + &quot; has no whenFederated behaviour defined.&quot;);</span>
+<span class="nc bnc" id="L1029" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1030">			logger.debug(</span>
+<span class="nc" id="L1031">					&quot;[==Federation==] Class &quot; + this.getClass().getName() + &quot; has no whenFederated behaviour defined.&quot;);</span>
 		}
 
-<span class="nc" id="L988">	}</span>
+<span class="nc" id="L1034">	}</span>
 
 	/**
 	 * Override this function with code to be executed when a federate object is unfederated in destination dataClay.
 	 */
 	public void whenUnfederated() {
-<span class="nc bnc" id="L994" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L995">			logger.debug(</span>
-<span class="nc" id="L996">					&quot;[==Federation==] Class &quot; + this.getClass().getName() + &quot; has no whenUnfederated behaviour defined.&quot;);</span>
+<span class="nc bnc" id="L1040" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1041">			logger.debug(</span>
+<span class="nc" id="L1042">					&quot;[==Federation==] Class &quot; + this.getClass().getName() + &quot; has no whenUnfederated behaviour defined.&quot;);</span>
 		}
-<span class="nc" id="L998">	}</span>
-
-	/**
-	 * If this object is iterable, returns the list of elements that satisfy the specified given conditions
-	 * 
-	 * @param conditions
-	 *            a set of conditions representd in a String (e.g. &quot;field1 == 0, field2 &lt; 0&quot;)
-	 * @return list of elements satisfying all the query conditions
-	 */
-	public List&lt;Object&gt; filter(final String conditions) {
-<span class="nc bnc" id="L1008" title="All 2 branches missed.">		if (this.isPersistent()) {</span>
-<span class="nc" id="L1009">			return getLib().filterObject(this, conditions);</span>
-		} else {
-<span class="nc" id="L1011">			return filterObject(conditions);</span>
-		}
-	}
-
-	/**
-	 * Protected method to be called either from EE or Client. If this object is iterable, returns the list of elements that
-	 * satisfy the specified given conditions
-	 * 
-	 * @param conditions
-	 *            a set of conditions representd in a String (e.g. &quot;field1 = 0,field2 &lt; 0&quot;)
-	 * @return list of elements satisfying all the query conditions
-	 */
-	protected List&lt;Object&gt; filterObject(final String conditions) {
-<span class="nc" id="L1024">		final List&lt;Object&gt; result = new ArrayList&lt;&gt;();</span>
-		// Check iterable object
-<span class="nc bnc" id="L1026" title="All 2 branches missed.">		if (!(this instanceof Iterable)) {</span>
-<span class="nc" id="L1027">			return result;</span>
-		}
-
-		// Parse conditions
-<span class="nc" id="L1031">		final List&lt;List&lt;Condition&gt;&gt; parsedConditions = ConditionParser.parseOrsOfAnds(conditions);</span>
-
-		// Check each element
-<span class="nc" id="L1034">		final Iterator&lt;?&gt; it = ((Iterable&lt;?&gt;) this).iterator();</span>
-<span class="nc bnc" id="L1035" title="All 2 branches missed.">		while (it.hasNext()) {</span>
-<span class="nc" id="L1036">			final Object o = it.next();</span>
-<span class="nc" id="L1037">			boolean matchOr = false;</span>
-
-<span class="nc" id="L1039">			final Iterator&lt;List&lt;Condition&gt;&gt; itAnds = ((Iterable&lt;List&lt;Condition&gt;&gt;) parsedConditions).iterator();</span>
-<span class="nc bnc" id="L1040" title="All 2 branches missed.">			while (itAnds.hasNext()) {</span>
-
-<span class="nc" id="L1042">				final List&lt;Condition&gt; subAndConditions = itAnds.next();</span>
-<span class="nc" id="L1043">				boolean matchAnd = true;</span>
-<span class="nc bnc" id="L1044" title="All 2 branches missed.">				for (final Condition cond : subAndConditions) {</span>
-<span class="nc bnc" id="L1045" title="All 2 branches missed.">					if (!cond.matches(o)) { // if any AND condition is not met, then whole AND is not met</span>
-<span class="nc" id="L1046">						matchAnd = false;</span>
-<span class="nc" id="L1047">						break;</span>
-					}
-<span class="nc" id="L1049">				}</span>
-
-<span class="nc bnc" id="L1051" title="All 2 branches missed.">				if (matchAnd) { // if all AND conditions of current AND are met, then OR is met, then break</span>
-<span class="nc" id="L1052">					matchOr = true;</span>
-<span class="nc" id="L1053">					break;</span>
-				}
-<span class="nc" id="L1055">			}</span>
-
-<span class="nc bnc" id="L1057" title="All 2 branches missed.">			if (matchOr) {</span>
-<span class="nc" id="L1058">				result.add(o);</span>
-			}
-<span class="nc" id="L1060">		}</span>
-<span class="nc" id="L1061">		return result;</span>
-	}
-
-	/**
-	 * Filter this object (assuming it is a collection) with the specified conditions
-	 * 
-	 * @param conditions
-	 *            string-defined set of conditions compliant with ConditionParser
-	 * @return the set of objects of this collection matching the specified conditions
-	 */
-	@SuppressWarnings({ &quot;unchecked&quot;, &quot;rawtypes&quot; })
-	public List&lt;Object&gt; filterStream(final String conditions) {
-<span class="nc" id="L1073">		List&lt;Object&gt; result = new ArrayList&lt;&gt;();</span>
-		try {
-			// Check iterable object
-<span class="nc bnc" id="L1076" title="All 2 branches missed.">			if (!(this instanceof Iterable)) {</span>
-<span class="nc" id="L1077">				return result;</span>
-			}
-<span class="nc" id="L1079">			final Spliterator&lt;?&gt; it = ((Iterable&lt;?&gt;) this).spliterator();</span>
-
-			// Parse conditions
-<span class="nc" id="L1082">			final Predicate asAndedPredicate = ConditionParser.asOrOfAndsPredicate(conditions);</span>
-
-			// Check each element
-<span class="nc" id="L1085">			final Stream stream = StreamSupport.stream(it, false);</span>
-<span class="nc" id="L1086">			result = (List&lt;Object&gt;) stream.filter(asAndedPredicate).collect(Collectors.toList());</span>
-<span class="nc" id="L1087">		} catch (final Exception e) {</span>
-<span class="nc" id="L1088">			e.printStackTrace();</span>
-<span class="nc" id="L1089">		}</span>
-<span class="nc" id="L1090">		return result;</span>
-	}
-
-	/**
-	 * Filter this object (assuming it is a collection) with the specified AST
-	 * 
-	 * @param ast
-	 *            an AST representation of the conditions compliant with ASTParser
-	 * @return the set of objects matching the specified conditions
-	 */
-	@SuppressWarnings({ &quot;unchecked&quot;, &quot;rawtypes&quot; })
-	public List&lt;Object&gt; filterByAST(final List&lt;Object&gt; ast) {
-<span class="nc" id="L1102">		List&lt;Object&gt; result = new ArrayList&lt;&gt;();</span>
-		// Check iterable object
-<span class="nc bnc" id="L1104" title="All 2 branches missed.">		if (!(this instanceof Iterable)) {</span>
-<span class="nc" id="L1105">			return result;</span>
-		}
-<span class="nc" id="L1107">		final Spliterator&lt;?&gt; it = ((Iterable&lt;?&gt;) this).spliterator();</span>
-
-		// Parse conditions
-<span class="nc" id="L1110">		final Predicate asAndedPredicate = ASTParser.asPredicate(ast);</span>
-
-		// Check each element
-<span class="nc" id="L1113">		final Stream stream = StreamSupport.stream(it, false);</span>
-<span class="nc" id="L1114">		result = (List&lt;Object&gt;) stream.filter(asAndedPredicate).collect(Collectors.toList());</span>
-<span class="nc" id="L1115">		return result;</span>
-	}
+<span class="nc" id="L1044">	}</span>
 
 	@Override
 	public void serialize(final DataClayByteBuffer dcBuffer, final boolean ignoreUserTypes,
@@ -1128,116 +1056,77 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 		// in new serialization, this will be done through padding
 		// TODO: use padding instead once new serialization is implemented (dgasull
 		// pierlauro 2018)
-<span class="nc" id="L1131">		dcBuffer.writeInt(0); // index is updated in the end</span>
-<span class="nc bnc" id="L1132" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1133">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized first 4 bytes: writerindex=&quot; + dcBuffer.writerIndex());</span>
-		}
+<span class="nc" id="L1059">		dcBuffer.writeInt(0); // index is updated in the end</span>
 		
 		// === master location ==
-<span class="nc bnc" id="L1137" title="All 2 branches missed.">		if (masterLocation != null) {</span>
-<span class="nc" id="L1138">			dcBuffer.writeLong(masterLocation.getId().getLeastSignificantBits());</span>
-<span class="nc bnc" id="L1139" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1140">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized master location least: data=&quot;+  masterLocation.getId().getLeastSignificantBits() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-			}
-<span class="nc" id="L1142">			dcBuffer.writeLong(masterLocation.getId().getMostSignificantBits());</span>
-<span class="nc bnc" id="L1143" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1144">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized master location most: data=&quot;+  masterLocation.getId().getMostSignificantBits() + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-			}
+<span class="nc bnc" id="L1062" title="All 2 branches missed.">		if (masterLocation != null) {</span>
+<span class="nc" id="L1063">			dcBuffer.writeLong(masterLocation.getId().getLeastSignificantBits());</span>
+<span class="nc" id="L1064">			dcBuffer.writeLong(masterLocation.getId().getMostSignificantBits());</span>
 		} else {
-<span class="nc" id="L1147">			dcBuffer.writeLong(0L);</span>
-<span class="nc bnc" id="L1148" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1149">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized master location least: data=0, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-			}
-<span class="nc" id="L1151">			dcBuffer.writeLong(0L);</span>
-<span class="nc bnc" id="L1152" title="All 2 branches missed.">			if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1153">				DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized master location most: data=0, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-			}
+<span class="nc" id="L1066">			dcBuffer.writeLong(0L);</span>
+<span class="nc" id="L1067">			dcBuffer.writeLong(0L);</span>
 		}
 
-<span class="nc" id="L1157">		final List&lt;DataClaySerializable&gt; wrapFields = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L1158">		this.wrapFieldsSerialization(wrapFields);</span>
+<span class="nc" id="L1070">		final List&lt;DataClaySerializable&gt; wrapFields = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1071">		this.wrapFieldsSerialization(wrapFields);</span>
 
 		// Calculate nulls bit set size
-<span class="nc" id="L1161">		final int numBytes = (int) Math.ceil(wrapFields.size() / 8.0F);</span>
-<span class="nc" id="L1162">		final BitSet notNullsBitSet = new BitSet(numBytes);</span>
-<span class="nc" id="L1163">		dcBuffer.writeVLQInt(numBytes);</span>
-<span class="nc bnc" id="L1164" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1165">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized bitmap size: data=&quot; + numBytes + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
+<span class="nc" id="L1074">		final int numBytes = (int) Math.ceil(wrapFields.size() / 8.0F);</span>
+<span class="nc" id="L1075">		final BitSet notNullsBitSet = new BitSet(numBytes);</span>
+<span class="nc" id="L1076">		dcBuffer.writeVLQInt(numBytes);</span>
 		
-<span class="nc" id="L1168">		final int curWriterIndx = dcBuffer.writerIndex();</span>
-<span class="nc" id="L1169">		dcBuffer.writeBytes(new byte[numBytes]);</span>
-<span class="nc bnc" id="L1170" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1171">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized empty bitmap: data=&quot; + notNullsBitSet + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
-<span class="nc" id="L1173">		BitSet ifaceBitSet = null;</span>
-<span class="nc bnc" id="L1174" title="All 2 branches missed.">		if (ifaceBitMaps != null) {</span>
-<span class="nc" id="L1175">			ifaceBitSet = BitSet.valueOf(ifaceBitMaps.get(getMetaClassID()));</span>
+<span class="nc" id="L1078">		final int curWriterIndx = dcBuffer.writerIndex();</span>
+<span class="nc" id="L1079">		dcBuffer.writeBytes(new byte[numBytes]);</span>
+<span class="nc" id="L1080">		BitSet ifaceBitSet = null;</span>
+<span class="nc bnc" id="L1081" title="All 2 branches missed.">		if (ifaceBitMaps != null) {</span>
+<span class="nc" id="L1082">			ifaceBitSet = BitSet.valueOf(ifaceBitMaps.get(getMetaClassID()));</span>
 		}
 
-<span class="nc bnc" id="L1178" title="All 2 branches missed.">		for (int i = 0; i &lt; wrapFields.size(); ++i) {</span>
-<span class="nc bnc" id="L1179" title="All 4 branches missed.">			if (ifaceBitSet == null || ifaceBitSet.get(i)) {</span>
-<span class="nc" id="L1180">				final DataClaySerializable wrappedField = wrapFields.get(i);</span>
-<span class="nc bnc" id="L1181" title="All 2 branches missed.">				if (wrappedField == null) {</span>
-<span class="nc" id="L1182">					continue;</span>
+<span class="nc bnc" id="L1085" title="All 2 branches missed.">		for (int i = 0; i &lt; wrapFields.size(); ++i) {</span>
+<span class="nc bnc" id="L1086" title="All 4 branches missed.">			if (ifaceBitSet == null || ifaceBitSet.get(i)) {</span>
+<span class="nc" id="L1087">				final DataClaySerializable wrappedField = wrapFields.get(i);</span>
+<span class="nc bnc" id="L1088" title="All 2 branches missed.">				if (wrappedField == null) {</span>
+<span class="nc" id="L1089">					continue;</span>
 				}
 
-<span class="nc bnc" id="L1185" title="All 2 branches missed.">				if (wrappedField instanceof DataClayJavaWrapper) {</span>
+<span class="nc bnc" id="L1092" title="All 2 branches missed.">				if (wrappedField instanceof DataClayJavaWrapper) {</span>
 					// ====== JAVA/IMMUTABLE/GENERIC FIELD ===== //
-<span class="nc" id="L1187">					final DataClayJavaWrapper javaWrapper = (DataClayJavaWrapper) wrappedField;</span>
-<span class="nc bnc" id="L1188" title="All 2 branches missed.">					if (javaWrapper.isNull()) {</span>
-<span class="nc" id="L1189">						continue;</span>
+<span class="nc" id="L1094">					final DataClayJavaWrapper javaWrapper = (DataClayJavaWrapper) wrappedField;</span>
+<span class="nc bnc" id="L1095" title="All 2 branches missed.">					if (javaWrapper.isNull()) {</span>
+<span class="nc" id="L1096">						continue;</span>
 					}
-<span class="nc" id="L1191">					notNullsBitSet.set(i);</span>
-<span class="nc" id="L1192">					DataClaySerializationLib.serializeJavaField(javaWrapper, dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
+<span class="nc" id="L1098">					notNullsBitSet.set(i);</span>
+<span class="nc" id="L1099">					DataClaySerializationLib.serializeJavaField(javaWrapper, dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
 							curSerializedObjs, pendingObjs, referenceCounting);
 
-<span class="nc" id="L1195">				} else {</span>
-<span class="nc bnc" id="L1196" title="All 2 branches missed.">					if (ignoreUserTypes) {</span>
-<span class="nc" id="L1197">						continue;</span>
+<span class="nc" id="L1102">				} else {</span>
+<span class="nc bnc" id="L1103" title="All 2 branches missed.">					if (ignoreUserTypes) {</span>
+<span class="nc" id="L1104">						continue;</span>
 					}
-<span class="nc" id="L1199">					final DataClayObject dcObject = (DataClayObject) wrappedField;</span>
+<span class="nc" id="L1106">					final DataClayObject dcObject = (DataClayObject) wrappedField;</span>
 					// ====== DCOBJECT FIELD ===== //
-<span class="nc" id="L1201">					notNullsBitSet.set(i);</span>
-<span class="nc" id="L1202">					DataClaySerializationLib.serializeAssociation(dcObject, dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
+<span class="nc" id="L1108">					notNullsBitSet.set(i);</span>
+<span class="nc" id="L1109">					DataClaySerializationLib.serializeAssociation(dcObject, dcBuffer, ignoreUserTypes, ifaceBitMaps,</span>
 							curSerializedObjs, pendingObjs, referenceCounting);
 				}
 			}
 		}
 
-<span class="nc" id="L1208">		int curIdx = dcBuffer.writerIndex();</span>
-<span class="nc" id="L1209">		dcBuffer.setWriterIndex(curWriterIndx);</span>
-<span class="nc bnc" id="L1210" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1211">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Modified writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
-<span class="nc" id="L1213">		dcBuffer.writeBytes(notNullsBitSet.toByteArray());</span>
-<span class="nc bnc" id="L1214" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1215">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized bitmap: data=&quot; + notNullsBitSet + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
-<span class="nc" id="L1217">		dcBuffer.setWriterIndex(curIdx);</span>
-<span class="nc bnc" id="L1218" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1219">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Modified writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
+<span class="nc" id="L1115">		int curIdx = dcBuffer.writerIndex();</span>
+<span class="nc" id="L1116">		dcBuffer.setWriterIndex(curWriterIndx);</span>
+<span class="nc" id="L1117">		dcBuffer.writeBytes(notNullsBitSet.toByteArray());</span>
+<span class="nc" id="L1118">		dcBuffer.setWriterIndex(curIdx);</span>
 		// == reference counting == //
 		// TODO: IMPORTANT: this should be removed in new serialization by using
 		// paddings to directly access reference counters inside metadata.
 
-<span class="nc" id="L1225">		curIdx = dcBuffer.writerIndex();</span>
-<span class="nc" id="L1226">		dcBuffer.setWriterIndex(0);</span>
-<span class="nc bnc" id="L1227" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1228">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Modified writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
-<span class="nc" id="L1230">		dcBuffer.writeInt(curIdx);</span>
-<span class="nc bnc" id="L1231" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1232">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Serialized curIdx: data=&quot; + curIdx + &quot;, writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
-<span class="nc" id="L1234">		dcBuffer.setWriterIndex(curIdx);</span>
-<span class="nc bnc" id="L1235" title="All 2 branches missed.">		if (DataClaySerializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1236">			DataClaySerializationLib.LOGGER.debug(&quot;[Serialization] --&gt; Modified writerIndex=&quot; + dcBuffer.writerIndex());</span>
-		}
-<span class="nc" id="L1238">		DataClaySerializationLib.serializeReferenceCounting(dcBuffer, referenceCounting);</span>
+<span class="nc" id="L1123">		curIdx = dcBuffer.writerIndex();</span>
+<span class="nc" id="L1124">		dcBuffer.setWriterIndex(0);</span>
+<span class="nc" id="L1125">		dcBuffer.writeInt(curIdx);</span>
+<span class="nc" id="L1126">		dcBuffer.setWriterIndex(curIdx);</span>
+<span class="nc" id="L1127">		DataClaySerializationLib.serializeReferenceCounting(this, dcBuffer, referenceCounting);</span>
 
-<span class="nc" id="L1240">	}</span>
+<span class="nc" id="L1129">	}</span>
 
 	@Override
 	public void deserialize(final DataClayByteBuffer dcBuffer, final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
@@ -1245,79 +1134,79 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 
 		// == reference counting == //
 		// see serialize function to understand why we &quot;ignore&quot; first 4 bytes
-<span class="nc" id="L1248">		dcBuffer.readInt();</span>
-<span class="nc bnc" id="L1249" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1250">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Ignored 4 first bytes deserialized: readerindex=&quot; + dcBuffer.readerIndex());</span>
+<span class="nc" id="L1137">		dcBuffer.readInt();</span>
+<span class="nc bnc" id="L1138" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L1139">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Ignored 4 first bytes deserialized: readerindex=&quot; + dcBuffer.readerIndex());</span>
 		}
 		// === master location ==
-<span class="nc" id="L1253">		final long masterLocationLeast = dcBuffer.readLong();</span>
-<span class="nc bnc" id="L1254" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1255">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Master location least bytes deserialized: data=&quot;+  masterLocationLeast + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+<span class="nc" id="L1142">		final long masterLocationLeast = dcBuffer.readLong();</span>
+<span class="nc bnc" id="L1143" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L1144">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Master location least bytes deserialized: data=&quot;+  masterLocationLeast + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
 		}
-<span class="nc" id="L1257">		final long masterLocationMost = dcBuffer.readLong();</span>
-<span class="nc bnc" id="L1258" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1259">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Master location most bytes deserialized: data=&quot;+  masterLocationMost + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+<span class="nc" id="L1146">		final long masterLocationMost = dcBuffer.readLong();</span>
+<span class="nc bnc" id="L1147" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L1148">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Master location most bytes deserialized: data=&quot;+  masterLocationMost + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
 		}
-<span class="nc bnc" id="L1261" title="All 4 branches missed.">		if (masterLocationLeast == 0L &amp;&amp; masterLocationMost == 0L) {</span>
-<span class="nc" id="L1262">			masterLocation = null;</span>
+<span class="nc bnc" id="L1150" title="All 4 branches missed.">		if (masterLocationLeast == 0L &amp;&amp; masterLocationMost == 0L) {</span>
+<span class="nc" id="L1151">			masterLocation = null;</span>
 		} else {
-<span class="nc" id="L1264">			final UUID uuid = new UUID(masterLocationMost, masterLocationLeast);</span>
-<span class="nc" id="L1265">			masterLocation = new ExecutionEnvironmentID(uuid);</span>
+<span class="nc" id="L1153">			final UUID uuid = new UUID(masterLocationMost, masterLocationLeast);</span>
+<span class="nc" id="L1154">			masterLocation = new ExecutionEnvironmentID(uuid);</span>
 		}
 
-<span class="nc" id="L1268">		final List&lt;DataClaySerializable&gt; wrapFields = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L1269">		this.wrapFieldsDeserialization(wrapFields);</span>
+<span class="nc" id="L1157">		final List&lt;DataClaySerializable&gt; wrapFields = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1158">		this.wrapFieldsDeserialization(wrapFields);</span>
 
-<span class="nc" id="L1271">		BitSet notNullsBitSet = null;</span>
-<span class="nc" id="L1272">		BitSet ifaceBitSet = null;</span>
-<span class="nc" id="L1273">		final int notNullsBitSetLength = dcBuffer.readVLQInt();</span>
-<span class="nc bnc" id="L1274" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1275">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Bitmap size deserialized: data=&quot;+  notNullsBitSetLength + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+<span class="nc" id="L1160">		BitSet notNullsBitSet = null;</span>
+<span class="nc" id="L1161">		BitSet ifaceBitSet = null;</span>
+<span class="nc" id="L1162">		final int notNullsBitSetLength = dcBuffer.readVLQInt();</span>
+<span class="nc bnc" id="L1163" title="All 2 branches missed.">		if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L1164">			DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Bitmap size deserialized: data=&quot;+  notNullsBitSetLength + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
 		}
-<span class="nc bnc" id="L1277" title="All 2 branches missed.">		if (notNullsBitSetLength &gt; 0) {</span>
-<span class="nc" id="L1278">			notNullsBitSet = BitSet.valueOf(dcBuffer.readBytes(notNullsBitSetLength));</span>
-<span class="nc bnc" id="L1279" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
-<span class="nc" id="L1280">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Bitmap deserialized: data=&quot;+  notNullsBitSet + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
+<span class="nc bnc" id="L1166" title="All 2 branches missed.">		if (notNullsBitSetLength &gt; 0) {</span>
+<span class="nc" id="L1167">			notNullsBitSet = BitSet.valueOf(dcBuffer.readBytes(notNullsBitSetLength));</span>
+<span class="nc bnc" id="L1168" title="All 2 branches missed.">			if (DataClayDeserializationLib.DEBUG_ENABLED) { </span>
+<span class="nc" id="L1169">				DataClayDeserializationLib.LOGGER.debug(&quot;[Deserialization] --&gt; Bitmap deserialized: data=&quot;+  notNullsBitSet + &quot;, readerindex=&quot; + dcBuffer.readerIndex());</span>
 			}
 		}
-<span class="nc bnc" id="L1283" title="All 2 branches missed.">		if (ifaceBitMaps != null) {</span>
-<span class="nc" id="L1284">			ifaceBitSet = BitSet.valueOf(ifaceBitMaps.get(getMetaClassID()));</span>
+<span class="nc bnc" id="L1172" title="All 2 branches missed.">		if (ifaceBitMaps != null) {</span>
+<span class="nc" id="L1173">			ifaceBitSet = BitSet.valueOf(ifaceBitMaps.get(getMetaClassID()));</span>
 		}
 
-<span class="nc" id="L1287">		int curFieldIdx = 0;</span>
-<span class="nc" id="L1288">		final Queue&lt;Object&gt; queueFields = new LinkedList&lt;&gt;();</span>
-<span class="nc bnc" id="L1289" title="All 2 branches missed.">		for (final DataClaySerializable wrapper : wrapFields) {</span>
+<span class="nc" id="L1176">		int curFieldIdx = 0;</span>
+<span class="nc" id="L1177">		final Queue&lt;Object&gt; queueFields = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L1178" title="All 2 branches missed.">		for (final DataClaySerializable wrapper : wrapFields) {</span>
 
-<span class="nc bnc" id="L1291" title="All 4 branches missed.">			final boolean isInIface = ifaceBitSet == null || ifaceBitSet.get(curFieldIdx);</span>
-<span class="nc bnc" id="L1292" title="All 4 branches missed.">			final boolean isNotNull = notNullsBitSet == null || notNullsBitSet.get(curFieldIdx);</span>
-<span class="nc bnc" id="L1293" title="All 4 branches missed.">			if (isInIface &amp;&amp; isNotNull) {</span>
-<span class="nc bnc" id="L1294" title="All 2 branches missed.">				if (wrapper == null) {</span>
+<span class="nc bnc" id="L1180" title="All 4 branches missed.">			final boolean isInIface = ifaceBitSet == null || ifaceBitSet.get(curFieldIdx);</span>
+<span class="nc bnc" id="L1181" title="All 4 branches missed.">			final boolean isNotNull = notNullsBitSet == null || notNullsBitSet.get(curFieldIdx);</span>
+<span class="nc bnc" id="L1182" title="All 4 branches missed.">			if (isInIface &amp;&amp; isNotNull) {</span>
+<span class="nc bnc" id="L1183" title="All 2 branches missed.">				if (wrapper == null) {</span>
 					// ====== DCOBJECT FIELD ===== //
 					// Means association, no wrappers
-<span class="nc" id="L1297">					final DataClayObject obj = DataClayDeserializationLib.deserializeAssociation(dcBuffer, ifaceBitMaps,</span>
-<span class="nc" id="L1298">							metadata, curDeserializedJavaObjs, getLib());</span>
-<span class="nc" id="L1299">					queueFields.add(obj);</span>
-<span class="nc" id="L1300">				} else {</span>
+<span class="nc" id="L1186">					final DataClayObject obj = DataClayDeserializationLib.deserializeAssociation(dcBuffer, ifaceBitMaps,</span>
+<span class="nc" id="L1187">							metadata, curDeserializedJavaObjs, getLib());</span>
+<span class="nc" id="L1188">					queueFields.add(obj);</span>
+<span class="nc" id="L1189">				} else {</span>
 					// ====== JAVA/IMMUTABLE/PRIMITIVE FIELD ===== //
-<span class="nc" id="L1302">					final DataClayJavaWrapper javaWrapper = (DataClayJavaWrapper) wrapper;</span>
-<span class="nc" id="L1303">					final Object javaObj = DataClayDeserializationLib.deserializeJavaField(javaWrapper, dcBuffer,</span>
+<span class="nc" id="L1191">					final DataClayJavaWrapper javaWrapper = (DataClayJavaWrapper) wrapper;</span>
+<span class="nc" id="L1192">					final Object javaObj = DataClayDeserializationLib.deserializeJavaField(javaWrapper, dcBuffer,</span>
 							ifaceBitMaps, metadata, curDeserializedJavaObjs);
-<span class="nc" id="L1305">					queueFields.add(javaObj);</span>
-<span class="nc" id="L1306">				}</span>
-<span class="nc bnc" id="L1307" title="All 4 branches missed.">			} else if (isInIface &amp;&amp; !isNotNull) {</span>
-<span class="nc" id="L1308">				queueFields.add(null);</span>
+<span class="nc" id="L1194">					queueFields.add(javaObj);</span>
+<span class="nc" id="L1195">				}</span>
+<span class="nc bnc" id="L1196" title="All 4 branches missed.">			} else if (isInIface &amp;&amp; !isNotNull) {</span>
+<span class="nc" id="L1197">				queueFields.add(null);</span>
 			}
 
-<span class="nc" id="L1311">			curFieldIdx++;</span>
-<span class="nc" id="L1312">		}</span>
+<span class="nc" id="L1200">			curFieldIdx++;</span>
+<span class="nc" id="L1201">		}</span>
 
 		// Set fields
-<span class="nc" id="L1315">		this.setFieldsDeserialization(queueFields);</span>
+<span class="nc" id="L1204">		this.setFieldsDeserialization(queueFields);</span>
 
 		// == ignore rest of bytes (like reference counting) == //
 		// do not clear buffer since this can be an embedded object (maybe?).
 
-<span class="nc" id="L1320">	}</span>
+<span class="nc" id="L1209">	}</span>
 
 	/*
 	 * @Override protected void finalize() throws Throwable { if (this.isServerObject) { this.ds.gcCollectObject(this); } }
@@ -1329,7 +1218,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return the hint
 	 */
 	public BackendID getHint() {
-<span class="nc" id="L1332">		return hint;</span>
+<span class="nc" id="L1221">		return hint;</span>
 	}
 
 	/**
@@ -1339,22 +1228,22 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            the hint to set
 	 */
 	public void setHint(final BackendID newhint) {
-<span class="nc" id="L1342">		this.hint = newhint;</span>
-<span class="nc" id="L1343">	}</span>
+<span class="nc" id="L1231">		this.hint = newhint;</span>
+<span class="nc" id="L1232">	}</span>
 
 	/**
 	 * Clear exec stub infos cache for enrichments.
 	 */
 	public static final void clearExecStubInfosCache() {
-<span class="nc" id="L1349">		execStubInfosCache.clear();</span>
-<span class="nc" id="L1350">	}</span>
+<span class="nc" id="L1238">		execStubInfosCache.clear();</span>
+<span class="nc" id="L1239">	}</span>
 
 	/**
 	 * Clear stub infos cache for enrichments.
 	 */
 	public static final void clearStubInfosCache() {
-<span class="nc" id="L1356">		stubInfosCache.clear();</span>
-<span class="nc" id="L1357">	}</span>
+<span class="nc" id="L1245">		stubInfosCache.clear();</span>
+<span class="nc" id="L1246">	}</span>
 
 	/**
 	 * Get stub information of class
@@ -1362,7 +1251,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return Stub information
 	 */
 	public final StubInfo getStubInfo() {
-<span class="nc" id="L1365">		return getStubInfoFromClass(this.getClass().getName());</span>
+<span class="nc" id="L1254">		return getStubInfoFromClass(this.getClass().getName());</span>
 	}
 
 	/**
@@ -1374,10 +1263,10 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 */
 	public static final boolean isStub(final Class&lt;?&gt; clazz) {
 		try {
-<span class="nc" id="L1377">			clazz.getField(ByteCodeFieldNames.IS_STUB_FIELDNAME);</span>
-<span class="nc" id="L1378">			return true;</span>
-<span class="nc" id="L1379">		} catch (final NoSuchFieldException e2) {</span>
-<span class="nc" id="L1380">			return false;</span>
+<span class="nc" id="L1266">			clazz.getField(ByteCodeFieldNames.IS_STUB_FIELDNAME);</span>
+<span class="nc" id="L1267">			return true;</span>
+<span class="nc" id="L1268">		} catch (final NoSuchFieldException e2) {</span>
+<span class="nc" id="L1269">			return false;</span>
 		}
 	}
 
@@ -1389,34 +1278,35 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return Stub information.
 	 */
 	public static final StubInfo getStubInfoFromClass(final String className) {
-<span class="nc" id="L1392">		StubInfo stubInfo = null;</span>
-<span class="nc bnc" id="L1393" title="All 2 branches missed.">		if (getLib().isDSLib()) {</span>
-<span class="nc" id="L1394">			stubInfo = execStubInfosCache.get(className);</span>
+<span class="nc" id="L1281">		StubInfo stubInfo = null;</span>
+<span class="nc bnc" id="L1282" title="All 2 branches missed.">		if (getLib().isDSLib()) {</span>
+<span class="nc" id="L1283">			stubInfo = execStubInfosCache.get(className);</span>
 		} else {
-<span class="nc" id="L1396">			stubInfo = stubInfosCache.get(className);</span>
+<span class="nc" id="L1285">			stubInfo = stubInfosCache.get(className);</span>
 		}
-<span class="nc bnc" id="L1398" title="All 2 branches missed.">		if (stubInfo == null) {</span>
+<span class="nc bnc" id="L1287" title="All 2 branches missed.">		if (stubInfo == null) {</span>
 			try {
-<span class="nc" id="L1400">				Class&lt;?&gt; currentClass = null;</span>
-<span class="nc bnc" id="L1401" title="All 2 branches missed.">				if (getLib().isDSLib()) {</span>
-<span class="nc" id="L1402">					currentClass = DataClayClassLoaderSrv.getClass(className);</span>
+<span class="nc" id="L1289">				Class&lt;?&gt; currentClass = null;</span>
+<span class="nc bnc" id="L1290" title="All 2 branches missed.">				if (getLib().isDSLib()) {</span>
+<span class="nc" id="L1291">					currentClass = DataClayClassLoaderSrv.getClass(className);</span>
 				} else {
-<span class="nc" id="L1404">					currentClass = DataClayClassLoader.getClass(className);</span>
+<span class="nc" id="L1293">					currentClass = DataClayClassLoader.getClass(className);</span>
 				}
-<span class="nc" id="L1406">				final Yaml yaml = CommonYAML.getYamlObject();</span>
-<span class="nc" id="L1407">				final String path = currentClass.getSimpleName() + &quot;Yaml.yaml&quot;;</span>
-<span class="nc" id="L1408">				final InputStream ios = currentClass.getResourceAsStream(path);</span>
-<span class="nc" id="L1409">				stubInfo = (StubInfo) yaml.load(ios);</span>
-<span class="nc bnc" id="L1410" title="All 2 branches missed.">				if (getLib().isDSLib()) {</span>
-<span class="nc" id="L1411">					execStubInfosCache.put(className, stubInfo);</span>
+<span class="nc" id="L1295">				final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L1296">				final String path = currentClass.getSimpleName() + &quot;Yaml.yaml&quot;;</span>
+<span class="nc" id="L1297">				logger.debug(&quot;Loading babel stub information from &quot; + path);</span>
+<span class="nc" id="L1298">				final InputStream ios = currentClass.getResourceAsStream(path);</span>
+<span class="nc" id="L1299">				stubInfo = (StubInfo) yaml.load(ios);</span>
+<span class="nc bnc" id="L1300" title="All 2 branches missed.">				if (getLib().isDSLib()) {</span>
+<span class="nc" id="L1301">					execStubInfosCache.put(className, stubInfo);</span>
 				} else {
-<span class="nc" id="L1413">					stubInfosCache.put(className, stubInfo);</span>
+<span class="nc" id="L1303">					stubInfosCache.put(className, stubInfo);</span>
 				}
-<span class="nc" id="L1415">			} catch (final Exception e) {</span>
-<span class="nc" id="L1416">				e.printStackTrace();</span>
-<span class="nc" id="L1417">			}</span>
+<span class="nc" id="L1305">			} catch (final Exception e) {</span>
+<span class="nc" id="L1306">				e.printStackTrace();</span>
+<span class="nc" id="L1307">			}</span>
 		}
-<span class="nc" id="L1419">		return stubInfo;</span>
+<span class="nc" id="L1309">		return stubInfo;</span>
 	}
 
 	/**
@@ -1433,24 +1323,24 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	@Override
 	public Object executeRemoteImplementation(final String methodSignature, final String implIDAsStr,
 			final Object[] params) {
-<span class="nc" id="L1436">		return getLib().executeRemoteImplementation(this, implIDAsStr, params);</span>
+<span class="nc" id="L1326">		return getLib().executeRemoteImplementation(this, implIDAsStr, params);</span>
 	}
 
 	@Override
 	public boolean equals(final Object obj) {
-<span class="nc bnc" id="L1441" title="All 2 branches missed.">		if (obj == null) {</span>
-<span class="nc" id="L1442">			return false;</span>
+<span class="nc bnc" id="L1331" title="All 2 branches missed.">		if (obj == null) {</span>
+<span class="nc" id="L1332">			return false;</span>
 		}
-<span class="nc bnc" id="L1444" title="All 2 branches missed.">		if (!(obj instanceof DataClayObject)) {</span>
-<span class="nc" id="L1445">			return false;</span>
+<span class="nc bnc" id="L1334" title="All 2 branches missed.">		if (!(obj instanceof DataClayObject)) {</span>
+<span class="nc" id="L1335">			return false;</span>
 		}
-<span class="nc" id="L1447">		return this.objectID.equals(((DataClayObject) obj).getObjectID());</span>
+<span class="nc" id="L1337">		return this.objectID.equals(((DataClayObject) obj).getObjectID());</span>
 
 	}
 
 	@Override
 	public int hashCode() {
-<span class="nc" id="L1453">		return Objects.hashCode(this.objectID);</span>
+<span class="nc" id="L1343">		return Objects.hashCode(this.objectID);</span>
 	}
 
 	/**
@@ -1459,7 +1349,7 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 * @return DataSetID
 	 */
 	public DataSetID getDataSetID() {
-<span class="nc" id="L1462">		return dataSetID;</span>
+<span class="nc" id="L1352">		return dataSetID;</span>
 	}
 
 	/**
@@ -1469,17 +1359,17 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            ID of DataSet this object belongs to
 	 */
 	public void setDataSetID(final DataSetID newDataSetID) {
-<span class="nc" id="L1472">		this.dataSetID = newDataSetID;</span>
-<span class="nc bnc" id="L1473" title="All 2 branches missed.">		if (this.isPersistent()) {</span>
-<span class="nc" id="L1474">			getLib().setDataSetID(this.objectID, newDataSetID);</span>
+<span class="nc" id="L1362">		this.dataSetID = newDataSetID;</span>
+<span class="nc bnc" id="L1363" title="All 2 branches missed.">		if (this.isPersistent()) {</span>
+<span class="nc" id="L1364">			getLib().setDataSetID(this.objectID, newDataSetID);</span>
 		}
-<span class="nc" id="L1476">	}</span>
+<span class="nc" id="L1366">	}</span>
 
 	/**
 	 * @return the masterLocation
 	 */
 	public final BackendID getMasterLocation() {
-<span class="nc" id="L1482">		return masterLocation;</span>
+<span class="nc" id="L1372">		return masterLocation;</span>
 	}
 
 	/**
@@ -1489,24 +1379,147 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            the masterLocation to set
 	 */
 	public void setMasterLocation(final BackendID newMasterLocation) {
-<span class="nc" id="L1492">		this.masterLocation = newMasterLocation;</span>
-<span class="nc" id="L1493">	}</span>
+<span class="nc" id="L1382">		this.masterLocation = newMasterLocation;</span>
+<span class="nc" id="L1383">	}</span>
+
+	/**
+	 * Get alias
+	 * @return the alias of the object
+	 */
+	public String getAlias() {
+<span class="nc" id="L1390">		return alias;</span>
+	}
+
+	/**
+	 * Set the alias of the object
+	 * @param alias the alias of the object
+	 */
+	public void setAlias(String alias) {
+<span class="nc" id="L1398">		this.alias = alias;</span>
+<span class="nc" id="L1399">	}</span>
+
+	/**
+	 * Get if object is read only
+	 * @return boolean indicating if object is read only or not
+	 */
+	public boolean isReadOnly() {
+<span class="nc" id="L1406">		return isReadOnly;</span>
+	}
+
+	/**
+	 * Set if object is read only
+	 * @param readOnly boolean indicating if object is read only or not
+	 */
+	public void setReadOnly(boolean readOnly) {
+<span class="nc" id="L1414">		this.isReadOnly = readOnly;</span>
+<span class="nc" id="L1415">	}</span>
+
+
+	/**
+	 * @return the original object id in case of new version
+	 */
+	public final ObjectID getOriginalObjectID() {
+<span class="nc" id="L1422">		return this.originalObjectID;</span>
+	}
+
+	/**
+	 *
+	 * @param newOriginalObjectID
+	 *            the original object id  to set
+	 */
+	public void setOriginalObjectID(final ObjectID newOriginalObjectID) {
+<span class="nc" id="L1431">		this.originalObjectID = newOriginalObjectID;</span>
+<span class="nc" id="L1432">	}</span>
+
+	/**
+	 *
+	 * @return root location of the object or null if current is original
+	 */
+	public ExecutionEnvironmentID getRootLocation() {
+<span class="nc" id="L1439">		return rootLocation;</span>
+	}
+
+	/**
+	 * Set root location of the object
+	 * @param rootLocation root location to set
+	 */
+	public void setRootLocation(ExecutionEnvironmentID rootLocation) {
+<span class="nc" id="L1447">		this.rootLocation = rootLocation;</span>
+<span class="nc" id="L1448">	}</span>
+
+	/**
+	 *
+	 * @return origin location of the object or null if current is original
+	 */
+	public ExecutionEnvironmentID getOriginLocation() {
+<span class="nc" id="L1455">		return originLocation;</span>
+	}
+
+	/**
+	 * Set origin location of the object
+	 * @param originLocation origin location to set
+	 */
+	public void setOriginLocation(ExecutionEnvironmentID originLocation) {
+<span class="nc" id="L1463">		this.originLocation = originLocation;</span>
+<span class="nc" id="L1464">	}</span>
+
+	/**
+	 * Get all replica locations
+	 * @return Replica locations
+	 */
+	public Set&lt;ExecutionEnvironmentID&gt; getReplicaLocations() {
+<span class="nc" id="L1471">		return replicaLocations;</span>
+	}
+
+	/**
+	 * Set replica locations
+	 * @param replicaLocations replica locations to set
+	 */
+	public void setReplicaLocations(Set&lt;ExecutionEnvironmentID&gt; replicaLocations) {
+<span class="nc" id="L1479">		this.replicaLocations = replicaLocations;</span>
+<span class="nc" id="L1480">	}</span>
+
+	/**
+	 * Add replica location
+	 * @param replicaLocation replica location to add
+	 */
+	public void addReplicaLocations(ExecutionEnvironmentID replicaLocation) {
+<span class="nc bnc" id="L1487" title="All 2 branches missed.">		if (this.replicaLocations == null) {</span>
+<span class="nc" id="L1488">			this.replicaLocations = ConcurrentHashMap.newKeySet();</span>
+		}
+<span class="nc" id="L1490">		this.replicaLocations.add(replicaLocation);</span>
+<span class="nc" id="L1491">	}</span>
+
+	/**
+	 * Remove replica location
+	 * @param replicaLocation replica location to add
+	 */
+	public void removeReplicaLocation(ExecutionEnvironmentID replicaLocation) {
+<span class="nc" id="L1498">		this.replicaLocations.remove(replicaLocation);</span>
+<span class="nc" id="L1499">	}</span>
+
+	/**
+	 * Clear replica locations
+	 */
+	public void clearReplicaLocations() {
+<span class="nc" id="L1505">		this.replicaLocations.clear();</span>
+<span class="nc" id="L1506">	}</span>
 
 	/**
 	 * @return true if masterlocation is the current backend, false otherwise
 	 */
 	public final boolean isMasterLocation() {
-<span class="nc bnc" id="L1499" title="All 2 branches missed.">		if (masterLocation != null) {</span>
-<span class="nc" id="L1500">			return masterLocation.equals(DataClayObject.getLib().getHint());</span>
+<span class="nc bnc" id="L1512" title="All 2 branches missed.">		if (masterLocation != null) {</span>
+<span class="nc" id="L1513">			return masterLocation.equals(DataClayObject.getLib().getHint());</span>
 		}
-<span class="nc" id="L1502">		return false;</span>
+<span class="nc" id="L1515">		return false;</span>
 	}
 
 	/**
 	 * @return id of the external dataClay instance where the object resides. null if it is local.
 	 */
 	public DataClayInstanceID getExternalDataClayID() {
-<span class="nc" id="L1509">		return externalDataClayID;</span>
+<span class="nc" id="L1522">		return externalDataClayID;</span>
 	}
 
 	/**
@@ -1514,46 +1527,46 @@ public class DataClayObject extends StorageObject implements DataClaySerializabl
 	 *            id of the external dataClay instance
 	 */
 	public void setExternalDataClayID(final DataClayInstanceID newID) {
-<span class="nc" id="L1517">		this.externalDataClayID = newID;</span>
-<span class="nc" id="L1518">	}</span>
+<span class="nc" id="L1530">		this.externalDataClayID = newID;</span>
+<span class="nc" id="L1531">	}</span>
 	
 	/**
 	 * RT PREFETCHING FIELDS
 	 */
 	
 	public boolean isPrefetchingAccess() {
-<span class="nc" id="L1525">		return isPrefetchingAccess;</span>
+<span class="nc" id="L1538">		return isPrefetchingAccess;</span>
 	}
 	
 	public static void setPrefetchingAccess(final boolean value) {
-<span class="nc" id="L1529">		isPrefetchingAccess = value;</span>
-<span class="nc" id="L1530">	}</span>
+<span class="nc" id="L1542">		isPrefetchingAccess = value;</span>
+<span class="nc" id="L1543">	}</span>
 	
 	public static long getAccessCount() {
-<span class="nc" id="L1533">		return accessCount;</span>
+<span class="nc" id="L1546">		return accessCount;</span>
 	}
 	
 	public static long getHitCount() {
-<span class="nc" id="L1537">		return hitCount;</span>
+<span class="nc" id="L1550">		return hitCount;</span>
 	}
 	
 	protected void incrementAccessCount() {
-<span class="nc" id="L1541">		accessCount++;</span>
-<span class="nc" id="L1542">	}</span>
+<span class="nc" id="L1554">		accessCount++;</span>
+<span class="nc" id="L1555">	}</span>
 
 	protected void incrementHitCount() {
-<span class="nc" id="L1545">		hitCount++;</span>
-<span class="nc" id="L1546">	}</span>
+<span class="nc" id="L1558">		hitCount++;</span>
+<span class="nc" id="L1559">	}</span>
 	
 	public static void resetObjectAccessStats() {
-<span class="nc" id="L1549">		accessCount = 0;</span>
-<span class="nc" id="L1550">		hitCount = 0;</span>
-<span class="nc" id="L1551">	}</span>
+<span class="nc" id="L1562">		accessCount = 0;</span>
+<span class="nc" id="L1563">		hitCount = 0;</span>
+<span class="nc" id="L1564">	}</span>
 
 	public static void printObjectAccessStats() {
-<span class="nc" id="L1554">		logger.debug(&quot;[==PerfetchingInfo==] Object Hit Ratio: &quot;</span>
+<span class="nc" id="L1567">		logger.debug(&quot;[==PerfetchingInfo==] Object Hit Ratio: &quot;</span>
 				+ (double)hitCount / (double)accessCount
 				+ &quot;(&quot; + hitCount + &quot;/&quot; + accessCount + &quot;)&quot;);
-<span class="nc" id="L1557">	}</span>
+<span class="nc" id="L1570">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

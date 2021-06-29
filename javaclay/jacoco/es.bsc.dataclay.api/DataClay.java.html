@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.commons.Method;
@@ -48,17 +49,17 @@ import es.bsc.dataclay.util.structs.Triple;
 public final class DataClay {
 
 	/** Logger. */
-<span class="nc" id="L51">	private static final Logger LOGGER = LogManager.getLogger(&quot;DataClay.api&quot;);</span>
+<span class="nc" id="L52">	private static final Logger LOGGER = LogManager.getLogger(&quot;DataClay.api&quot;);</span>
 
 	/** Default config file location */
-<span class="nc" id="L54">	private static final String CONFIGFILEPATH = &quot;.&quot; + File.separatorChar + &quot;cfgfiles&quot; + File.separatorChar</span>
+<span class="nc" id="L55">	private static final String CONFIGFILEPATH = &quot;.&quot; + File.separatorChar + &quot;cfgfiles&quot; + File.separatorChar</span>
 			+ &quot;session.properties&quot;;
 
 	/** Environment variable where configuration file can be specified. */
 	public static final String CONFIGFILEPATH_ENV = &quot;DATACLAYSESSIONCONFIG&quot;;
 
 	/** Indicates if debug is enabled. */
-<span class="nc" id="L61">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="nc" id="L62">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 	/** Prop name for account. */
 	private static final String ACCOUNT_PROP = &quot;Account&quot;;
 	/** Prop name for password. */
@@ -91,23 +92,13 @@ public final class DataClay {
 	public static final String DATASET_SEPARATOR_TOKEN = &quot;:&quot;;
 
 	/** Indicates Extrae was initialized by COMPSs. */
-<span class="nc" id="L94">	private static boolean EXTRAE_COMPSS = false;</span>
+<span class="nc" id="L95">	private static boolean EXTRAE_COMPSS = false;</span>
 
 	/**
 	 * UserClientLib for the session. WARNING: CURRENTLY IS PUBLIC IN ORDER TO ALLOW
 	 * THREADS CREATED IN CLIENT TO USE THE COMMONLIB. Check design.
 	 */
 	public static ClientRuntime commonLib;
-	/** Backends by name. */
-	private static Map&lt;String, Set&lt;BackendID&gt;&gt; pyBackendsByName;
-	private static Map&lt;String, Set&lt;BackendID&gt;&gt; jBackendsByName;
-	/** Execution Environments by hostname. */
-	private static Map&lt;String, Set&lt;BackendID&gt;&gt; pyBackendsByHostname;
-	private static Map&lt;String, Set&lt;BackendID&gt;&gt; jBackendsByHostname;
-	/** Backends by ID. */
-	private static ConcurrentHashMap&lt;BackendID, Backend&gt; backendsByID;
-	private static ConcurrentHashMap&lt;BackendID, Backend&gt; jBackendsByID;
-	private static ConcurrentHashMap&lt;BackendID, Backend&gt; pyBackendsByID;
 
 	/** LOCAL BackendID */
 	public static BackendID jLOCAL;
@@ -120,14 +111,14 @@ public final class DataClay {
 
 	}
 
-<span class="nc" id="L123">	private static String setCfgFilePath = null;</span>
+<span class="nc" id="L114">	private static String setCfgFilePath = null;</span>
 
 	public static void setSessionFile(final String path) throws DataClayException {
-<span class="nc bnc" id="L126" title="All 4 branches missed.">		if (path == null || path.isEmpty()) {</span>
-<span class="nc" id="L127">			throw new DataClayException(&quot;Null or empty config file path&quot;);</span>
+<span class="nc bnc" id="L117" title="All 4 branches missed.">		if (path == null || path.isEmpty()) {</span>
+<span class="nc" id="L118">			throw new DataClayException(&quot;Null or empty config file path&quot;);</span>
 		}
-<span class="nc" id="L129">		setCfgFilePath = path;</span>
-<span class="nc" id="L130">	}</span>
+<span class="nc" id="L120">		setCfgFilePath = path;</span>
+<span class="nc" id="L121">	}</span>
 
 	/**
 	 * Finish connections to DataClay.
@@ -138,37 +129,37 @@ public final class DataClay {
 	public static void finish() throws DataClayException {
 		try {
 
-<span class="nc bnc" id="L141" title="All 2 branches missed.">			if (DataClayExtrae.extraeTracingIsEnabled()) {</span>
-<span class="nc" id="L142">				LOGGER.info(&quot;Extrae is active, deactivating it...&quot;);</span>
-<span class="nc bnc" id="L143" title="All 2 branches missed.">				if (EXTRAE_COMPSS) {</span>
-<span class="nc bnc" id="L144" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) {</span>
-<span class="nc" id="L145">						LOGGER.info(&quot;Calling deactivate extrae in dataclay services&quot;);</span>
-<span class="nc" id="L146">						DataClay.deactivateTracingInDataClayServices();</span>
-<span class="nc" id="L147">						LOGGER.info(&quot;Getting traces in dataclay services&quot;);</span>
+<span class="nc bnc" id="L132" title="All 2 branches missed.">			if (DataClayExtrae.extraeTracingIsEnabled()) {</span>
+<span class="nc" id="L133">				LOGGER.info(&quot;Extrae is active, deactivating it...&quot;);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">				if (EXTRAE_COMPSS) {</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) {</span>
+<span class="nc" id="L136">						LOGGER.info(&quot;Calling deactivate extrae in dataclay services&quot;);</span>
+<span class="nc" id="L137">						DataClay.deactivateTracingInDataClayServices();</span>
+<span class="nc" id="L138">						LOGGER.info(&quot;Getting traces in dataclay services&quot;);</span>
 
-<span class="nc" id="L149">						deactivateTracing(true);</span>
-<span class="nc" id="L150">						getTracesInDataClayServices();</span>
+<span class="nc" id="L140">						deactivateTracing(true);</span>
+<span class="nc" id="L141">						getTracesInDataClayServices();</span>
 					}  else {
-<span class="nc" id="L152">						deactivateTracing(false);</span>
+<span class="nc" id="L143">						deactivateTracing(false);</span>
 					}
 
 				} else {
 
-<span class="nc bnc" id="L157" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) {</span>
-<span class="nc" id="L158">						LOGGER.info(&quot;Calling deactivate extrae in dataclay services&quot;);</span>
-<span class="nc" id="L159">						DataClay.deactivateTracingInDataClayServices();</span>
-<span class="nc" id="L160">						LOGGER.info(&quot;Getting traces in dataclay services&quot;);</span>
-<span class="nc" id="L161">						deactivateTracing(true);</span>
-<span class="nc" id="L162">						getTracesInDataClayServices();</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) {</span>
+<span class="nc" id="L149">						LOGGER.info(&quot;Calling deactivate extrae in dataclay services&quot;);</span>
+<span class="nc" id="L150">						DataClay.deactivateTracingInDataClayServices();</span>
+<span class="nc" id="L151">						LOGGER.info(&quot;Getting traces in dataclay services&quot;);</span>
+<span class="nc" id="L152">						deactivateTracing(true);</span>
+<span class="nc" id="L153">						getTracesInDataClayServices();</span>
 
 
 						// Merge
 
 						// -- Linux --
-<span class="nc" id="L168">						String command = &quot;mpi2prv -keep-mpits -no-syn -f TRACE.mpits -o ./trace/dctrace.prv&quot;;</span>
+<span class="nc" id="L159">						String command = &quot;mpi2prv -keep-mpits -no-syn -f TRACE.mpits -o ./trace/dctrace.prv&quot;;</span>
 						// Run a shell command
-<span class="nc" id="L170">						System.out.println(command);</span>
-<span class="nc" id="L171">						Process process = Runtime.getRuntime().exec(command);</span>
+<span class="nc" id="L161">						System.out.println(command);</span>
+<span class="nc" id="L162">						Process process = Runtime.getRuntime().exec(command);</span>
 
 						// Run a shell script
 						// Process process = Runtime.getRuntime().exec(&quot;path/to/hello.sh&quot;);
@@ -176,53 +167,51 @@ public final class DataClay {
 						// -- Windows --
 						// Run a command
 						//Process process = Runtime.getRuntime().exec(&quot;cmd /c dir C:\\Users\\mkyong&quot;);
-<span class="nc" id="L179">						BufferedReader err = new BufferedReader(new InputStreamReader(process.getErrorStream()));</span>
-<span class="nc" id="L180">						BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));</span>
+<span class="nc" id="L170">						BufferedReader err = new BufferedReader(new InputStreamReader(process.getErrorStream()));</span>
+<span class="nc" id="L171">						BufferedReader input = new BufferedReader(new InputStreamReader(process.getInputStream()));</span>
 						String line;
-<span class="nc bnc" id="L182" title="All 2 branches missed.">						while ((line = input.readLine()) != null) {</span>
-<span class="nc" id="L183">							System.out.println(line);</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">						while ((line = input.readLine()) != null) {</span>
+<span class="nc" id="L174">							System.out.println(line);</span>
 						}
-<span class="nc bnc" id="L185" title="All 2 branches missed.">						while ((line = err.readLine()) != null) {</span>
-<span class="nc" id="L186">							System.err.println(line);</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">						while ((line = err.readLine()) != null) {</span>
+<span class="nc" id="L177">							System.err.println(line);</span>
 						}
-<span class="nc" id="L188">						System.out.flush();</span>
-<span class="nc" id="L189">						System.err.flush();</span>
+<span class="nc" id="L179">						System.out.flush();</span>
+<span class="nc" id="L180">						System.err.flush();</span>
 						try {
-<span class="nc" id="L191">							process.waitFor();  // wait for process to complete</span>
-<span class="nc" id="L192">						} catch (InterruptedException e) {</span>
-<span class="nc" id="L193">							System.err.println(e);  // &quot;Can'tHappen&quot;</span>
-<span class="nc" id="L194">						}</span>
+<span class="nc" id="L182">							process.waitFor();  // wait for process to complete</span>
+<span class="nc" id="L183">						} catch (InterruptedException e) {</span>
+<span class="nc" id="L184">							System.err.println(e);  // &quot;Can'tHappen&quot;</span>
+<span class="nc" id="L185">						}</span>
 
-<span class="nc" id="L196">					} else {</span>
-<span class="nc" id="L197">						deactivateTracing(true);</span>
+<span class="nc" id="L187">					} else {</span>
+<span class="nc" id="L188">						deactivateTracing(true);</span>
 					}
 
 				}
 
 
 			}
-<span class="nc" id="L204">		} catch (final Exception e) {</span>
-<span class="nc" id="L205">			e.printStackTrace();</span>
-<span class="nc" id="L206">		}</span>
-
+<span class="nc" id="L195">		} catch (final Exception e) {</span>
+<span class="nc" id="L196">			e.printStackTrace();</span>
+<span class="nc" id="L197">		}</span>
+<span class="nc" id="L198">		commonLib.closeSession();</span>
 		try {
-<span class="nc" id="L209">			ClientManagementLib.finishConnections();</span>
-<span class="nc" id="L210">		} catch (final Exception e) {</span>
-<span class="nc" id="L211">			throw new DataClayException(e);</span>
-<span class="nc" id="L212">		}</span>
-<span class="nc" id="L213">	}</span>
+<span class="nc" id="L200">			ClientManagementLib.finishConnections();</span>
+<span class="nc" id="L201">		} catch (final Exception e) {</span>
+<span class="nc" id="L202">			throw new DataClayException(e);</span>
+<span class="nc" id="L203">		}</span>
+<span class="nc" id="L204">	}</span>
 
 	/**
 	 * Method that initializes the lib.
 	 *
-	 * @param configFilePath
-	 *            path where the cfg file is stored.
 	 * @throws DataClayException
 	 *             if an exception occurs
 	 */
 	public static void init() throws DataClayException {
-<span class="nc" id="L224">		initInternal(1, Langs.LANG_JAVA);</span>
-<span class="nc" id="L225">	}</span>
+<span class="nc" id="L213">		initInternal(1, Langs.LANG_JAVA);</span>
+<span class="nc" id="L214">	}</span>
 
 	/**
 	 * Initialize dataClay waiting for the following number of backends of language provided.
@@ -233,8 +222,8 @@ public final class DataClay {
 	 *             if an exception occurs
 	 */
 	public static void init(final int numBackends, final Langs language) throws DataClayException {
-<span class="nc" id="L236">		initInternal(numBackends, language);</span>
-<span class="nc" id="L237">	}</span>
+<span class="nc" id="L225">		initInternal(numBackends, language);</span>
+<span class="nc" id="L226">	}</span>
 
 	/**
 	 * Initialize dataClay waiting for the following number of backends of language provided.
@@ -248,99 +237,110 @@ public final class DataClay {
 		try {
 			final File f;
 			String configFilePath;
-<span class="nc bnc" id="L251" title="All 2 branches missed.">			if (setCfgFilePath != null) {</span>
-<span class="nc" id="L252">				configFilePath = setCfgFilePath;</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">			if (setCfgFilePath != null) {</span>
+<span class="nc" id="L241">				configFilePath = setCfgFilePath;</span>
 			} else {
-<span class="nc" id="L254">				configFilePath = ProcessEnvironment.getInstance().get(CONFIGFILEPATH_ENV);</span>
+<span class="nc" id="L243">				configFilePath = ProcessEnvironment.getInstance().get(CONFIGFILEPATH_ENV);</span>
 			}
-<span class="nc bnc" id="L256" title="All 4 branches missed.">			if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
-<span class="nc" id="L257">				f = new File(configFilePath);</span>
-<span class="nc bnc" id="L258" title="All 4 branches missed.">				if (f.isFile() &amp;&amp; f.exists()) {</span>
-<span class="nc" id="L259">					LOGGER.info(&quot;Found {}. Initializing session with properties located at {}&quot;, CONFIGFILEPATH_ENV,</span>
+<span class="nc bnc" id="L245" title="All 4 branches missed.">			if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
+<span class="nc" id="L246">				f = new File(configFilePath);</span>
+<span class="nc bnc" id="L247" title="All 4 branches missed.">				if (f.isFile() &amp;&amp; f.exists()) {</span>
+<span class="nc" id="L248">					LOGGER.info(&quot;Found {}. Initializing session with properties located at {}&quot;, CONFIGFILEPATH_ENV,</span>
 							configFilePath);
 				}
 			} else {
-<span class="nc" id="L263">				final Path path = Paths.get(CONFIGFILEPATH).normalize();</span>
-<span class="nc" id="L264">				LOGGER.info(&quot;Session file not found or {}  not properly set Trying default location {}&quot;,</span>
-<span class="nc" id="L265">						CONFIGFILEPATH_ENV, path.toAbsolutePath());</span>
-<span class="nc" id="L266">				configFilePath = path.toAbsolutePath().toString();</span>
-<span class="nc" id="L267">				f = new File(configFilePath);</span>
+<span class="nc" id="L252">				final Path path = Paths.get(CONFIGFILEPATH).normalize();</span>
+<span class="nc" id="L253">				LOGGER.info(&quot;Session file not found or {}  not properly set Trying default location {}&quot;,</span>
+<span class="nc" id="L254">						CONFIGFILEPATH_ENV, path.toAbsolutePath());</span>
+<span class="nc" id="L255">				configFilePath = path.toAbsolutePath().toString();</span>
+<span class="nc" id="L256">				f = new File(configFilePath);</span>
 			}
 
-<span class="nc" id="L270">			final FileInputStream configFile = new FileInputStream(f);</span>
-<span class="nc" id="L271">			final Properties prop = new Properties();</span>
-<span class="nc" id="L272">			prop.load(configFile);</span>
-<span class="nc" id="L273">			configFile.close();</span>
+<span class="nc" id="L259">			final FileInputStream configFile = new FileInputStream(f);</span>
+<span class="nc" id="L260">			final Properties prop = new Properties();</span>
+<span class="nc" id="L261">			prop.load(configFile);</span>
+<span class="nc" id="L262">			configFile.close();</span>
 
 			// Parse global properties
-<span class="nc" id="L276">			final String globalConfig = prop.getProperty(DATACLAY_GLOBAL_CONFIG);</span>
-<span class="nc bnc" id="L277" title="All 2 branches missed.">			if (globalConfig != null) {</span>
-<span class="nc" id="L278">				Configuration.Flags.reloadGlobalConfiguration(globalConfig);</span>
+<span class="nc" id="L265">			final String globalConfig = prop.getProperty(DATACLAY_GLOBAL_CONFIG);</span>
+<span class="nc bnc" id="L266" title="All 2 branches missed.">			if (globalConfig != null) {</span>
+<span class="nc" id="L267">				Configuration.Flags.reloadGlobalConfiguration(globalConfig);</span>
 			}
 
 			// Parse config properties
-<span class="nc" id="L282">			String dcClientConfig = prop.getProperty(DATACLAY_CLIENT_CONFIG);</span>
-<span class="nc bnc" id="L283" title="All 2 branches missed.">			if (dcClientConfig != null) {</span>
-<span class="nc" id="L284">				dcClientConfig = dcClientConfig.trim();</span>
-<span class="nc" id="L285">				ClientManagementLib.initializeCMLib(dcClientConfig);</span>
+<span class="nc" id="L271">			String dcClientConfig = prop.getProperty(DATACLAY_CLIENT_CONFIG);</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">			if (dcClientConfig != null) {</span>
+<span class="nc" id="L273">				dcClientConfig = dcClientConfig.trim();</span>
+<span class="nc" id="L274">				ClientManagementLib.initializeCMLib(dcClientConfig);</span>
 			} else {
-<span class="nc" id="L287">				ClientManagementLib.initializeCMLib(null);</span>
+<span class="nc" id="L276">				ClientManagementLib.initializeCMLib(null);</span>
 			}
 
 			// Wait for one DS to be ready
 			try {
-<span class="nc bnc" id="L292" title="All 2 branches missed.">				while ( GetBackends.getBackends(&quot;admin&quot;,&quot;admin&quot;,language).size() &lt; numBackends) {</span>
-<span class="nc" id="L293">					System.out.println(&quot;[dataClay] Waiting for backend to be ready...&quot;);</span>
-<span class="nc" id="L294">					Thread.sleep(2000L); //sleep 2 seconds</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">				while ( GetBackends.getBackends(&quot;admin&quot;,&quot;admin&quot;,language).size() &lt; numBackends) {</span>
+<span class="nc" id="L282">					System.out.println(&quot;[dataClay] Waiting for backend to be ready...&quot;);</span>
+<span class="nc" id="L283">					Thread.sleep(2000L); //sleep 2 seconds</span>
 				}
-<span class="nc" id="L296">			} catch (final Exception e) {</span>
-<span class="nc" id="L297">				e.printStackTrace();</span>
-<span class="nc" id="L298">			}</span>
+<span class="nc" id="L285">			} catch (final Exception e) {</span>
+<span class="nc" id="L286">				e.printStackTrace();</span>
+<span class="nc" id="L287">			}</span>
 
-<span class="nc" id="L300">			final String account = prop.getProperty(ACCOUNT_PROP).trim();</span>
-<span class="nc" id="L301">			final AccountID accountID = ClientManagementLib.getAccountID(account);</span>
+<span class="nc" id="L289">			final String account = prop.getProperty(ACCOUNT_PROP).trim();</span>
+<span class="nc" id="L290">			final AccountID accountID = ClientManagementLib.getAccountID(account);</span>
 
-<span class="nc" id="L303">			final String password = prop.getProperty(PASSWORD_PROP).trim();</span>
-<span class="nc" id="L304">			final PasswordCredential credential = new PasswordCredential(password);</span>
+<span class="nc" id="L292">			final String password = prop.getProperty(PASSWORD_PROP).trim();</span>
+<span class="nc" id="L293">			final PasswordCredential credential = new PasswordCredential(password);</span>
 
-<span class="nc" id="L306">			final String dataSetsStr = prop.getProperty(DATASETS_PROP);</span>
-<span class="nc" id="L307">			final String[] dataSetsArray = dataSetsStr.split(DATASET_SEPARATOR_TOKEN);</span>
-<span class="nc" id="L308">			final HashSet&lt;String&gt; dataSets = new HashSet&lt;&gt;();</span>
-<span class="nc bnc" id="L309" title="All 2 branches missed.">			for (final String dataSet : dataSetsArray) {</span>
-<span class="nc" id="L310">				dataSets.add(dataSet.trim());</span>
+<span class="nc" id="L295">			final String dataSetsStr = prop.getProperty(DATASETS_PROP);</span>
+<span class="nc" id="L296">			final String[] dataSetsArray = dataSetsStr.split(DATASET_SEPARATOR_TOKEN);</span>
+<span class="nc" id="L297">			final HashSet&lt;String&gt; dataSets = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">			for (final String dataSet : dataSetsArray) {</span>
+<span class="nc" id="L299">				dataSets.add(dataSet.trim());</span>
 			}
-<span class="nc" id="L312">			final String dataSetForStore = prop.getProperty(DATASET_STORE).trim();</span>
+<span class="nc" id="L301">			final String dataSetForStore = prop.getProperty(DATASET_STORE).trim();</span>
 
 			// The properties may contain the list of contracts
-<span class="nc" id="L315">			final String allContracts = prop.getProperty(CONTRACTS_PROP);</span>
+<span class="nc" id="L304">			final String allContracts = prop.getProperty(CONTRACTS_PROP);</span>
 
 			// Init session
 			final SessionID sessionID;
-<span class="nc bnc" id="L319" title="All 2 branches missed.">			if (allContracts == null) {</span>
+<span class="nc bnc" id="L308" title="All 2 branches missed.">			if (allContracts == null) {</span>
 				// No contracts specified, walk the stubs
-<span class="nc" id="L321">				final String classPathOfStubs = prop.getProperty(CLASSPATH_STUBS_PROP);</span>
-<span class="nc" id="L322">				sessionID = ClientManagementLib.newSession(accountID, credential, classPathOfStubs, dataSets,</span>
+<span class="nc" id="L310">				final String classPathOfStubs = prop.getProperty(CLASSPATH_STUBS_PROP);</span>
+<span class="nc" id="L311">				sessionID = ClientManagementLib.newSession(accountID, credential, classPathOfStubs, dataSets,</span>
 						dataSetForStore);
-<span class="nc" id="L324">			} else {</span>
+<span class="nc" id="L313">			} else {</span>
 				// Contracts are a comma-separated field, used in Python code
-<span class="nc" id="L326">				final Set&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
-<span class="nc bnc" id="L327" title="All 2 branches missed.">				for (final String contract : allContracts.split(&quot;,&quot;)) {</span>
-<span class="nc" id="L328">					contracts.add(new ContractID(contract.trim()));</span>
+<span class="nc" id="L315">				final Set&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">				for (final String contract : allContracts.split(&quot;,&quot;)) {</span>
+<span class="nc" id="L317">					contracts.add(new ContractID(contract.trim()));</span>
 				}
 
-<span class="nc" id="L331">				sessionID = ClientManagementLib.newSession(accountID, credential, contracts, dataSets, dataSetForStore);</span>
+<span class="nc" id="L320">				sessionID = ClientManagementLib.newSession(accountID, credential, contracts, dataSets, dataSetForStore);</span>
 			}
-
-			// Init all backend structures
-<span class="nc" id="L335">			initBackendsInternalInfo(accountID, credential);</span>
-
 			// Init commonLib
-<span class="nc" id="L338">			commonLib = ClientManagementLib.getDataClayClientLib();</span>
+<span class="nc" id="L323">			commonLib = ClientManagementLib.getDataClayClientLib();</span>
 
 			// Init local backend if needed
-<span class="nc" id="L341">			final String localBackendName = prop.getProperty(LOCAL_BACKEND);</span>
-<span class="nc bnc" id="L342" title="All 2 branches missed.">			if (localBackendName != null) {</span>
-<span class="nc" id="L343">				Set&lt;BackendID&gt; localBackends = jBackendsByName.get(localBackendName);</span>
+<span class="nc" id="L326">			final String localBackendName = prop.getProperty(LOCAL_BACKEND);</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">			if (localBackendName != null) {</span>
+
+<span class="nc" id="L329">				Set&lt;BackendID&gt; localBackends = commonLib.getBackendsWithName(Langs.LANG_JAVA,</span>
+						localBackendName);
+<span class="nc bnc" id="L331" title="All 4 branches missed.">				if (localBackends != null &amp;&amp; !localBackends.isEmpty()) {</span>
+<span class="nc" id="L332">					BackendID bkID = null;</span>
+					// Get first backend ID, which is an almost random policy
+<span class="nc bnc" id="L334" title="All 2 branches missed.">					for (final BackendID aBkID : localBackends) {</span>
+<span class="nc" id="L335">						bkID = aBkID;</span>
+<span class="nc" id="L336">						break;</span>
+					}
+<span class="nc" id="L338">					commonLib.setLocalBackend(bkID);</span>
+<span class="nc" id="L339">					jLOCAL = bkID;</span>
+				}
+
+<span class="nc" id="L342">				localBackends = commonLib.getBackendsWithName(Langs.LANG_PYTHON,</span>
+						localBackendName);
 <span class="nc bnc" id="L344" title="All 4 branches missed.">				if (localBackends != null &amp;&amp; !localBackends.isEmpty()) {</span>
 <span class="nc" id="L345">					BackendID bkID = null;</span>
 					// Get first backend ID, which is an almost random policy
@@ -350,35 +350,20 @@ public final class DataClay {
 					}
 
 <span class="nc" id="L352">					commonLib.setLocalBackend(bkID);</span>
-<span class="nc" id="L353">					jLOCAL = bkID;</span>
-				}
-
-<span class="nc" id="L356">				localBackends = pyBackendsByName.get(localBackendName);</span>
-<span class="nc bnc" id="L357" title="All 4 branches missed.">				if (localBackends != null &amp;&amp; !localBackends.isEmpty()) {</span>
-<span class="nc" id="L358">					BackendID bkID = null;</span>
-					// Get first backend ID, which is an almost random policy
-<span class="nc bnc" id="L360" title="All 2 branches missed.">					for (final BackendID aBkID : localBackends) {</span>
-<span class="nc" id="L361">						bkID = aBkID;</span>
-<span class="nc" id="L362">						break;</span>
-					}
-
-<span class="nc" id="L365">					commonLib.setLocalBackend(bkID);</span>
-<span class="nc" id="L366">					pLOCAL = bkID;</span>
+<span class="nc" id="L353">					pLOCAL = bkID;</span>
 				}
 			}
 
-<span class="nc" id="L370">			LOGGER.info(&quot;Session: {}&quot;, sessionID);</span>
-<span class="nc" id="L371">			LOGGER.info(&quot;dataClay ID: {}&quot;, commonLib.getDataClayID());</span>
-<span class="nc" id="L372">			LOGGER.info(&quot;Backends: {}&quot;, getJBackendsByName());</span>
-<span class="nc" id="L373">			LOGGER.info(&quot;Python Backends: {}&quot;, getPyBackendsByName());</span>
-<span class="nc bnc" id="L374" title="All 2 branches missed.">			if (localBackendName != null) {</span>
-<span class="nc" id="L375">				LOGGER.info(&quot;Default {} backend: {}&quot;, LOCALTOKEN, localBackendName);</span>
+<span class="nc" id="L357">			LOGGER.info(&quot;Session: {}&quot;, sessionID);</span>
+<span class="nc" id="L358">			LOGGER.info(&quot;dataClay ID: {}&quot;, commonLib.getDataClayID());</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">			if (localBackendName != null) {</span>
+<span class="nc" id="L360">				LOGGER.info(&quot;Default {} backend: {}&quot;, LOCALTOKEN, localBackendName);</span>
 			}
 
 
-<span class="nc" id="L379">			String javaClayExtraeWrapperLib = prop.getProperty(JAVACLAY_EXTRAE_WRAPPER_LIB_PROP);</span>
-<span class="nc bnc" id="L380" title="All 2 branches missed.">			if (javaClayExtraeWrapperLib!= null) {</span>
-<span class="nc" id="L381">				Configuration.Flags.JAVACLAY_EXTRAE_WRAPPER_LIB.setValue(javaClayExtraeWrapperLib);</span>
+<span class="nc" id="L364">			String javaClayExtraeWrapperLib = prop.getProperty(JAVACLAY_EXTRAE_WRAPPER_LIB_PROP);</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">			if (javaClayExtraeWrapperLib!= null) {</span>
+<span class="nc" id="L366">				Configuration.Flags.JAVACLAY_EXTRAE_WRAPPER_LIB.setValue(javaClayExtraeWrapperLib);</span>
 			}
 			/***************************** TRACING **********************************/
 			/**
@@ -395,36 +380,36 @@ public final class DataClay {
 			 * Incrementing available task id is useful to send to N EE/DS nodes.
 			 * Remember that activating traces does not mean the application will be traced if Aspects are not properly applied.
 			 */
-<span class="nc" id="L398">			final String tracingEnabledStr = prop.getProperty(TRACING_ENABLED);</span>
-<span class="nc" id="L399">			boolean tracingEnabled = false;</span>
-<span class="nc bnc" id="L400" title="All 2 branches missed.">			if (tracingEnabledStr != null) {</span>
-<span class="nc" id="L401">				tracingEnabled = Boolean.valueOf(tracingEnabledStr);</span>
+<span class="nc" id="L383">			final String tracingEnabledStr = prop.getProperty(TRACING_ENABLED);</span>
+<span class="nc" id="L384">			boolean tracingEnabled = false;</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">			if (tracingEnabledStr != null) {</span>
+<span class="nc" id="L386">				tracingEnabled = Boolean.valueOf(tracingEnabledStr);</span>
 			}
-<span class="nc bnc" id="L403" title="All 2 branches missed.">			if (tracingEnabled) {</span>
-<span class="nc" id="L404">				LOGGER.info(&quot;Extrae tracing requested&quot;);</span>
-<span class="nc" id="L405">				final String strStartingTaskID = prop.getProperty(EXTRAE_STARTING_TASK_ID);</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">			if (tracingEnabled) {</span>
+<span class="nc" id="L389">				LOGGER.info(&quot;Extrae tracing requested&quot;);</span>
+<span class="nc" id="L390">				final String strStartingTaskID = prop.getProperty(EXTRAE_STARTING_TASK_ID);</span>
 				// Trace with Extrae if enabled. Application will NOT be traced if no 
 				// initialization was done (COMPSs initializes it for us) 
 				// or Paraver aspects injection were NOT applied.
-<span class="nc" id="L409">				LOGGER.info(&quot;Found Starting task id = &quot; + strStartingTaskID);</span>
-<span class="nc bnc" id="L410" title="All 4 branches missed.">				if (strStartingTaskID == null || strStartingTaskID.equals(&quot;0&quot;)) {</span>
-<span class="nc" id="L411">					DataClay.activateTracing(true);</span>
-<span class="nc bnc" id="L412" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) {</span>
-<span class="nc" id="L413">						LOGGER.info(&quot;Activating extrae in all nodes&quot;);</span>
-<span class="nc" id="L414">						DataClay.activateTracingInDataClayServices();</span>
+<span class="nc" id="L394">				LOGGER.info(&quot;Found Starting task id = &quot; + strStartingTaskID);</span>
+<span class="nc bnc" id="L395" title="All 4 branches missed.">				if (strStartingTaskID == null || strStartingTaskID.equals(&quot;0&quot;)) {</span>
+<span class="nc" id="L396">					DataClay.activateTracing(true);</span>
+<span class="nc bnc" id="L397" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) {</span>
+<span class="nc" id="L398">						LOGGER.info(&quot;Activating extrae in all nodes&quot;);</span>
+<span class="nc" id="L399">						DataClay.activateTracingInDataClayServices();</span>
 					}
 
 				} else {
-<span class="nc" id="L418">					EXTRAE_COMPSS = true;</span>
+<span class="nc" id="L403">					EXTRAE_COMPSS = true;</span>
 
-<span class="nc" id="L420">					DataClayExtrae.setCurrentAvailableTaskID(Integer.valueOf(strStartingTaskID));</span>
+<span class="nc" id="L405">					DataClayExtrae.setCurrentAvailableTaskID(Integer.valueOf(strStartingTaskID));</span>
 
 					// Starting task ID specified, Extrae is supposed to be previously initialized
-<span class="nc" id="L423">					DataClay.activateTracing(false);</span>
-<span class="nc" id="L424">					LOGGER.info(&quot;Found Extrae tracing Task ID specified: {}&quot;, strStartingTaskID);</span>
-<span class="nc bnc" id="L425" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) { // only in master node (app client withou compss)</span>
-<span class="nc" id="L426">						LOGGER.info(&quot;Activating extrae in all nodes&quot;);</span>
-<span class="nc" id="L427">						DataClay.activateTracingInDataClayServices();</span>
+<span class="nc" id="L408">					DataClay.activateTracing(false);</span>
+<span class="nc" id="L409">					LOGGER.info(&quot;Found Extrae tracing Task ID specified: {}&quot;, strStartingTaskID);</span>
+<span class="nc bnc" id="L410" title="All 2 branches missed.">					if (DataClayExtrae.getWrapperTaskID() == 0) { // only in master node (app client withou compss)</span>
+<span class="nc" id="L411">						LOGGER.info(&quot;Activating extrae in all nodes&quot;);</span>
+<span class="nc" id="L412">						DataClay.activateTracingInDataClayServices();</span>
 					}
 				}
 
@@ -432,95 +417,11 @@ public final class DataClay {
 
 			/****************************************************************************/
 
-<span class="nc" id="L435">		} catch (final Exception ex) {</span>
-<span class="nc" id="L436">			LOGGER.debug(&quot;Exception during init()&quot;, ex);</span>
-<span class="nc" id="L437">			throw new DataClayException(ex);</span>
-<span class="nc" id="L438">		}</span>
-<span class="nc" id="L439">	}</span>
-
-	/**
-	 * This method initializes the structures containing backend info (st loc and
-	 * exec env) present in any hostname.
-	 *
-	 * @throws DataClayException
-	 *             if an exception occurs
-	 */
-	private static void initBackendsInternalInfo(final AccountID accountID, final PasswordCredential credential)
-			throws DataClayException {
-		try {
-<span class="nc" id="L451">			backendsByID = new ConcurrentHashMap&lt;&gt;();</span>
-
-<span class="nc" id="L453">			jBackendsByName = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L454">			jBackendsByHostname = new ConcurrentHashMap&lt;&gt;();</span>
-
-<span class="nc" id="L456">			jBackendsByID = new ConcurrentHashMap&lt;&gt;(</span>
-<span class="nc" id="L457">					ClientManagementLib.getExecutionEnvironmentsInfo(accountID, credential, Langs.LANG_JAVA));</span>
-
-<span class="nc" id="L459">			backendsByID.putAll(jBackendsByID);</span>
-
-<span class="nc bnc" id="L461" title="All 2 branches missed.">			for (final Backend backend : jBackendsByID.values()) {</span>
-<span class="nc" id="L462">				final BackendID bkID = backend.getDataClayID();</span>
-
-<span class="nc" id="L464">				final String hostname = backend.getHostname();</span>
-<span class="nc" id="L465">				final String name = backend.getName();</span>
-
-<span class="nc" id="L467">				Set&lt;BackendID&gt; setExecEnvsPerHostname = jBackendsByHostname.get(hostname);</span>
-<span class="nc" id="L468">				Set&lt;BackendID&gt; setExecEnvsPerName = jBackendsByName.get(name);</span>
-
-<span class="nc bnc" id="L470" title="All 2 branches missed.">				if (setExecEnvsPerHostname == null) {</span>
-<span class="nc" id="L471">					setExecEnvsPerHostname = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L472">					jBackendsByHostname.put(hostname, setExecEnvsPerHostname);</span>
-				}
-
-<span class="nc bnc" id="L475" title="All 2 branches missed.">				if (setExecEnvsPerName == null) {</span>
-<span class="nc" id="L476">					setExecEnvsPerName = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L477">					jBackendsByName.put(hostname, setExecEnvsPerName);</span>
-				}
-
-<span class="nc" id="L480">				setExecEnvsPerHostname.add(bkID);</span>
-<span class="nc" id="L481">				setExecEnvsPerName.add(bkID);</span>
-<span class="nc" id="L482">			}</span>
-
-<span class="nc" id="L484">			LOGGER.info(&quot;Java Backends: {}&quot;, jBackendsByID);</span>
-
-<span class="nc" id="L486">			pyBackendsByName = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L487">			pyBackendsByHostname = new ConcurrentHashMap&lt;&gt;();</span>
-
-<span class="nc" id="L489">			pyBackendsByID = new ConcurrentHashMap&lt;&gt;(</span>
-<span class="nc" id="L490">					ClientManagementLib.getExecutionEnvironmentsInfo(accountID, credential, Langs.LANG_PYTHON));</span>
-
-<span class="nc" id="L492">			backendsByID.putAll(pyBackendsByID);</span>
-
-<span class="nc bnc" id="L494" title="All 2 branches missed.">			for (final Backend backend : pyBackendsByID.values()) {</span>
-<span class="nc" id="L495">				final BackendID bkID = backend.getDataClayID();</span>
-
-<span class="nc" id="L497">				final String hostname = backend.getHostname();</span>
-<span class="nc" id="L498">				final String name = backend.getName();</span>
-
-<span class="nc" id="L500">				Set&lt;BackendID&gt; setExecEnvsPerHostname = pyBackendsByHostname.get(hostname);</span>
-<span class="nc" id="L501">				Set&lt;BackendID&gt; setExecEnvsPerName = pyBackendsByName.get(name);</span>
-
-<span class="nc bnc" id="L503" title="All 2 branches missed.">				if (setExecEnvsPerHostname == null) {</span>
-<span class="nc" id="L504">					setExecEnvsPerHostname = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L505">					pyBackendsByHostname.put(hostname, setExecEnvsPerHostname);</span>
-				}
-
-<span class="nc bnc" id="L508" title="All 2 branches missed.">				if (setExecEnvsPerName == null) {</span>
-<span class="nc" id="L509">					setExecEnvsPerName = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L510">					pyBackendsByName.put(hostname, setExecEnvsPerName);</span>
-				}
-
-<span class="nc" id="L513">				setExecEnvsPerHostname.add(bkID);</span>
-<span class="nc" id="L514">				setExecEnvsPerName.add(bkID);</span>
-<span class="nc" id="L515">			}</span>
-
-<span class="nc" id="L517">			LOGGER.info(&quot;Python Backends: {}&quot;, pyBackendsByID);</span>
-
-<span class="nc" id="L519">		} catch (final Exception ex) {</span>
-<span class="nc" id="L520">			LOGGER.debug(&quot;Backend initialization error&quot;, ex);</span>
-<span class="nc" id="L521">			throw new DataClayException(ex);</span>
-<span class="nc" id="L522">		}</span>
-<span class="nc" id="L523">	}</span>
+<span class="nc" id="L420">		} catch (final Exception ex) {</span>
+<span class="nc" id="L421">			LOGGER.debug(&quot;Exception during init()&quot;, ex);</span>
+<span class="nc" id="L422">			throw new DataClayException(ex);</span>
+<span class="nc" id="L423">		}</span>
+<span class="nc" id="L424">	}</span>
 
 	/**
 	 * If the object is accessible, initializes an instance of a stub with the given
@@ -535,23 +436,23 @@ public final class DataClay {
 	public static Object getByID(final String objectIDstr) throws DataClayException {
 		try {
 
-<span class="nc" id="L538">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
-<span class="nc" id="L539">			final ObjectID objectID = ids.getFirst();</span>
-<span class="nc" id="L540">			final BackendID hint = ids.getSecond();</span>
-<span class="nc" id="L541">			final MetaClassID classID = ids.getThird();</span>
+<span class="nc" id="L439">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
+<span class="nc" id="L440">			final ObjectID objectID = ids.getFirst();</span>
+<span class="nc" id="L441">			final BackendID hint = ids.getSecond();</span>
+<span class="nc" id="L442">			final MetaClassID classID = ids.getThird();</span>
 
-<span class="nc bnc" id="L543" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L544">				DataClayRuntime.LOGGER</span>
-<span class="nc" id="L545">						.debug(&quot;[==GetByID from StorageItf==] Creating instance from oid string &quot; + objectIDstr);</span>
+<span class="nc bnc" id="L444" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L445">				DataClayRuntime.LOGGER</span>
+<span class="nc" id="L446">						.debug(&quot;[==GetByID from StorageItf==] Creating instance from oid string &quot; + objectIDstr);</span>
 			}
 
 			// Class id is null, so asking metadata
-<span class="nc" id="L549">			final DataClayObject result = commonLib.getPersistedObjectByOID(objectID, classID, hint);</span>
-<span class="nc" id="L550">			return result;</span>
+<span class="nc" id="L450">			final DataClayObject result = commonLib.getPersistedObjectByOID(objectID, classID, hint);</span>
+<span class="nc" id="L451">			return result;</span>
 
-<span class="nc" id="L552">		} catch (final Exception ex) {</span>
-<span class="nc" id="L553">			LOGGER.debug(&quot;getbyID error&quot;, ex);</span>
-<span class="nc" id="L554">			throw new DataClayException(ex);</span>
+<span class="nc" id="L453">		} catch (final Exception ex) {</span>
+<span class="nc" id="L454">			LOGGER.debug(&quot;getbyID error&quot;, ex);</span>
+<span class="nc" id="L455">			throw new DataClayException(ex);</span>
 		}
 	}
 
@@ -566,19 +467,19 @@ public final class DataClay {
 	 */
 	public static String getLocation(final String objectIDstr) throws DataClayException {
 		try {
-<span class="nc bnc" id="L569" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L570">				DataClayRuntime.LOGGER.debug(&quot;[dataClay] Get location for &quot; + objectIDstr);</span>
+<span class="nc" id="L470">			DataClayRuntime.LOGGER.debug(&quot;[dataClay] Get location for &quot; + objectIDstr);</span>
+<span class="nc bnc" id="L471" title="All 4 branches missed.">			if (objectIDstr == null || objectIDstr.trim().isEmpty()) {</span>
+<span class="nc" id="L472">				throw new DataClayException(&quot;ERROR in getLocation: Null or empty object string : &quot; + objectIDstr);</span>
 			}
-<span class="nc bnc" id="L572" title="All 4 branches missed.">			if (objectIDstr == null || objectIDstr.trim().isEmpty()) {</span>
-<span class="nc" id="L573">				throw new DataClayException(&quot;ERROR in getLocation: Null or empty object string : &quot; + objectIDstr);</span>
-			}
-<span class="nc" id="L575">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; objectData = string2IDandHintID(objectIDstr);</span>
-<span class="nc" id="L576">			return backendsByID.get(objectData.getSecond()).getHostname();</span>
-<span class="nc" id="L577">		} catch (final DataClayException e) {</span>
-<span class="nc" id="L578">			throw e;</span>
-<span class="nc" id="L579">		} catch (final Exception ex) {</span>
-<span class="nc" id="L580">			LOGGER.debug(&quot;getLocation error&quot;, ex);</span>
-<span class="nc" id="L581">			throw new DataClayException(ex);</span>
+<span class="nc" id="L474">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; objectData = string2IDandHintID(objectIDstr);</span>
+<span class="nc" id="L475">			return commonLib.getExecutionEnvironmentInfo(objectData.getSecond()).getHostname();</span>
+<span class="nc" id="L476">		} catch (final DataClayException e) {</span>
+<span class="nc" id="L477">			e.printStackTrace();</span>
+<span class="nc" id="L478">			throw e;</span>
+<span class="nc" id="L479">		} catch (final Exception ex) {</span>
+<span class="nc" id="L480">			ex.printStackTrace();</span>
+<span class="nc" id="L481">			LOGGER.debug(&quot;getLocation error&quot;, ex);</span>
+<span class="nc" id="L482">			throw new DataClayException(ex);</span>
 		}
 	}
 
@@ -593,38 +494,38 @@ public final class DataClay {
 	 */
 	public static List&lt;String&gt; getLocations(final String objectIDstr) throws DataClayException {
 		try {
-<span class="nc bnc" id="L596" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L597">				DataClayRuntime.LOGGER.debug(&quot;[dataClay] GetLocations for &quot; + objectIDstr);</span>
+<span class="nc bnc" id="L497" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L498">				DataClayRuntime.LOGGER.debug(&quot;[dataClay] GetLocations for &quot; + objectIDstr);</span>
 			}
-<span class="nc bnc" id="L599" title="All 4 branches missed.">			if (objectIDstr == null || objectIDstr.trim().isEmpty()) {</span>
-<span class="nc" id="L600">				throw new DataClayException(&quot;ERROR in getLocations: Null or empty object string : &quot; + objectIDstr);</span>
+<span class="nc bnc" id="L500" title="All 4 branches missed.">			if (objectIDstr == null || objectIDstr.trim().isEmpty()) {</span>
+<span class="nc" id="L501">				throw new DataClayException(&quot;ERROR in getLocations: Null or empty object string : &quot; + objectIDstr);</span>
 			}
-<span class="nc" id="L602">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; objectData = string2IDandHintID(objectIDstr);</span>
-<span class="nc" id="L603">			final ObjectID objectID = objectData.getFirst();</span>
-<span class="nc" id="L604">			final BackendID hint = objectData.getSecond();</span>
+<span class="nc" id="L503">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; objectData = string2IDandHintID(objectIDstr);</span>
+<span class="nc" id="L504">			final ObjectID objectID = objectData.getFirst();</span>
+<span class="nc" id="L505">			final BackendID hint = objectData.getSecond();</span>
 
 			// Get locations of the object
-<span class="nc" id="L607">			final Set&lt;BackendID&gt; currentLocations = commonLib.getAllLocations(objectID);</span>
-<span class="nc bnc" id="L608" title="All 4 branches missed.">			if (currentLocations == null || currentLocations.isEmpty()) {</span>
-<span class="nc bnc" id="L609" title="All 2 branches missed.">				if (hint == null) {</span>
-<span class="nc" id="L610">					throw new DataClayException(&quot;ERROR in getLocations: object not accessible or does not exist&quot;);</span>
+<span class="nc" id="L508">			final Set&lt;BackendID&gt; currentLocations = commonLib.getAllLocations(objectID);</span>
+<span class="nc bnc" id="L509" title="All 4 branches missed.">			if (currentLocations == null || currentLocations.isEmpty()) {</span>
+<span class="nc bnc" id="L510" title="All 2 branches missed.">				if (hint == null) {</span>
+<span class="nc" id="L511">					throw new DataClayException(&quot;ERROR in getLocations: object not accessible or does not exist&quot;);</span>
 				}
-<span class="nc bnc" id="L612" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L613">					LOGGER.debug(&quot;No locations for object {}, assuming volatile and returning hint {}&quot;, objectID, hint);</span>
+<span class="nc bnc" id="L513" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L514">					LOGGER.debug(&quot;No locations for object {}, assuming volatile and returning hint {}&quot;, objectID, hint);</span>
 				}
-<span class="nc" id="L615">				return Arrays.asList(backendsByID.get(hint).getHostname());</span>
+<span class="nc" id="L516">				return Arrays.asList(commonLib.getExecutionEnvironmentInfo(hint).getHostname());</span>
 			}
-<span class="nc" id="L617">			final LinkedList&lt;String&gt; result = new LinkedList&lt;&gt;();</span>
-<span class="nc bnc" id="L618" title="All 2 branches missed.">			for (final BackendID location : currentLocations) {</span>
-<span class="nc" id="L619">				result.add(backendsByID.get(location).getHostname());</span>
-<span class="nc" id="L620">			}</span>
-<span class="nc" id="L621">			return result;</span>
-<span class="nc" id="L622">		} catch (final DataClayException e) {</span>
-<span class="nc" id="L623">			throw e;</span>
-<span class="nc" id="L624">		} catch (final Exception ex) {</span>
-<span class="nc" id="L625">			LOGGER.debug(&quot;Failed while performing getLocations on {}&quot;, objectIDstr);</span>
-<span class="nc" id="L626">			LOGGER.debug(&quot;Current error:&quot;, ex);</span>
-<span class="nc" id="L627">			throw new DataClayException(ex);</span>
+<span class="nc" id="L518">			final LinkedList&lt;String&gt; result = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">			for (final BackendID location : currentLocations) {</span>
+<span class="nc" id="L520">				result.add(commonLib.getExecutionEnvironmentInfo(location).getHostname());</span>
+<span class="nc" id="L521">			}</span>
+<span class="nc" id="L522">			return result;</span>
+<span class="nc" id="L523">		} catch (final DataClayException e) {</span>
+<span class="nc" id="L524">			throw e;</span>
+<span class="nc" id="L525">		} catch (final Exception ex) {</span>
+<span class="nc" id="L526">			LOGGER.debug(&quot;Failed while performing getLocations on {}&quot;, objectIDstr);</span>
+<span class="nc" id="L527">			LOGGER.debug(&quot;Current error:&quot;, ex);</span>
+<span class="nc" id="L528">			throw new DataClayException(ex);</span>
 		}
 	}
 
@@ -644,108 +545,108 @@ public final class DataClay {
 	public static void moveReplica(final String objectIDstr, final String srcHost, final String destHost)
 			throws DataClayException {
 		try {
-<span class="nc bnc" id="L647" title="All 4 branches missed.">			if (srcHost == null || srcHost.trim().isEmpty()) {</span>
-<span class="nc" id="L648">				throw new DataClayException(&quot;ERROR in moveReplica: srcHost '&quot; + srcHost + &quot;' is null or empty.&quot;);</span>
+<span class="nc bnc" id="L548" title="All 4 branches missed.">			if (srcHost == null || srcHost.trim().isEmpty()) {</span>
+<span class="nc" id="L549">				throw new DataClayException(&quot;ERROR in moveReplica: srcHost '&quot; + srcHost + &quot;' is null or empty.&quot;);</span>
 			}
-<span class="nc bnc" id="L650" title="All 4 branches missed.">			if (destHost == null || destHost.trim().isEmpty()) {</span>
-<span class="nc" id="L651">				throw new DataClayException(&quot;ERROR in moveReplica: destHost '&quot; + destHost + &quot;' is null or empty.&quot;);</span>
+<span class="nc bnc" id="L551" title="All 4 branches missed.">			if (destHost == null || destHost.trim().isEmpty()) {</span>
+<span class="nc" id="L552">				throw new DataClayException(&quot;ERROR in moveReplica: destHost '&quot; + destHost + &quot;' is null or empty.&quot;);</span>
 			}
-<span class="nc bnc" id="L653" title="All 2 branches missed.">			if (srcHost.equals(destHost)) {</span>
-<span class="nc" id="L654">				throw new DataClayException(</span>
+<span class="nc bnc" id="L554" title="All 2 branches missed.">			if (srcHost.equals(destHost)) {</span>
+<span class="nc" id="L555">				throw new DataClayException(</span>
 						&quot;ERROR in moveReplica: src &quot; + srcHost + &quot; and dest &quot; + destHost + &quot; are the same.&quot;);
 			}
-<span class="nc" id="L657">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
-<span class="nc" id="L658">			final ObjectID objectID = ids.getFirst();</span>
-<span class="nc" id="L659">			final BackendID hint = ids.getSecond();</span>
-<span class="nc" id="L660">			final MetaClassID classID = ids.getThird();</span>
-<span class="nc" id="L661">			final Set&lt;BackendID&gt; currentBackends = commonLib.getAllLocations(objectID);</span>
-<span class="nc" id="L662">			final BackendID oneBK = currentBackends.iterator().next();</span>
-<span class="nc" id="L663">			final Langs lang = backendsByID.get(oneBK).getLang();</span>
+<span class="nc" id="L558">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
+<span class="nc" id="L559">			final ObjectID objectID = ids.getFirst();</span>
+<span class="nc" id="L560">			final BackendID hint = ids.getSecond();</span>
+<span class="nc" id="L561">			final MetaClassID classID = ids.getThird();</span>
+<span class="nc" id="L562">			final Set&lt;BackendID&gt; currentBackends = commonLib.getAllLocations(objectID);</span>
+<span class="nc" id="L563">			final BackendID oneBK = currentBackends.iterator().next();</span>
+<span class="nc" id="L564">			final Langs lang = commonLib.getExecutionEnvironmentInfo(oneBK).getLang();</span>
 
 			// Select backend for the provided src host
-<span class="nc" id="L666">			BackendID srcLocID = null;</span>
-<span class="nc" id="L667">			Set&lt;BackendID&gt; srcBackends = null;</span>
-<span class="nc bnc" id="L668" title="All 3 branches missed.">			switch (lang) {</span>
+<span class="nc" id="L567">			BackendID srcLocID = null;</span>
+<span class="nc" id="L568">			Set&lt;BackendID&gt; srcBackends = null;</span>
+<span class="nc bnc" id="L569" title="All 3 branches missed.">			switch (lang) {</span>
 				case LANG_JAVA:
-<span class="nc bnc" id="L670" title="All 2 branches missed.">					if (LOCALTOKEN.equals(srcHost)) {</span>
-<span class="nc" id="L671">						srcLocID = jLOCAL;</span>
+<span class="nc bnc" id="L571" title="All 2 branches missed.">					if (LOCALTOKEN.equals(srcHost)) {</span>
+<span class="nc" id="L572">						srcLocID = jLOCAL;</span>
 					} else {
-<span class="nc" id="L673">						srcBackends = jBackendsByHostname.get(srcHost);</span>
+<span class="nc" id="L574">						srcBackends = commonLib.getAllExecutionEnvironmentsAtHost(lang, srcHost).keySet();</span>
 					}
-<span class="nc" id="L675">					break;</span>
+<span class="nc" id="L576">					break;</span>
 				case LANG_PYTHON:
-<span class="nc bnc" id="L677" title="All 2 branches missed.">					if (LOCALTOKEN.equals(srcHost)) {</span>
-<span class="nc" id="L678">						srcLocID = pLOCAL;</span>
+<span class="nc bnc" id="L578" title="All 2 branches missed.">					if (LOCALTOKEN.equals(srcHost)) {</span>
+<span class="nc" id="L579">						srcLocID = pLOCAL;</span>
 					} else {
-<span class="nc" id="L680">						srcBackends = pyBackendsByHostname.get(srcHost);</span>
+<span class="nc" id="L581">						srcBackends = commonLib.getAllExecutionEnvironmentsAtHost(lang, srcHost).keySet();</span>
 					}
-<span class="nc" id="L682">					break;</span>
+<span class="nc" id="L583">					break;</span>
 				default:
-<span class="nc" id="L684">					throw new DataClayException(&quot;ERROR in moveReplica: unsupported language&quot;);</span>
+<span class="nc" id="L585">					throw new DataClayException(&quot;ERROR in moveReplica: unsupported language&quot;);</span>
 			}
-<span class="nc bnc" id="L686" title="All 2 branches missed.">			if (srcLocID == null) {</span>
-<span class="nc bnc" id="L687" title="All 4 branches missed.">				if (srcBackends == null || srcBackends.isEmpty()) {</span>
-<span class="nc" id="L688">					throw new DataClayException(&quot;ERROR in moveReplica: src host &quot; + srcHost + &quot; has no backends&quot;);</span>
+<span class="nc bnc" id="L587" title="All 2 branches missed.">			if (srcLocID == null) {</span>
+<span class="nc bnc" id="L588" title="All 4 branches missed.">				if (srcBackends == null || srcBackends.isEmpty()) {</span>
+<span class="nc" id="L589">					throw new DataClayException(&quot;ERROR in moveReplica: src host &quot; + srcHost + &quot; has no backends&quot;);</span>
 				}
-<span class="nc bnc" id="L690" title="All 2 branches missed.">				for (final BackendID bkID : srcBackends) {</span>
-<span class="nc bnc" id="L691" title="All 2 branches missed.">					if (currentBackends.contains(bkID)) { // find backend containing a replica</span>
-<span class="nc" id="L692">						srcLocID = bkID;</span>
-<span class="nc" id="L693">						break;</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">				for (final BackendID bkID : srcBackends) {</span>
+<span class="nc bnc" id="L592" title="All 2 branches missed.">					if (currentBackends.contains(bkID)) { // find backend containing a replica</span>
+<span class="nc" id="L593">						srcLocID = bkID;</span>
+<span class="nc" id="L594">						break;</span>
 					}
-<span class="nc" id="L695">				}</span>
+<span class="nc" id="L596">				}</span>
 			}
-<span class="nc bnc" id="L697" title="All 2 branches missed.">			if (srcLocID == null) {</span>
-<span class="nc" id="L698">				throw new DataClayException(&quot;ERROR in moveReplica: no replica found in src host &quot; + srcHost);</span>
+<span class="nc bnc" id="L598" title="All 2 branches missed.">			if (srcLocID == null) {</span>
+<span class="nc" id="L599">				throw new DataClayException(&quot;ERROR in moveReplica: no replica found in src host &quot; + srcHost);</span>
 			}
 
 			// Select dest backend for the provided dest host
-<span class="nc" id="L702">			BackendID destLocID = null;</span>
-<span class="nc" id="L703">			Set&lt;BackendID&gt; destBackends = null;</span>
-<span class="nc bnc" id="L704" title="All 3 branches missed.">			switch (lang) {</span>
+<span class="nc" id="L603">			BackendID destLocID = null;</span>
+<span class="nc" id="L604">			Set&lt;BackendID&gt; destBackends = null;</span>
+<span class="nc bnc" id="L605" title="All 3 branches missed.">			switch (lang) {</span>
 				case LANG_JAVA:
-<span class="nc bnc" id="L706" title="All 2 branches missed.">					if (LOCALTOKEN.equals(destHost)) {</span>
-<span class="nc" id="L707">						destLocID = jLOCAL;</span>
+<span class="nc bnc" id="L607" title="All 2 branches missed.">					if (LOCALTOKEN.equals(destHost)) {</span>
+<span class="nc" id="L608">						destLocID = jLOCAL;</span>
 					} else {
-<span class="nc" id="L709">						destBackends = jBackendsByHostname.get(destHost);</span>
+<span class="nc" id="L610">						destBackends = commonLib.getAllExecutionEnvironmentsAtHost(lang, destHost).keySet();</span>
 					}
-<span class="nc" id="L711">					break;</span>
+<span class="nc" id="L612">					break;</span>
 				case LANG_PYTHON:
-<span class="nc bnc" id="L713" title="All 2 branches missed.">					if (LOCALTOKEN.equals(destHost)) {</span>
-<span class="nc" id="L714">						destLocID = pLOCAL;</span>
+<span class="nc bnc" id="L614" title="All 2 branches missed.">					if (LOCALTOKEN.equals(destHost)) {</span>
+<span class="nc" id="L615">						destLocID = pLOCAL;</span>
 					} else {
-<span class="nc" id="L716">						destBackends = pyBackendsByHostname.get(destHost);</span>
+<span class="nc" id="L617">						destBackends = commonLib.getAllExecutionEnvironmentsAtHost(lang, destHost).keySet();</span>
 					}
-<span class="nc" id="L718">					break;</span>
+<span class="nc" id="L619">					break;</span>
 				default:
-<span class="nc" id="L720">					throw new DataClayException(&quot;ERROR in moveReplica: unsupported language&quot;);</span>
+<span class="nc" id="L621">					throw new DataClayException(&quot;ERROR in moveReplica: unsupported language&quot;);</span>
 			}
-<span class="nc bnc" id="L722" title="All 2 branches missed.">			if (destLocID == null) {</span>
-<span class="nc bnc" id="L723" title="All 4 branches missed.">				if (destBackends == null || destBackends.isEmpty()) {</span>
-<span class="nc" id="L724">					throw new DataClayException(&quot;ERROR in moveReplica: dest host &quot; + destHost + &quot; has no backends&quot;);</span>
+<span class="nc bnc" id="L623" title="All 2 branches missed.">			if (destLocID == null) {</span>
+<span class="nc bnc" id="L624" title="All 4 branches missed.">				if (destBackends == null || destBackends.isEmpty()) {</span>
+<span class="nc" id="L625">					throw new DataClayException(&quot;ERROR in moveReplica: dest host &quot; + destHost + &quot; has no backends&quot;);</span>
 				}
-<span class="nc bnc" id="L726" title="All 2 branches missed.">				for (final BackendID bkID : destBackends) {</span>
-<span class="nc bnc" id="L727" title="All 2 branches missed.">					if (!currentBackends.contains(bkID)) { // find backend NOT containing a replica</span>
-<span class="nc" id="L728">						destLocID = bkID;</span>
-<span class="nc" id="L729">						break;</span>
+<span class="nc bnc" id="L627" title="All 2 branches missed.">				for (final BackendID bkID : destBackends) {</span>
+<span class="nc bnc" id="L628" title="All 2 branches missed.">					if (!currentBackends.contains(bkID)) { // find backend NOT containing a replica</span>
+<span class="nc" id="L629">						destLocID = bkID;</span>
+<span class="nc" id="L630">						break;</span>
 					}
-<span class="nc" id="L731">				}</span>
+<span class="nc" id="L632">				}</span>
 			}
-<span class="nc bnc" id="L733" title="All 2 branches missed.">			if (destLocID == null) {</span>
-<span class="nc" id="L734">				throw new DataClayException(</span>
+<span class="nc bnc" id="L634" title="All 2 branches missed.">			if (destLocID == null) {</span>
+<span class="nc" id="L635">				throw new DataClayException(</span>
 						&quot;ERROR in moveReplica: no suitable backend found (or replica already present in dest)&quot;);
 			}
 
 			// Move replica
-<span class="nc" id="L739">			commonLib.moveObject(objectID, classID, hint, srcLocID, destLocID, true);</span>
+<span class="nc" id="L640">			commonLib.moveObject(objectID, classID, hint, srcLocID, destLocID, true);</span>
 
-<span class="nc" id="L741">			LOGGER.info(&quot;Object {} moved from {} to {}&quot;, objectID, srcLocID, destLocID);</span>
+<span class="nc" id="L642">			LOGGER.info(&quot;Object {} moved from {} to {}&quot;, objectID, srcLocID, destLocID);</span>
 
-<span class="nc" id="L743">		} catch (</span>
+<span class="nc" id="L644">		} catch (</span>
 
 				final Exception e) {
-<span class="nc" id="L746">			throw new DataClayException(e);</span>
-<span class="nc" id="L747">		}</span>
-<span class="nc" id="L748">	}</span>
+<span class="nc" id="L647">			throw new DataClayException(e);</span>
+<span class="nc" id="L648">		}</span>
+<span class="nc" id="L649">	}</span>
 
 	/**
 	 * Create a new replica of the given object.
@@ -759,58 +660,18 @@ public final class DataClay {
 	 */
 	public static void newReplica(final String objectIDstr, final String destHost) throws DataClayException {
 		try {
-<span class="nc" id="L762">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
-<span class="nc" id="L763">			final ObjectID objectID = ids.getFirst();</span>
-<span class="nc" id="L764">			final BackendID hint = ids.getSecond();</span>
-<span class="nc" id="L765">			final MetaClassID classID = ids.getThird();</span>
-<span class="nc" id="L766">			final Set&lt;BackendID&gt; currentBackends = commonLib.getAllLocations(objectID);</span>
-<span class="nc" id="L767">			final BackendID oneBK = currentBackends.iterator().next();</span>
-<span class="nc" id="L768">			final Langs lang = backendsByID.get(oneBK).getLang();</span>
+<span class="nc" id="L663">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
+<span class="nc" id="L664">			final ObjectID objectID = ids.getFirst();</span>
+<span class="nc" id="L665">			final BackendID hint = ids.getSecond();</span>
+<span class="nc" id="L666">			final MetaClassID classID = ids.getThird();</span>
+<span class="nc" id="L667">			commonLib.newReplica(objectID, hint, null,</span>
+					destHost, true);
 
-			// Select dest backend for the provided dest host
-<span class="nc" id="L771">			BackendID destLocID = null;</span>
-<span class="nc" id="L772">			Set&lt;BackendID&gt; destBackends = null;</span>
-<span class="nc bnc" id="L773" title="All 3 branches missed.">			switch (lang) {</span>
-				case LANG_JAVA:
-<span class="nc bnc" id="L775" title="All 2 branches missed.">					if (LOCALTOKEN.equals(destHost)) {</span>
-<span class="nc" id="L776">						destLocID = jLOCAL;</span>
-					} else {
-<span class="nc" id="L778">						destBackends = jBackendsByHostname.get(destHost);</span>
-					}
-<span class="nc" id="L780">					break;</span>
-				case LANG_PYTHON:
-<span class="nc bnc" id="L782" title="All 2 branches missed.">					if (LOCALTOKEN.equals(destHost)) {</span>
-<span class="nc" id="L783">						destLocID = pLOCAL;</span>
-					} else {
-<span class="nc" id="L785">						destBackends = pyBackendsByHostname.get(destHost);</span>
-					}
-<span class="nc" id="L787">					break;</span>
-				default:
-<span class="nc" id="L789">					throw new DataClayException(&quot;ERROR in newReplica: unsupported language&quot;);</span>
-			}
-<span class="nc bnc" id="L791" title="All 2 branches missed.">			if (destLocID == null) {</span>
-<span class="nc bnc" id="L792" title="All 4 branches missed.">				if (destBackends == null || destBackends.isEmpty()) {</span>
-<span class="nc" id="L793">					throw new DataClayException(&quot;ERROR in newReplica: dest host &quot; + destHost + &quot; has no backends&quot;);</span>
-				}
-<span class="nc bnc" id="L795" title="All 2 branches missed.">				for (final BackendID bkID : destBackends) {</span>
-<span class="nc bnc" id="L796" title="All 2 branches missed.">					if (!currentBackends.contains(bkID)) { // find backend NOT containing a replica</span>
-<span class="nc" id="L797">						destLocID = bkID;</span>
-<span class="nc" id="L798">						break;</span>
-					}
-<span class="nc" id="L800">				}</span>
-			}
-			// Replicate
-<span class="nc bnc" id="L803" title="All 2 branches missed.">			if (destLocID == null) {</span>
-<span class="nc" id="L804">				throw new DataClayException(</span>
-						&quot;ERROR in newReplica: no suitable backend found (or replica already present in dest)&quot;);
-			}
-<span class="nc" id="L807">			commonLib.newReplica(objectID, classID, hint, destLocID, true);</span>
+<span class="nc" id="L670">		} catch (final Exception e) {</span>
+<span class="nc" id="L671">			throw new DataClayException(e);</span>
+<span class="nc" id="L672">		}</span>
 
-<span class="nc" id="L809">		} catch (final Exception e) {</span>
-<span class="nc" id="L810">			throw new DataClayException(e);</span>
-<span class="nc" id="L811">		}</span>
-
-<span class="nc" id="L813">	}</span>
+<span class="nc" id="L674">	}</span>
 
 	/**
 	 * Executes a method on a specific target assynchronously.
@@ -831,8 +692,8 @@ public final class DataClay {
 	 */
 	public static String executeTask(final String objectIDstr, final java.lang.reflect.Method method,
 									 final Object[] params, final CallbackHandler callback) throws DataClayException {
-<span class="nc" id="L834">		final Method m = Method.getMethod(method);</span>
-<span class="nc" id="L835">		return executeTask(objectIDstr, m.getName() + m.getDescriptor(), params, callback);</span>
+<span class="nc" id="L695">		final Method m = Method.getMethod(method);</span>
+<span class="nc" id="L696">		return executeTask(objectIDstr, m.getName() + m.getDescriptor(), params, callback);</span>
 	}
 
 	/**
@@ -854,56 +715,56 @@ public final class DataClay {
 	 */
 	public static String executeTask(final String objectIDstr, final String operationSignature, final Object[] params,
 									 final CallbackHandler callback) throws DataClayException {
-<span class="nc bnc" id="L857" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L858">			DataClayRuntime.LOGGER.debug(&quot;[dataClay] Executing task for &quot; + objectIDstr);</span>
+<span class="nc bnc" id="L718" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L719">			DataClayRuntime.LOGGER.debug(&quot;[dataClay] Executing task for &quot; + objectIDstr);</span>
 		}
-<span class="nc" id="L860">		final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
-<span class="nc" id="L861">		final ObjectID objectID = ids.getFirst();</span>
-<span class="nc" id="L862">		final BackendID backendID = ids.getSecond();</span>
-<span class="nc" id="L863">		MetaClassID classID = ids.getThird();</span>
+<span class="nc" id="L721">		final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = string2IDandHintID(objectIDstr);</span>
+<span class="nc" id="L722">		final ObjectID objectID = ids.getFirst();</span>
+<span class="nc" id="L723">		final BackendID backendID = ids.getSecond();</span>
+<span class="nc" id="L724">		MetaClassID classID = ids.getThird();</span>
 
 		// Lock, since this function is called concurrently
-<span class="nc bnc" id="L866" title="All 2 branches missed.">		if (classID == null) {</span>
-<span class="nc" id="L867">			commonLib.lock(objectID);</span>
-<span class="nc" id="L868">			final MetaDataInfo metadata = commonLib.getObjectMetadata(objectID);</span>
-<span class="nc bnc" id="L869" title="All 2 branches missed.">			if (metadata == null) {</span>
+<span class="nc bnc" id="L727" title="All 2 branches missed.">		if (classID == null) {</span>
+<span class="nc" id="L728">			commonLib.lock(objectID);</span>
+<span class="nc" id="L729">			final MetaDataInfo metadata = commonLib.getObjectMetadata(objectID);</span>
+<span class="nc bnc" id="L730" title="All 2 branches missed.">			if (metadata == null) {</span>
 				// no metadata available, throw exception
 				// NOTE: if it is a volatile and hint failed, it means that object is actually
 				// not registered
-<span class="nc" id="L873">				throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L734">				throw new ObjectNotRegisteredException(objectID);</span>
 			}
-<span class="nc" id="L875">			commonLib.unlock(objectID);</span>
-<span class="nc" id="L876">			classID = metadata.getMetaclassID();</span>
+<span class="nc" id="L736">			commonLib.unlock(objectID);</span>
+<span class="nc" id="L737">			classID = metadata.getMetaclassID();</span>
 		}
-<span class="nc" id="L878">		final String className = commonLib.getClassName(classID);</span>
+<span class="nc" id="L739">		final String className = commonLib.getClassName(classID);</span>
 
 		// Generate unique id for the request
-<span class="nc" id="L881">		final UUID id = UUID.randomUUID();</span>
+<span class="nc" id="L742">		final UUID id = UUID.randomUUID();</span>
 
-<span class="nc" id="L883">		new Thread(&quot;&quot; + id) {</span>
+<span class="nc" id="L744">		new Thread(&quot;&quot; + id) {</span>
 			@Override
 			public void run() {
 				try {
-<span class="nc bnc" id="L887" title="All 2 branches missed.">					if (Configuration.mockTesting) {</span>
-<span class="nc" id="L888">						DataClayMockObject.setCurrentThreadLib(ClientManagementLib.getDataClayClientLib());</span>
+<span class="nc bnc" id="L748" title="All 2 branches missed.">					if (Configuration.mockTesting) {</span>
+<span class="nc" id="L749">						DataClayMockObject.setCurrentThreadLib(ClientManagementLib.getDataClayClientLib());</span>
 					}
-<span class="nc" id="L890">					final Object result = commonLib.executeRemoteTask(objectID, className, operationSignature, params,</span>
+<span class="nc" id="L751">					final Object result = commonLib.executeRemoteTask(objectID, className, operationSignature, params,</span>
 							backendID);
-<span class="nc bnc" id="L892" title="All 4 branches missed.">					if (className == null || className.isEmpty()) {</span>
-<span class="nc" id="L893">						throw new DataClayException(</span>
-<span class="nc" id="L894">								&quot;Cannot get object info of &quot; + objectID + &quot; with session &quot; + commonLib.getSessionID());</span>
+<span class="nc bnc" id="L753" title="All 4 branches missed.">					if (className == null || className.isEmpty()) {</span>
+<span class="nc" id="L754">						throw new DataClayException(</span>
+<span class="nc" id="L755">								&quot;Cannot get object info of &quot; + objectID + &quot; with session &quot; + commonLib.getSessionID());</span>
 					}
-<span class="nc" id="L896">					callback.eventListener(new CallbackEvent(this.getName(), CallbackEvent.EventType.SUCCESS, result,</span>
+<span class="nc" id="L757">					callback.eventListener(new CallbackEvent(this.getName(), CallbackEvent.EventType.SUCCESS, result,</span>
 							className, operationSignature));
-<span class="nc" id="L898">				} catch (final Exception ex) {</span>
-<span class="nc" id="L899">					LOGGER.debug(&quot;executeTask-&gt;run() error&quot;, ex);</span>
-<span class="nc" id="L900">					callback.eventListener(</span>
-<span class="nc" id="L901">							new CallbackEvent(this.getName(), CallbackEvent.EventType.FAIL, ex.getMessage()));</span>
-<span class="nc" id="L902">				}</span>
-<span class="nc" id="L903">			}</span>
-<span class="nc" id="L904">		}.start();</span>
+<span class="nc" id="L759">				} catch (final Exception ex) {</span>
+<span class="nc" id="L760">					LOGGER.debug(&quot;executeTask-&gt;run() error&quot;, ex);</span>
+<span class="nc" id="L761">					callback.eventListener(</span>
+<span class="nc" id="L762">							new CallbackEvent(this.getName(), CallbackEvent.EventType.FAIL, ex.getMessage()));</span>
+<span class="nc" id="L763">				}</span>
+<span class="nc" id="L764">			}</span>
+<span class="nc" id="L765">		}.start();</span>
 
-<span class="nc" id="L906">		return &quot;&quot; + id;</span>
+<span class="nc" id="L767">		return &quot;&quot; + id;</span>
 	}
 
 	/**
@@ -917,9 +778,9 @@ public final class DataClay {
 	 */
 	public static Object getResult(final CallbackEvent callbackEvent) throws DataClayException {
 		try {
-<span class="nc" id="L920">			return callbackEvent.getContent();</span>
-<span class="nc" id="L921">		} catch (final Exception ex) {</span>
-<span class="nc" id="L922">			throw new DataClayException(ex);</span>
+<span class="nc" id="L781">			return callbackEvent.getContent();</span>
+<span class="nc" id="L782">		} catch (final Exception ex) {</span>
+<span class="nc" id="L783">			throw new DataClayException(ex);</span>
 		}
 	}
 
@@ -933,21 +794,21 @@ public final class DataClay {
 	 */
 	public static Triple&lt;ObjectID, BackendID, MetaClassID&gt; string2IDandHintID(final String objectIDstr)
 			throws DataClayException {
-<span class="nc bnc" id="L936" title="All 4 branches missed.">		if (objectIDstr == null || objectIDstr.trim().isEmpty()) {</span>
-<span class="nc" id="L937">			throw new DataClayException(&quot;ERROR: malformed objectIDstr '&quot; + objectIDstr + &quot;'&quot;);</span>
+<span class="nc bnc" id="L797" title="All 4 branches missed.">		if (objectIDstr == null || objectIDstr.trim().isEmpty()) {</span>
+<span class="nc" id="L798">			throw new DataClayException(&quot;ERROR: malformed objectIDstr '&quot; + objectIDstr + &quot;'&quot;);</span>
 		}
-<span class="nc" id="L939">		final String[] idsStr = objectIDstr.split(&quot;:&quot;);</span>
-<span class="nc" id="L940">		final ObjectID objectID = new ObjectID(UUID.fromString(idsStr[0]));</span>
-<span class="nc" id="L941">		BackendID hint = null;</span>
-<span class="nc bnc" id="L942" title="All 4 branches missed.">		if (idsStr.length &gt; 1 &amp;&amp; !idsStr[1].isEmpty()) {</span>
-<span class="nc" id="L943">			hint = new ExecutionEnvironmentID(UUID.fromString(idsStr[1]));</span>
+<span class="nc" id="L800">		final String[] idsStr = objectIDstr.split(&quot;:&quot;);</span>
+<span class="nc" id="L801">		final ObjectID objectID = new ObjectID(UUID.fromString(idsStr[0]));</span>
+<span class="nc" id="L802">		BackendID hint = null;</span>
+<span class="nc bnc" id="L803" title="All 4 branches missed.">		if (idsStr.length &gt; 1 &amp;&amp; !idsStr[1].isEmpty()) {</span>
+<span class="nc" id="L804">			hint = new ExecutionEnvironmentID(UUID.fromString(idsStr[1]));</span>
 		}
-<span class="nc" id="L945">		MetaClassID classID = null;</span>
-<span class="nc bnc" id="L946" title="All 4 branches missed.">		if (idsStr.length &gt; 2 &amp;&amp; !idsStr[2].isEmpty()) {</span>
-<span class="nc" id="L947">			classID = new MetaClassID(UUID.fromString(idsStr[2]));</span>
+<span class="nc" id="L806">		MetaClassID classID = null;</span>
+<span class="nc bnc" id="L807" title="All 4 branches missed.">		if (idsStr.length &gt; 2 &amp;&amp; !idsStr[2].isEmpty()) {</span>
+<span class="nc" id="L808">			classID = new MetaClassID(UUID.fromString(idsStr[2]));</span>
 		}
-<span class="nc" id="L949">		final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = new Triple&lt;&gt;(objectID, hint, classID);</span>
-<span class="nc" id="L950">		return ids;</span>
+<span class="nc" id="L810">		final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = new Triple&lt;&gt;(objectID, hint, classID);</span>
+<span class="nc" id="L811">		return ids;</span>
 	}
 
 	/**
@@ -962,15 +823,32 @@ public final class DataClay {
 	 * @return string representation of the giving object.
 	 */
 	public static String ids2String(final ObjectID objectID, final BackendID hint, final MetaClassID classID) {
-<span class="nc" id="L965">		String strHint = &quot;&quot;;</span>
-<span class="nc" id="L966">		String strClass = &quot;&quot;;</span>
-<span class="nc bnc" id="L967" title="All 2 branches missed.">		if (hint != null) {</span>
-<span class="nc" id="L968">			strHint = hint.toString();</span>
+<span class="nc" id="L826">		String strHint = &quot;&quot;;</span>
+<span class="nc" id="L827">		String strClass = &quot;&quot;;</span>
+<span class="nc bnc" id="L828" title="All 2 branches missed.">		if (hint != null) {</span>
+<span class="nc" id="L829">			strHint = hint.toString();</span>
 		}
-<span class="nc bnc" id="L970" title="All 2 branches missed.">		if (classID != null) {</span>
-<span class="nc" id="L971">			strClass = classID.toString();</span>
+<span class="nc bnc" id="L831" title="All 2 branches missed.">		if (classID != null) {</span>
+<span class="nc" id="L832">			strClass = classID.toString();</span>
 		}
-<span class="nc" id="L973">		return objectID.getId().toString() + &quot;:&quot; + strHint + &quot;:&quot; + strClass;</span>
+<span class="nc" id="L834">		return objectID.getId().toString() + &quot;:&quot; + strHint + &quot;:&quot; + strClass;</span>
+	}
+
+	/**
+	 * Retrieves all Java backends
+
+	 * @return info of the backends
+	 */
+	public static Set&lt;BackendID&gt; getJavaBackends() {
+<span class="nc" id="L843">		Set&lt;BackendID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L844">		Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; javaBackends =</span>
+<span class="nc" id="L845">				commonLib.getAllExecutionEnvironmentsInfo(Langs.LANG_JAVA, true);</span>
+<span class="nc bnc" id="L846" title="All 2 branches missed.">		for (ExecutionEnvironment exec : javaBackends.values()) {</span>
+<span class="nc bnc" id="L847" title="All 2 branches missed.">			if (exec.getDataClayInstanceID().equals(commonLib.getDataClayID())) {</span>
+<span class="nc" id="L848">				result.add((BackendID) exec.getDataClayID());</span>
+			}
+<span class="nc" id="L850">		}</span>
+<span class="nc" id="L851">		return result;</span>
 	}
 
 	/**
@@ -981,34 +859,7 @@ public final class DataClay {
 	 * @return info of the backend
 	 */
 	public static Backend getBackendInfo(final BackendID backendID) {
-<span class="nc" id="L984">		return backendsByID.get(backendID);</span>
-	}
-
-	/**
-	 * Retrieves the info of all known backends indexed by ID
-	 *
-	 * @return map of backends indexed by ID
-	 */
-	public static Map&lt;BackendID, Backend&gt; getBackends() {
-<span class="nc" id="L993">		return backendsByID;</span>
-	}
-
-	/**
-	 * Retrieves the info of all Java backends
-	 *
-	 * @return map of backends indexed by ID
-	 */
-	public static Map&lt;BackendID, Backend&gt; getJBackends() {
-<span class="nc" id="L1002">		return jBackendsByID;</span>
-	}
-
-	/**
-	 * Retrieves the info of all Python backends
-	 *
-	 * @return map of backends indexed by ID
-	 */
-	public static Map&lt;BackendID, Backend&gt; getPyBackends() {
-<span class="nc" id="L1011">		return pyBackendsByID;</span>
+<span class="nc" id="L862">		return commonLib.getExecutionEnvironmentInfo(backendID);</span>
 	}
 
 	/**
@@ -1017,7 +868,7 @@ public final class DataClay {
 	 * @return common lib reference
 	 */
 	public static ClientRuntime getCommonLib() {
-<span class="nc" id="L1020">		return commonLib;</span>
+<span class="nc" id="L871">		return commonLib;</span>
 	}
 
 	/**
@@ -1026,33 +877,16 @@ public final class DataClay {
 	 * @return sessionID
 	 */
 	public static SessionID getSessionID() {
-<span class="nc" id="L1029">		return commonLib.getSessionID();</span>
+<span class="nc" id="L880">		return commonLib.getSessionID();</span>
 	}
 
 	public static int getMDmisses() {
-<span class="nc" id="L1033">		return commonLib.misses;</span>
+<span class="nc" id="L884">		return commonLib.misses;</span>
 	}
 
 	public static int getMDhits() {
-<span class="nc" id="L1037">		return commonLib.hits;</span>
+<span class="nc" id="L888">		return commonLib.hits;</span>
 	}
-
-	public static Map&lt;String, Set&lt;BackendID&gt;&gt; getPyBackendsByName() {
-<span class="nc" id="L1041">		return pyBackendsByName;</span>
-	}
-
-	public static Map&lt;String, Set&lt;BackendID&gt;&gt; getJBackendsByName() {
-<span class="nc" id="L1045">		return jBackendsByName;</span>
-	}
-
-	public static Map&lt;String, Set&lt;BackendID&gt;&gt; getPyBackendsByHostname() {
-<span class="nc" id="L1049">		return pyBackendsByHostname;</span>
-	}
-
-	public static Map&lt;String, Set&lt;BackendID&gt;&gt; getJBackendsByHostname() {
-<span class="nc" id="L1053">		return jBackendsByHostname;</span>
-	}
-
 
 	/**
 	 * Retrieves current dataClay instance ID
@@ -1060,7 +894,43 @@ public final class DataClay {
 	 * @return id of current dataClay instance
 	 */
 	public static DataClayInstanceID getDataClayID() {
-<span class="nc" id="L1063">		return ClientManagementLib.getDataClayID();</span>
+<span class="nc" id="L897">		return ClientManagementLib.getDataClayID();</span>
+	}
+
+	/**
+	 * Retrieves the id of ANY java backend with name provided
+	 *
+	 * @param dsName DS name
+	 * @return id of ANY java backend with name provided
+	 */
+	public static BackendID getJavaBackend(final String dsName) {
+		try {
+<span class="nc" id="L908">			return commonLib.getBackendsWithName(Langs.LANG_JAVA, dsName).iterator().next();</span>
+<span class="nc" id="L909">		} catch (final Exception ex) {</span>
+<span class="nc" id="L910">			LOGGER.warn(&quot;Error during getJavaBackend&quot;, ex);</span>
+<span class="nc" id="L911">			return null;</span>
+		}
+	}
+
+	/**
+	 * Retrieves the id of external java backend with name provided in external dataClay specified
+	 *
+	 * @param dsName DS name
+	 * @param externalDcID External dataClay instance ID
+	 * @return id of external java backend with name provided in external dataClay specified
+	 */
+	public static BackendID getExternalJavaBackend(final String dsName, final DataClayInstanceID externalDcID) {
+		try {
+			for (ExecutionEnvironment execEnv :
+<span class="nc bnc" id="L925" title="All 2 branches missed.">					commonLib.getAllExecutionEnvironmentsAtDataClay(Langs.LANG_JAVA, externalDcID, false).values()) {</span>
+<span class="nc bnc" id="L926" title="All 2 branches missed.">				if (execEnv.getName().equals(dsName)) {</span>
+<span class="nc" id="L927">					return execEnv.getDataClayID();</span>
+				}
+<span class="nc" id="L929">			}</span>
+<span class="nc" id="L930">		} catch (final Exception ex) {</span>
+<span class="nc" id="L931">			LOGGER.warn(&quot;Error during getExternalJavaBackend&quot;, ex);</span>
+<span class="nc" id="L932">		}</span>
+<span class="nc" id="L933">		return null;</span>
 	}
 
 	/**
@@ -1074,7 +944,12 @@ public final class DataClay {
 	 * @return id of the external dataClay
 	 */
 	public static DataClayInstanceID getDataClayID(final String dcHost, final int dcPort) {
-<span class="nc" id="L1077">		return ClientManagementLib.getExternalDataClayID(dcHost, dcPort);</span>
+		try {
+<span class="nc" id="L948">			return commonLib.getExternalDataClayID(dcHost, dcPort);</span>
+<span class="nc" id="L949">		} catch (final Exception ex) {</span>
+<span class="nc" id="L950">			LOGGER.warn(&quot;Error during getExternalDataClayID&quot;, ex);</span>
+<span class="nc" id="L951">			return null;</span>
+		}
 	}
 
 	/**
@@ -1088,7 +963,7 @@ public final class DataClay {
 	 * @return id of the external dataClay
 	 */
 	public static DataClayInstanceID registerDataClay(final String dcHost, final int dcPort) {
-<span class="nc" id="L1091">		return ClientManagementLib.registerExternalDataClay(dcHost, dcPort);</span>
+<span class="nc" id="L966">		return commonLib.registerExternalDataClay(dcHost, dcPort);</span>
 	}
 
 	/**
@@ -1096,52 +971,59 @@ public final class DataClay {
 	 *
 	 */
 	public static void activateTracingInDataClayServices() {
-<span class="nc" id="L1099">		ClientManagementLib.activateTracingInDataClayServices();</span>
-<span class="nc" id="L1100">	}</span>
+<span class="nc" id="L974">		ClientManagementLib.activateTracingInDataClayServices();</span>
+<span class="nc" id="L975">	}</span>
 
 	/**
 	 * Dectivate tracing
 	 */
 	public static void deactivateTracingInDataClayServices() {
-<span class="nc" id="L1106">		ClientManagementLib.deactivateTracingInDataClayServices();</span>
-<span class="nc" id="L1107">	}</span>
+<span class="nc" id="L981">		ClientManagementLib.deactivateTracingInDataClayServices();</span>
+<span class="nc" id="L982">	}</span>
 
 	/**
 	 * Activate tracing
 	 */
 	public static void activateTracing(
 			final boolean initializeWrapper) {
-<span class="nc" id="L1114">		ClientManagementLib.activateTracing(initializeWrapper);</span>
-<span class="nc" id="L1115">	}</span>
+<span class="nc" id="L989">		ClientManagementLib.activateTracing(initializeWrapper);</span>
+<span class="nc" id="L990">	}</span>
 
 	/**
 	 * Dectivate tracing
 	 */
 	public static void deactivateTracing(final boolean finalizeWrapper) {
-<span class="nc" id="L1121">		ClientManagementLib.deactivateTracing(finalizeWrapper);</span>
-<span class="nc" id="L1122">	}</span>
+<span class="nc" id="L996">		ClientManagementLib.deactivateTracing(finalizeWrapper);</span>
+<span class="nc" id="L997">	}</span>
 
 	/**
 	 * Get traces in dataClay services and store it in current workspace
 	 */
 	public final static void getTracesInDataClayServices() {
-<span class="nc" id="L1128">		ClientManagementLib.getTracesInDataClayServices();</span>
-<span class="nc" id="L1129">	}</span>
+<span class="nc" id="L1003">		ClientManagementLib.getTracesInDataClayServices();</span>
+<span class="nc" id="L1004">	}</span>
 
 	/**
 	 * Unfederate all objects belonging/federated with external dataClay with id provided
 	 * @param extDataClayID External dataClay ID
 	 */
 	public static void unfederateAllObjects(final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L1136">		ClientManagementLib.unfederateAllObjects(extDataClayID);</span>
-<span class="nc" id="L1137">	}</span>
+<span class="nc" id="L1011">		commonLib.unfederateAllObjects(extDataClayID);</span>
+<span class="nc" id="L1012">	}</span>
 
 	/**
 	 * Unfederate all objects belonging/federated with ANY external dataClay 
 	 */
 	public static void unfederateAllObjects() {
-<span class="nc" id="L1143">		ClientManagementLib.unfederateAllObjectsWithAllDCs();</span>
-<span class="nc" id="L1144">	}</span>
+<span class="nc" id="L1018">		commonLib.unfederateAllObjectsWithAllDCs();</span>
+<span class="nc" id="L1019">	}</span>
+
+	/**
+	 * Get number of objects in dataClay
+	 */
+	public static int getNumObjects() {
+<span class="nc" id="L1025">		return commonLib.getNumObjects();</span>
+	}
 
 	/**
 	 * Migrate (unfederate and federate) all current dataClay objects from specified external dataclay di to
@@ -1151,8 +1033,8 @@ public final class DataClay {
 	 */
 	public static void migrateFederatedObjects(final DataClayInstanceID originDataClayID,
 											   final DataClayInstanceID destinationDataClayID) {
-<span class="nc" id="L1154">		ClientManagementLib.migrateFederatedObjects(originDataClayID, destinationDataClayID);</span>
-<span class="nc" id="L1155">	}</span>
+<span class="nc" id="L1036">		commonLib.migrateFederatedObjects(originDataClayID, destinationDataClayID);</span>
+<span class="nc" id="L1037">	}</span>
 
 	/**
 	 * Federate all dataClay objects from specified current dataClay
@@ -1161,8 +1043,8 @@ public final class DataClay {
 	 */
 	public static void federateAllObjects(
 			final DataClayInstanceID destinationDataClayID) {
-<span class="nc" id="L1164">		ClientManagementLib.federateAllObjects(destinationDataClayID);</span>
-<span class="nc" id="L1165">	}</span>
+<span class="nc" id="L1046">		commonLib.federateAllObjects(destinationDataClayID);</span>
+<span class="nc" id="L1047">	}</span>
 
 	/**
 	 * Import classes in namespace specified from an external dataClay
@@ -1171,8 +1053,8 @@ public final class DataClay {
 	 */
 	public static void importModelsFromExternalDataClay(final String externalNamespace,
 														final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L1174">		ClientManagementLib.importModelsFromExternalDataClay(externalNamespace, extDataClayID);</span>
-<span class="nc" id="L1175">	}</span>
+<span class="nc" id="L1056">		commonLib.importModelsFromExternalDataClay(externalNamespace, extDataClayID);</span>
+<span class="nc" id="L1057">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

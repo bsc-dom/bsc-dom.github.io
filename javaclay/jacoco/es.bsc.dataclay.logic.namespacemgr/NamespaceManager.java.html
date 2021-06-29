@@ -38,8 +38,9 @@ import es.bsc.dataclay.util.ids.PropertyID;
 import es.bsc.dataclay.util.management.AbstractManager;
 import es.bsc.dataclay.util.management.namespacemgr.ImportedInterface;
 import es.bsc.dataclay.util.management.namespacemgr.Namespace;
-import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.util.structs.MemoryCache;
 import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible for managing namespaces (add and remove).
@@ -49,31 +50,30 @@ import es.bsc.dataclay.util.structs.Tuple;
 public final class NamespaceManager extends AbstractManager {
 
 	/** Logger. */
-<span class="fc" id="L52">	private static final Logger logger = LogManager.getLogger(&quot;managers.NamespaceManager&quot;);</span>
+<span class="fc" id="L53">	private static final Logger logger = LogManager.getLogger(&quot;managers.NamespaceManager&quot;);</span>
 
 	/** DbHandler for the management of Database. */
 	private final NamespaceManagerDB namespaceDB;
 	/** Namespace cache. */
-	private final LruCache&lt;NamespaceID, Namespace&gt; namespaceCache;
+	private final MemoryCache&lt;NamespaceID, Namespace&gt; namespaceCache;
 	/** Namespaces of the cache indexed by name. */
-	private final Map&lt;String, NamespaceID&gt; namespacesInCacheIndexedByName;
+	private final MemoryCache&lt;String, NamespaceID&gt; namespacesInCacheIndexedByName;
 
 	/**
 	 * Instantiates a Namespace Manager that uses the Namespace DB in the provided path.
 	 * 
-	 * @param managerName
+	 * @param dataSource
 	 *            Manager/service name.
 	 * @post Creates a Namespace manager and initializes the namespaceDB in the path provided.
 	 */
-	public NamespaceManager(final BasicDataSource dataSource) {
-<span class="fc" id="L69">		super(dataSource);</span>
-<span class="fc" id="L70">		this.namespaceDB = new NamespaceManagerDB(dataSource);</span>
-<span class="fc" id="L71">		this.namespaceDB.createTables();</span>
+	public NamespaceManager(final SQLiteDataSource dataSource) {
+<span class="fc" id="L70">		super(dataSource);</span>
+<span class="fc" id="L71">		this.namespaceDB = new NamespaceManagerDB(dataSource);</span>
+<span class="fc" id="L72">		this.namespaceDB.createTables();</span>
 
 		// Init cache
-<span class="fc" id="L74">		this.namespaceCache = new LruCache&lt;&gt;(</span>
-<span class="fc" id="L75">				Configuration.Flags.MAX_ENTRIES_NAMESPACE_MANAGER_CACHE.getIntValue());</span>
-<span class="fc" id="L76">		this.namespacesInCacheIndexedByName = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L75">		this.namespaceCache = new MemoryCache&lt;&gt;();</span>
+<span class="fc" id="L76">		this.namespacesInCacheIndexedByName = new MemoryCache&lt;&gt;();</span>
 <span class="fc" id="L77">	}</span>
 
 	/**
@@ -124,8 +124,8 @@ public final class NamespaceManager extends AbstractManager {
 <span class="nc" id="L124">			namespace = namespaceDB.getNamespaceByName(namespaceName);</span>
 			// Update cache
 <span class="nc bnc" id="L126" title="All 2 branches missed.">			if (namespace != null) {</span>
-<span class="nc" id="L127">				namespaceCache.put(namespaceID, namespace);</span>
-<span class="nc" id="L128">				namespacesInCacheIndexedByName.put(namespaceName, namespaceID);</span>
+<span class="nc" id="L127">				namespaceCache.put(namespace.getDataClayID(), namespace);</span>
+<span class="nc" id="L128">				namespacesInCacheIndexedByName.put(namespaceName, namespace.getDataClayID());</span>
 			}
 		} else {
 <span class="nc" id="L131">			namespace = namespaceCache.get(namespaceID);</span>

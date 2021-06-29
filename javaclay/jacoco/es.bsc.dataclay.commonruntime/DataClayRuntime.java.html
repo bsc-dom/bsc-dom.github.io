@@ -4,19 +4,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Scanner;
-import java.util.Set;
-import java.util.Timer;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 
+import es.bsc.dataclay.util.management.metadataservice.*;
+import es.bsc.dataclay.util.structs.MemoryCache;
+import es.bsc.dataclay.util.structs.Tuple;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -58,15 +53,14 @@ import es.bsc.dataclay.util.info.VersionInfo;
 import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
 import es.bsc.dataclay.util.management.classmgr.Type;
 import es.bsc.dataclay.util.management.classmgr.UserType;
-import es.bsc.dataclay.util.management.metadataservice.DataClayInstance;
-import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
-import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
-import es.bsc.dataclay.util.management.metadataservice.RegistrationInfo;
 import es.bsc.dataclay.util.management.stubs.ImplementationStubInfo;
 import es.bsc.dataclay.util.management.stubs.StubInfo;
-import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.util.structs.MemoryCache;
 import es.bsc.dataclay.util.structs.Triple;
 import io.grpc.StatusRuntimeException;
+import org.apache.logging.log4j.core.LifeCycle;
+
+import javax.xml.crypto.Data;
 
 /**
  * This class contains functions to interact with DataClay. This is an abstract class in order to provide same functionalities
@@ -74,13 +68,13 @@ import io.grpc.StatusRuntimeException;
  */
 public abstract class DataClayRuntime {
 	/** Logger. */
-<span class="fc" id="L77">	public static final Logger LOGGER = LogManager.getLogger(&quot;DataClayRuntime&quot;);</span>
+<span class="fc" id="L71">	public static final Logger LOGGER = LogManager.getLogger(&quot;DataClayRuntime&quot;);</span>
 
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L80">	public static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="fc" id="L74">	public static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** Indicates if runtime was initialized. */
-<span class="fc" id="L83">	private boolean initialized = false;</span>
+<span class="fc" id="L77">	private boolean initialized = false;</span>
 
 	/** GRPC client. */
 	private CommonGrpcClient grpcClient;
@@ -88,39 +82,32 @@ public abstract class DataClayRuntime {
 	/** Logic Module API for communication. */
 	protected LogicModuleAPI logicModule;
 
+	/** Current dataClay instance ID. */
+	private DataClayInstanceID dataClayInstanceID;
+
 	/**
 	 * DataClay Heap manager to manage GC, reference counting, lockers and others.
 	 */
 	protected HeapManager dataClayHeapManager;
 
 	/** Pool of lockers. */
-<span class="fc" id="L97">	protected final LockerPool lockerPool = new LockerPool();</span>
-
-	/** Information of all locations known (identified by a hash). */
-<span class="fc" id="L100">	protected final Map&lt;Integer, ExecutionEnvironmentID&gt; execLocationsPerHash = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L94">	protected final LockerPool lockerPool = new LockerPool();</span>
 
 	/** Execution Environments cache. */
-<span class="fc" id="L103">	protected final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; execEnvironmentsCache = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L97">	private Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; execEnvsCache = new ConcurrentHashMap&lt;&gt;();</span>
 
 	/** Cache of metaData. */
-<span class="fc" id="L106">	public LruCache&lt;ObjectID, MetaDataInfo&gt; metaDataCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_DATASERVICE_CACHE.getIntValue());</span>
+<span class="fc" id="L100">	public MemoryCache&lt;ObjectID, MetaDataInfo&gt; metaDataCache = new MemoryCache&lt;&gt;();</span>
 	
 	/** Cache of alias -&gt; oid. */
-	protected LruCache&lt;String, Triple&lt;ObjectID, MetaClassID, BackendID&gt;&gt; aliasCache;
+	protected MemoryCache&lt;String, Triple&lt;ObjectID, MetaClassID, BackendID&gt;&gt; aliasCache;
 
 	/** DataClay object loader. */
 	public DataClayObjectLoader dataClayObjLoader;
 
 	/** Under deserialization volatiles per thread. */
-<span class="fc" id="L115">	public final Map&lt;Long, Map&lt;Integer, ObjectWithDataParamOrReturn&gt;&gt; underDeserializationVolatiles = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L109">	public final Map&lt;ObjectID, ObjectWithDataParamOrReturn&gt; underDeserializationVolatiles = new ConcurrentHashMap&lt;&gt;();</span>
 
-	/**
-	 * Alias references found. TODO: this set is not cleaned. Important: modify this when design of removeAlias: we need to add
-	 * 'alias' as DataClayObject field since alias can be added dynamically to a volatile. Or check updateAliases function.
-	 * Also, ensure removeAlias in LM notifies EE and avoid race condition remove alias but continue using object and GlobalGC
-	 * clean it.
-	 */
-<span class="fc" id="L123">	protected final Set&lt;ObjectID&gt; aliasReferences = ConcurrentHashMap.newKeySet();</span>
 
 	/** Pool for tasks. Initialized in sub-classes. */
 	protected ScheduledExecutorService threadPool;
@@ -128,10 +115,10 @@ public abstract class DataClayRuntime {
 	/**
 	 * Set of object ids of volatile parameters that were send but did not arrive to any node yet.
 	 */
-<span class="fc" id="L131">	protected final Set&lt;ObjectID&gt; volatileParametersBeingSend = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L118">	protected final Set&lt;ObjectID&gt; volatileParametersBeingSend = ConcurrentHashMap.newKeySet();</span>
 
-<span class="fc" id="L133">	public int misses = 0;</span>
-<span class="fc" id="L134">	public int hits = 0;</span>
+<span class="fc" id="L120">	public int misses = 0;</span>
+<span class="fc" id="L121">	public int hits = 0;</span>
 
 	// CHECKSTYLE:ON
 
@@ -142,9 +129,9 @@ public abstract class DataClayRuntime {
 	/**
 	 * Constructor.
 	 */
-<span class="fc" id="L145">	protected DataClayRuntime() {</span>
-<span class="fc" id="L146">		this.aliasCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CLIENT_CACHE.getIntValue());</span>
-<span class="fc" id="L147">	}</span>
+<span class="fc" id="L132">	protected DataClayRuntime() {</span>
+<span class="fc" id="L133">		this.aliasCache = new MemoryCache&lt;&gt;();</span>
+<span class="fc" id="L134">	}</span>
 
 	/**
 	 * Initialize session and connections.
@@ -160,12 +147,12 @@ public abstract class DataClayRuntime {
 	 */
 	protected void initialize(final String logicModuleHost, final int logicModulePort, final String originHostName)
 			throws Exception {
-<span class="nc" id="L163">		LOGGER.info(&quot;Connecting to LM at {}:{} ...&quot;, logicModuleHost, logicModulePort);</span>
-<span class="nc" id="L164">		grpcClient = new CommonGrpcClient(originHostName);</span>
-<span class="nc" id="L165">		logicModule = grpcClient.getLogicModuleAPI(logicModuleHost, logicModulePort);</span>
-<span class="nc" id="L166">		LOGGER.info(&quot;Connected to LM!&quot;);</span>
-<span class="nc" id="L167">		this.setInitialized(true);</span>
-<span class="nc" id="L168">	}</span>
+<span class="nc" id="L150">		LOGGER.info(&quot;Connecting to LM at {}:{} ...&quot;, logicModuleHost, logicModulePort);</span>
+<span class="nc" id="L151">		grpcClient = new CommonGrpcClient(originHostName);</span>
+<span class="nc" id="L152">		logicModule = grpcClient.getLogicModuleAPI(logicModuleHost, logicModulePort);</span>
+<span class="nc" id="L153">		LOGGER.info(&quot;Connected to LM!&quot;);</span>
+<span class="nc" id="L154">		this.setInitialized(true);</span>
+<span class="nc" id="L155">	}</span>
 
 	/**
 	 * Get the logic module API.
@@ -173,38 +160,158 @@ public abstract class DataClayRuntime {
 	 * @return The logic module API
 	 */
 	public final LogicModuleAPI getLogicModuleAPI() {
-<span class="nc" id="L176">		return this.logicModule;</span>
+<span class="nc" id="L163">		return this.logicModule;</span>
 	}
 
 	/**
 	 * Get all execution environments information.
 	 * @param lang Language
+	 * @param forceUpdateCache Indicates cache must be forcibly updated
 	 * @return All execution locations information
 	 */
-	public final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getExecutionEnvironmentsInfo(final Langs lang) {
-<span class="nc" id="L185">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L186">		final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; allEEs = logicModule</span>
-<span class="nc bnc" id="L187" title="All 2 branches missed.">				.getExecutionEnvironmentsInfo(sessionID, lang, !this.isDSLib());</span>
-<span class="nc" id="L188">		return allEEs;</span>
+	public final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getAllExecutionEnvironmentsInfo(
+			final Langs lang, final boolean forceUpdateCache) {
+		// Check cache
+<span class="nc bnc" id="L175" title="All 6 branches missed.">		if ((execEnvsCache != null &amp;&amp; forceUpdateCache) || (execEnvsCache == null)){</span>
+<span class="nc" id="L176">			execEnvsCache.putAll(logicModule.getAllExecutionEnvironmentsInfo(lang, true, this.isDSLib()));</span>
+		}
+<span class="nc" id="L178">		return execEnvsCache;</span>
 	
 	}
-	/**
-	 * Prepare locations for calculating Hash.
-	 */
-	public final void prepareExecuteLocations() {
-<span class="nc" id="L195">		final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; allEEs = getExecutionEnvironmentsInfo(Langs.LANG_JAVA);</span>
-		// Connect them
-		// Since we will use a Hash, prepare it.
-<span class="nc" id="L198">		int i = 0;</span>
-<span class="nc bnc" id="L199" title="All 2 branches missed.">		for (final Entry&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; ee : allEEs.entrySet()) {</span>
-<span class="nc" id="L200">			final ExecutionEnvironmentID execLocationID = ee.getKey();</span>
-<span class="nc" id="L201">			final ExecutionEnvironment execEnvironment = ee.getValue();</span>
-<span class="nc" id="L202">			execLocationsPerHash.put(i, execLocationID);</span>
-<span class="nc" id="L203">			execEnvironmentsCache.put(execLocationID, execEnvironment);</span>
-<span class="nc" id="L204">			i++;</span>
-<span class="nc" id="L205">		}</span>
 
-<span class="nc" id="L207">	}</span>
+	/**
+	 * Get ExecutionEnvironment information
+	 *
+	 * @param execLocationID
+	 *            Execution location ID
+	 * @return Execution location information
+	 */
+	public final ExecutionEnvironment getExecutionEnvironmentInfo(final BackendID execLocationID) {
+<span class="nc" id="L190">		ExecutionEnvironment execEnv = null;</span>
+<span class="nc bnc" id="L191" title="All 2 branches missed.">		for (Langs language : Langs.values()) {</span>
+<span class="nc" id="L192">			Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; execEnvs = getAllExecutionEnvironmentsInfo(language, false);</span>
+<span class="nc" id="L193">			execEnv = execEnvs.get(execLocationID);</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">			if (execEnv == null) {</span>
+
+<span class="nc" id="L196">				LOGGER.debug(&quot;Execution environment info &quot; + execLocationID + &quot; not found in cache: &quot; + execEnvs.keySet());</span>
+<span class="nc" id="L197">				execEnvs = getAllExecutionEnvironmentsInfo(language, true);</span>
+<span class="nc" id="L198">				execEnv = execEnvs.get(execLocationID);</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">				if (execEnv != null) {</span>
+<span class="nc" id="L200">					break;</span>
+				}
+			} else {
+				break;
+			}
+		}
+<span class="nc" id="L206">		return execEnv;</span>
+	}
+
+
+	/**
+	 * Get all execution environments in provided host
+	 * @param lang Language
+	 * @param hostname Host name
+	 * @return Set of execution environments in provided host
+	 */
+	public Map&lt;BackendID, ExecutionEnvironment&gt; getAllExecutionEnvironmentsAtHost(final Langs lang, final String hostname) {
+<span class="nc" id="L217">		Map&lt;BackendID, ExecutionEnvironment&gt; execEnvsAtHost = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L218">		Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; execEnvs = getAllExecutionEnvironmentsInfo(lang, false);</span>
+		// check if there is any execution.env in that host, otherwise update cache
+<span class="nc bnc" id="L220" title="All 2 branches missed.">		for (ExecutionEnvironment env : execEnvs.values()) {</span>
+<span class="nc" id="L221">			LOGGER.debug(&quot;Checking if environment hostname {} matches required hostname {}&quot;, env.getHostname(), hostname);</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">			if (env.getHostname().equals(hostname)) {</span>
+<span class="nc" id="L223">				execEnvsAtHost.put(env.getDataClayID(), env);</span>
+			}
+<span class="nc" id="L225">		}</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		if (execEnvsAtHost.isEmpty()) {</span>
+<span class="nc" id="L227">			execEnvs = getAllExecutionEnvironmentsInfo(lang, true);</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">			for (ExecutionEnvironment env : execEnvs.values()) {</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">				if (env.getHostname().equals(hostname)) {</span>
+<span class="nc" id="L230">					execEnvsAtHost.put(env.getDataClayID(), env);</span>
+				}
+<span class="nc" id="L232">			}</span>
+		}
+<span class="nc" id="L234">		return execEnvsAtHost;</span>
+	}
+
+	/**
+	 * Get all execution environments in provided dataClay instance
+	 * @param lang Language
+	 * @param dataClayInstanceID ID of dataClay to check
+	 * @param forceUpdate Indicates exec envs must be updated
+	 * @return Set of execution environments in provided dataClay instance
+	 */
+	public Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getAllExecutionEnvironmentsAtDataClay(final Langs lang,
+																					  final DataClayInstanceID dataClayInstanceID,
+																								   final boolean forceUpdate) {
+<span class="nc" id="L247">		Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; execEnvsAtDC = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L248">		Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; execEnvs = null;</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">		if (!forceUpdate) {</span>
+<span class="nc" id="L250">			execEnvs = getAllExecutionEnvironmentsInfo(lang, false);</span>
+			// check if there is any execution.env in that host, otherwise update cache
+<span class="nc bnc" id="L252" title="All 2 branches missed.">			for (ExecutionEnvironment env : execEnvs.values()) {</span>
+<span class="nc" id="L253">				LOGGER.debug(&quot;Checking if environment hostname {} matches required hostname {}&quot;, env.getDataClayInstanceID(), dataClayInstanceID);</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">				if (env.getDataClayInstanceID().equals(dataClayInstanceID)) {</span>
+<span class="nc" id="L255">					execEnvsAtDC.put(env.getDataClayID(), env);</span>
+				}
+<span class="nc" id="L257">			}</span>
+		}
+<span class="nc bnc" id="L259" title="All 2 branches missed.">		if (execEnvsAtDC.isEmpty()) {</span>
+<span class="nc" id="L260">			execEnvs = getAllExecutionEnvironmentsInfo(lang, true);</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">			for (ExecutionEnvironment env : execEnvs.values()) {</span>
+<span class="nc bnc" id="L262" title="All 2 branches missed.">				if (env.getDataClayInstanceID().equals(dataClayInstanceID)) {</span>
+<span class="nc" id="L263">					execEnvsAtDC.put(env.getDataClayID(), env);</span>
+				}
+<span class="nc" id="L265">			}</span>
+		}
+<span class="nc" id="L267">		return execEnvsAtDC;</span>
+	}
+
+	/**
+	 * Get all backend names
+	 * @param lang Language
+	 * @param forceUpdateCache Indicates cache must be forcibly updated
+	 * @return All backed names information
+	 */
+	public Set&lt;String&gt; getAllBackendsNames(final Langs lang, final boolean forceUpdateCache) {
+<span class="nc" id="L277">		Set&lt;String&gt; result = null;</span>
+<span class="nc" id="L278">		result = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L279">		Collection&lt;ExecutionEnvironment&gt; execEnvs = getAllExecutionEnvironmentsInfo(lang, true).values();</span>
+<span class="nc" id="L280">		DataClayInstanceID curDcID = getDataClayID();</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">		for (ExecutionEnvironment execEnv : execEnvs) {</span>
+<span class="nc bnc" id="L282" title="All 2 branches missed.">			if (execEnv.getDataClayInstanceID().equals(curDcID)) {</span>
+<span class="nc" id="L283">				result.add(execEnv.getName());</span>
+			}
+<span class="nc" id="L285">		}</span>
+<span class="nc" id="L286">		return result;</span>
+	}
+
+	/**
+	 * Get exec. environments with name provided
+	 * @param lang Language
+	 * @param backendName Name of backend
+	 * @return All backends with name provided
+	 */
+	public Set&lt;BackendID&gt; getBackendsWithName(final Langs lang, final String backendName) {
+<span class="nc" id="L296">		Set&lt;BackendID&gt; execEnvsWithName = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L297">		Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; execEnvs = getAllExecutionEnvironmentsInfo(Langs.LANG_JAVA, false);</span>
+		// check if there is any execution.env in that host, otherwise update cache
+<span class="nc" id="L299">		DataClayInstanceID curDcID = getDataClayID();</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">		for (ExecutionEnvironment env : execEnvs.values()) {</span>
+<span class="nc bnc" id="L301" title="All 4 branches missed.">			if (env.getName().equals(backendName) &amp;&amp; env.getDataClayInstanceID().equals(curDcID)) {</span>
+<span class="nc" id="L302">				execEnvsWithName.add(env.getDataClayID());</span>
+			}
+<span class="nc" id="L304">		}</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">		if (execEnvsWithName.isEmpty()) {</span>
+<span class="nc" id="L306">			execEnvs = getAllExecutionEnvironmentsInfo(Langs.LANG_JAVA, true);</span>
+<span class="nc bnc" id="L307" title="All 2 branches missed.">			for (ExecutionEnvironment env : execEnvs.values()) {</span>
+<span class="nc bnc" id="L308" title="All 4 branches missed.">				if (env.getName().equals(backendName) &amp;&amp; env.getDataClayInstanceID().equals(curDcID)) {</span>
+<span class="nc" id="L309">					execEnvsWithName.add(env.getDataClayID());</span>
+				}
+<span class="nc" id="L311">			}</span>
+		}
+<span class="nc" id="L313">		return execEnvsWithName;</span>
+	}
 
 	/**
 	 * Get execution location
@@ -214,17 +321,14 @@ public abstract class DataClayRuntime {
 	 * @return ExecutionEnvironmentID by hash
 	 */
 	public final ExecutionEnvironmentID getBackendIDFromObjectID(final ObjectID objectID) {
-
-<span class="nc bnc" id="L218" title="All 2 branches missed.">		if (execLocationsPerHash.isEmpty()) {</span>
-<span class="nc" id="L219">			prepareExecuteLocations();</span>
-		}
-
 		// Apply hash to choose which DS to go.
-<span class="nc" id="L223">		final int hashCode = objectID.hashCode();</span>
-<span class="nc" id="L224">		final int whichDS = hashCode % execLocationsPerHash.size();</span>
-<span class="nc" id="L225">		final int hash = Math.abs(whichDS);</span>
-<span class="nc" id="L226">		final ExecutionEnvironmentID stLocID = execLocationsPerHash.get(hash);</span>
-<span class="nc" id="L227">		return stLocID;</span>
+<span class="nc" id="L325">		List&lt;BackendID&gt; allEEs = new ArrayList&lt;&gt;(this.getAllExecutionEnvironmentsAtDataClay(Langs.LANG_JAVA,</span>
+<span class="nc" id="L326">				this.getDataClayID(), false).keySet());</span>
+<span class="nc" id="L327">		final int hashCode = objectID.hashCode();</span>
+<span class="nc" id="L328">		final int whichDS = hashCode % allEEs.size();</span>
+<span class="nc" id="L329">		final int hash = Math.abs(whichDS);</span>
+<span class="nc" id="L330">		final ExecutionEnvironmentID stLocID = (ExecutionEnvironmentID) allEEs.get(hash);</span>
+<span class="nc" id="L331">		return stLocID;</span>
 	}
 
 	/**
@@ -236,13 +340,13 @@ public abstract class DataClayRuntime {
 	 */
 	public final DataServiceAPI getRemoteExecutionEnvironment(final BackendID execLocationID) {
 
-<span class="nc" id="L239">		final ExecutionEnvironment execEnvironment = getExecutionEnvironmentInfo(execLocationID);</span>
+<span class="nc" id="L343">		final ExecutionEnvironment execEnvironment = getExecutionEnvironmentInfo(execLocationID);</span>
 		try {
-<span class="nc" id="L241">			return grpcClient.getDataServiceAPI(execEnvironment.getHostname(), execEnvironment.getPort());</span>
-<span class="nc" id="L242">		} catch (final InterruptedException ex) {</span>
-<span class="nc" id="L243">			LOGGER.debug(&quot;getRemoteExecutionEnvironment error&quot;, ex);</span>
+<span class="nc" id="L345">			return grpcClient.getDataServiceAPI(execEnvironment.getHostname(), execEnvironment.getPort());</span>
+<span class="nc" id="L346">		} catch (final InterruptedException ex) {</span>
+<span class="nc" id="L347">			LOGGER.debug(&quot;getRemoteExecutionEnvironment error&quot;, ex);</span>
 			// Force to be runtime exc. so Clients can receive the exception
-<span class="nc" id="L245">			throw new RuntimeException(ex.getCause());</span>
+<span class="nc" id="L349">			throw new RuntimeException(ex.getCause());</span>
 		}
 	}
 
@@ -253,36 +357,17 @@ public abstract class DataClayRuntime {
 	 *            ID of remote execution environment
 	 * @return Remote execution environment
 	 */
-	public final DataServiceAPI getRemoteExecutionEnvironmentForDS(final ExecutionEnvironmentID execLocationID) {
-<span class="nc" id="L257">		ExecutionEnvironment execEnv = this.execEnvironmentsCache.get(execLocationID);</span>
-<span class="nc bnc" id="L258" title="All 2 branches missed.">		if (execEnv == null) {</span>
-<span class="nc" id="L259">			execEnv = this.logicModule.getExecutionEnvironmentForDS(execLocationID);</span>
-<span class="nc" id="L260">			this.execEnvironmentsCache.put(execLocationID, execEnv);</span>
-		}
+	public DataServiceAPI getRemoteDSAPI(final ExecutionEnvironmentID execLocationID) {
+<span class="nc" id="L361">		ExecutionEnvironment execEnv = this.getExecutionEnvironmentInfo(execLocationID);</span>
 		try {
-<span class="nc" id="L263">			return grpcClient.getDataServiceAPI(execEnv.getHostname(), execEnv.getPort());</span>
-<span class="nc" id="L264">		} catch (final InterruptedException ex) {</span>
-<span class="nc" id="L265">			LOGGER.debug(&quot;getRemoteExecutionEnvironmentForDS&quot;, ex);</span>
+<span class="nc" id="L363">			return grpcClient.getDataServiceAPI(execEnv.getHostname(), execEnv.getPort());</span>
+<span class="nc" id="L364">		} catch (final InterruptedException ex) {</span>
+<span class="nc" id="L365">			LOGGER.debug(&quot;getRemoteExecutionEnvironmentForDS&quot;, ex);</span>
 			// Force to be runtime exc. so Clients can receive the exception
-<span class="nc" id="L267">			throw new RuntimeException(ex.getCause());</span>
+<span class="nc" id="L367">			throw new RuntimeException(ex.getCause());</span>
 		}
 	}
 
-	/**
-	 * Get ExecutionEnvironment information
-	 * 
-	 * @param execLocationID
-	 *            Execution location ID
-	 * @return Execution location information
-	 */
-	public final ExecutionEnvironment getExecutionEnvironmentInfo(final BackendID execLocationID) {
-<span class="nc" id="L279">		ExecutionEnvironment execEnvironment = this.execEnvironmentsCache.get(execLocationID);</span>
-<span class="nc bnc" id="L280" title="All 2 branches missed.">		if (execEnvironment == null) {</span>
-<span class="nc" id="L281">			this.prepareExecuteLocations(); //update execute locations </span>
-<span class="nc" id="L282">			execEnvironment = this.execEnvironmentsCache.get(execLocationID);</span>
-		}
-<span class="nc" id="L284">		return execEnvironment;</span>
-	}
 
 	/**
 	 * Get external dataClay info
@@ -292,7 +377,7 @@ public abstract class DataClayRuntime {
 	 * @return info of the external dataClay instance
 	 */
 	public DataClayInstance getExternalDataClayInfo(final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L295">		return this.getLogicModuleAPI().getExternalDataClayInfo(extDataClayID);</span>
+<span class="nc" id="L380">		return this.getLogicModuleAPI().getExternalDataClayInfo(extDataClayID);</span>
 	}
 	
 
@@ -306,7 +391,7 @@ public abstract class DataClayRuntime {
 	 * @return ID of external registered dataClay.
 	 */
 	public DataClayInstanceID registerExternalDataClay(final String dcHost, final Integer dcPort) {
-<span class="nc" id="L309">		return this.getLogicModuleAPI().registerExternalDataClay(dcHost, dcPort);</span>
+<span class="nc" id="L394">		return this.getLogicModuleAPI().registerExternalDataClay(dcHost, dcPort);</span>
 
 	}
 	
@@ -323,7 +408,7 @@ public abstract class DataClayRuntime {
 	 */
 	public DataClayInstanceID registerExternalDataClayOverrideAuthority(final AccountID adminAccountID,
 			final PasswordCredential adminCredential, final String dcHost, final int dcPort, final String authority) {
-<span class="nc" id="L326">		return this.getLogicModuleAPI().registerExternalDataClayOverrideAuthority(adminAccountID, adminCredential, dcHost, dcPort, authority);</span>
+<span class="nc" id="L411">		return this.getLogicModuleAPI().registerExternalDataClayOverrideAuthority(adminAccountID, adminCredential, dcHost, dcPort, authority);</span>
 
 	}
 	
@@ -337,7 +422,7 @@ public abstract class DataClayRuntime {
 	 * @return info of the external dataClay instance
 	 */
 	public DataClayInstanceID getExternalDataClayID(final String hostname, final int port) {
-<span class="nc" id="L340">		return this.getLogicModuleAPI().getExternalDataClayID(hostname, port);</span>
+<span class="nc" id="L425">		return this.getLogicModuleAPI().getExternalDataClayID(hostname, port);</span>
 	}
 
 	/**
@@ -346,7 +431,10 @@ public abstract class DataClayRuntime {
 	 * @return the dataClay ID
 	 */
 	public DataClayInstanceID getDataClayID() {
-<span class="nc" id="L349">		return this.getLogicModuleAPI().getDataClayID();</span>
+<span class="nc bnc" id="L434" title="All 2 branches missed.">		if (this.dataClayInstanceID == null) {</span>
+<span class="nc" id="L435">			dataClayInstanceID =  this.getLogicModuleAPI().getDataClayID();</span>
+		}
+<span class="nc" id="L437">		return dataClayInstanceID;</span>
 	}
 
 	/**
@@ -360,42 +448,50 @@ public abstract class DataClayRuntime {
 	 * Finish connections to server
 	 */
 	public final void finishConnections() {
-<span class="nc" id="L363">		LOGGER.debug(&quot;Stopping Grpc connections&quot;);</span>
-<span class="nc" id="L364">		this.grpcClient.finishClientConnections();</span>
-<span class="nc" id="L365">		LOGGER.debug(&quot;Stopping thread pool&quot;);</span>
-<span class="nc" id="L366">		this.threadPool.shutdown();</span>
-<span class="nc" id="L367">		this.threadPool = null; </span>
-<span class="nc" id="L368">		this.grpcClient = null;</span>
-<span class="nc" id="L369">		boolean aliveThreads = true;</span>
-<span class="nc bnc" id="L370" title="All 2 branches missed.">		for (int i = 0; i &lt; 10; i++) { //maximum retries</span>
-<span class="nc" id="L371">			boolean foundAliveThread = false;</span>
-<span class="nc" id="L372">			String threadName = null;</span>
-<span class="nc bnc" id="L373" title="All 2 branches missed.">			for (Thread t : Thread.getAllStackTraces().keySet()) {</span>
-<span class="nc" id="L374">				threadName = t.getName();</span>
-<span class="nc bnc" id="L375" title="All 2 branches missed.">				if (threadName.startsWith(&quot;grpc-&quot;)) {</span>
-<span class="nc" id="L376">					foundAliveThread = true;</span>
-<span class="nc" id="L377">					break;</span>
+<span class="nc" id="L451">		LOGGER.info(&quot;Finishing connections ... &quot;);</span>
+<span class="nc" id="L452">		LOGGER.debug(&quot;Stopping Grpc connections&quot;);</span>
+<span class="nc" id="L453">		this.grpcClient.finishClientConnections();</span>
+<span class="nc" id="L454">		LOGGER.debug(&quot;Stopping thread pool&quot;);</span>
+<span class="nc" id="L455">		this.threadPool.shutdown();</span>
+<span class="nc" id="L456">		this.threadPool = null; </span>
+<span class="nc" id="L457">		this.grpcClient = null;</span>
+<span class="nc" id="L458">		this.dataClayInstanceID = null;</span>
+<span class="nc" id="L459">		boolean aliveThreads = true;</span>
+<span class="nc" id="L460">		DataClayObject.clearStubInfosCache();</span>
+<span class="nc" id="L461">		DataClayObject.clearExecStubInfosCache();</span>
+<span class="nc" id="L462">		DataClayObject.clientRuntime = null;</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">		for (int i = 0; i &lt; 10; i++) { //maximum retries</span>
+<span class="nc" id="L464">			boolean foundAliveThread = false;</span>
+<span class="nc" id="L465">			String threadName = null;</span>
+<span class="nc bnc" id="L466" title="All 2 branches missed.">			for (Thread t : Thread.getAllStackTraces().keySet()) {</span>
+<span class="nc" id="L467">				threadName = t.getName();</span>
+<span class="nc bnc" id="L468" title="All 2 branches missed.">				if (threadName.startsWith(&quot;grpc-&quot;)) {</span>
+<span class="nc" id="L469">					foundAliveThread = true;</span>
+<span class="nc" id="L470">					break;</span>
 				}
-<span class="nc" id="L379">			}</span>
-<span class="nc bnc" id="L380" title="All 2 branches missed.">			if (foundAliveThread) { </span>
-<span class="nc" id="L381">				LOGGER.warn(&quot;WARNING: Waiting for &quot; + threadName + &quot; thread to finish. Sleeping for 2s&quot;);</span>
+<span class="nc" id="L472">			}</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">			if (foundAliveThread) { </span>
+<span class="nc" id="L474">				LOGGER.warn(&quot;WARNING: Waiting for &quot; + threadName + &quot; thread to finish...&quot;);</span>
 				try {
-<span class="nc" id="L383">					Thread.sleep(2000);</span>
-<span class="nc" id="L384">				} catch (InterruptedException e) {</span>
-<span class="nc" id="L385">					e.printStackTrace();</span>
-<span class="nc" id="L386">				}</span>
+<span class="nc" id="L476">					Thread.sleep(300);</span>
+<span class="nc" id="L477">				} catch (InterruptedException e) {</span>
+<span class="nc" id="L478">					e.printStackTrace();</span>
+<span class="nc" id="L479">				}</span>
 			} else { 
-<span class="nc" id="L388">				aliveThreads = false;</span>
-<span class="nc" id="L389">				break; </span>
+<span class="nc" id="L481">				aliveThreads = false;</span>
+<span class="nc" id="L482">				break; </span>
 			}
 		}
-		
-<span class="nc bnc" id="L393" title="All 2 branches missed.">		if (aliveThreads) { </span>
-<span class="nc" id="L394">			LOGGER.warn(&quot;WARNING: Some threads still alive while exiting application.&quot;);</span>
+<span class="nc bnc" id="L485" title="All 2 branches missed.">		for (Thread t : Thread.getAllStackTraces().keySet()) {</span>
+<span class="nc" id="L486">			String threadName = t.getName();</span>
+<span class="nc" id="L487">			LOGGER.debug(&quot;Found alive thread while exiting: &quot; + threadName);</span>
+<span class="nc" id="L488">		}</span>
+<span class="nc bnc" id="L489" title="All 2 branches missed.">		if (aliveThreads) { </span>
+<span class="nc" id="L490">			LOGGER.warn(&quot;WARNING: Some threads still alive while exiting application.&quot;);</span>
 		}
-		
-<span class="nc" id="L397">		this.setInitialized(false);</span>
-<span class="nc" id="L398">	}</span>
+		//((LifeCycle) LogManager.getContext()).stop();
+<span class="nc" id="L493">		this.setInitialized(false);</span>
+<span class="nc" id="L494">	}</span>
 
 	/**
 	 * Get the IDs of the backends in which the object identified by the stub instance provided is located and the classname of
@@ -406,41 +502,52 @@ public abstract class DataClayRuntime {
 	 * @return Object metadata.
 	 */
 	public final MetaDataInfo getObjectMetadata(final ObjectID objectID) {
-<span class="nc" id="L409">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
-<span class="nc" id="L410">		MetaDataInfo mdInfo = metaDataCache.get(objectID);</span>
-<span class="nc bnc" id="L411" title="All 2 branches missed.">		if (mdInfo == null) {</span>
-<span class="nc" id="L412">			misses++;</span>
+<span class="nc" id="L505">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
+<span class="nc" id="L506">		MetaDataInfo mdInfo = metaDataCache.get(objectID);</span>
+<span class="nc bnc" id="L507" title="All 2 branches missed.">		if (mdInfo == null) {</span>
+<span class="nc" id="L508">			misses++;</span>
 
-<span class="nc bnc" id="L414" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L415">				LOGGER.debug(&quot;[==Metadata Cache==] Not found entry in metadata cache for {}.&quot;</span>
+<span class="nc bnc" id="L510" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L511">				LOGGER.debug(&quot;[==Metadata Cache==] Not found entry in metadata cache for {}.&quot;</span>
 						+ &quot;Asking LogicModule. WARNING: if the object is volatile, please &quot;
 						+ &quot; note that it might be not registered yet (WIP).&quot;, objectID);
 			}
 
-<span class="nc" id="L420">			mdInfo = logicModule.getMetadataByOID(sessionID, objectID);</span>
-<span class="nc bnc" id="L421" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc bnc" id="L422" title="All 2 branches missed.">				if (mdInfo == null) {</span>
-<span class="nc" id="L423">					LOGGER.warn(&quot;Cannot get metadata for {}&quot;, objectID);</span>
+<span class="nc" id="L516">			mdInfo = logicModule.getMetadataByOID(sessionID, objectID);</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc bnc" id="L518" title="All 2 branches missed.">				if (mdInfo == null) {</span>
+<span class="nc" id="L519">					LOGGER.warn(&quot;Cannot get metadata for {}&quot;, objectID);</span>
 				} else {
-<span class="nc" id="L425">					LOGGER.debug(</span>
-							&quot;[==Metadata Cache==] Adding entry in metadata cache for {} &quot; + &quot;with exec. locations: {}&quot;,
-<span class="nc" id="L427">							objectID, mdInfo.getLocations().keySet());</span>
+<span class="nc" id="L521">					LOGGER.debug(</span>
+							&quot;[==Metadata Cache==] Adding entry in metadata cache for {} : {}&quot;,
+							objectID, mdInfo);
 				}
 			}
-<span class="nc bnc" id="L430" title="All 2 branches missed.">			if (mdInfo != null) {</span>
-<span class="nc" id="L431">				metaDataCache.put(objectID, mdInfo);</span>
+<span class="nc bnc" id="L526" title="All 2 branches missed.">			if (mdInfo != null) {</span>
+<span class="nc" id="L527">				metaDataCache.put(objectID, mdInfo);</span>
 			}
 
 		} else {
-<span class="nc" id="L435">			hits++;</span>
-<span class="nc bnc" id="L436" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L437">				LOGGER.debug(&quot;[==Metadata Cache==] Found entry in metadata cache for &quot; + objectID);</span>
+<span class="nc" id="L531">			hits++;</span>
+<span class="nc bnc" id="L532" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L533">				LOGGER.debug(&quot;[==Metadata Cache==] Found entry in metadata cache for {} : {}&quot;, objectID,</span>
+						mdInfo);
 			}
 		}
-<span class="nc" id="L440">		return mdInfo;</span>
+<span class="nc" id="L537">		return mdInfo;</span>
 	}
 
-	// ================================================== //
+	/**
+	 * Remove metadata of object from cache
+	 *
+	 * @param objectID
+	 *            ID of the object
+	 */
+	public final void removeObjectMetadataFromCache(final ObjectID objectID) {
+<span class="nc" id="L547">		metaDataCache.remove(objectID);</span>
+<span class="nc" id="L548">	}</span>
+
+												// ================================================== //
 	// ================= FUNCTIONS ================== //
 	// ================================================== //
 
@@ -454,17 +561,17 @@ public abstract class DataClayRuntime {
 	 * @return a volatile instance of the object
 	 */
 	public final DataClayObject getCopyOfObject(final ObjectID oid, final boolean recursive) {
-<span class="nc" id="L457">		final SessionID sessionID = getSessionID();</span>
+<span class="nc" id="L564">		final SessionID sessionID = getSessionID();</span>
 
 		// Get an arbitrary object location
-<span class="nc" id="L460">		final BackendID execLocationID = getLocation(oid);</span>
-<span class="nc" id="L461">		final DataServiceAPI dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
+<span class="nc" id="L567">		final BackendID execLocationID = getLocation(oid);</span>
+<span class="nc" id="L568">		final DataServiceAPI dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
 
 		// Retrieve objects
-<span class="nc" id="L464">		final SerializedParametersOrReturn copiedObject = dsAPI.getCopyOfObject(sessionID, oid, recursive);</span>
-<span class="nc" id="L465">		final Object[] result = DataClayDeserializationLib.deserializeParamsOrReturn(copiedObject, null, this);</span>
+<span class="nc" id="L571">		final SerializedParametersOrReturn copiedObject = dsAPI.getCopyOfObject(sessionID, oid, recursive);</span>
+<span class="nc" id="L572">		final Object[] result = DataClayDeserializationLib.deserializeParamsOrReturn(copiedObject, null, this);</span>
 
-<span class="nc" id="L467">		return (DataClayObject) result[0];</span>
+<span class="nc" id="L574">		return (DataClayObject) result[0];</span>
 	}
 
 	/**
@@ -476,69 +583,76 @@ public abstract class DataClayRuntime {
 	 *            object containing the data to put
 	 */
 	public final void updateObject(final ObjectID into, final DataClayObject from) {
-<span class="nc" id="L479">		final SessionID sessionID = getSessionID();</span>
+<span class="nc" id="L586">		final SessionID sessionID = getSessionID();</span>
 
 		// Get an arbitrary object location
-<span class="nc" id="L482">		final BackendID execLocationID = getLocation(into);</span>
-<span class="nc" id="L483">		final DataServiceAPI dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
-<span class="nc" id="L484">		final List&lt;DataClaySerializable&gt; aux = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L485">		aux.add(from);</span>
+<span class="nc" id="L589">		final BackendID execLocationID = getLocation(into);</span>
+<span class="nc" id="L590">		final DataServiceAPI dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
+<span class="nc" id="L591">		final List&lt;DataClaySerializable&gt; aux = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L592">		aux.add(from);</span>
 
-<span class="nc" id="L487">		final SerializedParametersOrReturn serFrom = DataClaySerializationLib.serializeParamsOrReturn(aux, null, this,</span>
+<span class="nc" id="L594">		final SerializedParametersOrReturn serFrom = DataClaySerializationLib.serializeParamsOrReturn(aux, null, this,</span>
 				true, execLocationID, false);
 
-<span class="nc" id="L490">		final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volObjects = serFrom.getVolatileObjs();</span>
-<span class="nc bnc" id="L491" title="All 2 branches missed.">		if (volObjects != null) {</span>
-<span class="nc" id="L492">			final Map&lt;ObjectID, ObjectID&gt; newIDs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L597">		final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volObjects = serFrom.getVolatileObjs();</span>
+<span class="nc bnc" id="L598" title="All 2 branches missed.">		if (volObjects != null) {</span>
+<span class="nc" id="L599">			final Map&lt;ObjectID, ObjectID&gt; newIDs = new HashMap&lt;&gt;();</span>
 
 			// Set new ids to all volatile objects to decouple them from client-side
 			// Notice that 'from' object will be set with 'into' object ID to
 			// force the deserialization at the EE on 'into' object
-<span class="nc bnc" id="L497" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; curEntry : volObjects.entrySet()) {</span>
-<span class="nc" id="L498">				final ObjectID curObjectID = curEntry.getValue().getObjectID();</span>
-<span class="nc bnc" id="L499" title="All 2 branches missed.">				if (!newIDs.containsKey(curObjectID)) {</span>
+<span class="nc bnc" id="L604" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; curEntry : volObjects.entrySet()) {</span>
+<span class="nc" id="L605">				final ObjectID curObjectID = curEntry.getValue().getObjectID();</span>
+<span class="nc bnc" id="L606" title="All 2 branches missed.">				if (!newIDs.containsKey(curObjectID)) {</span>
 					final ObjectID newID;
-<span class="nc bnc" id="L501" title="All 2 branches missed.">					if (curObjectID.equals(from.getObjectID())) {</span>
-<span class="nc" id="L502">						newID = into;</span>
+<span class="nc bnc" id="L608" title="All 2 branches missed.">					if (curObjectID.equals(from.getObjectID())) {</span>
+<span class="nc" id="L609">						newID = into;</span>
 					} else {
-<span class="nc" id="L504">						newID = new ObjectID();</span>
+<span class="nc" id="L611">						newID = new ObjectID();</span>
 					}
-<span class="nc" id="L506">					newIDs.put(curObjectID, newID);</span>
+<span class="nc" id="L613">					newIDs.put(curObjectID, newID);</span>
 				}
-<span class="nc" id="L508">				curEntry.getValue().setObjectID(newIDs.get(curObjectID));</span>
-<span class="nc" id="L509">			}</span>
-<span class="nc bnc" id="L510" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; curEntry : volObjects.entrySet()) {</span>
-<span class="nc" id="L511">				final DataClayObjectMetaData md = curEntry.getValue().getMetaData();</span>
-<span class="nc" id="L512">				final Map&lt;Integer, ObjectID&gt; oids = md.getOids();</span>
-<span class="nc bnc" id="L513" title="All 2 branches missed.">				for (final Entry&lt;Integer, ObjectID&gt; curOIDEntry : oids.entrySet()) {</span>
-<span class="nc" id="L514">					final ObjectID newID = newIDs.get(curOIDEntry.getValue());</span>
-<span class="nc bnc" id="L515" title="All 2 branches missed.">					if (newID != null) {</span>
-<span class="nc" id="L516">						curOIDEntry.setValue(newID);</span>
+<span class="nc" id="L615">				curEntry.getValue().setObjectID(newIDs.get(curObjectID));</span>
+<span class="nc" id="L616">			}</span>
+<span class="nc bnc" id="L617" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; curEntry : volObjects.entrySet()) {</span>
+<span class="nc" id="L618">				final DataClayObjectMetaData md = curEntry.getValue().getMetaData();</span>
+<span class="nc" id="L619">				final Map&lt;Integer, ObjectID&gt; oids = md.getOids();</span>
+<span class="nc bnc" id="L620" title="All 2 branches missed.">				for (final Entry&lt;Integer, ObjectID&gt; curOIDEntry : oids.entrySet()) {</span>
+<span class="nc" id="L621">					final ObjectID newID = newIDs.get(curOIDEntry.getValue());</span>
+<span class="nc bnc" id="L622" title="All 2 branches missed.">					if (newID != null) {</span>
+<span class="nc" id="L623">						curOIDEntry.setValue(newID);</span>
 					}
-<span class="nc" id="L518">				}</span>
-<span class="nc" id="L519">			}</span>
+<span class="nc" id="L625">				}</span>
+<span class="nc" id="L626">			}</span>
 		}
 
-<span class="nc" id="L522">		dsAPI.updateObject(sessionID, into, serFrom);</span>
-<span class="nc" id="L523">	}</span>
+<span class="nc" id="L629">		dsAPI.updateObject(sessionID, into, serFrom);</span>
+<span class="nc" id="L630">	}</span>
 
 	/**
 	 * All volatiles provided are under deserialization. This function solves problems of 'hashcode' and other special functions
 	 * needed during deserializations. See executeImpl.
 	 * 
-	 * @param volatileMap
+	 * @param volatileSet
 	 *            Volatiles under deserialization.
 	 */
-	public void addVolatileUnderDeserialization(final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volatileMap) {
-<span class="nc" id="L533">		underDeserializationVolatiles.put(Thread.currentThread().getId(), volatileMap);</span>
-<span class="nc" id="L534">	}</span>
+	public void addVolatileUnderDeserialization(final Collection&lt;ObjectWithDataParamOrReturn&gt; volatileSet) {
+<span class="nc bnc" id="L640" title="All 2 branches missed.">		for (ObjectWithDataParamOrReturn vol : volatileSet) {</span>
+<span class="nc" id="L641">			underDeserializationVolatiles.put(vol.getObjectID(), vol);</span>
+<span class="nc" id="L642">		}</span>
+<span class="nc" id="L643">	}</span>
 
 	/**
 	 * Remove volatiles under deserialization.
+	 * @param volatileSet
+	 *            Volatiles under deserialization.
 	 */
-	public void removeVolatilesUnderDeserialization() {
-<span class="nc" id="L540">		underDeserializationVolatiles.remove(Thread.currentThread().getId());</span>
-<span class="nc" id="L541">	}</span>
+	public void removeVolatilesUnderDeserialization(final Collection&lt;ObjectWithDataParamOrReturn&gt; volatileSet) {
+<span class="nc bnc" id="L651" title="All 2 branches missed.">		for (ObjectWithDataParamOrReturn vol : volatileSet) {</span>
+<span class="nc" id="L652">			underDeserializationVolatiles.remove(vol.getObjectID());</span>
+<span class="nc" id="L653">		}</span>
+
+<span class="nc" id="L655">	}</span>
 
 	/**
 	 * Get from Heap or create a new volatile in EE and load data on it.
@@ -558,7 +672,7 @@ public abstract class DataClayRuntime {
 	public DataClayObject getOrNewAndLoadVolatile(final MetaClassID classID, final ObjectID objectID,
 			final BackendID hint, final ObjectWithDataParamOrReturn objWithData,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps) {
-<span class="nc" id="L561">		return dataClayObjLoader.getOrNewAndLoadVolatile(classID, objectID, hint, objWithData, ifaceBitMaps);</span>
+<span class="nc" id="L675">		return dataClayObjLoader.getOrNewAndLoadVolatile(classID, objectID, hint, objWithData, ifaceBitMaps);</span>
 	}
 
 	/**
@@ -577,9 +691,9 @@ public abstract class DataClayRuntime {
 	 *            Parameters to check
 	 */
 	public final void checkConnectionAndParams(final String[] paramNames, final Object[] params) {
-<span class="nc" id="L580">		RuntimeUtils.checkConnection(logicModule);</span>
-<span class="nc" id="L581">		RuntimeUtils.checkNullParams(paramNames, params);</span>
-<span class="nc" id="L582">	}</span>
+<span class="nc" id="L694">		RuntimeUtils.checkConnection(logicModule);</span>
+<span class="nc" id="L695">		RuntimeUtils.checkNullParams(paramNames, params);</span>
+<span class="nc" id="L696">	}</span>
 
 	/**
 	 * Check parameters and connections and session
@@ -591,10 +705,10 @@ public abstract class DataClayRuntime {
 	 * @return Session ID
 	 */
 	public final SessionID checkAndGetSession(final String[] paramNames, final Object[] params) {
-<span class="nc" id="L594">		checkConnectionAndParams(paramNames, params);</span>
-<span class="nc" id="L595">		final SessionID sessionID = getSessionID();</span>
-<span class="nc" id="L596">		RuntimeUtils.checkSession(sessionID);</span>
-<span class="nc" id="L597">		return sessionID;</span>
+<span class="nc" id="L708">		checkConnectionAndParams(paramNames, params);</span>
+<span class="nc" id="L709">		final SessionID sessionID = getSessionID();</span>
+<span class="nc" id="L710">		RuntimeUtils.checkSession(sessionID);</span>
+<span class="nc" id="L711">		return sessionID;</span>
 	}
 
 	/**
@@ -605,19 +719,19 @@ public abstract class DataClayRuntime {
 	 * @return Currently id of object and hint.
 	 */
 	public final Triple&lt;ObjectID, MetaClassID, BackendID&gt; getObjectInfoByAlias(final String alias) {
-<span class="nc" id="L608">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;Alias&quot; }, new Object[] { alias });</span>
+<span class="nc" id="L722">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;Alias&quot; }, new Object[] { alias });</span>
 
-<span class="nc" id="L610">		Triple&lt;ObjectID, MetaClassID, BackendID&gt; result = aliasCache.get(alias);</span>
-<span class="nc bnc" id="L611" title="All 2 branches missed.">		if (result == null) {</span>
-<span class="nc bnc" id="L612" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L613">				LOGGER.debug(&quot;[==Alias==] Object with alias &quot; + alias + &quot; not found in cache. Asking LM.&quot;);</span>
+<span class="nc" id="L724">		Triple&lt;ObjectID, MetaClassID, BackendID&gt; result = aliasCache.get(alias);</span>
+<span class="nc bnc" id="L725" title="All 2 branches missed.">		if (result == null) {</span>
+<span class="nc bnc" id="L726" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L727">				LOGGER.debug(&quot;[==Alias==] Object with alias &quot; + alias + &quot; not found in cache. Asking LM.&quot;);</span>
 			}
-<span class="nc" id="L615">			final Triple&lt;ObjectID, MetaClassID, ExecutionEnvironmentID&gt; aux = logicModule.getObjectFromAlias(sessionID,</span>
+<span class="nc" id="L729">			final Triple&lt;ObjectID, MetaClassID, ExecutionEnvironmentID&gt; aux = logicModule.getObjectFromAlias(sessionID,</span>
 					alias);
-<span class="nc" id="L617">			result = new Triple&lt;&gt;(aux.getFirst(), aux.getSecond(), aux.getThird());</span>
-<span class="nc" id="L618">			aliasCache.put(alias, result);</span>
+<span class="nc" id="L731">			result = new Triple&lt;&gt;(aux.getFirst(), aux.getSecond(), aux.getThird());</span>
+<span class="nc" id="L732">			aliasCache.put(alias, result);</span>
 		}
-<span class="nc" id="L620">		return result;</span>
+<span class="nc" id="L734">		return result;</span>
 	}
 
 	/**
@@ -632,16 +746,16 @@ public abstract class DataClayRuntime {
 		final MetaClassID mid;
 		final BackendID bid;
 
-<span class="nc" id="L635">		final Triple&lt;ObjectID, MetaClassID, BackendID&gt; objInfo = getObjectInfoByAlias(alias);</span>
-<span class="nc" id="L636">		oid = objInfo.getFirst();</span>
-<span class="nc" id="L637">		mid = objInfo.getSecond();</span>
-<span class="nc" id="L638">		bid = objInfo.getThird();</span>
+<span class="nc" id="L749">		final Triple&lt;ObjectID, MetaClassID, BackendID&gt; objInfo = getObjectInfoByAlias(alias);</span>
+<span class="nc" id="L750">		oid = objInfo.getFirst();</span>
+<span class="nc" id="L751">		mid = objInfo.getSecond();</span>
+<span class="nc" id="L752">		bid = objInfo.getThird();</span>
 
-<span class="nc bnc" id="L640" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L641">			LOGGER.debug(&quot;[==GetByAlias==] Creating instance from alias &quot; + oid);</span>
+<span class="nc bnc" id="L754" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L755">			LOGGER.debug(&quot;[==GetByAlias==] Creating instance from alias &quot; + oid);</span>
 		}
 
-<span class="nc" id="L644">		return this.getPersistedObjectByOID(oid, mid, bid);</span>
+<span class="nc" id="L758">		return this.getPersistedObjectByOID(oid, mid, bid);</span>
 	}
 
 	/**
@@ -656,18 +770,18 @@ public abstract class DataClayRuntime {
 	 * @return The object identified by the proved alias and metaclass.
 	 */
 	public final DataClayObject getObjectByAlias(final String alias, MetaClassID metaClassID, boolean safe) {
-<span class="nc bnc" id="L659" title="All 2 branches missed.">		if(safe) {</span>
-<span class="nc" id="L660">			return this.getObjectByAlias(alias);</span>
+<span class="nc bnc" id="L773" title="All 2 branches missed.">		if(safe) {</span>
+<span class="nc" id="L774">			return this.getObjectByAlias(alias);</span>
 		}
 
-<span class="nc" id="L663">		final ObjectID oid = getObjectIDFromAlias(alias);</span>
-<span class="nc" id="L664">		final BackendID bid = this.getBackendIDFromObjectID(oid);</span>
+<span class="nc" id="L777">		final ObjectID oid = getObjectIDFromAlias(alias);</span>
+<span class="nc" id="L778">		final BackendID bid = this.getBackendIDFromObjectID(oid);</span>
 
-<span class="nc bnc" id="L666" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L667">			LOGGER.debug(&quot;[==GetByAlias==] Creating instance from alias &quot; + oid);</span>
+<span class="nc bnc" id="L780" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L781">			LOGGER.debug(&quot;[==GetByAlias==] Creating instance from alias &quot; + oid);</span>
 		}
 
-<span class="nc" id="L670">		return this.getPersistedObjectByOID(oid, metaClassID, bid);</span>
+<span class="nc" id="L784">		return this.getPersistedObjectByOID(oid, metaClassID, bid);</span>
 	}
 
 	/**
@@ -677,10 +791,16 @@ public abstract class DataClayRuntime {
 	 *            alias of the object to be removed
 	 */
 	public final void deleteAlias(final String alias) {
-<span class="nc" id="L680">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;Alias&quot; }, new Object[] { alias });</span>
-<span class="nc" id="L681">		logicModule.deleteAlias(sessionID, alias);</span>
-<span class="nc" id="L682">		aliasCache.remove(alias);</span>
-<span class="nc" id="L683">	}</span>
+<span class="nc" id="L794">		final SessionID sessionID = getSessionID();</span>
+<span class="nc" id="L795">		ObjectID objectID = logicModule.deleteAlias(sessionID, alias);</span>
+<span class="nc" id="L796">		aliasCache.remove(alias);</span>
+<span class="nc" id="L797">	}</span>
+
+	/**
+	 * Method that deletes the alias of an object provided
+	 * @param dcObject the object
+	 */
+	public abstract void deleteAlias(final DataClayObject dcObject);
 
 	/**
 	 * Method that gets DataSetID from an object with id provided
@@ -690,9 +810,9 @@ public abstract class DataClayRuntime {
 	 * @return DataSet of the object
 	 */
 	public final DataSetID getDataSetIDFromObject(final ObjectID oid) {
-<span class="nc" id="L693">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { oid });</span>
-<span class="nc" id="L694">		final DataSetID dsID = logicModule.getObjectDataSetID(sessionID, oid);</span>
-<span class="nc" id="L695">		return dsID;</span>
+<span class="nc" id="L813">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { oid });</span>
+<span class="nc" id="L814">		final DataSetID dsID = logicModule.getObjectDataSetID(sessionID, oid);</span>
+<span class="nc" id="L815">		return dsID;</span>
 	}
 
 	/**
@@ -712,9 +832,90 @@ public abstract class DataClayRuntime {
 	 * @return Class name
 	 */
 	public final String getClassName(final MetaClassID classID) {
-<span class="nc" id="L715">		checkAndGetSession(new String[] { &quot;classID&quot; }, new Object[] { classID });</span>
+<span class="nc" id="L835">		checkAndGetSession(new String[] { &quot;classID&quot; }, new Object[] { classID });</span>
 
-<span class="nc" id="L717">		return getClassNameInternal(classID);</span>
+<span class="nc" id="L837">		return getClassNameInternal(classID);</span>
+	}
+
+	/**
+	 * Helper function to prepare information for new replica - version - consolidate algorithms
+	 * @param objectID ID of the object
+	 * @param objectHint object hint
+	 * @param optDestBackendID Destination backend ID to get information from (can be null)
+	 * @param optDestHostname Destination hostname to get information from (can be null)
+	 * @param differentLocation if true, indicates that destination backend should be different than any location of the object
+	 * @return Tuple with destination backend API to call and:
+	 * 		Either information of dest backend with id provided, some exec env in host provided or random exec env.
+	 */
+	private final Tuple&lt;DataServiceAPI, ExecutionEnvironment&gt; prepareNewReplicaVersionConsolidate(final ObjectID objectID,
+																									final BackendID objectHint,
+																									final BackendID optDestBackendID,
+																								  final String optDestHostname,
+																								  final boolean differentLocation) {
+		// Get an arbitrary object location
+<span class="nc" id="L856">		BackendID execLocationID = objectHint;</span>
+<span class="nc bnc" id="L857" title="All 2 branches missed.">		if (objectHint == null) {</span>
+<span class="nc" id="L858">			execLocationID = getLocation(objectID);</span>
+		}
+		// Get language from origin location
+<span class="nc" id="L861">		Langs objectLanguage = this.getExecutionEnvironmentInfo(execLocationID).getLang();</span>
+<span class="nc" id="L862">		final DataServiceAPI dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
+<span class="nc" id="L863">		ExecutionEnvironmentID destBackendID = (ExecutionEnvironmentID) optDestBackendID;</span>
+<span class="nc" id="L864">		ExecutionEnvironment destBackend = null;</span>
+<span class="nc bnc" id="L865" title="All 2 branches missed.">		if (destBackendID == null) {</span>
+<span class="nc bnc" id="L866" title="All 2 branches missed.">			if (optDestHostname != null) {</span>
+				// Get some execution environment in that host
+<span class="nc" id="L868">				Map&lt;BackendID, ExecutionEnvironment&gt; execsInHost = getAllExecutionEnvironmentsAtHost(objectLanguage,</span>
+						optDestHostname);
+<span class="nc bnc" id="L870" title="All 4 branches missed.">				if (execsInHost != null &amp;&amp; !execsInHost.isEmpty()) {</span>
+<span class="nc" id="L871">					destBackend = execsInHost.values().iterator().next();</span>
+<span class="nc" id="L872">					destBackendID = destBackend.getDataClayID();</span>
+				}
+			}
+<span class="nc bnc" id="L875" title="All 2 branches missed.">			if (destBackend == null) {</span>
+				// no destination backend specified, get one randomly in which object is
+				// not registered
+				// === RANDOM === //
+<span class="nc" id="L879">				Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; backends =</span>
+<span class="nc" id="L880">						this.getAllExecutionEnvironmentsAtDataClay(objectLanguage, this.getDataClayID(), false);</span>
+
+<span class="nc bnc" id="L882" title="All 2 branches missed.">				if (differentLocation) {</span>
+<span class="nc" id="L883">					Set&lt;BackendID&gt; locations = this.getAllLocations(objectID);</span>
+<span class="nc bnc" id="L884" title="All 2 branches missed.">					for (Entry&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; eeEntry : backends.entrySet()) {</span>
+<span class="nc" id="L885">						ExecutionEnvironmentID eeID = eeEntry.getKey();</span>
+<span class="nc" id="L886">						ExecutionEnvironment execEnv = eeEntry.getValue();</span>
+<span class="nc bnc" id="L887" title="All 2 branches missed.">						if (!locations.contains(eeID)) {</span>
+<span class="nc" id="L888">							destBackendID = eeID;</span>
+<span class="nc" id="L889">							destBackend = execEnv;</span>
+<span class="nc" id="L890">							break;</span>
+						}
+<span class="nc" id="L892">					}</span>
+<span class="nc bnc" id="L893" title="All 2 branches missed.">					if (destBackend == null) {</span>
+<span class="nc" id="L894">						LOGGER.debug(&quot;Could not find any different location for replica, updating available exec envs&quot;);</span>
+
+<span class="nc" id="L896">						backends =</span>
+<span class="nc" id="L897">								this.getAllExecutionEnvironmentsAtDataClay(objectLanguage, this.getDataClayID(), true);</span>
+<span class="nc bnc" id="L898" title="All 2 branches missed.">						for (Entry&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; eeEntry : backends.entrySet()) {</span>
+<span class="nc" id="L899">							ExecutionEnvironmentID eeID = eeEntry.getKey();</span>
+<span class="nc" id="L900">							ExecutionEnvironment execEnv = eeEntry.getValue();</span>
+<span class="nc bnc" id="L901" title="All 2 branches missed.">							if (!locations.contains(eeID)) {</span>
+<span class="nc" id="L902">								destBackendID = eeID;</span>
+<span class="nc" id="L903">								destBackend = execEnv;</span>
+<span class="nc" id="L904">								break;</span>
+							}
+<span class="nc" id="L906">						}</span>
+					}
+				}
+<span class="nc bnc" id="L909" title="All 2 branches missed.">				if (destBackend == null) {</span>
+<span class="nc" id="L910">					destBackendID = (ExecutionEnvironmentID) execLocationID;</span>
+<span class="nc" id="L911">					destBackend = this.getExecutionEnvironmentInfo(destBackendID);</span>
+				}
+<span class="nc" id="L913">			}</span>
+		} else {
+<span class="nc" id="L915">			destBackend = getExecutionEnvironmentInfo(destBackendID);</span>
+		}
+
+<span class="nc" id="L918">		return new Tuple&lt;&gt;(dsAPI, destBackend);</span>
 	}
 
 	/**
@@ -723,41 +924,58 @@ public abstract class DataClayRuntime {
 	 * 
 	 * @param objectID
 	 *            ID of the object
-	 * @param classID
-	 *            Class ID of the object
-	 * @param hint
-	 *            Hint of the object
-	 * @param optDestBackendID
-	 *            ID of the backend in which to store the version the object (optional)
-	 * @return The ID of the version or NULL if some error is thrown.
+	 * @param objectHint object hint
+	 * @param classID ID of the class of the object
+	 * @param dataSetID ID of the dataset of the object
+	 * @param optDestBackendID ID of the backend in which to store the version the object (optional)
+	 * @param optDestHostname Hostname of the backend in which to replicate the object (optional)
+	 * @return Version ID and destination backend ID
 	 */
-	public final VersionInfo newVersion(final ObjectID objectID, final MetaClassID classID, final BackendID hint,
-			final BackendID optDestBackendID) {
-<span class="nc" id="L736">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
+	public final Tuple&lt;ObjectID, BackendID&gt; newVersion(final ObjectID objectID,
+													   final ExecutionEnvironmentID objectHint,
+			final MetaClassID classID, final DataSetID dataSetID,
+			final BackendID optDestBackendID, final String optDestHostname) {
+<span class="nc" id="L938">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
 
-		// Make sure object is registered
-<span class="nc" id="L739">		ensureObjectRegistered(sessionID, objectID, classID, hint);</span>
-<span class="nc" id="L740">		final VersionInfo result = logicModule.newVersion(sessionID, objectID, (ExecutionEnvironmentID) optDestBackendID);</span>
-<span class="nc" id="L741">		this.metaDataCache.remove(objectID);</span>
-<span class="nc" id="L742">		return result;</span>
+		// FIXME: retry in different replica location if it fails
+<span class="nc" id="L941">		Tuple&lt;DataServiceAPI, ExecutionEnvironment&gt; destInfo = this.prepareNewReplicaVersionConsolidate(objectID, objectHint,</span>
+				optDestBackendID, optDestHostname, false);
+<span class="nc" id="L943">		DataServiceAPI dsAPI = destInfo.getFirst();</span>
+<span class="nc" id="L944">		ExecutionEnvironment destBackend = destInfo.getSecond();</span>
+<span class="nc" id="L945">		ExecutionEnvironmentID destBackendID = destBackend.getDataClayID();</span>
+<span class="nc" id="L946">		ObjectID newVersionOID = dsAPI.newVersion(sessionID, objectID, destBackendID);</span>
+
+		// update cache of metadata info
+<span class="nc" id="L949">		Set&lt;ExecutionEnvironmentID&gt; locations = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L950">		locations.add((ExecutionEnvironmentID) destBackendID);</span>
+<span class="nc" id="L951">		MetaDataInfo newMetaDataInfo = new MetaDataInfo(newVersionOID,</span>
+				dataSetID, classID, false, locations, null, null);
+<span class="nc" id="L953">		this.metaDataCache.put(newVersionOID, newMetaDataInfo);</span>
+<span class="nc" id="L954">		return new Tuple&lt;&gt;(newVersionOID, destBackendID);</span>
 	}
 
 	/**
 	 * Makes the object with finalVersionID the definitive version of the object with originalObjectID. The original version is
 	 * deleted.
 	 * 
-	 * @param version
-	 *            Info about the version to consolidate, containing the OID of the root and the mapping versionOID-originalOID
-	 *            for all the versioned objects
+	 * @param versionOID ID of version object to consolidate
+	 * @param objectHint object hint
 	 */
-	public final void consolidateVersion(final VersionInfo version) {
-<span class="nc" id="L754">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;version&quot; }, new Object[] { version });</span>
-<span class="nc bnc" id="L755" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L756">			LOGGER.debug(&quot;[==Consolidate==] Consolidate version &quot; + &quot;with oid &quot; + version.getVersionOID());</span>
+	public final void consolidateVersion(final ObjectID versionOID, final ExecutionEnvironmentID objectHint) {
+		// FIXME: retry in different replica location if it fails
+<span class="nc" id="L966">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;versionOID&quot; }, new Object[] { versionOID });</span>
+<span class="nc bnc" id="L967" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L968">			LOGGER.debug(&quot;[==Consolidate==] Consolidate version &quot; + &quot;with oid &quot; + versionOID);</span>
 		}
-<span class="nc" id="L758">		logicModule.consolidateVersion(sessionID, version);</span>
-
-<span class="nc" id="L760">	}</span>
+		// Get object location
+<span class="nc" id="L971">		BackendID execLocationID = objectHint;</span>
+<span class="nc bnc" id="L972" title="All 2 branches missed.">		if (objectHint == null) {</span>
+<span class="nc" id="L973">			execLocationID = getLocation(versionOID);</span>
+		}
+		// Get language from origin location
+<span class="nc" id="L976">		final DataServiceAPI dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
+<span class="nc" id="L977">		dsAPI.consolidateVersion(sessionID, versionOID);</span>
+<span class="nc" id="L978">	}</span>
 
 	/**
 	 * Replicates an object. If a Backend is provided the object is replicated to this backend, otherwise it is replicated to
@@ -765,27 +983,44 @@ public abstract class DataClayRuntime {
 	 * 
 	 * @param objectID
 	 *            ID of the object
-	 * @param classID
-	 *            Class ID of the object
-	 * @param hint
-	 *            Hint of the object
+	 * @param objectHint object hint
 	 * @param optDestBackendID
 	 *            ID of the backend in which to replicate the object (optional)
+	 * @param optDestHostname Hostname of the backend in which to replicate the object (optional)
 	 * @param recursive
 	 *            Indicates if we should also replicate all sub-objects or not.
 	 * @return The ID of the backend in which the replica was created or NULL if some error is thrown.
 	 * 
 	 */
-	public final BackendID newReplica(final ObjectID objectID, final MetaClassID classID, final BackendID hint,
-			final BackendID optDestBackendID, final boolean recursive) {
-<span class="nc" id="L781">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
+	public final BackendID newReplica(final ObjectID objectID, final BackendID objectHint,
+									  final BackendID optDestBackendID, final String optDestHostname,
+									  final boolean recursive) {
+		// FIXME: retry in different replica location if it fails
 
-		// Make sure object is registered
-<span class="nc" id="L784">		ensureObjectRegistered(sessionID, objectID, classID, hint);</span>
-<span class="nc" id="L785">		final ExecutionEnvironmentID backendID = logicModule.newReplica(sessionID, objectID, (ExecutionEnvironmentID) optDestBackendID,</span>
-						recursive);
-<span class="nc" id="L787">		this.metaDataCache.remove(objectID);</span>
-<span class="nc" id="L788">		return backendID;</span>
+<span class="nc" id="L1000">		final SessionID sessionID = checkAndGetSession(new String[] { }, new Object[] {  });</span>
+
+<span class="nc" id="L1002">		Tuple&lt;DataServiceAPI, ExecutionEnvironment&gt; destInfo = this.prepareNewReplicaVersionConsolidate(objectID, objectHint,</span>
+				optDestBackendID, optDestHostname, true);
+<span class="nc" id="L1004">		DataServiceAPI dsAPI = destInfo.getFirst();</span>
+<span class="nc" id="L1005">		ExecutionEnvironment destBackend = destInfo.getSecond();</span>
+<span class="nc" id="L1006">		Set&lt;ObjectID&gt; replicatedObjects = dsAPI.newReplica(sessionID, objectID, destBackend.getDataClayID(), recursive);</span>
+<span class="nc bnc" id="L1007" title="All 2 branches missed.">		for (ObjectID replicatedObjectID : replicatedObjects) {</span>
+			// update metadata of the object in cache (if present!)
+<span class="nc" id="L1009">			MetaDataInfo mdInfo = getObjectMetadata(replicatedObjectID);</span>
+<span class="nc bnc" id="L1010" title="All 2 branches missed.">			if (mdInfo != null) {</span>
+<span class="nc" id="L1011">				mdInfo.getLocations().add(destBackend.getDataClayID());</span>
+			}
+
+			// Add replica location
+<span class="nc" id="L1015">			DataClayObject dcObj = this.getFromHeap(objectID);</span>
+<span class="nc" id="L1016">			dcObj.addReplicaLocations(destBackend.getDataClayID());</span>
+<span class="nc bnc" id="L1017" title="All 2 branches missed.">			if (dcObj.getOriginLocation() == null) {</span>
+				// ONLY AT CLIENT SIDE: if it has origin location then keep that origin location
+				// at client side there cannot be two replicas of same oid
+<span class="nc" id="L1020">				dcObj.setOriginLocation((ExecutionEnvironmentID) objectHint);</span>
+			}
+<span class="nc" id="L1022">		}</span>
+<span class="nc" id="L1023">		return destBackend.getDataClayID();</span>
 	}
 
 	/**
@@ -807,16 +1042,16 @@ public abstract class DataClayRuntime {
 	public final void moveObject(final ObjectID objectID, final MetaClassID classID, final BackendID hint,
 			final BackendID srcBackendID, final BackendID destBackendID, final boolean recursive) {
 
-<span class="nc bnc" id="L810" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L811">			LOGGER.debug(&quot;[==MOVE==] Moving object &quot; + objectID + &quot; from &quot; + srcBackendID + &quot; to &quot; + destBackendID</span>
+<span class="nc bnc" id="L1045" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1046">			LOGGER.debug(&quot;[==MOVE==] Moving object &quot; + objectID + &quot; from &quot; + srcBackendID + &quot; to &quot; + destBackendID</span>
 					+ &quot;, recursive = &quot; + recursive);
 		}
 
-<span class="nc bnc" id="L815" title="All 2 branches missed.">		if (srcBackendID.equals(destBackendID)) {</span>
-<span class="nc" id="L816">			return; // ignore</span>
+<span class="nc bnc" id="L1050" title="All 2 branches missed.">		if (srcBackendID.equals(destBackendID)) {</span>
+<span class="nc" id="L1051">			return; // ignore</span>
 		}
 
-<span class="nc" id="L819">		final SessionID sessionID = checkAndGetSession(</span>
+<span class="nc" id="L1054">		final SessionID sessionID = checkAndGetSession(</span>
 				new String[] { &quot;ObjectID&quot;, &quot;SrcStorageLocationID&quot;, &quot;DestStorageLocationID&quot; },
 				new Object[] { objectID, srcBackendID, destBackendID });
 
@@ -828,7 +1063,7 @@ public abstract class DataClayRuntime {
 		// already registered, just
 		// continue.
 		// Make sure object is registered.
-<span class="nc" id="L831">		final RegistrationInfo regInfo = new RegistrationInfo(objectID, classID, sessionID, null);</span>
+<span class="nc" id="L1066">		final RegistrationInfo regInfo = new RegistrationInfo(objectID, classID, sessionID, null, null);</span>
 		// alias must be null
 		// NOTE: LogicModule register object function does not return an exception for
 		// already registered
@@ -841,29 +1076,31 @@ public abstract class DataClayRuntime {
 		// we must change the algorithms to not depend on metadata.
 		// Also, location in which to register the object is the hint (in case it is not
 		// registered yet).
-<span class="nc" id="L844">		logicModule.registerObject(regInfo, (ExecutionEnvironmentID) hint, null, Langs.LANG_JAVA);</span>
+<span class="nc" id="L1079">		List&lt;RegistrationInfo&gt; regInfos = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L1080">		regInfos.add(regInfo);</span>
+<span class="nc" id="L1081">		logicModule.registerObjects(regInfos, (ExecutionEnvironmentID) hint, Langs.LANG_JAVA);</span>
 
-<span class="nc" id="L846">		final List&lt;ObjectID&gt; movedObjs = logicModule.moveObject(sessionID, objectID,</span>
+<span class="nc" id="L1083">		final List&lt;ObjectID&gt; movedObjs = logicModule.moveObject(sessionID, objectID,</span>
 				(ExecutionEnvironmentID) srcBackendID, (ExecutionEnvironmentID) destBackendID, recursive);
 
-<span class="nc" id="L849">		final BackendID newhint = destBackendID;</span>
-<span class="nc bnc" id="L850" title="All 2 branches missed.">		for (final ObjectID movedOID : movedObjs) {</span>
-<span class="nc" id="L851">			final DataClayObject obj = this.getFromHeap(movedOID);</span>
-<span class="nc bnc" id="L852" title="All 2 branches missed.">			if (obj != null) {</span>
-<span class="nc bnc" id="L853" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L854">					LOGGER.debug(&quot;[==Hint==] Setting hint (moveObject) on instance &quot; + obj.getObjectID()</span>
-<span class="nc" id="L855">					+ &quot; the hint : &quot; + getDSNameOfHint(newhint));</span>
+<span class="nc" id="L1086">		final BackendID newhint = destBackendID;</span>
+<span class="nc bnc" id="L1087" title="All 2 branches missed.">		for (final ObjectID movedOID : movedObjs) {</span>
+<span class="nc" id="L1088">			final DataClayObject obj = this.getFromHeap(movedOID);</span>
+<span class="nc bnc" id="L1089" title="All 2 branches missed.">			if (obj != null) {</span>
+<span class="nc bnc" id="L1090" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1091">					LOGGER.debug(&quot;[==Hint==] Setting hint (moveObject) on instance &quot; + obj.getObjectID()</span>
+<span class="nc" id="L1092">					+ &quot; the hint : &quot; + getDSNameOfHint(newhint));</span>
 				}
-<span class="nc" id="L857">				obj.setHint(newhint);</span>
-<span class="nc bnc" id="L858" title="All 2 branches missed.">				if (obj.getMasterLocation() != null) {</span>
-<span class="nc bnc" id="L859" title="All 2 branches missed.">					if (obj.getMasterLocation().equals(getHint())) {</span>
-<span class="nc" id="L860">						obj.setMasterLocation(newhint);</span>
+<span class="nc" id="L1094">				obj.setHint(newhint);</span>
+<span class="nc bnc" id="L1095" title="All 2 branches missed.">				if (obj.getMasterLocation() != null) {</span>
+<span class="nc bnc" id="L1096" title="All 2 branches missed.">					if (obj.getMasterLocation().equals(getHint())) {</span>
+<span class="nc" id="L1097">						obj.setMasterLocation(newhint);</span>
 					}
 				}
 			}
-<span class="nc" id="L864">			this.metaDataCache.remove(movedOID);</span>
-<span class="nc" id="L865">		}</span>
-<span class="nc" id="L866">	}</span>
+<span class="nc" id="L1101">			this.metaDataCache.remove(movedOID);</span>
+<span class="nc" id="L1102">		}</span>
+<span class="nc" id="L1103">	}</span>
 
 	/**
 	 * Set a persistent object as read only Logic module API used for communication
@@ -876,11 +1113,9 @@ public abstract class DataClayRuntime {
 	 *            Hint of the object
 	 */
 	public final void setObjectReadOnly(final ObjectID objectID, final MetaClassID classID, final BackendID hint) {
-<span class="nc" id="L879">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
-<span class="nc" id="L880">		this.ensureObjectRegistered(sessionID, objectID, classID, hint);</span>
-<span class="nc" id="L881">		logicModule.setObjectReadOnly(sessionID, objectID);</span>
-<span class="nc" id="L882">		this.metaDataCache.remove(objectID);</span>
-<span class="nc" id="L883">	}</span>
+<span class="nc" id="L1116">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
+		// TODO: call DS to set object read only
+<span class="nc" id="L1118">	}</span>
 
 	/**
 	 * Set a persistent object as read write
@@ -893,56 +1128,9 @@ public abstract class DataClayRuntime {
 	 *            Hint of the object
 	 */
 	public final void setObjectReadWrite(final ObjectID objectID, final MetaClassID classID, final BackendID hint) {
-<span class="nc" id="L896">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
-<span class="nc" id="L897">		this.ensureObjectRegistered(sessionID, objectID, classID, hint);</span>
-<span class="nc" id="L898">		logicModule.setObjectReadWrite(sessionID, objectID);</span>
-<span class="nc" id="L899">		this.metaDataCache.remove(objectID);</span>
-<span class="nc" id="L900">	}</span>
-
-	/**
-	 * Ensure registration of an object. new replica/version/consolidate/move algorithms should not require registered metadata
-	 * in LogicModule since new make persistent implementation behaves like volatiles and metadata is created eventually, not
-	 * synchronously. Currently, we try to register it and if it is already registered, just continue.
-	 * 
-	 * @param sessionID
-	 *            ID of session registering object
-	 * @param objectID
-	 *            ID of object to register
-	 * @param classID
-	 *            ID of class of the object
-	 * @param hint
-	 *            Hint of the object
-	 */
-	private void ensureObjectRegistered(final SessionID sessionID, final ObjectID objectID, final MetaClassID classID,
-			final BackendID hint) {
-
-		// FIXME: new replica/version/consolidate/move algorithms should not require
-		// registered metadata in
-		// LogicModule since new make persistent implementation behaves like volatiles
-		// and metadata is created
-		// eventually, not synchronously. Currently, we try to register it and if it is
-		// already registered, just
-		// continue.
-		// Make sure object is registered.
-<span class="nc" id="L927">		final RegistrationInfo regInfo = new RegistrationInfo(objectID, classID, sessionID, null);</span>
-		// alias must be null
-		// NOTE: LogicModule register object function does not return an exception for
-		// already registered
-		// object. We should never call registerObject for already registered objects
-		// and that's dataClay
-		// code (check isPendingToRegister in EE or isPersistent,.. see makePersistent),
-		// and remember that,
-		// this is a workaround, registerObject should never be called for
-		// replica/version/consolidate algorithms,
-		// we must change the algorithms to not depend on metadata.
-		// Also, location in which to register the object is the hint (in case it is not
-		// registered yet).
-		try {
-<span class="nc" id="L941">			logicModule.registerObject(regInfo, (ExecutionEnvironmentID) hint, null, Langs.LANG_JAVA);</span>
-<span class="nc" id="L942">		} catch (Exception e) { </span>
-			//ignore
-<span class="nc" id="L944">		}</span>
-<span class="nc" id="L945">	}</span>
+<span class="nc" id="L1131">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
+		// TODO: call DS to set object read only
+<span class="nc" id="L1133">	}</span>
 
 	/**
 	 * Get the ID of some backend in which the object identified by the stub instance provided is located
@@ -952,33 +1140,33 @@ public abstract class DataClayRuntime {
 	 * @return ID of some backend in which the object is located or NULL if some error is thrown.
 	 */
 	public final BackendID getLocation(final ObjectID objectID) {
-<span class="nc" id="L955">		checkConnectionAndParams(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
+<span class="nc" id="L1143">		checkConnectionAndParams(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
 
-<span class="nc bnc" id="L957" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L958">			LOGGER.debug(&quot;[==GetLocation==] Obtaining location for &quot; + objectID);</span>
+<span class="nc bnc" id="L1145" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1146">			LOGGER.debug(&quot;[==GetLocation==] Obtaining location for &quot; + objectID);</span>
 		}
-<span class="nc" id="L960">		BackendID locationID = null;</span>
+<span class="nc" id="L1148">		BackendID locationID = null;</span>
 
 		// Get Hint
-<span class="nc" id="L963">		final DataClayObject obj = this.getFromHeap(objectID);</span>
-<span class="nc bnc" id="L964" title="All 2 branches missed.">		if (obj != null) {</span>
-<span class="nc" id="L965">			locationID = obj.getHint();</span>
-<span class="nc bnc" id="L966" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L967">				LOGGER.debug(&quot;[==GetLocation==] Obtained location for &quot; + objectID + &quot; from exec.hint: &quot; + locationID);</span>
+<span class="nc" id="L1151">		final DataClayObject obj = this.getFromHeap(objectID);</span>
+<span class="nc bnc" id="L1152" title="All 2 branches missed.">		if (obj != null) {</span>
+<span class="nc" id="L1153">			locationID = obj.getHint();</span>
+<span class="nc bnc" id="L1154" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1155">				LOGGER.debug(&quot;[==GetLocation==] Obtained location for &quot; + objectID + &quot; from exec.hint: &quot; + locationID);</span>
 			}
 		}
-<span class="nc bnc" id="L970" title="All 2 branches missed.">		if (locationID != null) {</span>
-<span class="nc" id="L971">			return locationID;</span>
+<span class="nc bnc" id="L1158" title="All 2 branches missed.">		if (locationID != null) {</span>
+<span class="nc" id="L1159">			return locationID;</span>
 		} else {
 			// If the object is not initialized well trying to obtain location from metadata
-<span class="nc" id="L974">			final MetaDataInfo metadata = getObjectMetadata(objectID);</span>
-<span class="nc bnc" id="L975" title="All 2 branches missed.">			if (metadata == null) {</span>
+<span class="nc" id="L1162">			MetaDataInfo metadata = getObjectMetadata(objectID);</span>
+<span class="nc bnc" id="L1163" title="All 2 branches missed.">			if (metadata == null) {</span>
 				// no metadata available, throw exception
 				// NOTE: if it is a volatile and hint failed, it means that object is actually
 				// not registered
-<span class="nc" id="L979">				throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L1167">				throw new ObjectNotRegisteredException(objectID);</span>
 			}
-<span class="nc" id="L981">			return metadata.getLocations().keySet().iterator().next();</span>
+<span class="nc" id="L1169">			return metadata.getLocations().iterator().next();</span>
 		}
 	}
 
@@ -990,34 +1178,52 @@ public abstract class DataClayRuntime {
 	 * @return IDs of the backends in which the object is located or NULL if some error is thrown.
 	 */
 	public final Set&lt;BackendID&gt; getAllLocations(final ObjectID objectID) {
-<span class="nc" id="L993">		checkConnectionAndParams(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
-<span class="nc bnc" id="L994" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L995">			LOGGER.debug(&quot;[==GetAllLocations==] For &quot; + objectID);</span>
-		}
-<span class="nc" id="L997">		final MetaDataInfo metadata = getObjectMetadata(objectID);</span>
-<span class="nc bnc" id="L998" title="All 2 branches missed.">		if (metadata != null) {</span>
-<span class="nc" id="L999">			return new HashSet&lt;&gt;(metadata.getLocations().keySet());</span>
-		} else {
-<span class="nc bnc" id="L1001" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1002">				LOGGER.debug(&quot;[==GetLocation==] Object&quot; + objectID + &quot;has not metadata&quot;);</span>
+<span class="nc" id="L1181">		checkConnectionAndParams(new String[] { &quot;ObjectID&quot; }, new Object[] { objectID });</span>
+<span class="nc" id="L1182">		LOGGER.debug(&quot;Getting all locations of object &quot; + objectID);</span>
+		// First get object locations
+<span class="nc" id="L1184">		Set&lt;BackendID&gt; locations = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1185">		DataClayObject dcObject = this.getFromHeap(objectID);</span>
+<span class="nc bnc" id="L1186" title="All 2 branches missed.">		if (dcObject != null) {</span>
+<span class="nc" id="L1187">			Set&lt;ExecutionEnvironmentID&gt; replicaLocs = dcObject.getReplicaLocations();</span>
+<span class="nc bnc" id="L1188" title="All 2 branches missed.">			if (replicaLocs != null) {</span>
+<span class="nc" id="L1189">				LOGGER.debug(&quot;Found replica locations:&quot; + replicaLocs);</span>
+<span class="nc" id="L1190">				locations.addAll(replicaLocs);</span>
 			}
+<span class="nc bnc" id="L1192" title="All 2 branches missed.">			if (dcObject.getOriginLocation() != null) {</span>
+<span class="nc" id="L1193">				LOGGER.debug(&quot;Found origin location:&quot; + dcObject.getOriginLocation());</span>
+<span class="nc" id="L1194">				locations.add(dcObject.getOriginLocation());</span>
+			}
+		}
+<span class="nc" id="L1197">		final MetaDataInfo metadata = getObjectMetadata(objectID);</span>
+<span class="nc bnc" id="L1198" title="All 2 branches missed.">		if (metadata != null) {</span>
+<span class="nc" id="L1199">			locations.addAll(metadata.getLocations());</span>
+<span class="nc" id="L1200">			LOGGER.debug(&quot;Found metadata in cache, adding: &quot; + metadata.getLocations());</span>
 			// Get Hint
-<span class="nc" id="L1005">			final Set&lt;BackendID&gt; locations = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L1006">			final DataClayObject obj = this.getFromHeap(objectID);</span>
-<span class="nc bnc" id="L1007" title="All 2 branches missed.">			if (obj != null) {</span>
-<span class="nc" id="L1008">				final BackendID locationID = obj.getHint();</span>
-<span class="nc bnc" id="L1009" title="All 2 branches missed.">				if (locationID != null) {</span>
-<span class="nc bnc" id="L1010" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1011">						LOGGER.debug(&quot;[==GetLocation==] Obtained location for &quot; + objectID + &quot; from exec.hint: &quot;</span>
-								+ locationID);
-					}
-<span class="nc" id="L1014">					locations.add(locationID);</span>
+<span class="nc" id="L1202">			final DataClayObject obj = this.getFromHeap(objectID);</span>
+<span class="nc bnc" id="L1203" title="All 2 branches missed.">			if (obj != null) {</span>
+<span class="nc" id="L1204">				final BackendID locationID = obj.getHint();</span>
+<span class="nc bnc" id="L1205" title="All 2 branches missed.">				if (locationID != null) {</span>
+<span class="nc" id="L1206">					LOGGER.debug(&quot;Adding hint location: &quot; + locationID);</span>
+<span class="nc" id="L1207">					locations.add(locationID);</span>
+				}
+			}
+<span class="nc" id="L1210">			LOGGER.debug(&quot;Found locations: &quot; + locations);</span>
+<span class="nc" id="L1211">			return locations;</span>
+		} else {
+			// Get Hint
+<span class="nc" id="L1214">			final DataClayObject obj = this.getFromHeap(objectID);</span>
+<span class="nc bnc" id="L1215" title="All 2 branches missed.">			if (obj != null) {</span>
+<span class="nc" id="L1216">				final BackendID locationID = obj.getHint();</span>
+<span class="nc bnc" id="L1217" title="All 2 branches missed.">				if (locationID != null) {</span>
+<span class="nc" id="L1218">					LOGGER.debug(&quot;Not found metadata in cache, adding hint location: &quot; + locationID);</span>
+<span class="nc" id="L1219">					locations.add(locationID);</span>
 				} else {
-<span class="nc" id="L1016">					throw new DataClayRuntimeException(ERRORCODE.UNEXPECTED_EXCEPTION,</span>
+<span class="nc" id="L1221">					throw new DataClayRuntimeException(ERRORCODE.UNEXPECTED_EXCEPTION,</span>
 							&quot;The object &quot; + objectID + &quot; is not initialized well, hint missing or not exist&quot;, true);
 				}
-			} // else, can be only a String from COMPSs.
-<span class="nc" id="L1020">			return locations;</span>
+			}
+<span class="nc" id="L1225">			LOGGER.debug(&quot;Found locations: &quot; + locations);</span>
+<span class="nc" id="L1226">			return locations;</span>
 		}
 	}
 
@@ -1029,10 +1235,10 @@ public abstract class DataClayRuntime {
 	 * @return name of node associated to hint
 	 */
 	public final String getDSNameOfHint(final BackendID hint) {
-<span class="nc bnc" id="L1032" title="All 2 branches missed.">		if (hint == null) {</span>
-<span class="nc" id="L1033">			return null;</span>
+<span class="nc bnc" id="L1238" title="All 2 branches missed.">		if (hint == null) {</span>
+<span class="nc" id="L1239">			return null;</span>
 		}
-<span class="nc" id="L1035">		return this.getExecutionEnvironmentInfo(hint).getName();</span>
+<span class="nc" id="L1241">		return this.getExecutionEnvironmentInfo(hint).getName();</span>
 	}
 
 	/**
@@ -1055,23 +1261,28 @@ public abstract class DataClayRuntime {
 	public final SerializedParametersOrReturn serializeParams(final DataClayObject objectInWhichToExec,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final ImplementationID implID, final Object[] params,
 			final boolean forUpdate, final BackendID hintVolatiles) {
-<span class="nc bnc" id="L1058" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1059">			LOGGER.debug(&quot;[==Serialization==] Serializing parameters&quot;);</span>
+<span class="nc bnc" id="L1264" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1265">			String paramTypes = &quot;&quot;;</span>
+<span class="nc bnc" id="L1266" title="All 2 branches missed.">			for (Object param : params) {</span>
+<span class="nc" id="L1267">				paramTypes = paramTypes + param.getClass().getName() + &quot;, &quot;;</span>
+			}
+<span class="nc" id="L1269">			LOGGER.debug(&quot;[==Serialization==] Serializing parameters: &quot; + paramTypes);</span>
+
 		}
 
 		// Wrap parameters
-<span class="nc" id="L1063">		final List&lt;DataClaySerializable&gt; wrappedParams = objectInWhichToExec.wrapParameters(implID, params);</span>
+<span class="nc" id="L1274">		final List&lt;DataClaySerializable&gt; wrappedParams = objectInWhichToExec.wrapParameters(implID, params);</span>
 		// Serialize parameters
 		// IfaceBitMaps = null. From client stub is controlling it.
-<span class="nc bnc" id="L1066" title="All 2 branches missed.">		if (wrappedParams.isEmpty()) {</span>
-<span class="nc bnc" id="L1067" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1068">				LOGGER.debug(&quot;[==Serialization==] No parameters to serialize&quot;);</span>
+<span class="nc bnc" id="L1277" title="All 2 branches missed.">		if (wrappedParams.isEmpty()) {</span>
+<span class="nc bnc" id="L1278" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1279">				LOGGER.debug(&quot;[==Serialization==] No parameters to serialize&quot;);</span>
 			}
-<span class="nc" id="L1070">			return null;</span>
+<span class="nc" id="L1281">			return null;</span>
 		} else {
-<span class="nc" id="L1072">			final SerializedParametersOrReturn serParams = DataClaySerializationLib</span>
-<span class="nc" id="L1073">					.serializeParamsOrReturn(wrappedParams, ifaceBitMaps, this, forUpdate, hintVolatiles, false);</span>
-<span class="nc" id="L1074">			return serParams;</span>
+<span class="nc" id="L1283">			final SerializedParametersOrReturn serParams = DataClaySerializationLib</span>
+<span class="nc" id="L1284">					.serializeParamsOrReturn(wrappedParams, ifaceBitMaps, this, forUpdate, hintVolatiles, false);</span>
+<span class="nc" id="L1285">			return serParams;</span>
 		}
 	}
 
@@ -1090,32 +1301,32 @@ public abstract class DataClayRuntime {
 	 */
 	public final SerializedParametersOrReturn serializeReturn(final DataClayObject objectInWhichToExec,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final ImplementationID implID, final Object ret) {
-<span class="nc bnc" id="L1093" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1094">			LOGGER.debug(&quot;[==Serialization==] Serializing return&quot;);</span>
+<span class="nc bnc" id="L1304" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1305">			LOGGER.debug(&quot;[==Serialization==] Serializing return&quot;);</span>
 		}
-<span class="nc bnc" id="L1096" title="All 2 branches missed.">		if (ret == null) {</span>
-<span class="nc bnc" id="L1097" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1098">				LOGGER.debug(&quot;[==Serialization==] No return to serialize&quot;);</span>
+<span class="nc bnc" id="L1307" title="All 2 branches missed.">		if (ret == null) {</span>
+<span class="nc bnc" id="L1308" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1309">				LOGGER.debug(&quot;[==Serialization==] No return to serialize&quot;);</span>
 			}
-<span class="nc" id="L1100">			return null;</span>
+<span class="nc" id="L1311">			return null;</span>
 		}
 
 		// Return of an object from DataClay is always persistent. Should not find any
 		// volatile.
 
 		// Wrap parameters
-<span class="nc" id="L1107">		final List&lt;DataClaySerializable&gt; wrapList = objectInWhichToExec.wrapReturn(implID, ret);</span>
+<span class="nc" id="L1318">		final List&lt;DataClaySerializable&gt; wrapList = objectInWhichToExec.wrapReturn(implID, ret);</span>
 
 		// Serialize parameters
 		// IfaceBitMaps = null. From client stub is controlling it.
-<span class="nc" id="L1111">		final SerializedParametersOrReturn serReturn = DataClaySerializationLib.serializeParamsOrReturn(wrapList,</span>
+<span class="nc" id="L1322">		final SerializedParametersOrReturn serReturn = DataClaySerializationLib.serializeParamsOrReturn(wrapList,</span>
 				ifaceBitMaps, this, false, null, false); // no hint volatiles since volatiles are not going to client
 
-<span class="nc bnc" id="L1114" title="All 2 branches missed.">		if (!serReturn.getVolatileObjs().isEmpty()) {</span>
-<span class="nc" id="L1115">			LOGGER.error(&quot;Sending volatile objects to client or other DS from DS&quot;);</span>
+<span class="nc bnc" id="L1325" title="All 2 branches missed.">		if (!serReturn.getVolatileObjs().isEmpty()) {</span>
+<span class="nc" id="L1326">			LOGGER.error(&quot;Sending volatile objects to client or other DS from DS&quot;);</span>
 		}
 
-<span class="nc" id="L1118">		return serReturn;</span>
+<span class="nc" id="L1329">		return serReturn;</span>
 	}
 
 	/**
@@ -1134,17 +1345,18 @@ public abstract class DataClayRuntime {
 	public final Object[] deserializeParams(final DataClayObject objectInWhichToExec,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final ImplementationID implID,
 			final SerializedParametersOrReturn serializedParams) {
-<span class="nc bnc" id="L1137" title="All 2 branches missed.">		if (serializedParams == null) {</span>
-<span class="nc" id="L1138">			return null;</span>
+<span class="nc bnc" id="L1348" title="All 2 branches missed.">		if (serializedParams == null) {</span>
+<span class="nc" id="L1349">			return null;</span>
 		}
-<span class="nc bnc" id="L1140" title="All 2 branches missed.">		if (serializedParams.needWrappers()) {</span>
+<span class="nc bnc" id="L1351" title="All 2 branches missed.">		if (serializedParams.needWrappers()) {</span>
 			// Create wrappers for language/immutable parameters
-<span class="nc" id="L1142">			objectInWhichToExec.setWrappersParams(implID, serializedParams);</span>
+<span class="nc" id="L1353">			LOGGER.debug(&quot;[==Serialization==] Setting wrapper params&quot;);</span>
+<span class="nc" id="L1354">			objectInWhichToExec.setWrappersParams(implID, serializedParams);</span>
 		}
-<span class="nc bnc" id="L1144" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1145">			LOGGER.debug(&quot;[==Serialization==] Deserializing parameters&quot;);</span>
+<span class="nc bnc" id="L1356" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1357">			LOGGER.debug(&quot;[==Serialization==] Deserializing parameters&quot;);</span>
 		}
-<span class="nc" id="L1147">		return DataClayDeserializationLib.deserializeParamsOrReturn(serializedParams, ifaceBitMaps, this);</span>
+<span class="nc" id="L1359">		return DataClayDeserializationLib.deserializeParamsOrReturn(serializedParams, ifaceBitMaps, this);</span>
 	}
 
 	/**
@@ -1156,12 +1368,13 @@ public abstract class DataClayRuntime {
 	 *            Objects to deserialize
 	 * @return the deserialized parameters
 	 */
-	public final Object[] deserializeMakePersistent(final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
-			final SerializedParametersOrReturn serializedParams) {
-<span class="nc bnc" id="L1161" title="All 2 branches missed.">		if (serializedParams == null) {</span>
-<span class="nc" id="L1162">			return null;</span>
+	public final Object[] deserializeIntoHeap(final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
+			final List&lt;ObjectWithDataParamOrReturn&gt; serializedParams) {
+<span class="nc bnc" id="L1373" title="All 2 branches missed.">		if (serializedParams == null) {</span>
+<span class="nc" id="L1374">			return null;</span>
 		}
-<span class="nc" id="L1164">		return DataClayDeserializationLib.deserializeParamsOrReturn(serializedParams, ifaceBitMaps, this);</span>
+<span class="nc" id="L1376">		return DataClayDeserializationLib.deserializeParamsOrReturn(new SerializedParametersOrReturn(serializedParams),</span>
+				ifaceBitMaps, this);
 	}
 
 	/**
@@ -1180,14 +1393,14 @@ public abstract class DataClayRuntime {
 	public final Object deserializeReturn(final DataClayObject objectInWhichToExec,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps, final ImplementationID implID,
 			final SerializedParametersOrReturn serializedReturn) {
-<span class="nc bnc" id="L1183" title="All 2 branches missed.">		if (serializedReturn == null) {</span>
-<span class="nc" id="L1184">			return null;</span>
+<span class="nc bnc" id="L1396" title="All 2 branches missed.">		if (serializedReturn == null) {</span>
+<span class="nc" id="L1397">			return null;</span>
 		}
-<span class="nc" id="L1186">		objectInWhichToExec.setWrappersReturn(implID, serializedReturn);</span>
-<span class="nc bnc" id="L1187" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1188">			LOGGER.debug(&quot;[==Serialization==] Deserializing return&quot;);</span>
+<span class="nc" id="L1399">		objectInWhichToExec.setWrappersReturn(implID, serializedReturn);</span>
+<span class="nc bnc" id="L1400" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1401">			LOGGER.debug(&quot;[==Serialization==] Deserializing return&quot;);</span>
 		}
-<span class="nc" id="L1190">		return DataClayDeserializationLib.deserializeParamsOrReturn(serializedReturn, ifaceBitMaps, this)[0];</span>
+<span class="nc" id="L1403">		return DataClayDeserializationLib.deserializeParamsOrReturn(serializedReturn, ifaceBitMaps, this)[0];</span>
 	}
 
 	/**
@@ -1219,12 +1432,12 @@ public abstract class DataClayRuntime {
 	 */
 	public final Object executeRemoteImplementation(final DataClayObject objectInWichToExec, final String implIDStr,
 			final Object[] params) {
-<span class="nc" id="L1222">		final SessionID sessionID = getSessionID();</span>
-<span class="nc bnc" id="L1223" title="All 2 branches missed.">		if (Configuration.Flags.CHECK_SESSION.getBooleanValue()) {</span>
-<span class="nc" id="L1224">			RuntimeUtils.checkSession(sessionID);</span>
+<span class="nc" id="L1435">		final SessionID sessionID = getSessionID();</span>
+<span class="nc bnc" id="L1436" title="All 2 branches missed.">		if (Configuration.Flags.CHECK_SESSION.getBooleanValue()) {</span>
+<span class="nc" id="L1437">			RuntimeUtils.checkSession(sessionID);</span>
 		}
-<span class="nc" id="L1226">		final ImplementationID implID = new ImplementationID(implIDStr);</span>
-<span class="nc" id="L1227">		return this.executeRemoteImplementationInternal(objectInWichToExec, implID, params);</span>
+<span class="nc" id="L1439">		final ImplementationID implID = new ImplementationID(implIDStr);</span>
+<span class="nc" id="L1440">		return this.executeRemoteImplementationInternal(objectInWichToExec, implID, params);</span>
 	}
 
 	/**
@@ -1252,42 +1465,42 @@ public abstract class DataClayRuntime {
 	public final Object callExecuteToDS(final DataClayObject dcObject, final Object[] params,
 			final ImplementationID remoteImplID, final BackendID remoteLocationID, final boolean usingHint) {
 
-<span class="nc" id="L1255">		final SessionID sessionID = getSessionID();</span>
+<span class="nc" id="L1468">		final SessionID sessionID = getSessionID();</span>
 		// ===== SERIALIZE PARAMETERS ===== //
 		// Between DS - DS, ifaceBitMaps = null
 		// Serialize parameters
-<span class="nc" id="L1259">		SerializedParametersOrReturn serResult = null;</span>
-<span class="nc" id="L1260">		boolean executed = false;</span>
-<span class="nc" id="L1261">		BackendID execLocationID = remoteLocationID;</span>
-<span class="nc" id="L1262">		DataServiceAPI dsAPI = null;</span>
-<span class="nc" id="L1263">		short numMisses = 0;</span>
-<span class="nc" id="L1264">		final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps = null; // TODO: add iface bitmaps? (too expensive?)</span>
-<span class="nc" id="L1265">		final SerializedParametersOrReturn serializedParams = serializeParams(dcObject, ifaceBitMaps, remoteImplID,</span>
+<span class="nc" id="L1472">		SerializedParametersOrReturn serResult = null;</span>
+<span class="nc" id="L1473">		boolean executed = false;</span>
+<span class="nc" id="L1474">		BackendID execLocationID = remoteLocationID;</span>
+<span class="nc" id="L1475">		DataServiceAPI dsAPI = null;</span>
+<span class="nc" id="L1476">		short numMisses = 0;</span>
+<span class="nc" id="L1477">		final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps = null; // TODO: add iface bitmaps? (too expensive?)</span>
+<span class="nc" id="L1478">		final SerializedParametersOrReturn serializedParams = serializeParams(dcObject, ifaceBitMaps, remoteImplID,</span>
 				params, false, execLocationID);
-<span class="nc bnc" id="L1267" title="All 4 branches missed.">		if (serializedParams != null &amp;&amp; serializedParams.getVolatileObjs() != null) {</span>
-<span class="nc bnc" id="L1268" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; param : serializedParams.getVolatileObjs()</span>
-<span class="nc" id="L1269">					.entrySet()) {</span>
-<span class="nc" id="L1270">				volatileParametersBeingSend.add(param.getValue().getObjectID());</span>
-<span class="nc" id="L1271">			}</span>
+<span class="nc bnc" id="L1480" title="All 4 branches missed.">		if (serializedParams != null &amp;&amp; serializedParams.getVolatileObjs() != null) {</span>
+<span class="nc bnc" id="L1481" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; param : serializedParams.getVolatileObjs()</span>
+<span class="nc" id="L1482">					.entrySet()) {</span>
+<span class="nc" id="L1483">				volatileParametersBeingSend.add(param.getValue().getObjectID());</span>
+<span class="nc" id="L1484">			}</span>
 		}
-<span class="nc bnc" id="L1273" title="All 4 branches missed.">		while (!executed &amp;&amp; numMisses &lt; Configuration.Flags.MAX_EXECUTION_RETRIES.getShortValue()) {</span>
+<span class="nc bnc" id="L1486" title="All 4 branches missed.">		while (!executed &amp;&amp; numMisses &lt; Configuration.Flags.MAX_EXECUTION_RETRIES.getShortValue()) {</span>
 			try {
-<span class="nc bnc" id="L1275" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1276">					final ExecutionEnvironment execEnv = this.getExecutionEnvironmentInfo(execLocationID);</span>
-<span class="nc" id="L1277">					LOGGER.debug(&quot;[==JUMP==] Request execution to  &quot; + execEnv.getName() + &quot; for object &quot;</span>
-<span class="nc" id="L1278">							+ dcObject.getObjectID());</span>
+<span class="nc bnc" id="L1488" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1489">					final ExecutionEnvironment execEnv = this.getExecutionEnvironmentInfo(execLocationID);</span>
+<span class="nc" id="L1490">					LOGGER.debug(&quot;[==JUMP==] Request execution to  &quot; + execEnv.getName() + &quot; for object &quot;</span>
+<span class="nc" id="L1491">							+ dcObject.getObjectID());</span>
 				}
 
-<span class="nc" id="L1281">				dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
-<span class="nc" id="L1282">				serResult = dsAPI.executeImplementation(dcObject.getObjectID(), remoteImplID, serializedParams,</span>
+<span class="nc" id="L1494">				dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
+<span class="nc" id="L1495">				serResult = dsAPI.executeImplementation(dcObject.getObjectID(), remoteImplID, serializedParams,</span>
 						sessionID);
-<span class="nc" id="L1284">				executed = true;</span>
-<span class="nc" id="L1285">			} catch (StatusRuntimeException | OutOfMemoryError | DataClayException er) {</span>
+<span class="nc" id="L1497">				executed = true;</span>
+<span class="nc" id="L1498">			} catch (StatusRuntimeException | OutOfMemoryError | DataClayException er) {</span>
 
 				// AliasAlreadyInUse should be thrown. TODO: define better exceptions.
-<span class="nc bnc" id="L1288" title="All 2 branches missed.">				if (er instanceof AliasAlreadyInUseException) {</span>
+<span class="nc bnc" id="L1501" title="All 2 branches missed.">				if (er instanceof AliasAlreadyInUseException) {</span>
 					// This can happen with registered methods calling makePersistent
-<span class="nc" id="L1290">					throw er;</span>
+<span class="nc" id="L1503">					throw er;</span>
 				}
 
 				// ===== POSSIBLE RACE CONDITION ===== //
@@ -1296,80 +1509,84 @@ public abstract class DataClayRuntime {
 				// concurrently but data only goes in one of these calls.
 				// Check if any persistent parameter is a volatile being send. If so, repeat the
 				// call.
-<span class="nc" id="L1299">				boolean isRaceCondition = false;</span>
-<span class="nc bnc" id="L1300" title="All 4 branches missed.">				if (serializedParams != null &amp;&amp; serializedParams.getPersistentRefs() != null) {</span>
-<span class="nc bnc" id="L1301" title="All 2 branches missed.">					for (final Entry&lt;Integer, PersistentParamOrReturn&gt; param : serializedParams.getPersistentRefs()</span>
-<span class="nc" id="L1302">							.entrySet()) {</span>
-<span class="nc bnc" id="L1303" title="All 2 branches missed.">						if (volatileParametersBeingSend.contains(param.getValue().getObjectID())) {</span>
-<span class="nc" id="L1304">							isRaceCondition = true;</span>
-<span class="nc" id="L1305">							break;</span>
+<span class="nc" id="L1512">				boolean isRaceCondition = false;</span>
+<span class="nc bnc" id="L1513" title="All 4 branches missed.">				if (serializedParams != null &amp;&amp; serializedParams.getPersistentRefs() != null) {</span>
+<span class="nc bnc" id="L1514" title="All 2 branches missed.">					for (final Entry&lt;Integer, PersistentParamOrReturn&gt; param : serializedParams.getPersistentRefs()</span>
+<span class="nc" id="L1515">							.entrySet()) {</span>
+<span class="nc bnc" id="L1516" title="All 2 branches missed.">						if (volatileParametersBeingSend.contains(param.getValue().getObjectID())) {</span>
+<span class="nc" id="L1517">							isRaceCondition = true;</span>
+<span class="nc" id="L1518">							break;</span>
 						}
-<span class="nc" id="L1307">					}</span>
+<span class="nc" id="L1520">					}</span>
 				}
 
-<span class="nc bnc" id="L1310" title="All 2 branches missed.">				if (!isRaceCondition) {</span>
+<span class="nc bnc" id="L1523" title="All 2 branches missed.">				if (!isRaceCondition) {</span>
 					// TODO Check if we really want numMisses to be incremented here
-<span class="nc" id="L1312">					numMisses++;</span>
+<span class="nc" id="L1525">					numMisses++;</span>
 
 					// =================== UPDATE METADATA CACHE (due to a MISS) ===================
 					// //
 					// If remote DS sends a DbObjectNotExists means that it might be possible that
 					// THIS DataService contains wrong information
 					// in its cache and must remove it and seek for new one.
-<span class="nc" id="L1319">					metaDataCache.remove(dcObject.getObjectID());</span>
-
-<span class="nc" id="L1321">					LOGGER.debug(&quot;Execution failed in location &quot; + execLocationID);</span>
-
+<span class="nc" id="L1532">					LOGGER.debug(&quot;Execution failed in location &quot; + execLocationID);</span>
 					// PREFER NOT TRIED LOCATION (In case Backend failed and we have replicas)
-<span class="nc" id="L1324">					final MetaDataInfo metadata = getObjectMetadata(dcObject.getObjectID());</span>
-<span class="nc bnc" id="L1325" title="All 2 branches missed.">					if (metadata == null) {</span>
-						// no metadata available, throw exception
-						// NOTE: if it is a volatile and hint failed, it means that object is actually
-						// not registered
-<span class="nc" id="L1329">						throw new ObjectNotRegisteredException(dcObject.getObjectID());</span>
+
+<span class="nc" id="L1535">					Set&lt;ExecutionEnvironmentID&gt; locations = dcObject.getReplicaLocations();</span>
+<span class="nc bnc" id="L1536" title="All 4 branches missed.">					if (locations == null || locations.isEmpty()) {</span>
+<span class="nc" id="L1537">						final MetaDataInfo metadata = getObjectMetadata(dcObject.getObjectID());</span>
+<span class="nc bnc" id="L1538" title="All 2 branches missed.">						if (metadata == null) {</span>
+
+							// no metadata available, throw exception
+							// NOTE: if it is a volatile and hint failed, it means that object is actually
+							// not registered
+<span class="nc" id="L1543">							throw new ObjectNotRegisteredException(dcObject.getObjectID());</span>
+						} else {
+<span class="nc" id="L1545">							locations = metadata.getLocations();</span>
+						}
 					}
 
-<span class="nc" id="L1332">					boolean foundDifferentLocation = false;</span>
-<span class="nc bnc" id="L1333" title="All 2 branches missed.">					for (final ExecutionEnvironmentID curLoc : metadata.getLocations().keySet()) {</span>
-<span class="nc" id="L1334">						LOGGER.debug(&quot;Found location &quot; + curLoc);</span>
-<span class="nc bnc" id="L1335" title="All 2 branches missed.">						if (!curLoc.equals(execLocationID)) {</span>
-<span class="nc" id="L1336">							execLocationID = curLoc;</span>
-<span class="nc" id="L1337">							foundDifferentLocation = true;</span>
-<span class="nc" id="L1338">							LOGGER.debug(&quot;Found different location &quot; + execLocationID);</span>
-<span class="nc" id="L1339">							break;</span>
+<span class="nc" id="L1549">					boolean foundDifferentLocation = false;</span>
+<span class="nc bnc" id="L1550" title="All 2 branches missed.">					for (final ExecutionEnvironmentID curLoc : locations) {</span>
+<span class="nc" id="L1551">						LOGGER.debug(&quot;Found location &quot; + curLoc);</span>
+<span class="nc bnc" id="L1552" title="All 2 branches missed.">						if (!curLoc.equals(execLocationID)) {</span>
+<span class="nc" id="L1553">							execLocationID = curLoc;</span>
+<span class="nc" id="L1554">							foundDifferentLocation = true;</span>
+<span class="nc" id="L1555">							LOGGER.debug(&quot;Found different location &quot; + execLocationID);</span>
+<span class="nc" id="L1556">							break;</span>
 						}
-<span class="nc" id="L1341">					}</span>
-<span class="nc bnc" id="L1342" title="All 2 branches missed.">					if (!foundDifferentLocation) {</span>
-<span class="nc" id="L1343">						LOGGER.debug(&quot;Using random location in retry: &quot; + execLocationID);</span>
-<span class="nc" id="L1344">						execLocationID = metadata.getLocations().keySet().iterator().next();</span>
+<span class="nc" id="L1558">					}</span>
+<span class="nc bnc" id="L1559" title="All 2 branches missed.">					if (!foundDifferentLocation) {</span>
+<span class="nc" id="L1560">						LOGGER.debug(&quot;Using random location in retry: &quot; + execLocationID);</span>
+<span class="nc" id="L1561">						execLocationID = locations.iterator().next();</span>
 					}
-<span class="nc bnc" id="L1346" title="All 2 branches missed.">					if (usingHint) {</span>
-<span class="nc bnc" id="L1347" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1348">							LOGGER.debug(&quot;[==Hint==] Setting hint (Retry remote execution) on instance &quot;</span>
-<span class="nc" id="L1349">									+ dcObject.getObjectID() + &quot; the hint : &quot; + getDSNameOfHint(execLocationID));</span>
+<span class="nc bnc" id="L1563" title="All 2 branches missed.">					if (usingHint) {</span>
+<span class="nc bnc" id="L1564" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1565">							LOGGER.debug(&quot;[==Hint==] Setting hint (Retry remote execution) on instance &quot;</span>
+<span class="nc" id="L1566">									+ dcObject.getObjectID() + &quot; the hint : &quot; + getDSNameOfHint(execLocationID));</span>
 						}
-<span class="nc" id="L1351">						dcObject.setHint(execLocationID);</span>
+<span class="nc" id="L1568">						dcObject.setHint(execLocationID);</span>
 					}
 
-<span class="nc bnc" id="L1354" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1355">						LOGGER.debug(&quot;[==Miss Jump==] MISS. The object &quot; + dcObject.getObjectID()</span>
+<span class="nc bnc" id="L1571" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1572">						LOGGER.debug(&quot;[==Miss Jump==] MISS. The object &quot; + dcObject.getObjectID()</span>
 						+ &quot; was not in the exec.location &quot; + execLocationID + &quot;. Retrying execution.&quot;);
 					}
 				}
 
-<span class="nc" id="L1360">			}</span>
+<span class="nc" id="L1577">			}</span>
 		}
 
 
 
-<span class="nc bnc" id="L1365" title="All 4 branches missed.">		if (serializedParams != null &amp;&amp; serializedParams.getVolatileObjs() != null) {</span>
+<span class="nc bnc" id="L1582" title="All 4 branches missed.">		if (serializedParams != null &amp;&amp; serializedParams.getVolatileObjs() != null) {</span>
 			// update hints in volatiles
-<span class="nc bnc" id="L1367" title="All 2 branches missed.">			for (final ObjectWithDataParamOrReturn volatil : serializedParams.getVolatileObjs().values()) {</span>
-<span class="nc bnc" id="L1368" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1369">					LOGGER.debug(&quot;[==Hint==] Setting hint (exec) in object &quot; + volatil.getObjectID() + &quot; hint: &quot;</span>
+<span class="nc bnc" id="L1584" title="All 2 branches missed.">			for (final ObjectWithDataParamOrReturn volatil : serializedParams.getVolatileObjs().values()) {</span>
+<span class="nc bnc" id="L1585" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1586">					LOGGER.debug(&quot;[==Hint==] Setting hint (exec) in object &quot; + volatil.getObjectID() + &quot; hint: &quot;</span>
 							+ remoteLocationID);
 				}
-<span class="nc bnc" id="L1372" title="All 2 branches missed.">				if (numMisses &gt; 0) {</span>
+<span class="nc bnc" id="L1589" title="All 2 branches missed.">				if (numMisses &gt; 0) {</span>
 					// if there was a miss, it means that the persistent object in which we were executing 
 					// was not in the choosen location. As you can see in the serialize parameters function above
 					// we provide the execution environment as hint to set to volatile parameters. In EE, before
@@ -1377,34 +1594,34 @@ public abstract class DataClayRuntime {
 					// there, if not, EE raises and exception. Therefore, if there was a miss, we know that the 
 					// hint we set in volatile parameters is wrong, because they are going to be deserialized/stored
 					// in the same location as the object with the method to execute
-<span class="nc" id="L1380">					volatil.getDataClayObject().setHint(remoteLocationID); </span>
+<span class="nc" id="L1597">					volatil.getDataClayObject().setHint(remoteLocationID); </span>
 				}
-<span class="nc" id="L1382">				volatileParametersBeingSend.remove(volatil.getObjectID());</span>
+<span class="nc" id="L1599">				volatileParametersBeingSend.remove(volatil.getObjectID());</span>
 
-<span class="nc" id="L1384">			}</span>
+<span class="nc" id="L1601">			}</span>
 
 		}
 
-<span class="nc bnc" id="L1388" title="All 2 branches missed.">		if (dsAPI == null) {</span>
-<span class="nc" id="L1389">			throw new DataClayException(ERRORCODE.UNEXPECTED_EXCEPTION,</span>
+<span class="nc bnc" id="L1605" title="All 2 branches missed.">		if (dsAPI == null) {</span>
+<span class="nc" id="L1606">			throw new DataClayException(ERRORCODE.UNEXPECTED_EXCEPTION,</span>
 					&quot;[dataClay] ERROR: Trying to execute remotely but&quot;
 							+ &quot; not initialized/found. Please, check initialization of StorageItf or ClientManagementLib &quot;
 							+ &quot; was successfull or contact administrator.&quot;,
 							true);
 		}
 
-<span class="nc bnc" id="L1396" title="All 2 branches missed.">		if (!executed) {</span>
-<span class="nc bnc" id="L1397" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1398">				LOGGER.error(</span>
+<span class="nc bnc" id="L1613" title="All 2 branches missed.">		if (!executed) {</span>
+<span class="nc bnc" id="L1614" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1615">				LOGGER.error(</span>
 						&quot;Trying to execute remotely object {} of class {}, &quot;
 								+ &quot; but something went wrong. Maybe the object is still not stored &quot;
 								+ &quot; (in case of asynchronous makepersistent) and waiting time is not enough.&quot;
 								+ &quot; Maybe the object does not exist anymore due to a remove. Or Maybe an &quot;
 								+ &quot;exception happened in the server and the call failed.&quot;,
-<span class="nc" id="L1404">								dcObject.getObjectID(), dcObject.getClass().getName());</span>
+<span class="nc" id="L1621">								dcObject.getObjectID(), dcObject.getClass().getName());</span>
 			}
-<span class="nc" id="L1406">			throw new RuntimeException(&quot;[dataClay] ERROR: Trying to execute remotely object &quot; + dcObject.getObjectID()</span>
-<span class="nc" id="L1407">			+ &quot; of class &quot; + dcObject.getClass().getName()</span>
+<span class="nc" id="L1623">			throw new RuntimeException(&quot;[dataClay] ERROR: Trying to execute remotely object &quot; + dcObject.getObjectID()</span>
+<span class="nc" id="L1624">			+ &quot; of class &quot; + dcObject.getClass().getName()</span>
 			+ &quot; but something went wrong. Maybe the object is still not stored &quot;
 			+ &quot; (in case of asynchronous makepersistent) and waiting time is not enough.&quot;
 			+ &quot; Maybe the object does not exist anymore due to a remove. Or Maybe an &quot;
@@ -1413,57 +1630,20 @@ public abstract class DataClayRuntime {
 
 		// ===== DESERIALIZE RETURN ===== //
 		// Deserialize return
-<span class="nc" id="L1416">		return deserializeReturn(dcObject, ifaceBitMaps, remoteImplID, serResult);</span>
+<span class="nc" id="L1633">		return deserializeReturn(dcObject, ifaceBitMaps, remoteImplID, serResult);</span>
 	}
 
 	/**
-	 * Execute a remote implementation in Location specified. 
-	 * WARNING: This function is only intended for calls in federation - replicated fields. 
-	 * A real call to remote dataClay would require a new design of exceptions/volatiles between dataClays.
-	 * 
+	 * Synchronize
 	 * @param dcObject
 	 *            Object used as a 'portal' to other DS.
 	 * @param params
 	 *            Parameters to send
 	 * @param remoteImplID
 	 *            ID of implementation to execute
-	 * @param dcID
-	 *            External dataClay ID where to call
-	 * @param allBackends
-	 *            Whether to execute the implementaiton in all possible replicas of the object in external dataClay or not
 	 */
-	public final void synchronizeFederated(final DataClayObject dcObject, final Object[] params,
-			final ImplementationID remoteImplID, final DataClayInstanceID dcID, final boolean allBackends) {
-
-		// ===== SERIALIZE PARAMETERS ===== //
-		// Between DC - DC, ifaceBitMaps = null
-		// Serialize parameters
-<span class="nc" id="L1441">		LogicModuleAPI lmAPI = null;</span>
-<span class="nc" id="L1442">		final DataClayInstance dcInfo = getExternalDataClayInfo(dcID);</span>
-<span class="nc" id="L1443">		final SerializedParametersOrReturn serializedParams = serializeParams(dcObject, null, remoteImplID, params,</span>
-				false, null);
-<span class="nc" id="L1445">		final String[] hosts = dcInfo.getHosts();</span>
-<span class="nc" id="L1446">		final Integer[] ports = dcInfo.getPorts();</span>
-
-<span class="nc bnc" id="L1448" title="All 2 branches missed.">		for (int i = 0; i &lt; hosts.length; i++) {</span>
-			try {
-<span class="nc" id="L1450">				lmAPI = getCommonGrpcClient().getLogicModuleAPI(hosts[i], ports[i]);</span>
-<span class="nc" id="L1451">				break;</span>
-<span class="nc" id="L1452">			} catch (final InterruptedException e) {</span>
-<span class="nc bnc" id="L1453" title="All 2 branches missed.">				if (i + 1 == hosts.length) {</span>
-<span class="nc" id="L1454">					throw new RuntimeException(</span>
-							&quot;[dataClay] ERROR: &quot; + &quot; Cannot connect to external dataClay with ID &quot; + dcID);
-				}
-			}
-		}
-
-<span class="nc bnc" id="L1460" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1461">			LOGGER.debug(&quot;[==JUMP==] Request execution to external dataClay with id &quot; + dcInfo.getDcID()</span>
-<span class="nc" id="L1462">			+ &quot; for object &quot; + dcObject.getObjectID());</span>
-		}
-<span class="nc" id="L1464">		final DataClayInstanceID myID = getDataClayID();</span>
-<span class="nc" id="L1465">		lmAPI.synchronizeFederatedObject(myID, dcObject.getObjectID(), remoteImplID, serializedParams, allBackends);</span>
-<span class="nc" id="L1466">	}</span>
+	public abstract void synchronize(final DataClayObject dcObject, final Object[] params,
+			final ImplementationID remoteImplID);
 
 	/**
 	 * Check if string is UUID
@@ -1474,10 +1654,10 @@ public abstract class DataClayRuntime {
 	 */
 	private boolean isUUID(final String string) {
 		try {
-<span class="nc" id="L1477">			UUID.fromString(string);</span>
-<span class="nc" id="L1478">			return true;</span>
-<span class="nc" id="L1479">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1480">			return false;</span>
+<span class="nc" id="L1657">			UUID.fromString(string);</span>
+<span class="nc" id="L1658">			return true;</span>
+<span class="nc" id="L1659">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1660">			return false;</span>
 		}
 	}
 
@@ -1489,19 +1669,19 @@ public abstract class DataClayRuntime {
 	 * @return TRUE if it is an uuid. FALSE otherwise.
 	 */
 	private boolean isCompssDataClayID(final String string) {
-<span class="nc bnc" id="L1492" title="All 2 branches missed.">		if (string.contains(&quot;:&quot;)) {</span>
-<span class="nc" id="L1493">			final String[] ids = string.split(&quot;:&quot;);</span>
-<span class="nc bnc" id="L1494" title="All 2 branches missed.">			if (isUUID(ids[0])) {</span>
-<span class="nc bnc" id="L1495" title="All 2 branches missed.">				if (ids.length &gt; 0) {</span>
-<span class="nc bnc" id="L1496" title="All 2 branches missed.">					if (isUUID(ids[1])) {</span>
-<span class="nc" id="L1497">						return true;</span>
+<span class="nc bnc" id="L1672" title="All 2 branches missed.">		if (string.contains(&quot;:&quot;)) {</span>
+<span class="nc" id="L1673">			final String[] ids = string.split(&quot;:&quot;);</span>
+<span class="nc bnc" id="L1674" title="All 2 branches missed.">			if (isUUID(ids[0])) {</span>
+<span class="nc bnc" id="L1675" title="All 2 branches missed.">				if (ids.length &gt; 0) {</span>
+<span class="nc bnc" id="L1676" title="All 2 branches missed.">					if (isUUID(ids[1])) {</span>
+<span class="nc" id="L1677">						return true;</span>
 					}
 				} else {
-<span class="nc" id="L1500">					return true;</span>
+<span class="nc" id="L1680">					return true;</span>
 				}
 			}
 		}
-<span class="nc" id="L1504">		return false;</span>
+<span class="nc" id="L1684">		return false;</span>
 	}
 
 	/**
@@ -1523,46 +1703,46 @@ public abstract class DataClayRuntime {
 	public final Object executeRemoteTask(final ObjectID objectID, final String className,
 			final String operationNameAndSignature, final Object[] params, final BackendID target) {
 
-<span class="nc bnc" id="L1526" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1527">			LOGGER.debug(&quot;[==ExecuteTask==] Executing task &quot; + operationNameAndSignature + &quot; in object &quot; + objectID</span>
+<span class="nc bnc" id="L1706" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1707">			LOGGER.debug(&quot;[==ExecuteTask==] Executing task &quot; + operationNameAndSignature + &quot; in object &quot; + objectID</span>
 					+ &quot; of class &quot; + className);
 		}
 
-<span class="nc" id="L1531">		checkAndGetSession(new String[] { &quot;ObjectID&quot;, &quot;ClassName&quot;, &quot;operationNameAndSignature&quot;, &quot;target&quot; },</span>
+<span class="nc" id="L1711">		checkAndGetSession(new String[] { &quot;ObjectID&quot;, &quot;ClassName&quot;, &quot;operationNameAndSignature&quot;, &quot;target&quot; },</span>
 				new Object[] { objectID, className, operationNameAndSignature, target });
 
 		// Get class ID
-<span class="nc" id="L1535">		final StubInfo stubInfo = DataClayObject.getStubInfoFromClass(className);</span>
-<span class="nc" id="L1536">		final ImplementationStubInfo opStubInfo = stubInfo</span>
-<span class="nc" id="L1537">				.getImplementationByNameAndSignature(operationNameAndSignature);</span>
-<span class="nc" id="L1538">		final Map&lt;String, Type&gt; paramsSpecs = opStubInfo.getParams();</span>
-<span class="nc" id="L1539">		final List&lt;String&gt; paramsOrder = opStubInfo.getParamsOrder();</span>
+<span class="nc" id="L1715">		final StubInfo stubInfo = DataClayObject.getStubInfoFromClass(className);</span>
+<span class="nc" id="L1716">		final ImplementationStubInfo opStubInfo = stubInfo</span>
+<span class="nc" id="L1717">				.getImplementationByNameAndSignature(operationNameAndSignature);</span>
+<span class="nc" id="L1718">		final Map&lt;String, Type&gt; paramsSpecs = opStubInfo.getParams();</span>
+<span class="nc" id="L1719">		final List&lt;String&gt; paramsOrder = opStubInfo.getParamsOrder();</span>
 
-<span class="nc bnc" id="L1541" title="All 2 branches missed.">		for (int i = 0; i &lt; params.length; i++) {</span>
+<span class="nc bnc" id="L1721" title="All 2 branches missed.">		for (int i = 0; i &lt; params.length; i++) {</span>
 			// Check if parameter is String
-<span class="nc bnc" id="L1543" title="All 2 branches missed.">			if (params[i] instanceof String) {</span>
-<span class="nc" id="L1544">				final String oid = (String) params[i];</span>
+<span class="nc bnc" id="L1723" title="All 2 branches missed.">			if (params[i] instanceof String) {</span>
+<span class="nc" id="L1724">				final String oid = (String) params[i];</span>
 				// CHECKSTYLE:OFF
-<span class="nc bnc" id="L1546" title="All 2 branches missed.">				if (this.isCompssDataClayID(oid)) {</span>
+<span class="nc bnc" id="L1726" title="All 2 branches missed.">				if (this.isCompssDataClayID(oid)) {</span>
 					// ======== TURN STRING UUIDS TO DATACLAY OBJECTS ======== //
 					// It can be a persistent object
 					// CHECKSTYLE:ON
 					// Serialize it as an object
 					try {
-<span class="nc" id="L1552">						final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = DataClay.string2IDandHintID(oid);</span>
-<span class="nc" id="L1553">						final ObjectID paramObjectID = ids.getFirst();</span>
-<span class="nc" id="L1554">						final BackendID hint = ids.getSecond();</span>
-<span class="nc" id="L1555">						final Type paramSpec = paramsSpecs.get(paramsOrder.get(i));</span>
-<span class="nc" id="L1556">						final UserType paramSpecUType = (UserType) paramSpec;</span>
-<span class="nc bnc" id="L1557" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1558">							LOGGER.debug(&quot;[==ExecuteTask==] Creating instance for param of task &quot; + paramObjectID);</span>
+<span class="nc" id="L1732">						final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = DataClay.string2IDandHintID(oid);</span>
+<span class="nc" id="L1733">						final ObjectID paramObjectID = ids.getFirst();</span>
+<span class="nc" id="L1734">						final BackendID hint = ids.getSecond();</span>
+<span class="nc" id="L1735">						final Type paramSpec = paramsSpecs.get(paramsOrder.get(i));</span>
+<span class="nc" id="L1736">						final UserType paramSpecUType = (UserType) paramSpec;</span>
+<span class="nc bnc" id="L1737" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1738">							LOGGER.debug(&quot;[==ExecuteTask==] Creating instance for param of task &quot; + paramObjectID);</span>
 						}
-<span class="nc" id="L1560">						final DataClayObject instance = this.getPersistedObjectByOID(paramObjectID,</span>
-<span class="nc" id="L1561">								paramSpecUType.getClassID(), hint);</span>
-<span class="nc" id="L1562">						params[i] = instance;</span>
-<span class="nc" id="L1563">					} catch (final Exception ex) {</span>
-<span class="nc" id="L1564">						throw new RuntimeException(ex.getMessage());</span>
-<span class="nc" id="L1565">					}</span>
+<span class="nc" id="L1740">						final DataClayObject instance = this.getPersistedObjectByOID(paramObjectID,</span>
+<span class="nc" id="L1741">								paramSpecUType.getClassID(), hint);</span>
+<span class="nc" id="L1742">						params[i] = instance;</span>
+<span class="nc" id="L1743">					} catch (final Exception ex) {</span>
+<span class="nc" id="L1744">						throw new RuntimeException(ex.getMessage());</span>
+<span class="nc" id="L1745">					}</span>
 				}
 			}
 		}
@@ -1572,11 +1752,11 @@ public abstract class DataClayRuntime {
 		// providing a 'switch-case' serialization. The wrapParameters function cannot
 		// be static generic call
 		// since it depends on the class (like run)
-<span class="nc bnc" id="L1575" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1576">			LOGGER.debug(&quot;[==ExecuteTask==] Creating portal instance for task &quot; + objectID);</span>
+<span class="nc bnc" id="L1755" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1756">			LOGGER.debug(&quot;[==ExecuteTask==] Creating portal instance for task &quot; + objectID);</span>
 		}
-<span class="nc" id="L1578">		final DataClayObject portal = this.getPersistedObjectByOID(objectID, stubInfo.getClassID(), null);</span>
-<span class="nc" id="L1579">		return callExecuteToDS(portal, params, opStubInfo.getRemoteImplID(), target, false);</span>
+<span class="nc" id="L1758">		final DataClayObject portal = this.getPersistedObjectByOID(objectID, stubInfo.getClassID(), null);</span>
+<span class="nc" id="L1759">		return callExecuteToDS(portal, params, opStubInfo.getRemoteImplID(), target, false);</span>
 	}
 
 	/**
@@ -1610,15 +1790,15 @@ public abstract class DataClayRuntime {
 	 */
 	public final ObjectID newRemotePersistentInstance(final MetaClassID classID, final StubInfo stubInfo,
 			final ImplementationID implID, final Object[] params, final BackendID locID) {
-<span class="nc" id="L1613">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;classID&quot;, &quot;stubInfo&quot;, &quot;implID&quot; },</span>
+<span class="nc" id="L1793">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;classID&quot;, &quot;stubInfo&quot;, &quot;implID&quot; },</span>
 				new Object[] { classID, stubInfo, implID });
 
-<span class="nc" id="L1616">		final ImplementationStubInfo implStubInfo = stubInfo.getImplementationByID(implID.toString());</span>
+<span class="nc" id="L1796">		final ImplementationStubInfo implStubInfo = stubInfo.getImplementationByID(implID.toString());</span>
 		// Serialize parameters
-<span class="nc bnc" id="L1618" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1619">			LOGGER.debug(</span>
-<span class="nc" id="L1620">					&quot;[==NewRemote==] New remote persistent instance. Going to execute &quot; + implStubInfo.getSignature());</span>
-<span class="nc" id="L1621">			LOGGER.debug(&quot;[==Serialization==] Serializing parameters for: &quot; + implStubInfo.getSignature());</span>
+<span class="nc bnc" id="L1798" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1799">			LOGGER.debug(</span>
+<span class="nc" id="L1800">					&quot;[==NewRemote==] New remote persistent instance. Going to execute &quot; + implStubInfo.getSignature());</span>
+<span class="nc" id="L1801">			LOGGER.debug(&quot;[==Serialization==] Serializing parameters for: &quot; + implStubInfo.getSignature());</span>
 		}
 
 		// Creating a portal and using its 'wrapParameters' method is much more
@@ -1626,24 +1806,21 @@ public abstract class DataClayRuntime {
 		// providing a 'switch-case' serialization. The wrapParameters function cannot
 		// be static generic call
 		// since it depends on the class (like run)
-<span class="nc" id="L1629">		final DataClayObject portal = getOrNewPersistentInstance(stubInfo.getClassID(), new ObjectID(), null);</span>
+<span class="nc" id="L1809">		final DataClayObject portal = getOrNewPersistentInstance(stubInfo.getClassID(), new ObjectID(), null);</span>
 		// IfaceBitMaps = null. From client stub is controlling it.
 
-<span class="nc" id="L1632">		BackendID execLocationID = locID;</span>
-<span class="nc bnc" id="L1633" title="All 2 branches missed.">		if (execLocationID == null) {</span>
+<span class="nc" id="L1812">		BackendID execLocationID = locID;</span>
+<span class="nc bnc" id="L1813" title="All 2 branches missed.">		if (execLocationID == null) {</span>
 			// === RANDOM === //
-<span class="nc bnc" id="L1635" title="All 2 branches missed.">			if (execEnvironmentsCache.isEmpty()) {</span>
-<span class="nc" id="L1636">				prepareExecuteLocations();</span>
-			}
-<span class="nc" id="L1638">			execLocationID = execLocationsPerHash.values().iterator().next();</span>
+<span class="nc" id="L1815">			execLocationID = this.getAllExecutionEnvironmentsInfo(Langs.LANG_JAVA, false).keySet().iterator().next();</span>
 		}
 
 		// Serialize parameters
-<span class="nc" id="L1642">		final SerializedParametersOrReturn serializedParams = serializeParams(portal, null, implID, params, false,</span>
+<span class="nc" id="L1819">		final SerializedParametersOrReturn serializedParams = serializeParams(portal, null, implID, params, false,</span>
 				execLocationID);
 
-<span class="nc" id="L1645">		final DataServiceAPI dsAPI = this.getRemoteExecutionEnvironment(execLocationID);</span>
-<span class="nc" id="L1646">		return dsAPI.newPersistentInstance(sessionID, classID, implID, null, serializedParams);</span>
+<span class="nc" id="L1822">		final DataServiceAPI dsAPI = this.getRemoteExecutionEnvironment(execLocationID);</span>
+<span class="nc" id="L1823">		return dsAPI.newPersistentInstance(sessionID, classID, implID, null, serializedParams);</span>
 
 	}
 
@@ -1665,98 +1842,97 @@ public abstract class DataClayRuntime {
 	public abstract BackendID makePersistent(final DataClayObject dcObject, final BackendID optionalDestBackendID,
 			final boolean recursive, final String alias);
 
-	/**
-	 * Federate an object with an external dataClay
-	 * 
-	 * @param objectID
-	 *            id of the object
-	 * @param extDataClayID
-	 *            id of the external dataClay
-	 * @param recursive
-	 *            Indicates if subobjects should be federated as well
-	 * @param classID
-	 *            Class ID of the object
-	 * @param hint
-	 *            Hint of the object
-	 */
-	public void federateObject(final ObjectID objectID, final DataClayInstanceID extDataClayID, final boolean recursive,
-			final MetaClassID classID, final BackendID hint) {
-<span class="nc bnc" id="L1684" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1685">			LOGGER.debug(&quot;[==FederateObject==] Starting federation of object &quot; + objectID + &quot; with dataClay &quot;</span>
-					+ extDataClayID);
-		}
-<span class="nc" id="L1688">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L1689">		this.ensureObjectRegistered(sessionID, objectID, classID, hint);</span>
-<span class="nc" id="L1690">		logicModule.federateObject(sessionID, objectID, extDataClayID, recursive);</span>
-<span class="nc" id="L1691">	}</span>
 
 	/**
-	 * Unfederate an object with an external dataClay
-	 * 
-	 * @param objectID
-	 *            id of the object
-	 * @param extDataClayID
-	 *            id of the external dataClay
+	 * Federate an object with an external dataClay
+	 *
+	 * @param dcObject
+	 *            object to federate
+	 * @param externalDataClayID
+	 *            id of the external dataClay ID
 	 * @param recursive
 	 *            Indicates if subobjects should be federated as well
 	 */
-	public void unfederateObject(final ObjectID objectID, final DataClayInstanceID extDataClayID, final boolean recursive) {
-<span class="nc bnc" id="L1704" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1705">			LOGGER.debug(&quot;[==UnfederateObject==] Starting unfederation of object &quot; + objectID + &quot; with dataClay &quot;</span>
-					+ extDataClayID);
-		}
-<span class="nc" id="L1708">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L1709">		logicModule.unfederateObject(sessionID, objectID, extDataClayID, recursive);</span>
-		
-		// FIXME: ALIAS CACHE SHOULD BE UPDATED FOR OBJECTS WITH ALIAS REMOVED?
-<span class="nc" id="L1712">	}</span>
+	public void federateObject(final DataClayObject dcObject,
+							   final DataClayInstanceID externalDataClayID,
+							   final boolean recursive) {
+
+<span class="nc" id="L1860">		ExecutionEnvironmentID externalExecutionEnvironmentID =</span>
+<span class="nc" id="L1861">				this.getAllExecutionEnvironmentsAtDataClay(Langs.LANG_JAVA, externalDataClayID, false).keySet().iterator().next();</span>
+<span class="nc" id="L1862">		this.federateToBackend(dcObject, externalExecutionEnvironmentID, recursive);</span>
+<span class="nc" id="L1863">	}</span>
+
+	/**
+	 * Federate an object with an external dataClay
+	 *
+	 * @param dcObject
+	 *            object to federate
+	 * @param externalExecutionEnvironmentID
+	 *            id of the external execution environment id
+	 * @param recursive
+	 *            Indicates if subobjects should be federated as well
+	 */
+	public abstract void federateToBackend(final DataClayObject dcObject,
+							   final ExecutionEnvironmentID externalExecutionEnvironmentID,
+							   final boolean recursive);
+	/**
+	 * Unfederate an object with an external dataClay
+	 *
+	 * @param dcObject
+	 *            object to unfederate
+	 * @param externalDataClayID
+	 *            id of the external dataClay
+	 * @param recursive
+	 *            Indicates if subobjects should be unfederated as well
+	 */
+	public void unfederateObject(final DataClayObject dcObject,
+								 final DataClayInstanceID externalDataClayID,
+								 final boolean recursive) {
+<span class="nc" id="L1891">		this.unfederateFromBackend(dcObject, null, recursive);</span>
+<span class="nc" id="L1892">	}</span>
+
+	/**
+	 * Unfederate an object with an external backend
+	 *
+	 * @param dcObject
+	 *            object to unfederate
+	 * @param externalExecutionEnvironmentID
+	 *            id of the external execution environment id
+	 * @param recursive
+	 *            Indicates if subobjects should be unfederated as well
+	 */
+	public abstract void unfederateFromBackend(final DataClayObject dcObject,
+								 final ExecutionEnvironmentID externalExecutionEnvironmentID,
+								 final boolean recursive);
 	
 	/**
 	 * Unfederate an object with all external dataClays
 	 * 
-	 * @param objectID
-	 *            id of the object
+	 * @param dcObject
+	 *            object to unfederate
 	 * @param recursive
 	 *            Indicates if subobjects should be federated as well
 	 */
-	public void unfederateObjectWithAllDCs(final ObjectID objectID, final boolean recursive) {
-<span class="nc bnc" id="L1723" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1724">			LOGGER.debug(&quot;[==UnfederateObjectWithAllDCs==] Starting unfederation of object &quot; + objectID </span>
-					+ &quot; with all external dataClays &quot;);
-		}
-<span class="nc" id="L1727">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L1728">		logicModule.unfederateObjectWithAllDCs(sessionID, objectID, recursive);</span>
-		// FIXME: ALIAS CACHE SHOULD BE UPDATED FOR OBJECTS WITH ALIAS REMOVED?
-<span class="nc" id="L1730">	}</span>
+	public void unfederateObjectWithAllDCs(final DataClayObject dcObject, final boolean recursive) {
+<span class="nc" id="L1917">		throw new UnsupportedOperationException();</span>
+
+	}
 	
 	/**
 	 * Unfederate all objects belonging/federated with external dataClay with id provided
 	 * @param extDataClayID External dataClay ID
 	 */
 	public void unfederateAllObjects(final DataClayInstanceID extDataClayID) {
-<span class="nc bnc" id="L1737" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1738">			LOGGER.debug(&quot;[==UnfederateAllObjects==] Starting unfederation of all objects with dataClay &quot;</span>
-					+ extDataClayID);
-		}
-<span class="nc" id="L1741">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L1742">		logicModule.unfederateAllObjects(sessionID, extDataClayID);</span>
-		
-		// FIXME: ALIAS CACHE SHOULD BE UPDATED FOR OBJECTS WITH ALIAS REMOVED?
-
-<span class="nc" id="L1746">	}</span>
+<span class="nc" id="L1926">		throw new UnsupportedOperationException();</span>
+	}
 	
 	/**
 	 * Unfederate all objects belonging/federated with ANY external dataClay 
 	 */
 	public void unfederateAllObjectsWithAllDCs() {
-<span class="nc bnc" id="L1752" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1753">			LOGGER.debug(&quot;[==UnfederateAllObjects==] Starting unfederation of all objects with ANY dataClay &quot;);</span>
-		}
-<span class="nc" id="L1755">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L1756">		logicModule.unfederateAllObjectsWithAllDCs(sessionID);</span>
-		// FIXME: ALIAS CACHE SHOULD BE UPDATED FOR OBJECTS WITH ALIAS REMOVED?
+<span class="nc" id="L1933">		throw new UnsupportedOperationException();</span>
 
-<span class="nc" id="L1759">	}</span>
+	}
 	
 	/**
 	 * Federate all dataClay objects from specified current dataClay
@@ -1765,14 +1941,8 @@ public abstract class DataClayRuntime {
 	 */
 	public void federateAllObjects(
 			final DataClayInstanceID destinationDataClayID) {
-<span class="nc bnc" id="L1768" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1769">			LOGGER.debug(&quot;[==FederateAllObjects==] Starting federation of all objects from my dataClay to dataClay {} &quot;, </span>
-					destinationDataClayID);
-		}
-<span class="nc" id="L1772">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L1773">		logicModule.federateAllObjects(sessionID, destinationDataClayID);</span>
-		// FIXME: ALIAS CACHE SHOULD BE UPDATED FOR OBJECTS WITH ALIAS REMOVED?
-<span class="nc" id="L1775">	}</span>
+<span class="nc" id="L1944">		throw new UnsupportedOperationException();</span>
+	}
 
 	/**
 	 * Import classes in namespace specified from an external dataClay
@@ -1781,9 +1951,9 @@ public abstract class DataClayRuntime {
 	 */
 	public void importModelsFromExternalDataClay(final String externalNamespace,
 															 final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L1784">		logicModule.importModelsFromExternalDataClay(externalNamespace, extDataClayID);</span>
+<span class="nc" id="L1954">		logicModule.importModelsFromExternalDataClay(externalNamespace, extDataClayID);</span>
 
-<span class="nc" id="L1786">	}</span>
+<span class="nc" id="L1956">	}</span>
 	
 	/**
 	 * Migrate (unfederate and federate) all current dataClay objects from specified external dataclay di to
@@ -1793,101 +1963,7 @@ public abstract class DataClayRuntime {
 	 */
 	public void migrateFederatedObjects(final DataClayInstanceID originDataClayID, 
 			final DataClayInstanceID destinationDataClayID) {
-<span class="nc bnc" id="L1796" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1797">			LOGGER.debug(&quot;[==MigrateFederatedObjects==] Starting migration of all objects from dataClay {} to dataClay {} &quot;, </span>
-					originDataClayID, destinationDataClayID);
-		}
-<span class="nc" id="L1800">		final SessionID sessionID = checkAndGetSession(new String[] {}, new Object[] {});</span>
-<span class="nc" id="L1801">		logicModule.migrateFederatedObjects(sessionID, originDataClayID, destinationDataClayID);</span>
-		// FIXME: ALIAS CACHE SHOULD BE UPDATED FOR OBJECTS WITH ALIAS REMOVED?
-
-<span class="nc" id="L1804">	}</span>
-
-	/**
-	 * This function calls &quot;filterObject&quot; in backends for the type of the object provided. It means that given an object and
-	 * some conditions, search for all objects of same class that accomplish the conditions provided.
-	 * 
-	 * @param dcObject
-	 *            Instance in which filterObject function was called.
-	 * @param conditions
-	 *            Conditions to accomplish.
-	 * @return All objects that belong to same class than object provided and accomplish conditions.
-	 */
-	@SuppressWarnings(&quot;unchecked&quot;)
-	public List&lt;Object&gt; filterObject(final DataClayObject dcObject, final String conditions) {
-<span class="nc bnc" id="L1818" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1819">			LOGGER.debug(&quot;[==FilterObject==] Filtering obejct &quot; + dcObject.getID() + &quot; with conditions &quot; + conditions);</span>
-		}
-<span class="nc" id="L1821">		final SessionID sessionID = getSessionID();</span>
-		// ===== SERIALIZE PARAMETERS ===== //
-		// Between DS - DS, ifaceBitMaps = null
-		// Serialize parameters
-<span class="nc" id="L1825">		SerializedParametersOrReturn serResult = null;</span>
-<span class="nc" id="L1826">		boolean executed = false;</span>
-<span class="nc" id="L1827">		BackendID execLocationID = dcObject.getHint();</span>
-<span class="nc" id="L1828">		DataServiceAPI dsAPI = null;</span>
-<span class="nc" id="L1829">		short numMisses = 0;</span>
-<span class="nc" id="L1830">		final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps = null; // TODO: add iface bitmaps? (too expensive?)</span>
-
-<span class="nc bnc" id="L1832" title="All 4 branches missed.">		while (!executed &amp;&amp; numMisses &lt; Configuration.Flags.MAX_EXECUTION_RETRIES.getShortValue()) {</span>
-			try {
-<span class="nc bnc" id="L1834" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1835">					final ExecutionEnvironment execEnv = this.getExecutionEnvironmentInfo(execLocationID);</span>
-<span class="nc" id="L1836">					LOGGER.debug(&quot;[==JUMP==] Request execution to  &quot; + execEnv.getName() + &quot; for object &quot;</span>
-<span class="nc" id="L1837">							+ dcObject.getObjectID());</span>
-				}
-
-<span class="nc" id="L1840">				dsAPI = getRemoteExecutionEnvironment(execLocationID);</span>
-<span class="nc" id="L1841">				serResult = dsAPI.filterObject(sessionID, dcObject.getObjectID(), conditions);</span>
-<span class="nc" id="L1842">				executed = true;</span>
-<span class="nc" id="L1843">			} catch (StatusRuntimeException | DataClayException er) {</span>
-
-<span class="nc" id="L1845">				numMisses++;</span>
-
-				// =================== UPDATE METADATA CACHE (due to a MISS) ===================
-				// //
-				// If remote DS sends a DbObjectNotExists means that it might be possible that
-				// THIS DataService contains wrong information
-				// in its cache and must remove it and seek for new one.
-<span class="nc" id="L1852">				metaDataCache.remove(dcObject.getObjectID());</span>
-
-<span class="nc" id="L1854">				execLocationID = getLocation(dcObject.getObjectID());</span>
-				// execLocationID = getExecutionEnvironmentLocation(dcObject.getObjectID());
-
-<span class="nc bnc" id="L1857" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1858">					LOGGER.debug(&quot;[==Hint==] Setting hint (Retry remote execution) on instance &quot;</span>
-<span class="nc" id="L1859">							+ dcObject.getObjectID() + &quot; the hint : &quot; + getDSNameOfHint(execLocationID));</span>
-				}
-<span class="nc" id="L1861">				dcObject.setHint(execLocationID);</span>
-
-<span class="nc bnc" id="L1863" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1864">					LOGGER.debug(&quot;[==Miss Jump==] MISS. The object &quot; + dcObject.getObjectID()</span>
-					+ &quot; was not in the exec.location &quot; + execLocationID + &quot;. Retrying execution.&quot;);
-				}
-<span class="nc" id="L1867">			}</span>
-
-		}
-
-<span class="nc bnc" id="L1871" title="All 2 branches missed.">		if (dsAPI == null) {</span>
-<span class="nc" id="L1872">			throw new DataClayException(ERRORCODE.UNEXPECTED_EXCEPTION,</span>
-					&quot;[dataClay] ERROR: Trying to execute remotely but&quot;
-							+ &quot; not initialized/found. Please, check initialization of StorageItf or ClientManagementLib &quot;
-							+ &quot; was successfull or contact administrator.&quot;,
-							true);
-		}
-
-<span class="nc bnc" id="L1879" title="All 2 branches missed.">		if (!executed) {</span>
-<span class="nc" id="L1880">			throw new RuntimeException(&quot;[dataClay] ERROR: Trying to execute remotely object &quot; + dcObject.getObjectID()</span>
-<span class="nc" id="L1881">			+ &quot; of class &quot; + dcObject.getClass().getName()</span>
-			+ &quot; but something went wrong. Maybe the object is still not stored &quot;
-			+ &quot; (in case of asynchronous makepersistent) and waiting time is not enough.&quot;
-			+ &quot; Maybe the object does not exist anymore due to a remove. Or Maybe an &quot;
-			+ &quot;exception happened in the server and the call failed.&quot;);
-		}
-
-		// ===== DESERIALIZE RETURN ===== //
-		// Deserialize return
-<span class="nc" id="L1890">		return (List&lt;Object&gt;) DataClayDeserializationLib.deserializeParamsOrReturn(serResult, ifaceBitMaps, this)[0];</span>
+<span class="nc" id="L1966">		throw new UnsupportedOperationException();</span>
 	}
 
 	/**
@@ -1899,10 +1975,10 @@ public abstract class DataClayRuntime {
 	 *            New DataSetID
 	 */
 	public final void setDataSetID(final ObjectID objectID, final DataSetID newDataSetID) {
-<span class="nc" id="L1902">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;newDataSetID&quot; }, new Object[] { newDataSetID });</span>
-<span class="nc" id="L1903">		this.logicModule.setDataSetID(sessionID, objectID, newDataSetID);</span>
+<span class="nc" id="L1978">		final SessionID sessionID = checkAndGetSession(new String[] { &quot;newDataSetID&quot; }, new Object[] { newDataSetID });</span>
+<span class="nc" id="L1979">		this.logicModule.setDataSetID(sessionID, objectID, newDataSetID);</span>
 
-<span class="nc" id="L1905">	}</span>
+<span class="nc" id="L1981">	}</span>
 
 	/**
 	 * Recovers Object from OID and class ID
@@ -1917,10 +1993,10 @@ public abstract class DataClayRuntime {
 	 */
 	public final DataClayObject getPersistedObjectByOID(final ObjectID objectID, final MetaClassID classID,
 			final BackendID hint) {
-<span class="nc bnc" id="L1920" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1921">			LOGGER.debug(&quot;[==GetByOID==] Getting/Creating instance from getPersistedObjectByOID.&quot;);</span>
+<span class="nc bnc" id="L1996" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1997">			LOGGER.debug(&quot;[==GetByOID==] Getting/Creating instance from getPersistedObjectByOID.&quot;);</span>
 		}
-<span class="nc" id="L1923">		return getOrNewPersistentInstance(classID, objectID, hint);</span>
+<span class="nc" id="L1999">		return getOrNewPersistentInstance(classID, objectID, hint);</span>
 	}
 
 	/**
@@ -1929,8 +2005,8 @@ public abstract class DataClayRuntime {
 	public final void waitForAsyncRequestToFinish() {
 
 		// Client traces
-<span class="nc" id="L1932">		grpcClient.waitAndProcessAllAsyncRequests();</span>
-<span class="nc" id="L1933">	}</span>
+<span class="nc" id="L2008">		grpcClient.waitAndProcessAllAsyncRequests();</span>
+<span class="nc" id="L2009">	}</span>
 
 	/**
 	 * Get Heap Manager
@@ -1947,8 +2023,8 @@ public abstract class DataClayRuntime {
 	 *            ID of the object
 	 */
 	public final void removeFromHeap(final ObjectID objectID) {
-<span class="nc" id="L1950">		this.dataClayHeapManager.removeFromHeap(objectID);</span>
-<span class="nc" id="L1951">	}</span>
+<span class="nc" id="L2026">		this.dataClayHeapManager.removeFromHeap(objectID);</span>
+<span class="nc" id="L2027">	}</span>
 
 	/**
 	 * Add to Heap
@@ -1957,8 +2033,8 @@ public abstract class DataClayRuntime {
 	 *            the object
 	 */
 	public final void addToHeap(final DataClayObject dcObject) {
-<span class="nc" id="L1960">		this.dataClayHeapManager.addToHeap(dcObject);</span>
-<span class="nc" id="L1961">	}</span>
+<span class="nc" id="L2036">		this.dataClayHeapManager.addToHeap(dcObject);</span>
+<span class="nc" id="L2037">	}</span>
 
 	/**
 	 * Check if object exists in dataClay.
@@ -1968,8 +2044,18 @@ public abstract class DataClayRuntime {
 	 * @return TRUE if object exists. FALSE otherwise.
 	 */
 	public boolean objectExistsInDataClay(final ObjectID objectID) {
-<span class="nc" id="L1971">		return this.logicModule.objectExistsInDataClay(objectID);</span>
+<span class="nc" id="L2047">		LOGGER.debug(&quot;Checking object {} exists&quot;, objectID);</span>
+<span class="nc" id="L2048">		return this.logicModule.objectExistsInDataClay(objectID);</span>
 	}
+
+	/**
+	 * Get number of objects in dataClay
+	 */
+	public int getNumObjects() {
+<span class="nc" id="L2055">		LOGGER.debug(&quot;Getting number of objects in dataClay&quot;);</span>
+<span class="nc" id="L2056">		return this.logicModule.getNumObjects();</span>
+	}
+
 
 	/**
 	 * Get from Heap
@@ -1979,7 +2065,7 @@ public abstract class DataClayRuntime {
 	 * @return The object in Heap or null if not present
 	 */
 	public DataClayObject getFromHeap(final ObjectID objectID) {
-<span class="nc" id="L1982">		return this.dataClayHeapManager.getObject(objectID);</span>
+<span class="nc" id="L2068">		return this.dataClayHeapManager.getObject(objectID);</span>
 	}
 
 	/**
@@ -1990,15 +2076,24 @@ public abstract class DataClayRuntime {
 	 * @return TRUE if exists in memory. FALSE otherwise.
 	 */
 	public final boolean existsInHeap(final ObjectID objectID) {
-<span class="nc" id="L1993">		return dataClayHeapManager.existsObject(objectID);</span>
+<span class="nc" id="L2079">		return dataClayHeapManager.existsObject(objectID);</span>
 	}
+
+	/**
+	 * Detach object from current session in use, i.e. remove reference from current session provided to object,
+	 * &quot;dear garbage-collector, current session is not using the object anymore&quot;
+	 *
+	 * @param objectID ID of the object to detach
+	 * @param hint Hint of the object to detach (can be null)
+	 */
+	public abstract void detachObjectFromSession(final ObjectID objectID, final ExecutionEnvironmentID hint);
 
 	/**
 	 * ADVANCED FUNCTION. Try not to use it. This function flushes all objects in Heap.
 	 */
 	public final void flushAll() {
-<span class="nc" id="L2000">		this.dataClayHeapManager.flushAll();</span>
-<span class="nc" id="L2001">	}</span>
+<span class="nc" id="L2095">		this.dataClayHeapManager.flushAll();</span>
+<span class="nc" id="L2096">	}</span>
 
 	/**
 	 * Get number of objects in heap.
@@ -2006,49 +2101,60 @@ public abstract class DataClayRuntime {
 	 * @return Heap size.
 	 */
 	public final int heapSize() {
-<span class="nc" id="L2009">		return this.dataClayHeapManager.heapSize();</span>
+<span class="nc" id="L2104">		return this.dataClayHeapManager.heapSize();</span>
 	}
+
+
+	/**
+	 * Get number of loaded objects in heap.
+	 *
+	 * @return number of loaded objects in heap.
+	 */
+	public final int numLoadedObjs() {
+<span class="nc" id="L2114">		return this.dataClayHeapManager.numLoadedObjs();</span>
+	}
+
 
 	/**
 	 * Activate tracing in dataClay services
 	 * 
 	 */
 	public final void activateTracingInDataClayServices() {
-<span class="nc bnc" id="L2017" title="All 2 branches missed.">		if (DataClayExtrae.extraeTracingIsEnabled()) { //sanity check, only activate if extrae was properly initialized</span>
-<span class="nc" id="L2018">			this.logicModule.activateTracing(DataClayExtrae.getCurrentAvailableTaskID());</span>
+<span class="nc bnc" id="L2123" title="All 2 branches missed.">		if (DataClayExtrae.extraeTracingIsEnabled()) { //sanity check, only activate if extrae was properly initialized</span>
+<span class="nc" id="L2124">			this.logicModule.activateTracing(DataClayExtrae.getCurrentAvailableTaskID());</span>
 		}
-<span class="nc" id="L2020">	}</span>
+<span class="nc" id="L2126">	}</span>
 
 	/**
 	 * Dectivate tracing
 	 */
 	public final void deactivateTracingInDataClayServices() {
-<span class="nc bnc" id="L2026" title="All 2 branches missed.">		if (DataClayExtrae.extraeTracingIsEnabled()) { //sanity check, only activate if extrae was properly initialized</span>
-<span class="nc" id="L2027">			this.logicModule.deactivateTracing();</span>
+<span class="nc bnc" id="L2132" title="All 2 branches missed.">		if (DataClayExtrae.extraeTracingIsEnabled()) { //sanity check, only activate if extrae was properly initialized</span>
+<span class="nc" id="L2133">			this.logicModule.deactivateTracing();</span>
 		}
-<span class="nc" id="L2029">	}</span>
+<span class="nc" id="L2135">	}</span>
 
 	/**
 	 * Activate tracing
 	 */
 	public final void activateTracing(
 			final boolean initializeWrapper) {
-<span class="nc" id="L2036">		DataClayExtrae.initializeExtrae(initializeWrapper);</span>
-<span class="nc" id="L2037">	}</span>
+<span class="nc" id="L2142">		DataClayExtrae.initializeExtrae(initializeWrapper);</span>
+<span class="nc" id="L2143">	}</span>
 
 	/**
 	 * Deactivate tracing
 	 */
 	public final void deactivateTracing(final boolean finalizeWrapper) {
-<span class="nc" id="L2043">		DataClayExtrae.finishTracing(finalizeWrapper);</span>
-<span class="nc" id="L2044">	}</span>
+<span class="nc" id="L2149">		DataClayExtrae.finishTracing(finalizeWrapper);</span>
+<span class="nc" id="L2150">	}</span>
 
 	/**
 	 * Get traces in dataClay services and store it in current workspace
 	 */
 	public final void getTracesInDataClayServices() {
 		
-<span class="nc" id="L2051">		final Map&lt;String, byte[]&gt; traces = logicModule.getTraces();</span>
+<span class="nc" id="L2157">		final Map&lt;String, byte[]&gt; traces = logicModule.getTraces();</span>
 		
 		/*
 		final Map&lt;String, Map&lt;String, byte[]&gt;&gt; filesPerHost = new HashMap&lt;&gt;();
@@ -2057,72 +2163,57 @@ public abstract class DataClayRuntime {
 
 		}*/
 		
-<span class="nc" id="L2060">		int curTask = 0;</span>
-<span class="nc" id="L2061">		final String setPath = &quot;set-0&quot;;</span>
-<span class="nc" id="L2062">		final String traceMpitsPath = &quot;TRACE.mpits&quot;;</span>
+<span class="nc" id="L2166">		int curTask = 0;</span>
+<span class="nc" id="L2167">		final String setPath = &quot;set-0&quot;;</span>
+<span class="nc" id="L2168">		final String traceMpitsPath = &quot;TRACE.mpits&quot;;</span>
 		try {
 			
-<span class="nc" id="L2065">			FileUtils.forceMkdir(new File(setPath));</span>
-<span class="nc" id="L2066">			File traceMpitsFile = new File(traceMpitsPath);</span>
+<span class="nc" id="L2171">			FileUtils.forceMkdir(new File(setPath));</span>
+<span class="nc" id="L2172">			File traceMpitsFile = new File(traceMpitsPath);</span>
 
-<span class="nc bnc" id="L2068" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; traceFile : traces.entrySet()) { </span>
+<span class="nc bnc" id="L2174" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; traceFile : traces.entrySet()) { </span>
 
-<span class="nc" id="L2070">				final String fileName = traceFile.getKey();</span>
-<span class="nc" id="L2071">				final byte[] fileBytes = traceFile.getValue();</span>
+<span class="nc" id="L2176">				final String fileName = traceFile.getKey();</span>
+<span class="nc" id="L2177">				final byte[] fileBytes = traceFile.getValue();</span>
 
-<span class="nc" id="L2073">					File tmpTraceFile = new File(setPath + File.separator + fileName);</span>
-<span class="nc" id="L2074">					final String path = tmpTraceFile.getAbsolutePath();</span>
-<span class="nc" id="L2075">					LOGGER.info(&quot;Storing file &quot; + path);</span>
+<span class="nc" id="L2179">					File tmpTraceFile = new File(setPath + File.separator + fileName);</span>
+<span class="nc" id="L2180">					final String path = tmpTraceFile.getAbsolutePath();</span>
+<span class="nc" id="L2181">					LOGGER.info(&quot;Storing file &quot; + path);</span>
 					
 					// Store Extrae temporary files
-<span class="nc" id="L2078">					FileUtils.writeByteArrayToFile(tmpTraceFile, fileBytes);</span>
+<span class="nc" id="L2184">					FileUtils.writeByteArrayToFile(tmpTraceFile, fileBytes);</span>
 					
-<span class="nc bnc" id="L2080" title="All 2 branches missed.">					if (fileName.endsWith(&quot;.mpit&quot;)) {</span>
-<span class="nc" id="L2081">						final String newFilePointer = path + &quot; named\n&quot;;</span>
-<span class="nc" id="L2082">						LOGGER.info(&quot;Adding line to &quot; + traceMpitsFile.getAbsolutePath() + &quot; file: &quot; + newFilePointer);</span>
-<span class="nc" id="L2083">						FileUtils.writeStringToFile(traceMpitsFile, newFilePointer,Charset.defaultCharset(), true);</span>
+<span class="nc bnc" id="L2186" title="All 2 branches missed.">					if (fileName.endsWith(&quot;.mpit&quot;)) {</span>
+<span class="nc" id="L2187">						final String newFilePointer = path + &quot; named\n&quot;;</span>
+<span class="nc" id="L2188">						LOGGER.info(&quot;Adding line to &quot; + traceMpitsFile.getAbsolutePath() + &quot; file: &quot; + newFilePointer);</span>
+<span class="nc" id="L2189">						FileUtils.writeStringToFile(traceMpitsFile, newFilePointer,Charset.defaultCharset(), true);</span>
 					}
-<span class="nc" id="L2085">					curTask++;	</span>
-<span class="nc" id="L2086">			}</span>
+<span class="nc" id="L2191">					curTask++;	</span>
+<span class="nc" id="L2192">			}</span>
 			
 			// cat trace.mpits
-<span class="nc" id="L2089">			Scanner input = new Scanner(traceMpitsFile);</span>
+<span class="nc" id="L2195">			Scanner input = new Scanner(traceMpitsFile);</span>
 
-<span class="nc bnc" id="L2091" title="All 2 branches missed.">			while (input.hasNextLine())</span>
+<span class="nc bnc" id="L2197" title="All 2 branches missed.">			while (input.hasNextLine())</span>
 			{
-<span class="nc" id="L2093">				LOGGER.info(input.nextLine());</span>
+<span class="nc" id="L2199">				LOGGER.info(input.nextLine());</span>
 			}
-<span class="nc" id="L2095">			input.close();</span>
+<span class="nc" id="L2201">			input.close();</span>
 			
-<span class="nc" id="L2097">		} catch (final Exception e) {</span>
-<span class="nc" id="L2098">			e.printStackTrace();</span>
-<span class="nc" id="L2099">		}</span>
+<span class="nc" id="L2203">		} catch (final Exception e) {</span>
+<span class="nc" id="L2204">			e.printStackTrace();</span>
+<span class="nc" id="L2205">		}</span>
 		
 		
 		
 		
-<span class="nc" id="L2104">	}</span>
-
-	/**
-	 * @return the metaDataCache
-	 */
-	public final LruCache&lt;ObjectID, MetaDataInfo&gt; getMetaDataCache() {
-<span class="nc" id="L2110">		return metaDataCache;</span>
-	}
-
-	/**
-	 * @param themetaDataCache
-	 *            the metaDataCache to set
-	 */
-	public final void setMetaDataCache(final LruCache&lt;ObjectID, MetaDataInfo&gt; themetaDataCache) {
-<span class="nc" id="L2118">		this.metaDataCache = themetaDataCache;</span>
-<span class="nc" id="L2119">	}</span>
+<span class="nc" id="L2210">	}</span>
 
 	/**
 	 * @return GRPC client.
 	 */
 	public final CommonGrpcClient getCommonGrpcClient() {
-<span class="nc" id="L2125">		return this.grpcClient;</span>
+<span class="nc" id="L2216">		return this.grpcClient;</span>
 	}
 
 	/**
@@ -2139,8 +2230,8 @@ public abstract class DataClayRuntime {
 	 *            ID of object
 	 */
 	public final void lock(final ObjectID objectID) {
-<span class="nc" id="L2142">		this.lockerPool.lock(objectID);</span>
-<span class="nc" id="L2143">	}</span>
+<span class="nc" id="L2233">		this.lockerPool.lock(objectID);</span>
+<span class="nc" id="L2234">	}</span>
 
 	/**
 	 * Unlock object
@@ -2149,15 +2240,15 @@ public abstract class DataClayRuntime {
 	 *            ID of object
 	 */
 	public final void unlock(final ObjectID objectID) {
-<span class="nc" id="L2152">		this.lockerPool.unlock(objectID);</span>
-<span class="nc" id="L2153">	}</span>
+<span class="nc" id="L2243">		this.lockerPool.unlock(objectID);</span>
+<span class="nc" id="L2244">	}</span>
 
 	/**
 	 * Clean lockers
 	 */
 	public final void cleanLockers() {
-<span class="nc" id="L2159">		this.lockerPool.cleanLockers();</span>
-<span class="nc" id="L2160">	}</span>
+<span class="nc" id="L2250">		this.lockerPool.cleanLockers();</span>
+<span class="nc" id="L2251">	}</span>
 
 	/**
 	 * Get number of lockers
@@ -2165,7 +2256,7 @@ public abstract class DataClayRuntime {
 	 * @return Number of lockers
 	 */
 	public final int numLockers() {
-<span class="nc" id="L2168">		return this.lockerPool.numLockers();</span>
+<span class="nc" id="L2259">		return this.lockerPool.numLockers();</span>
 	}
 
 	/**
@@ -2186,7 +2277,7 @@ public abstract class DataClayRuntime {
 	 */
 	public void addSessionReference(final ObjectID objectID) {
 		// do nothing: TODO: specialize it in a better way
-<span class="nc" id="L2189">	}</span>
+<span class="nc" id="L2280">	}</span>
 
 	/**
 	 * Indicates if runtime was initialized or not
@@ -2194,7 +2285,7 @@ public abstract class DataClayRuntime {
 	 * @return TRUE if runtime is initialized. FALSE otherwise.
 	 */
 	public boolean isInitialized() {
-<span class="nc" id="L2197">		return initialized;</span>
+<span class="nc" id="L2288">		return initialized;</span>
 	}
 
 	/**
@@ -2204,15 +2295,15 @@ public abstract class DataClayRuntime {
 	 *            Value to set
 	 */
 	public void setInitialized(final boolean theinitialized) {
-<span class="nc" id="L2207">		this.initialized = theinitialized;</span>
-<span class="nc" id="L2208">	}</span>
+<span class="nc" id="L2298">		this.initialized = theinitialized;</span>
+<span class="nc" id="L2299">	}</span>
 
 	public static ObjectID getObjectIDFromAlias(String alias) {
-<span class="nc" id="L2211">		return new ObjectID(UUID.nameUUIDFromBytes(alias.getBytes()));</span>
+<span class="nc" id="L2302">		return new ObjectID(UUID.nameUUIDFromBytes(alias.getBytes()));</span>
 	}
 
 	protected ExecutionEnvironmentID getBackendIDFromAlias(String alias) {
-<span class="nc" id="L2215">		return this.getBackendIDFromObjectID(getObjectIDFromAlias(alias));</span>
+<span class="nc" id="L2306">		return this.getBackendIDFromObjectID(getObjectIDFromAlias(alias));</span>
 	}
 
 	/**
@@ -2223,20 +2314,20 @@ public abstract class DataClayRuntime {
 	 * @return Chosen location.
 	 */
 	protected BackendID chooseLocation(final DataClayObject dcObject, final String alias) {
-<span class="nc bnc" id="L2226" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L2227">			LOGGER.debug(&quot;[==Execution==] Using Hash execution location for &quot; + dcObject.getObjectID());</span>
+<span class="nc bnc" id="L2317" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L2318">			LOGGER.debug(&quot;[==Execution==] Using Hash execution location for &quot; + dcObject.getObjectID());</span>
 		}
 
 		final BackendID location;
 
-<span class="nc bnc" id="L2232" title="All 2 branches missed.">		if(alias != null) {</span>
-<span class="nc" id="L2233">			location = getBackendIDFromAlias(alias);</span>
+<span class="nc bnc" id="L2323" title="All 2 branches missed.">		if(alias != null) {</span>
+<span class="nc" id="L2324">			location = getBackendIDFromAlias(alias);</span>
 		}else {
-<span class="nc" id="L2235">			location = getBackendIDFromObjectID(dcObject.getObjectID());</span>
+<span class="nc" id="L2326">			location = getBackendIDFromObjectID(dcObject.getObjectID());</span>
 		}
 
-<span class="nc" id="L2238">		dcObject.setHint(location);</span>
-<span class="nc" id="L2239">		return location;</span>
+<span class="nc" id="L2329">		dcObject.setHint(location);</span>
+<span class="nc" id="L2330">		return location;</span>
 	}
 
 	/**
@@ -2248,10 +2339,10 @@ public abstract class DataClayRuntime {
 	 *            the new object id.
 	 */
 	protected void updateObjectID(DataClayObject dcObject, ObjectID newObjectID) {
-<span class="nc" id="L2251">		final ObjectID oldObjectID = dcObject.getObjectID();</span>
-<span class="nc" id="L2252">		dcObject.setObjectIDUnsafe(newObjectID);</span>
-<span class="nc" id="L2253">		dataClayHeapManager.removeFromHeap(oldObjectID);</span>
-<span class="nc" id="L2254">		dataClayHeapManager.addToHeap(dcObject);;</span>
-<span class="nc" id="L2255">	}</span>
+<span class="nc" id="L2342">		final ObjectID oldObjectID = dcObject.getObjectID();</span>
+<span class="nc" id="L2343">		dcObject.setObjectIDUnsafe(newObjectID);</span>
+<span class="nc" id="L2344">		dataClayHeapManager.removeFromHeap(oldObjectID);</span>
+<span class="nc" id="L2345">		dataClayHeapManager.addToHeap(dcObject);;</span>
+<span class="nc" id="L2346">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

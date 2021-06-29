@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ObjectLock.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.heap</a> &gt; <span class="el_source">ObjectLock.java</span></div><h1>ObjectLock.java</h1><pre class="source lang-java linenums">
+package es.bsc.dataclay.heap;
+
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.MetaClassID;
+import es.bsc.dataclay.util.ids.ObjectID;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * Locker of class.
+ */
+public final class ObjectLock {
+
+	/** Logger. */
+<span class="nc" id="L19">	private final Logger logger = LogManager.getLogger(&quot;LockerPool&quot;);</span>
+	/** Log flag. */
+<span class="nc" id="L21">	private final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** Number of threads waiting for the locker. */
+<span class="nc" id="L24">    private int waiting = 0;</span>
+
+    /** locker. */
+    private final Lock mutex;
+
+    /** ID of the object. */
+    private final ObjectID objectID;
+
+    /**
+     * Constructor
+     * @param objectID ID of the locker.
+     */
+<span class="nc" id="L36">    public ObjectLock(final ObjectID objectID) {</span>
+<span class="nc" id="L37">    	mutex = new ReentrantLock();</span>
+<span class="nc" id="L38">    	this.objectID = objectID;</span>
+<span class="nc bnc" id="L39" title="All 2 branches missed.">    	if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L40">    		logger.debug(&quot;NEW LOCK &quot; + objectID);</span>
+    	}
+<span class="nc" id="L42">    }</span>
+    
+    /**
+     * Lock class.
+     */
+    public void lock() {
+<span class="nc bnc" id="L48" title="All 2 branches missed.">    	if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L49">    		logger.debug(&quot;WAITING LOCK &quot; + objectID);</span>
+    	}
+<span class="nc" id="L51">        waiting++;</span>
+<span class="nc" id="L52">        mutex.lock();</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">    	if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L54">    		logger.debug(&quot;LOCKED &quot; + objectID);</span>
+    	}
+<span class="nc" id="L56">    }</span>
+    
+    /**
+     * Get number of threads waiting.
+     * @return number of threads waiting
+     */
+    public int getNumThreadsWaiting() { 
+<span class="nc" id="L63">    	return waiting;</span>
+    }
+    
+    /**
+     * Unlock class.
+     */
+    public void unlock() {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">    	if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L71">    		logger.debug(&quot;UNLOCKED &quot; + objectID);</span>
+    	}
+<span class="nc" id="L73">        mutex.unlock();</span>
+<span class="nc" id="L74">        waiting--;</span>
+<span class="nc" id="L75">    }</span>
+    
+    /**
+     * Get class id of locker
+     * @return ID of the object
+     */
+    public ObjectID getObjectID() {
+<span class="nc" id="L82">    	return objectID;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

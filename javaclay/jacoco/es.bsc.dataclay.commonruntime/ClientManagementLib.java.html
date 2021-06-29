@@ -5,13 +5,8 @@ import java.io.FileInputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.rmi.RemoteException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -61,9 +56,9 @@ import es.bsc.dataclay.util.tools.java.JavaSpecGenerator;
 public final class ClientManagementLib {
 
 	/** Logger. */
-<span class="nc" id="L64">	private static final Logger LOGGER = LogManager.getLogger(&quot;ClientManagementLib&quot;);</span>
+<span class="nc" id="L59">	private static final Logger LOGGER = LogManager.getLogger(&quot;ClientManagementLib&quot;);</span>
 	/** Path of configuration file. */
-<span class="nc" id="L66">	private static final String CONFIGFILEPATH = &quot;.&quot; + File.separatorChar + &quot;cfgfiles&quot; + File.separatorChar</span>
+<span class="nc" id="L61">	private static final String CONFIGFILEPATH = &quot;.&quot; + File.separatorChar + &quot;cfgfiles&quot; + File.separatorChar</span>
 			+ &quot;client.properties&quot;;
 	/** Environment variable where configuration file can be specified. */
 	public static final String CONFIGFILEPATH_ENV = &quot;DATACLAYCLIENTCONFIG&quot;;
@@ -81,13 +76,13 @@ public final class ClientManagementLib {
 	private static ClientRuntime clientLib;
 
 	/** Lock for newClass. */
-<span class="nc" id="L84">	private static Lock newClassLock = new ReentrantLock();</span>
+<span class="nc" id="L79">	private static Lock newClassLock = new ReentrantLock();</span>
 
 	/**
 	 * ClientManagementLib constructor
 	 */
-<span class="nc" id="L89">	private ClientManagementLib() {</span>
-<span class="nc" id="L90">		throw new IllegalAccessError(&quot;This class cannot be instantiated&quot;);</span>
+<span class="nc" id="L84">	private ClientManagementLib() {</span>
+<span class="nc" id="L85">		throw new IllegalAccessError(&quot;This class cannot be instantiated&quot;);</span>
 	}
 
 	/**
@@ -96,8 +91,8 @@ public final class ClientManagementLib {
 	 * @return Version of the library
 	 */
 	public static String getManifestInfo() {
-<span class="nc" id="L99">		final Package pkg = ClientManagementLib.class.getPackage();</span>
-<span class="nc" id="L100">		return pkg.getImplementationVersion();</span>
+<span class="nc" id="L94">		final Package pkg = ClientManagementLib.class.getPackage();</span>
+<span class="nc" id="L95">		return pkg.getImplementationVersion();</span>
 	}
 
 	/**
@@ -111,81 +106,78 @@ public final class ClientManagementLib {
 	 * @return TRUE if connections were successfully initiliazed. FALSE, otherwise.
 	 */
 	public static boolean initializeCMLib(final String configFilePathArg) {
-<span class="nc" id="L114">		String configFilePath = configFilePathArg;</span>
+<span class="nc" id="L109">		String configFilePath = configFilePathArg;</span>
 		try {
-<span class="nc" id="L116">			File configFile = null;</span>
-<span class="nc" id="L117">			LOGGER.info(&quot;Initializing client library with properties located at {}&quot;, configFilePath);</span>
-<span class="nc" id="L118">			boolean fileExists = false;</span>
-<span class="nc bnc" id="L119" title="All 4 branches missed.">			if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
-<span class="nc" id="L120">				configFile = new File(configFilePath);</span>
-<span class="nc bnc" id="L121" title="All 4 branches missed.">				fileExists = configFile.isFile() &amp;&amp; configFile.exists();</span>
+<span class="nc" id="L111">			File configFile = null;</span>
+<span class="nc" id="L112">			boolean fileExists = false;</span>
+<span class="nc bnc" id="L113" title="All 4 branches missed.">			if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
+<span class="nc" id="L114">				LOGGER.info(&quot;Initializing client library with provided file located at {}&quot;, configFilePath);</span>
+<span class="nc" id="L115">				configFile = new File(configFilePath);</span>
+<span class="nc bnc" id="L116" title="All 4 branches missed.">				fileExists = configFile.isFile() &amp;&amp; configFile.exists();</span>
 			}
-<span class="nc bnc" id="L123" title="All 2 branches missed.">			if (!fileExists) {</span>
-<span class="nc" id="L124">				LOGGER.warn(&quot;Provided config file path is null, empty or does not exist. &quot;</span>
-						+ &quot;Looking for environment variable {}&quot;, CONFIGFILEPATH_ENV);
-<span class="nc" id="L126">				configFilePath = ProcessEnvironment.getInstance().get(CONFIGFILEPATH_ENV);</span>
-<span class="nc bnc" id="L127" title="All 4 branches missed.">				if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
-<span class="nc" id="L128">					LOGGER.info(&quot;Trying to use the following configFile: {}&quot;, configFilePath);</span>
-<span class="nc" id="L129">					configFile = new File(configFilePath);</span>
-<span class="nc bnc" id="L130" title="All 4 branches missed.">					fileExists = configFile.isFile() &amp;&amp; configFile.exists();</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">			if (!fileExists) {</span>
+<span class="nc" id="L119">				configFilePath = ProcessEnvironment.getInstance().get(CONFIGFILEPATH_ENV);</span>
+<span class="nc bnc" id="L120" title="All 4 branches missed.">				if (configFilePath != null &amp;&amp; !configFilePath.isEmpty()) {</span>
+<span class="nc" id="L121">					configFile = new File(configFilePath);</span>
+<span class="nc bnc" id="L122" title="All 4 branches missed.">					fileExists = configFile.isFile() &amp;&amp; configFile.exists();</span>
 				}
 
-<span class="nc bnc" id="L133" title="All 2 branches missed.">				if (fileExists) {</span>
-<span class="nc" id="L134">					LOGGER.info(&quot;Found {}. Initializing client library with properties located at {}&quot;,</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">				if (fileExists) {</span>
+<span class="nc" id="L126">					LOGGER.info(&quot;Found {}. Initializing client library with properties located at {}&quot;,</span>
 							CONFIGFILEPATH_ENV, configFilePath);
 				} else {
-<span class="nc" id="L137">					final Path path = Paths.get(CONFIGFILEPATH).normalize();</span>
-<span class="nc" id="L138">					LOGGER.warn(&quot;Unsuccessful while trying to load file from the environment variable `{}`. &quot;</span>
-<span class="nc" id="L139">							+ &quot;Fallback to default location: {}&quot;, CONFIGFILEPATH_ENV, path.toAbsolutePath());</span>
-<span class="nc" id="L140">					configFilePath = path.toAbsolutePath().toString();</span>
-<span class="nc" id="L141">					configFile = new File(configFilePath);</span>
+<span class="nc" id="L129">					final Path path = Paths.get(CONFIGFILEPATH).normalize();</span>
+<span class="nc" id="L130">					LOGGER.warn(&quot;Unsuccessful while trying to load file from the environment variable `{}={}`. &quot;</span>
+<span class="nc" id="L131">							+ &quot;Fallback to default location: {}&quot;, CONFIGFILEPATH_ENV, CONFIGFILEPATH, path.toAbsolutePath());</span>
+<span class="nc" id="L132">					configFilePath = path.toAbsolutePath().toString();</span>
+<span class="nc" id="L133">					configFile = new File(configFilePath);</span>
 
 				}
 			}
 
-<span class="nc" id="L146">			final FileInputStream configFileStr = new FileInputStream(configFile);</span>
-<span class="nc" id="L147">			final Properties prop = new Properties();</span>
-<span class="nc" id="L148">			prop.load(configFileStr);</span>
-<span class="nc" id="L149">			configFileStr.close();</span>
+<span class="nc" id="L138">			final FileInputStream configFileStr = new FileInputStream(configFile);</span>
+<span class="nc" id="L139">			final Properties prop = new Properties();</span>
+<span class="nc" id="L140">			prop.load(configFileStr);</span>
+<span class="nc" id="L141">			configFileStr.close();</span>
 
-<span class="nc" id="L151">			final String host = prop.getProperty(KEYLOGICHOST);</span>
-<span class="nc" id="L152">			final Integer port = new Integer(prop.getProperty(KEYLOGICTCPPORT));</span>
-<span class="nc bnc" id="L153" title="All 2 branches missed.">			if (clientLib != null) {</span>
+<span class="nc" id="L143">			final String host = prop.getProperty(KEYLOGICHOST);</span>
+<span class="nc" id="L144">			final Integer port = new Integer(prop.getProperty(KEYLOGICTCPPORT));</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">			if (clientLib != null) {</span>
 				// If commonLib is not null, it means it was previously initialized and we are
 				// restarting it. So, close it
 				// before.
-<span class="nc" id="L157">				LOGGER.info(&quot;Previous connection found during start of DataClay libraries.&quot;</span>
+<span class="nc" id="L149">				LOGGER.info(&quot;Previous connection found during start of DataClay libraries.&quot;</span>
 						+ &quot; Closing it before new connection.&quot;);
-<span class="nc" id="L159">				clientLib.finishConnections();</span>
+<span class="nc" id="L151">				clientLib.finishConnections();</span>
 			}
-<span class="nc" id="L161">			clientLib = new ClientRuntime();</span>
-<span class="nc" id="L162">			clientLib.initialize(host, port, &quot;CL&quot;);</span>
+<span class="nc" id="L153">			clientLib = new ClientRuntime();</span>
+<span class="nc" id="L154">			clientLib.initialize(host, port, &quot;CL&quot;);</span>
 
-<span class="nc bnc" id="L164" title="All 2 branches missed.">			if (Configuration.mockTesting) {</span>
-<span class="nc" id="L165">				DataClayMockObject.setCurrentThreadLib(clientLib);</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">			if (Configuration.mockTesting) {</span>
+<span class="nc" id="L157">				DataClayMockObject.setCurrentThreadLib(clientLib);</span>
 			}
-<span class="nc" id="L167">			final Thread shutdownHook = new Thread() {</span>
+<span class="nc" id="L159">			final Thread shutdownHook = new Thread() {</span>
 				@Override
 				public void run() {
 					try {
-<span class="nc bnc" id="L171" title="All 2 branches missed.">						if (clientLib != null) {</span>
-<span class="nc" id="L172">							clientLib.finishConnections();</span>
-<span class="nc" id="L173">							clientLib = null;</span>
-<span class="nc" id="L174">							LOGGER.info(&quot;Client Library closed by SHUTDOWN HOOK &quot;);</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">						if (clientLib != null) {</span>
+<span class="nc" id="L164">							clientLib.finishConnections();</span>
+<span class="nc" id="L165">							clientLib = null;</span>
+<span class="nc" id="L166">							LOGGER.info(&quot;Client Library closed by SHUTDOWN HOOK &quot;);</span>
 						}
-<span class="nc" id="L176">					} catch (final Exception e) {</span>
-<span class="nc" id="L177">						LOGGER.error(&quot;Error during shutdown hook&quot;, e);</span>
-<span class="nc" id="L178">					}</span>
-<span class="nc" id="L179">				}</span>
+<span class="nc" id="L168">					} catch (final Exception e) {</span>
+<span class="nc" id="L169">						LOGGER.error(&quot;Error during shutdown hook&quot;, e);</span>
+<span class="nc" id="L170">					}</span>
+<span class="nc" id="L171">				}</span>
 			};
-<span class="nc" id="L181">			shutdownHook.setName(&quot;CL-ShutdownHook&quot;);</span>
-<span class="nc" id="L182">			Runtime.getRuntime().addShutdownHook(shutdownHook);</span>
+<span class="nc" id="L173">			shutdownHook.setName(&quot;CL-ShutdownHook&quot;);</span>
+<span class="nc" id="L174">			Runtime.getRuntime().addShutdownHook(shutdownHook);</span>
 
-<span class="nc" id="L184">		} catch (final Exception ex) {</span>
-<span class="nc" id="L185">			LOGGER.error(&quot;Cannot initialize client library. Is client.properties valid? Has init() been called?&quot;, ex);</span>
-<span class="nc" id="L186">			return false;</span>
-<span class="nc" id="L187">		}</span>
-<span class="nc" id="L188">		return true;</span>
+<span class="nc" id="L176">		} catch (final Exception ex) {</span>
+<span class="nc" id="L177">			LOGGER.error(&quot;Cannot initialize client library. Is client.properties valid? Has init() been called?&quot;, ex);</span>
+<span class="nc" id="L178">			return false;</span>
+<span class="nc" id="L179">		}</span>
+<span class="nc" id="L180">		return true;</span>
 	}
 
 	/**
@@ -195,12 +187,11 @@ public final class ClientManagementLib {
 	 *             if some exception occurs
 	 */
 	public static void finishConnections() throws Exception {
-<span class="nc bnc" id="L198" title="All 2 branches missed.">		if (clientLib != null) {</span>
-<span class="nc" id="L199">			LOGGER.info(&quot;Finishing connections ... &quot;);</span>
-<span class="nc" id="L200">			clientLib.finishConnections();</span>
-<span class="nc" id="L201">			clientLib = null;</span>
+<span class="nc bnc" id="L190" title="All 2 branches missed.">		if (clientLib != null) {</span>
+<span class="nc" id="L191">			clientLib.finishConnections();</span>
+<span class="nc" id="L192">			clientLib = null;</span>
 		}
-<span class="nc" id="L203">	}</span>
+<span class="nc" id="L194">	}</span>
 
 	// ============== Account Manager ==============//
 
@@ -210,7 +201,7 @@ public final class ClientManagementLib {
 	 * @return The common lib
 	 */
 	public static ClientRuntime getDataClayClientLib() {
-<span class="nc" id="L213">		return clientLib;</span>
+<span class="nc" id="L204">		return clientLib;</span>
 	}
 
 	/**
@@ -224,16 +215,16 @@ public final class ClientManagementLib {
 	 */
 	public static AccountID newAccount(final Account newAcc) {
 
-<span class="nc" id="L227">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot;, &quot;Account&quot; },</span>
+<span class="nc" id="L218">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot;, &quot;Account&quot; },</span>
 				new Object[] { newAcc });
 
-<span class="nc" id="L230">		AccountID result = null;</span>
+<span class="nc" id="L221">		AccountID result = null;</span>
 		try {
-<span class="nc" id="L232">			result = clientLib.getLogicModuleAPI().newAccountNoAdmin(newAcc);</span>
-<span class="nc" id="L233">		} catch (final Exception ex) {</span>
-<span class="nc" id="L234">			LOGGER.warn(&quot;Error during newAccount&quot;, ex);</span>
-<span class="nc" id="L235">		}</span>
-<span class="nc" id="L236">		return result;</span>
+<span class="nc" id="L223">			result = clientLib.getLogicModuleAPI().newAccountNoAdmin(newAcc);</span>
+<span class="nc" id="L224">		} catch (final Exception ex) {</span>
+<span class="nc" id="L225">			LOGGER.warn(&quot;Error during newAccount&quot;, ex);</span>
+<span class="nc" id="L226">		}</span>
+<span class="nc" id="L227">		return result;</span>
 	}
 
 	/**
@@ -247,14 +238,14 @@ public final class ClientManagementLib {
 	 */
 	public static AccountID getAccountID(final String userName) {
 
-<span class="nc" id="L250">		clientLib.checkConnectionAndParams(new String[] { &quot;UserName&quot; }, new Object[] { userName });</span>
-<span class="nc" id="L251">		AccountID result = null;</span>
+<span class="nc" id="L241">		clientLib.checkConnectionAndParams(new String[] { &quot;UserName&quot; }, new Object[] { userName });</span>
+<span class="nc" id="L242">		AccountID result = null;</span>
 		try {
-<span class="nc" id="L253">			result = clientLib.getLogicModuleAPI().getAccountID(userName);</span>
-<span class="nc" id="L254">		} catch (final Exception ex) {</span>
-<span class="nc" id="L255">			LOGGER.warn(&quot;Error during getAccountID&quot;, ex);</span>
-<span class="nc" id="L256">		}</span>
-<span class="nc" id="L257">		return result;</span>
+<span class="nc" id="L244">			result = clientLib.getLogicModuleAPI().getAccountID(userName);</span>
+<span class="nc" id="L245">		} catch (final Exception ex) {</span>
+<span class="nc" id="L246">			LOGGER.warn(&quot;Error during getAccountID&quot;, ex);</span>
+<span class="nc" id="L247">		}</span>
+<span class="nc" id="L248">		return result;</span>
 	}
 
 	/**
@@ -269,15 +260,15 @@ public final class ClientManagementLib {
 	 */
 	public static Set&lt;AccountID&gt; getNonAdminAccountList(final AccountID adminAccountID,
 			final PasswordCredential adminCredential) {
-<span class="nc" id="L272">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot; },</span>
+<span class="nc" id="L263">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot; },</span>
 				new Object[] { adminAccountID, adminCredential });
-<span class="nc" id="L274">		Set&lt;AccountID&gt; result = null;</span>
+<span class="nc" id="L265">		Set&lt;AccountID&gt; result = null;</span>
 		try {
-<span class="nc" id="L276">			result = clientLib.getLogicModuleAPI().getAccountList(adminAccountID, adminCredential);</span>
-<span class="nc" id="L277">		} catch (final Exception ex) {</span>
-<span class="nc" id="L278">			LOGGER.warn(&quot;Error during getNonAdminAccountList&quot;, ex);</span>
-<span class="nc" id="L279">		}</span>
-<span class="nc" id="L280">		return result;</span>
+<span class="nc" id="L267">			result = clientLib.getLogicModuleAPI().getAccountList(adminAccountID, adminCredential);</span>
+<span class="nc" id="L268">		} catch (final Exception ex) {</span>
+<span class="nc" id="L269">			LOGGER.warn(&quot;Error during getNonAdminAccountList&quot;, ex);</span>
+<span class="nc" id="L270">		}</span>
+<span class="nc" id="L271">		return result;</span>
 	}
 
 	// ============== Session Manager ==============//
@@ -301,35 +292,35 @@ public final class ClientManagementLib {
 	public static SessionID newSession(final AccountID accountID, final PasswordCredential credential,
 			final Map&lt;String, StubInfo&gt; stubsInfo, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
 
-<span class="nc" id="L304">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L295">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;StubsInfo&quot;, &quot;DataSets&quot;, &quot;DataSetForStore&quot; },
 				new Object[] { accountID, credential, stubsInfo, dataSets, dataSetForStore });
-<span class="nc" id="L307">		SessionID result = null;</span>
+<span class="nc" id="L298">		SessionID result = null;</span>
 		try {
-<span class="nc bnc" id="L309" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
-<span class="nc" id="L310">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
+<span class="nc" id="L301">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
 						dataSetForStore, dataSets);
 			}
 
 			// Init result
-<span class="nc" id="L315">			final HashSet&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L306">			final HashSet&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
 
 			// For each stub in classpath, extract info of their contracts
-<span class="nc bnc" id="L318" title="All 2 branches missed.">			for (final Entry&lt;String, StubInfo&gt; entry : stubsInfo.entrySet()) {</span>
-<span class="nc" id="L319">				final StubInfo stubInfo = entry.getValue();</span>
-<span class="nc" id="L320">				contracts.addAll(stubInfo.getContracts());</span>
-<span class="nc" id="L321">			}</span>
-<span class="nc bnc" id="L322" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
-<span class="nc" id="L323">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">			for (final Entry&lt;String, StubInfo&gt; entry : stubsInfo.entrySet()) {</span>
+<span class="nc" id="L310">				final StubInfo stubInfo = entry.getValue();</span>
+<span class="nc" id="L311">				contracts.addAll(stubInfo.getContracts());</span>
+<span class="nc" id="L312">			}</span>
+<span class="nc bnc" id="L313" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
+<span class="nc" id="L314">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
 			}
 
 			// Call to Logic module
-<span class="nc" id="L327">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
+<span class="nc" id="L318">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
 
-<span class="nc" id="L329">		} catch (final Exception ex) {</span>
-<span class="nc" id="L330">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
-<span class="nc" id="L331">		}</span>
-<span class="nc" id="L332">		return result;</span>
+<span class="nc" id="L320">		} catch (final Exception ex) {</span>
+<span class="nc" id="L321">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
+<span class="nc" id="L322">		}</span>
+<span class="nc" id="L323">		return result;</span>
 	}
 
 	/**
@@ -350,37 +341,37 @@ public final class ClientManagementLib {
 	 */
 	public static SessionID newSession(final AccountID accountID, final PasswordCredential credential,
 			final String classPathOfStubs, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
-<span class="nc" id="L353">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L344">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ClassPathOfStubs&quot;, &quot;DataSets&quot;, &quot;DataSetForStore&quot; },
 				new Object[] { accountID, credential, classPathOfStubs, dataSets, dataSetForStore });
-<span class="nc" id="L356">		SessionID result = null;</span>
+<span class="nc" id="L347">		SessionID result = null;</span>
 		try {
-<span class="nc bnc" id="L358" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
-<span class="nc" id="L359">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
+<span class="nc bnc" id="L349" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
+<span class="nc" id="L350">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
 						dataSetForStore, dataSets);
 			}
 			// Get info of stubs in classpath
-<span class="nc" id="L363">			final Map&lt;String, StubInfo&gt; stubsInfo = StubClassLoader.getStubInfosFromClassPath(classPathOfStubs);</span>
+<span class="nc" id="L354">			final Map&lt;String, StubInfo&gt; stubsInfo = StubClassLoader.getStubInfosFromClassPath(classPathOfStubs);</span>
 
 			// Init result
-<span class="nc" id="L366">			final HashSet&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L357">			final HashSet&lt;ContractID&gt; contracts = new HashSet&lt;&gt;();</span>
 
 			// For each stub in classpath, extract info of their contracts
-<span class="nc bnc" id="L369" title="All 2 branches missed.">			for (final Entry&lt;String, StubInfo&gt; entry : stubsInfo.entrySet()) {</span>
-<span class="nc" id="L370">				final StubInfo stubInfo = entry.getValue();</span>
-<span class="nc" id="L371">				contracts.addAll(stubInfo.getContracts());</span>
-<span class="nc" id="L372">			}</span>
-<span class="nc bnc" id="L373" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
-<span class="nc" id="L374">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">			for (final Entry&lt;String, StubInfo&gt; entry : stubsInfo.entrySet()) {</span>
+<span class="nc" id="L361">				final StubInfo stubInfo = entry.getValue();</span>
+<span class="nc" id="L362">				contracts.addAll(stubInfo.getContracts());</span>
+<span class="nc" id="L363">			}</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
+<span class="nc" id="L365">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
 			}
 
 			// Call to Logic module
-<span class="nc" id="L378">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
+<span class="nc" id="L369">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
 
-<span class="nc" id="L380">		} catch (final Exception ex) {</span>
-<span class="nc" id="L381">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
-<span class="nc" id="L382">		}</span>
-<span class="nc" id="L383">		return result;</span>
+<span class="nc" id="L371">		} catch (final Exception ex) {</span>
+<span class="nc" id="L372">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
+<span class="nc" id="L373">		}</span>
+<span class="nc" id="L374">		return result;</span>
 	}
 
 	/**
@@ -401,23 +392,23 @@ public final class ClientManagementLib {
 	 */
 	public static SessionID newSession(final AccountID accountID, final PasswordCredential credential,
 			final Set&lt;ContractID&gt; contracts, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
-<span class="nc" id="L404">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L395">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contracts&quot;, &quot;DataSets&quot;, &quot;DataSetForStore&quot; },
 				new Object[] { accountID, credential, contracts, dataSets, dataSetForStore });
-<span class="nc" id="L407">		SessionID result = null;</span>
+<span class="nc" id="L398">		SessionID result = null;</span>
 		try {
-<span class="nc bnc" id="L409" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
-<span class="nc" id="L410">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
+<span class="nc bnc" id="L400" title="All 2 branches missed.">			if (!dataSets.contains(dataSetForStore)) {</span>
+<span class="nc" id="L401">				LOGGER.warn(&quot;Dataset for store {} should be included among the datasets (currently: {})&quot;,</span>
 						dataSetForStore, dataSets);
 			}
-<span class="nc bnc" id="L413" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
-<span class="nc" id="L414">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">			if (contracts.size() == 0) {</span>
+<span class="nc" id="L405">				LOGGER.warn(&quot;The session has no model contracts&quot;);</span>
 			}
-<span class="nc" id="L416">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
-<span class="nc" id="L417">		} catch (final Exception ex) {</span>
-<span class="nc" id="L418">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
-<span class="nc" id="L419">		}</span>
-<span class="nc" id="L420">		return result;</span>
+<span class="nc" id="L407">			result = newSessionCommon(accountID, credential, contracts, dataSets, dataSetForStore);</span>
+<span class="nc" id="L408">		} catch (final Exception ex) {</span>
+<span class="nc" id="L409">			LOGGER.warn(&quot;Error during newSession&quot;, ex);</span>
+<span class="nc" id="L410">		}</span>
+<span class="nc" id="L411">		return result;</span>
 	}
 
 	/**
@@ -439,18 +430,18 @@ public final class ClientManagementLib {
 	 */
 	private static SessionID newSessionCommon(final AccountID accountID, final PasswordCredential credential,
 			final Set&lt;ContractID&gt; contracts, final Set&lt;String&gt; dataSets, final String dataSetForStore) {
-<span class="nc" id="L442">		final Set&lt;DataSetID&gt; dataSetIDs = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L443">		final DataSetID dataSetForStoreID = getDatasetID(accountID, credential, dataSetForStore);</span>
-<span class="nc bnc" id="L444" title="All 2 branches missed.">		for (final String datasetName : dataSets) {</span>
-<span class="nc" id="L445">			dataSetIDs.add(getDatasetID(accountID, credential, datasetName));</span>
-<span class="nc" id="L446">		}</span>
+<span class="nc" id="L433">		final Set&lt;DataSetID&gt; dataSetIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L434">		final DataSetID dataSetForStoreID = getDatasetID(accountID, credential, dataSetForStore);</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">		for (final String datasetName : dataSets) {</span>
+<span class="nc" id="L436">			dataSetIDs.add(getDatasetID(accountID, credential, datasetName));</span>
+<span class="nc" id="L437">		}</span>
 		// Call to Logic module
-<span class="nc" id="L448">		LOGGER.debug(&quot;Calling new session with datasets :&quot; + dataSetIDs);</span>
-<span class="nc" id="L449">		final SessionInfo sessInfo = clientLib.getLogicModuleAPI().newSession(accountID, credential, contracts,</span>
+<span class="nc" id="L439">		LOGGER.debug(&quot;Calling new session with datasets :&quot; + dataSetIDs);</span>
+<span class="nc" id="L440">		final SessionInfo sessInfo = clientLib.getLogicModuleAPI().newSession(accountID, credential, contracts,</span>
 				dataSetIDs, dataSetForStoreID, Langs.LANG_JAVA);
-<span class="nc" id="L451">		clientLib.setSessionInfo(sessInfo);</span>
-<span class="nc" id="L452">		DataClayObject.setLib(clientLib);</span>
-<span class="nc" id="L453">		return sessInfo.getSessionID();</span>
+<span class="nc" id="L442">		clientLib.setSessionInfo(sessInfo);</span>
+<span class="nc" id="L443">		DataClayObject.setLib(clientLib);</span>
+<span class="nc" id="L444">		return sessInfo.getSessionID();</span>
 	}
 
 	/**
@@ -458,11 +449,11 @@ public final class ClientManagementLib {
 	 */
 	public static void closeSession() {
 		try {
-<span class="nc" id="L461">			clientLib.closeSession();</span>
-<span class="nc" id="L462">		} catch (final Exception ex) {</span>
+<span class="nc" id="L452">			clientLib.closeSession();</span>
+<span class="nc" id="L453">		} catch (final Exception ex) {</span>
 
-<span class="nc" id="L464">		}</span>
-<span class="nc" id="L465">	}</span>
+<span class="nc" id="L455">		}</span>
+<span class="nc" id="L456">	}</span>
 
 	/**
 	 * Configure LogicModule to give provided address in case external dataClays require to know how
@@ -471,10 +462,10 @@ public final class ClientManagementLib {
 	 * @param port Port to be published
 	 */
 	public static void publishAddress(final String hostname, final int port) { 
-<span class="nc" id="L474">		clientLib.checkConnectionAndParams(new String[] { &quot;hostname&quot;, &quot;port&quot; },</span>
-<span class="nc" id="L475">				new Object[] { hostname, port });</span>
-<span class="nc" id="L476">		clientLib.getLogicModuleAPI().publishAddress(hostname, port);</span>
-<span class="nc" id="L477">	}</span>
+<span class="nc" id="L465">		clientLib.checkConnectionAndParams(new String[] { &quot;hostname&quot;, &quot;port&quot; },</span>
+<span class="nc" id="L466">				new Object[] { hostname, port });</span>
+<span class="nc" id="L467">		clientLib.getLogicModuleAPI().publishAddress(hostname, port);</span>
+<span class="nc" id="L468">	}</span>
 	
 	// ============== Namespace Manager ==============//
 
@@ -492,15 +483,16 @@ public final class ClientManagementLib {
 	 */
 	public static NamespaceID newNamespace(final AccountID accountID, final PasswordCredential credential,
 			final Namespace newNamespace) {
-<span class="nc" id="L495">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;newNamespace&quot; },</span>
+<span class="nc" id="L486">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;newNamespace&quot; },</span>
 				new Object[] { accountID, credential, newNamespace });
-<span class="nc" id="L497">		NamespaceID result = null;</span>
+<span class="nc" id="L488">		NamespaceID result = null;</span>
 		try {
-<span class="nc" id="L499">			result = clientLib.getLogicModuleAPI().newNamespace(accountID, credential, newNamespace);</span>
-<span class="nc" id="L500">		} catch (final Exception ex) {</span>
-<span class="nc" id="L501">			LOGGER.warn(&quot;Error during newNamespace&quot;, ex);</span>
-<span class="nc" id="L502">		}</span>
-<span class="nc" id="L503">		return result;</span>
+<span class="nc" id="L490">			result = clientLib.getLogicModuleAPI().newNamespace(accountID, credential, newNamespace);</span>
+<span class="nc" id="L491">		} catch (final Exception ex) {</span>
+<span class="nc" id="L492">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L493">			LOGGER.trace(&quot;Error during newNamespace&quot;, ex);</span>
+<span class="nc" id="L494">		}</span>
+<span class="nc" id="L495">		return result;</span>
 	}
 
 	/**
@@ -518,15 +510,16 @@ public final class ClientManagementLib {
 	 */
 	public static boolean removeNamespace(final AccountID accountID, final PasswordCredential credential,
 			final String namespaceName) {
-<span class="nc" id="L521">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
+<span class="nc" id="L513">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
 				new Object[] { accountID, credential, namespaceName });
 		try {
-<span class="nc" id="L524">			clientLib.getLogicModuleAPI().removeNamespace(accountID, credential, namespaceName);</span>
-<span class="nc" id="L525">			return true;</span>
-<span class="nc" id="L526">		} catch (final Exception ex) {</span>
-<span class="nc" id="L527">			LOGGER.warn(&quot;Error during removeNamespace&quot;, ex);</span>
+<span class="nc" id="L516">			clientLib.getLogicModuleAPI().removeNamespace(accountID, credential, namespaceName);</span>
+<span class="nc" id="L517">			return true;</span>
+<span class="nc" id="L518">		} catch (final Exception ex) {</span>
+<span class="nc" id="L519">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L520">			LOGGER.trace(&quot;Error during removeNamespace&quot;, ex);</span>
 		}
-<span class="nc" id="L529">		return false;</span>
+<span class="nc" id="L522">		return false;</span>
 	}
 
 	/**
@@ -544,15 +537,16 @@ public final class ClientManagementLib {
 	 */
 	public static NamespaceID getNamespaceID(final AccountID accountID, final PasswordCredential credential,
 			final String namespaceName) {
-<span class="nc" id="L547">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
+<span class="nc" id="L540">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
 				new Object[] { accountID, credential, namespaceName });
-<span class="nc" id="L549">		NamespaceID result = null;</span>
+<span class="nc" id="L542">		NamespaceID result = null;</span>
 		try {
-<span class="nc" id="L551">			result = clientLib.getLogicModuleAPI().getNamespaceID(accountID, credential, namespaceName);</span>
-<span class="nc" id="L552">		} catch (final Exception ex) {</span>
-<span class="nc" id="L553">			LOGGER.warn(&quot;Error during getNamespaceID&quot;, ex);</span>
-<span class="nc" id="L554">		}</span>
-<span class="nc" id="L555">		return result;</span>
+<span class="nc" id="L544">			result = clientLib.getLogicModuleAPI().getNamespaceID(accountID, credential, namespaceName);</span>
+<span class="nc" id="L545">		} catch (final Exception ex) {</span>
+<span class="nc" id="L546">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L547">			LOGGER.trace(&quot;Error during getNamespaceID&quot;, ex);</span>
+<span class="nc" id="L548">		}</span>
+<span class="nc" id="L549">		return result;</span>
 	}
 
 	/**
@@ -570,15 +564,16 @@ public final class ClientManagementLib {
 	 */
 	public static Langs getNamespaceLanguage(final AccountID accountID, final PasswordCredential credential,
 			final String namespaceName) {
-<span class="nc" id="L573">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
+<span class="nc" id="L567">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceName&quot; },</span>
 				new Object[] { accountID, credential, namespaceName });
-<span class="nc" id="L575">		Langs result = null;</span>
+<span class="nc" id="L569">		Langs result = null;</span>
 		try {
-<span class="nc" id="L577">			result = clientLib.getLogicModuleAPI().getNamespaceLang(accountID, credential, namespaceName);</span>
-<span class="nc" id="L578">		} catch (final Exception ex) {</span>
-<span class="nc" id="L579">			LOGGER.warn(&quot;Error during newgetNamespaceLanguage&quot;, ex);</span>
-<span class="nc" id="L580">		}</span>
-<span class="nc" id="L581">		return result;</span>
+<span class="nc" id="L571">			result = clientLib.getLogicModuleAPI().getNamespaceLang(accountID, credential, namespaceName);</span>
+<span class="nc" id="L572">		} catch (final Exception ex) {</span>
+<span class="nc" id="L573">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L574">			LOGGER.trace(&quot;Error during newgetNamespaceLanguage&quot;, ex);</span>
+<span class="nc" id="L575">		}</span>
+<span class="nc" id="L576">		return result;</span>
 	}
 
 	/**
@@ -591,15 +586,16 @@ public final class ClientManagementLib {
 	 * @return set of namespaces names available from the account provided.
 	 */
 	public static Set&lt;String&gt; getNamespaces(final AccountID accountID, final PasswordCredential credential) {
-<span class="nc" id="L594">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+<span class="nc" id="L589">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
 				new Object[] { accountID, credential });
-<span class="nc" id="L596">		Set&lt;String&gt; result = null;</span>
+<span class="nc" id="L591">		Set&lt;String&gt; result = null;</span>
 		try {
-<span class="nc" id="L598">			result = clientLib.getLogicModuleAPI().getNamespaces(accountID, credential);</span>
-<span class="nc" id="L599">		} catch (final Exception ex) {</span>
-<span class="nc" id="L600">			LOGGER.warn(&quot;Error during getNamespaces&quot;, ex);</span>
-<span class="nc" id="L601">		}</span>
-<span class="nc" id="L602">		return result;</span>
+<span class="nc" id="L593">			result = clientLib.getLogicModuleAPI().getNamespaces(accountID, credential);</span>
+<span class="nc" id="L594">		} catch (final Exception ex) {</span>
+<span class="nc" id="L595">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L596">			LOGGER.trace(&quot;Error during getNamespaces&quot;, ex);</span>
+<span class="nc" id="L597">		}</span>
+<span class="nc" id="L598">		return result;</span>
 	}
 
 	/**
@@ -620,16 +616,17 @@ public final class ClientManagementLib {
 	 */
 	public static boolean importInterface(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final ContractID contractID, final InterfaceID interfaceID) {
-<span class="nc" id="L623">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L619">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ContractID&quot;, &quot;InterfaceID&quot; },
 				new Object[] { accountID, credential, namespaceID, contractID, interfaceID });
 		try {
-<span class="nc" id="L627">			clientLib.getLogicModuleAPI().importInterface(accountID, credential, namespaceID, contractID, interfaceID);</span>
-<span class="nc" id="L628">			return true;</span>
-<span class="nc" id="L629">		} catch (final Exception ex) {</span>
-<span class="nc" id="L630">			LOGGER.warn(&quot;Error during importInterface&quot;, ex);</span>
+<span class="nc" id="L623">			clientLib.getLogicModuleAPI().importInterface(accountID, credential, namespaceID, contractID, interfaceID);</span>
+<span class="nc" id="L624">			return true;</span>
+<span class="nc" id="L625">		} catch (final Exception ex) {</span>
+<span class="nc" id="L626">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L627">			LOGGER.trace(&quot;Error during importInterface&quot;, ex);</span>
 		}
-<span class="nc" id="L632">		return false;</span>
+<span class="nc" id="L629">		return false;</span>
 	}
 
 	/**
@@ -648,15 +645,16 @@ public final class ClientManagementLib {
 	 */
 	public static boolean importContract(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final ContractID contractID) {
-<span class="nc" id="L651">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ContractID&quot; },</span>
+<span class="nc" id="L648">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ContractID&quot; },</span>
 				new Object[] { accountID, credential, namespaceID, contractID });
 		try {
-<span class="nc" id="L654">			clientLib.getLogicModuleAPI().importContract(accountID, credential, namespaceID, contractID);</span>
-<span class="nc" id="L655">			return true;</span>
-<span class="nc" id="L656">		} catch (final Exception ex) {</span>
-<span class="nc" id="L657">			LOGGER.warn(&quot;Error during importContract&quot;, ex);</span>
+<span class="nc" id="L651">			clientLib.getLogicModuleAPI().importContract(accountID, credential, namespaceID, contractID);</span>
+<span class="nc" id="L652">			return true;</span>
+<span class="nc" id="L653">		} catch (final Exception ex) {</span>
+<span class="nc" id="L654">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L655">			LOGGER.trace(&quot;Error during importContract&quot;, ex);</span>
 		}
-<span class="nc" id="L659">		return false;</span>
+<span class="nc" id="L657">		return false;</span>
 	}
 
 	// ============== DataSet Manager ============== //
@@ -674,15 +672,16 @@ public final class ClientManagementLib {
 	 */
 	public static DataSetID newDataSet(final AccountID accountID, final PasswordCredential credential,
 			final DataSet dataSet) {
-<span class="nc" id="L677">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSet&quot; },</span>
+<span class="nc" id="L675">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSet&quot; },</span>
 				new Object[] { accountID, credential, dataSet });
-<span class="nc" id="L679">		DataSetID result = null;</span>
+<span class="nc" id="L677">		DataSetID result = null;</span>
 		try {
-<span class="nc" id="L681">			result = clientLib.getLogicModuleAPI().newDataSet(accountID, credential, dataSet);</span>
-<span class="nc" id="L682">		} catch (final Exception ex) {</span>
-<span class="nc" id="L683">			LOGGER.warn(&quot;Error during newDataSet&quot;, ex);</span>
-<span class="nc" id="L684">		}</span>
-<span class="nc" id="L685">		return result;</span>
+<span class="nc" id="L679">			result = clientLib.getLogicModuleAPI().newDataSet(accountID, credential, dataSet);</span>
+<span class="nc" id="L680">		} catch (final Exception ex) {</span>
+<span class="nc" id="L681">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L682">			LOGGER.trace(&quot;Error during newDataSet&quot;, ex);</span>
+<span class="nc" id="L683">		}</span>
+<span class="nc" id="L684">		return result;</span>
 	}
 
 	/**
@@ -699,13 +698,14 @@ public final class ClientManagementLib {
 	 */
 	public static boolean removeDataset(final AccountID accountID, final PasswordCredential credential,
 			final String datasetName) {
-<span class="nc" id="L702">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetName&quot; },</span>
+<span class="nc" id="L701">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetName&quot; },</span>
 				new Object[] { accountID, credential, datasetName });
 		try {
-<span class="nc" id="L705">			clientLib.getLogicModuleAPI().removeDataSet(accountID, credential, datasetName);</span>
-<span class="nc" id="L706">			return true;</span>
-<span class="nc" id="L707">		} catch (final Exception ex) {</span>
-<span class="nc" id="L708">			LOGGER.warn(&quot;Error during removeDataset&quot;, ex);</span>
+<span class="nc" id="L704">			clientLib.getLogicModuleAPI().removeDataSet(accountID, credential, datasetName);</span>
+<span class="nc" id="L705">			return true;</span>
+<span class="nc" id="L706">		} catch (final Exception ex) {</span>
+<span class="nc" id="L707">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L708">			LOGGER.trace(&quot;Error during removeDataset&quot;, ex);</span>
 		}
 <span class="nc" id="L710">		return false;</span>
 	}
@@ -729,9 +729,10 @@ public final class ClientManagementLib {
 		try {
 <span class="nc" id="L730">			result = clientLib.getLogicModuleAPI().getDataSetID(accountID, credential, datasetName);</span>
 <span class="nc" id="L731">		} catch (final Exception ex) {</span>
-<span class="nc" id="L732">			LOGGER.warn(&quot;Error during getDatasetID&quot;, ex);</span>
-<span class="nc" id="L733">		}</span>
-<span class="nc" id="L734">		return result;</span>
+<span class="nc" id="L732">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L733">			LOGGER.trace(&quot;Error during getDatasetID&quot;, ex);</span>
+<span class="nc" id="L734">		}</span>
+<span class="nc" id="L735">		return result;</span>
 	}
 
 	/**
@@ -744,15 +745,15 @@ public final class ClientManagementLib {
 	 * @return Set of names of public datasets
 	 */
 	public static Set&lt;String&gt; getPublicDatasets(final AccountID accountID, final PasswordCredential credential) {
-<span class="nc" id="L747">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+<span class="nc" id="L748">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
 				new Object[] { accountID, credential });
-<span class="nc" id="L749">		Set&lt;String&gt; result = null;</span>
+<span class="nc" id="L750">		Set&lt;String&gt; result = null;</span>
 		try {
-<span class="nc" id="L751">			result = clientLib.getLogicModuleAPI().getPublicDataSets(accountID, credential);</span>
-<span class="nc" id="L752">		} catch (final Exception ex) {</span>
-<span class="nc" id="L753">			LOGGER.warn(&quot;Error during getPublicDatasets&quot;, ex);</span>
-<span class="nc" id="L754">		}</span>
-<span class="nc" id="L755">		return result;</span>
+<span class="nc" id="L752">			result = clientLib.getLogicModuleAPI().getPublicDataSets(accountID, credential);</span>
+<span class="nc" id="L753">		} catch (final Exception ex) {</span>
+<span class="nc" id="L754">			LOGGER.warn(&quot;Error during getPublicDatasets&quot;, ex);</span>
+<span class="nc" id="L755">		}</span>
+<span class="nc" id="L756">		return result;</span>
 	}
 
 	/**
@@ -765,15 +766,15 @@ public final class ClientManagementLib {
 	 * @return Set of names of account's datasets.
 	 */
 	public static Set&lt;String&gt; getAccountDatasets(final AccountID accountID, final PasswordCredential credential) {
-<span class="nc" id="L768">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+<span class="nc" id="L769">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
 				new Object[] { accountID, credential });
-<span class="nc" id="L770">		Set&lt;String&gt; result = null;</span>
+<span class="nc" id="L771">		Set&lt;String&gt; result = null;</span>
 		try {
-<span class="nc" id="L772">			result = clientLib.getLogicModuleAPI().getAccountDataSets(accountID, credential);</span>
-<span class="nc" id="L773">		} catch (final Exception ex) {</span>
-<span class="nc" id="L774">			LOGGER.warn(&quot;Error during getAccountDatasets&quot;, ex);</span>
-<span class="nc" id="L775">		}</span>
-<span class="nc" id="L776">		return result;</span>
+<span class="nc" id="L773">			result = clientLib.getLogicModuleAPI().getAccountDataSets(accountID, credential);</span>
+<span class="nc" id="L774">		} catch (final Exception ex) {</span>
+<span class="nc" id="L775">			LOGGER.warn(&quot;Error during getAccountDatasets&quot;, ex);</span>
+<span class="nc" id="L776">		}</span>
+<span class="nc" id="L777">		return result;</span>
 	}
 
 	// ============== Class Manager ==============//
@@ -803,14 +804,14 @@ public final class ClientManagementLib {
 	public static Map&lt;String, MetaClass&gt; newClass(final AccountID accountID, final PasswordCredential credentials,
 			final String namespace, final String className, final String classPath, final String srcPath,
 			final String libPath) {
-<span class="nc" id="L806">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L807">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Namespace&quot;, &quot;ClassName&quot;, &quot;ClassPath&quot; },
 				new Object[] { accountID, credentials, namespace, className, classPath });
-<span class="nc" id="L809">		final Set&lt;String&gt; classNames = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L810">		classNames.add(className);</span>
-<span class="nc" id="L811">		final Map&lt;String, MetaClass&gt; specsGen = generateSpecs(namespace, classPath, classNames);</span>
+<span class="nc" id="L810">		final Set&lt;String&gt; classNames = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L811">		classNames.add(className);</span>
+<span class="nc" id="L812">		final Map&lt;String, MetaClass&gt; specsGen = generateSpecs(namespace, classPath, classNames);</span>
 
-<span class="nc" id="L813">		return newClassInternal(accountID, credentials, specsGen, classPath, srcPath, libPath);</span>
+<span class="nc" id="L814">		return newClassInternal(accountID, credentials, specsGen, classPath, srcPath, libPath);</span>
 	}
 
 	/**
@@ -837,11 +838,11 @@ public final class ClientManagementLib {
 	public static Map&lt;String, MetaClass&gt; newClasses(final AccountID accountID, final PasswordCredential credentials,
 			final String namespace, final Set&lt;String&gt; classNames, final String classPath, final String srcPath, 
 			final String libPath) {
-<span class="nc" id="L840">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L841">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Namespace&quot;, &quot;ClassNames&quot;, &quot;ClassPath&quot; },
 				new Object[] { accountID, credentials, namespace, classNames, classPath });
-<span class="nc" id="L843">		final Map&lt;String, MetaClass&gt; specsGen = generateSpecs(namespace, classPath, classNames);</span>
-<span class="nc" id="L844">		return newClassInternal(accountID, credentials, specsGen, classPath, srcPath, libPath);</span>
+<span class="nc" id="L844">		final Map&lt;String, MetaClass&gt; specsGen = generateSpecs(namespace, classPath, classNames);</span>
+<span class="nc" id="L845">		return newClassInternal(accountID, credentials, specsGen, classPath, srcPath, libPath);</span>
 	}
 
 	/**
@@ -857,39 +858,39 @@ public final class ClientManagementLib {
 	 */
 	public static Map&lt;String, MetaClass&gt; generateSpecs(final String namespace, final String classPath,
 			final Set&lt;String&gt; classNames) {
-<span class="nc" id="L860">		clientLib.checkConnectionAndParams(new String[] { &quot;Namespace&quot;, &quot;ClassNames&quot;, &quot;ClassPath&quot; },</span>
+<span class="nc" id="L861">		clientLib.checkConnectionAndParams(new String[] { &quot;Namespace&quot;, &quot;ClassNames&quot;, &quot;ClassPath&quot; },</span>
 				new Object[] { namespace, classNames, classPath });
-<span class="nc" id="L862">		newClassLock.lock();</span>
+<span class="nc" id="L863">		newClassLock.lock();</span>
 		try {
-<span class="nc" id="L864">			final JavaSpecGenerator specGen = new JavaSpecGenerator(classPath);</span>
-<span class="nc" id="L865">			final Map&lt;String, MetaClass&gt; newClasses = new HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L866" title="All 2 branches missed.">			for (final String className : classNames) {</span>
-<span class="nc bnc" id="L867" title="All 2 branches missed.">				if (newClasses.containsKey(className)) {</span>
-<span class="nc" id="L868">					continue; // Avoid registering same class twice.</span>
+<span class="nc" id="L865">			final JavaSpecGenerator specGen = new JavaSpecGenerator(classPath);</span>
+<span class="nc" id="L866">			final Map&lt;String, MetaClass&gt; newClasses = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L867" title="All 2 branches missed.">			for (final String className : classNames) {</span>
+<span class="nc bnc" id="L868" title="All 2 branches missed.">				if (newClasses.containsKey(className)) {</span>
+<span class="nc" id="L869">					continue; // Avoid registering same class twice.</span>
 				}
-<span class="nc" id="L870">				final Map&lt;String, MetaClass&gt; classes = specGen.generateMetaClassSpecForRegisterClass(namespace,</span>
+<span class="nc" id="L871">				final Map&lt;String, MetaClass&gt; classes = specGen.generateMetaClassSpecForRegisterClass(namespace,</span>
 						className);
-<span class="nc bnc" id="L872" title="All 2 branches missed.">				if (classes.isEmpty()) {</span>
-<span class="nc" id="L873">					LOGGER.info(&quot;Could not create Class spec of {}.&quot;, className);</span>
+<span class="nc bnc" id="L873" title="All 2 branches missed.">				if (classes.isEmpty()) {</span>
+<span class="nc" id="L874">					LOGGER.info(&quot;Could not create Class spec of {}.&quot;, className);</span>
 				}
-<span class="nc" id="L875">				newClasses.putAll(classes);</span>
-<span class="nc" id="L876">			}</span>
-<span class="nc bnc" id="L877" title="All 2 branches missed.">			if (newClasses.isEmpty()) {</span>
-<span class="nc" id="L878">				LOGGER.info(&quot;Could not create any Class spec.&quot;);</span>
+<span class="nc" id="L876">				newClasses.putAll(classes);</span>
+<span class="nc" id="L877">			}</span>
+<span class="nc bnc" id="L878" title="All 2 branches missed.">			if (newClasses.isEmpty()) {</span>
+<span class="nc" id="L879">				LOGGER.info(&quot;Could not create any Class spec.&quot;);</span>
 			} else {
 				/*
 				 * for (MetaClass newClass : newClasses.values()) {
 				 * newClass.setNamespace(namespace); }
 				 */
-<span class="nc" id="L884">				return newClasses;</span>
+<span class="nc" id="L885">				return newClasses;</span>
 			}
-<span class="nc" id="L886">		} catch (final Exception ex) {</span>
-<span class="nc" id="L887">			ex.printStackTrace();</span>
-<span class="nc" id="L888">			LOGGER.warn(&quot;Error during generateSpecs&quot;, ex);</span>
+<span class="nc" id="L887">		} catch (final Exception ex) {</span>
+<span class="nc" id="L888">			ex.printStackTrace();</span>
+<span class="nc" id="L889">			LOGGER.warn(&quot;Error during generateSpecs&quot;, ex);</span>
 		} finally {
-<span class="nc" id="L890">			newClassLock.unlock();</span>
+<span class="nc" id="L891">			newClassLock.unlock();</span>
 		}
-<span class="nc" id="L892">		return null;</span>
+<span class="nc" id="L893">		return null;</span>
 	}
 
 	/**
@@ -919,9 +920,9 @@ public final class ClientManagementLib {
 		//}
 		/***********************************************/
 
-<span class="nc" id="L922">		final Map&lt;String, MetaClass&gt; result = clientLib.getLogicModuleAPI().newClass(accountID, credentials,</span>
+<span class="nc" id="L923">		final Map&lt;String, MetaClass&gt; result = clientLib.getLogicModuleAPI().newClass(accountID, credentials,</span>
 				Langs.LANG_JAVA, newClasses);
-<span class="nc" id="L924">		return result;</span>
+<span class="nc" id="L925">		return result;</span>
 	}
 
 	/**
@@ -942,16 +943,16 @@ public final class ClientManagementLib {
 	public static boolean removeClass(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final String className) {
 
-<span class="nc" id="L945">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
+<span class="nc" id="L946">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
 				new Object[] { accountID, credential, namespaceID, className });
 
 		try {
-<span class="nc" id="L949">			clientLib.getLogicModuleAPI().removeClass(accountID, credential, namespaceID, className);</span>
-<span class="nc" id="L950">			return true;</span>
-<span class="nc" id="L951">		} catch (final Exception ex) {</span>
-<span class="nc" id="L952">			LOGGER.warn(&quot;Error during removeClass&quot;, ex);</span>
+<span class="nc" id="L950">			clientLib.getLogicModuleAPI().removeClass(accountID, credential, namespaceID, className);</span>
+<span class="nc" id="L951">			return true;</span>
+<span class="nc" id="L952">		} catch (final Exception ex) {</span>
+<span class="nc" id="L953">			LOGGER.warn(&quot;Error during removeClass&quot;, ex);</span>
 		}
-<span class="nc" id="L954">		return false;</span>
+<span class="nc" id="L955">		return false;</span>
 	}
 
 	/**
@@ -974,18 +975,18 @@ public final class ClientManagementLib {
 	public static boolean removeOperation(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final String className, final String operationSignature) {
 
-<span class="nc" id="L977">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L978">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot;, &quot;OperationSignature&quot; },
 				new Object[] { accountID, credential, namespaceID, className, operationSignature });
 
 		try {
-<span class="nc" id="L982">			clientLib.getLogicModuleAPI().removeOperation(accountID, credential, namespaceID, className,</span>
+<span class="nc" id="L983">			clientLib.getLogicModuleAPI().removeOperation(accountID, credential, namespaceID, className,</span>
 					operationSignature);
-<span class="nc" id="L984">			return true;</span>
-<span class="nc" id="L985">		} catch (final Exception ex) {</span>
-<span class="nc" id="L986">			LOGGER.warn(&quot;Error during removeOperation&quot;, ex);</span>
+<span class="nc" id="L985">			return true;</span>
+<span class="nc" id="L986">		} catch (final Exception ex) {</span>
+<span class="nc" id="L987">			LOGGER.warn(&quot;Error during removeOperation&quot;, ex);</span>
 		}
-<span class="nc" id="L988">		return false;</span>
+<span class="nc" id="L989">		return false;</span>
 	}
 
 	/**
@@ -1004,17 +1005,17 @@ public final class ClientManagementLib {
 	public static boolean removeImplementation(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final ImplementationID implementationID) {
 
-<span class="nc" id="L1007">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L1008">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ImplementationID&quot; },
 				new Object[] { accountID, credential, namespaceID, implementationID });
 
 		try {
-<span class="nc" id="L1012">			clientLib.getLogicModuleAPI().removeImplementation(accountID, credential, namespaceID, implementationID);</span>
-<span class="nc" id="L1013">			return true;</span>
-<span class="nc" id="L1014">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1015">			LOGGER.warn(&quot;Error during removeImplementation&quot;, ex);</span>
+<span class="nc" id="L1013">			clientLib.getLogicModuleAPI().removeImplementation(accountID, credential, namespaceID, implementationID);</span>
+<span class="nc" id="L1014">			return true;</span>
+<span class="nc" id="L1015">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1016">			LOGGER.warn(&quot;Error during removeImplementation&quot;, ex);</span>
 		}
-<span class="nc" id="L1017">		return false;</span>
+<span class="nc" id="L1018">		return false;</span>
 	}
 
 	/**
@@ -1035,18 +1036,18 @@ public final class ClientManagementLib {
 	public static OperationID getOperationID(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final String className, final String operationSignature) {
 
-<span class="nc" id="L1038">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L1039">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot;, &quot;OperationSignature&quot; },
 				new Object[] { accountID, credential, namespaceID, className, operationSignature });
 
-<span class="nc" id="L1042">		OperationID result = null;</span>
+<span class="nc" id="L1043">		OperationID result = null;</span>
 		try {
-<span class="nc" id="L1044">			result = clientLib.getLogicModuleAPI().getOperationID(accountID, credential, namespaceID, className,</span>
+<span class="nc" id="L1045">			result = clientLib.getLogicModuleAPI().getOperationID(accountID, credential, namespaceID, className,</span>
 					operationSignature);
-<span class="nc" id="L1046">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1047">			LOGGER.warn(&quot;Error during getOperationID&quot;, ex);</span>
-<span class="nc" id="L1048">		}</span>
-<span class="nc" id="L1049">		return result;</span>
+<span class="nc" id="L1047">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1048">			LOGGER.warn(&quot;Error during getOperationID&quot;, ex);</span>
+<span class="nc" id="L1049">		}</span>
+<span class="nc" id="L1050">		return result;</span>
 	}
 
 	/**
@@ -1066,17 +1067,17 @@ public final class ClientManagementLib {
 	 */
 	public static PropertyID getPropertyID(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final String className, final String propertyName) {
-<span class="nc" id="L1069">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L1070">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot;, &quot;PropertyName&quot; },
 				new Object[] { accountID, credential, namespaceID, className, propertyName });
-<span class="nc" id="L1072">		PropertyID result = null;</span>
+<span class="nc" id="L1073">		PropertyID result = null;</span>
 		try {
-<span class="nc" id="L1074">			result = clientLib.getLogicModuleAPI().getPropertyID(accountID, credential, namespaceID, className,</span>
+<span class="nc" id="L1075">			result = clientLib.getLogicModuleAPI().getPropertyID(accountID, credential, namespaceID, className,</span>
 					propertyName);
-<span class="nc" id="L1076">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1077">			LOGGER.warn(&quot;Error during getPropertyID&quot;, ex);</span>
-<span class="nc" id="L1078">		}</span>
-<span class="nc" id="L1079">		return result;</span>
+<span class="nc" id="L1077">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1078">			LOGGER.warn(&quot;Error during getPropertyID&quot;, ex);</span>
+<span class="nc" id="L1079">		}</span>
+<span class="nc" id="L1080">		return result;</span>
 	}
 
 	/**
@@ -1094,15 +1095,15 @@ public final class ClientManagementLib {
 	 */
 	public static MetaClassID getClassID(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final String className) {
-<span class="nc" id="L1097">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
+<span class="nc" id="L1098">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
 				new Object[] { accountID, credential, namespaceID, className });
-<span class="nc" id="L1099">		MetaClassID result = null;</span>
+<span class="nc" id="L1100">		MetaClassID result = null;</span>
 		try {
-<span class="nc" id="L1101">			result = clientLib.getLogicModuleAPI().getClassID(accountID, credential, namespaceID, className);</span>
-<span class="nc" id="L1102">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1103">			LOGGER.warn(&quot;Error during getClassID&quot;, ex);</span>
-<span class="nc" id="L1104">		}</span>
-<span class="nc" id="L1105">		return result;</span>
+<span class="nc" id="L1102">			result = clientLib.getLogicModuleAPI().getClassID(accountID, credential, namespaceID, className);</span>
+<span class="nc" id="L1103">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1104">			LOGGER.warn(&quot;Error during getClassID&quot;, ex);</span>
+<span class="nc" id="L1105">		}</span>
+<span class="nc" id="L1106">		return result;</span>
 	}
 
 	/**
@@ -1120,15 +1121,15 @@ public final class ClientManagementLib {
 	 */
 	public static MetaClass getClassInfo(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final String className) {
-<span class="nc" id="L1123">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
+<span class="nc" id="L1124">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;ClassName&quot; },</span>
 				new Object[] { accountID, credential, namespaceID, className });
-<span class="nc" id="L1125">		MetaClass result = null;</span>
+<span class="nc" id="L1126">		MetaClass result = null;</span>
 		try {
-<span class="nc" id="L1127">			result = clientLib.getLogicModuleAPI().getClassInfo(accountID, credential, namespaceID, className);</span>
-<span class="nc" id="L1128">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1129">			LOGGER.warn(&quot;Error during getClassInfo&quot;, ex);</span>
-<span class="nc" id="L1130">		}</span>
-<span class="nc" id="L1131">		return result;</span>
+<span class="nc" id="L1128">			result = clientLib.getLogicModuleAPI().getClassInfo(accountID, credential, namespaceID, className);</span>
+<span class="nc" id="L1129">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1130">			LOGGER.warn(&quot;Error during getClassInfo&quot;, ex);</span>
+<span class="nc" id="L1131">		}</span>
+<span class="nc" id="L1132">		return result;</span>
 	}
 
 	/**
@@ -1145,15 +1146,15 @@ public final class ClientManagementLib {
 	 */
 	public static Map&lt;MetaClassID, MetaClass&gt; getClassesInfoInNamespace(final AccountID accountID,
 			final PasswordCredential credential, final NamespaceID namespaceID) {
-<span class="nc" id="L1148">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
+<span class="nc" id="L1149">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
 				new Object[] { accountID, credential, namespaceID });
-<span class="nc" id="L1150">		Map&lt;MetaClassID, MetaClass&gt; result = null;</span>
+<span class="nc" id="L1151">		Map&lt;MetaClassID, MetaClass&gt; result = null;</span>
 		try {
-<span class="nc" id="L1152">			result = clientLib.getLogicModuleAPI().getInfoOfClassesInNamespace(accountID, credential, namespaceID);</span>
-<span class="nc" id="L1153">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1154">			LOGGER.warn(&quot;Error during getClassesInfoInNamespace&quot;, ex);</span>
-<span class="nc" id="L1155">		}</span>
-<span class="nc" id="L1156">		return result;</span>
+<span class="nc" id="L1153">			result = clientLib.getLogicModuleAPI().getInfoOfClassesInNamespace(accountID, credential, namespaceID);</span>
+<span class="nc" id="L1154">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1155">			LOGGER.warn(&quot;Error during getClassesInfoInNamespace&quot;, ex);</span>
+<span class="nc" id="L1156">		}</span>
+<span class="nc" id="L1157">		return result;</span>
 	}
 
 	// ============== Contract Manager ==============//
@@ -1173,15 +1174,16 @@ public final class ClientManagementLib {
 	 */
 	public static ContractID newPrivateContract(final AccountID proprietaryAccountID,
 			final PasswordCredential proprietaryCredential, final Contract contract) {
-<span class="nc" id="L1176">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contract&quot; },</span>
+<span class="nc" id="L1177">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contract&quot; },</span>
 				new Object[] { proprietaryAccountID, proprietaryCredential, contract });
-<span class="nc" id="L1178">		ContractID result = null;</span>
+<span class="nc" id="L1179">		ContractID result = null;</span>
 		try {
-<span class="nc" id="L1180">			result = clientLib.getLogicModuleAPI().newContract(proprietaryAccountID, proprietaryCredential, contract);</span>
-<span class="nc" id="L1181">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1182">			LOGGER.warn(&quot;Error during newPrivateContract&quot;, ex);</span>
-<span class="nc" id="L1183">		}</span>
-<span class="nc" id="L1184">		return result;</span>
+<span class="nc" id="L1181">			result = clientLib.getLogicModuleAPI().newContract(proprietaryAccountID, proprietaryCredential, contract);</span>
+<span class="nc" id="L1182">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1183">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1184">			LOGGER.trace(&quot;Error during newPrivateContract&quot;, ex);</span>
+<span class="nc" id="L1185">		}</span>
+<span class="nc" id="L1186">		return result;</span>
 	}
 
 	/**
@@ -1199,15 +1201,16 @@ public final class ClientManagementLib {
 	 */
 	public static ContractID newPublicContract(final AccountID proprietaryAccountID,
 			final PasswordCredential proprietaryCredential, final Contract contract) {
-<span class="nc" id="L1202">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contract&quot; },</span>
+<span class="nc" id="L1204">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Contract&quot; },</span>
 				new Object[] { proprietaryAccountID, proprietaryCredential, contract });
-<span class="nc" id="L1204">		ContractID result = null;</span>
+<span class="nc" id="L1206">		ContractID result = null;</span>
 		try {
-<span class="nc" id="L1206">			result = clientLib.getLogicModuleAPI().newContract(proprietaryAccountID, proprietaryCredential, contract);</span>
-<span class="nc" id="L1207">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1208">			LOGGER.warn(&quot;Error during newPublicContract&quot;, ex);</span>
-<span class="nc" id="L1209">		}</span>
-<span class="nc" id="L1210">		return result;</span>
+<span class="nc" id="L1208">			result = clientLib.getLogicModuleAPI().newContract(proprietaryAccountID, proprietaryCredential, contract);</span>
+<span class="nc" id="L1209">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1210">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1211">			LOGGER.trace(&quot;Error during newPublicContract&quot;, ex);</span>
+<span class="nc" id="L1212">		}</span>
+<span class="nc" id="L1213">		return result;</span>
 	}
 
 	/**
@@ -1221,15 +1224,16 @@ public final class ClientManagementLib {
 	 */
 	public static ContractID getContractOfDataClayProvider(final AccountID accountID,
 			final PasswordCredential credential) {
-<span class="nc" id="L1224">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+<span class="nc" id="L1227">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
 				new Object[] { accountID, credential });
-<span class="nc" id="L1226">		ContractID result = null;</span>
+<span class="nc" id="L1229">		ContractID result = null;</span>
 		try {
-<span class="nc" id="L1228">			result = clientLib.getLogicModuleAPI().getContractIDOfDataClayProvider(accountID, credential);</span>
-<span class="nc" id="L1229">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1230">			LOGGER.warn(&quot;Error during getContractOfDataClayProvider&quot;, ex);</span>
-<span class="nc" id="L1231">		}</span>
-<span class="nc" id="L1232">		return result;</span>
+<span class="nc" id="L1231">			result = clientLib.getLogicModuleAPI().getContractIDOfDataClayProvider(accountID, credential);</span>
+<span class="nc" id="L1232">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1233">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1234">			LOGGER.trace(&quot;Error during getContractOfDataClayProvider&quot;, ex);</span>
+<span class="nc" id="L1235">		}</span>
+<span class="nc" id="L1236">		return result;</span>
 	}
 
 	/**
@@ -1245,15 +1249,16 @@ public final class ClientManagementLib {
 	 */
 	public static Map&lt;ContractID, Contract&gt; getContractsOfProvider(final AccountID accountID,
 			final PasswordCredential credential, final NamespaceID namespaceID) {
-<span class="nc" id="L1248">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
+<span class="nc" id="L1252">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
 				new Object[] { accountID, credential, namespaceID });
-<span class="nc" id="L1250">		Map&lt;ContractID, Contract&gt; result = null;</span>
+<span class="nc" id="L1254">		Map&lt;ContractID, Contract&gt; result = null;</span>
 		try {
-<span class="nc" id="L1252">			result = clientLib.getLogicModuleAPI().getContractIDsOfProvider(accountID, credential, namespaceID);</span>
-<span class="nc" id="L1253">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1254">			LOGGER.warn(&quot;Error during getContractsOfProvider&quot;, ex);</span>
-<span class="nc" id="L1255">		}</span>
-<span class="nc" id="L1256">		return result;</span>
+<span class="nc" id="L1256">			result = clientLib.getLogicModuleAPI().getContractIDsOfProvider(accountID, credential, namespaceID);</span>
+<span class="nc" id="L1257">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1258">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1259">			LOGGER.trace(&quot;Error during getContractsOfProvider&quot;, ex);</span>
+<span class="nc" id="L1260">		}</span>
+<span class="nc" id="L1261">		return result;</span>
 	}
 
 	/**
@@ -1268,15 +1273,16 @@ public final class ClientManagementLib {
 	 */
 	public static Map&lt;ContractID, Contract&gt; getContractsOfApplicant(final AccountID accountID,
 			final PasswordCredential credential) {
-<span class="nc" id="L1271">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+<span class="nc" id="L1276">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
 				new Object[] { accountID, credential });
-<span class="nc" id="L1273">		Map&lt;ContractID, Contract&gt; result = null;</span>
+<span class="nc" id="L1278">		Map&lt;ContractID, Contract&gt; result = null;</span>
 		try {
-<span class="nc" id="L1275">			result = clientLib.getLogicModuleAPI().getContractIDsOfApplicant(accountID, credential);</span>
-<span class="nc" id="L1276">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1277">			LOGGER.warn(&quot;Error during getContractsOfApplicant&quot;, ex);</span>
-<span class="nc" id="L1278">		}</span>
-<span class="nc" id="L1279">		return result;</span>
+<span class="nc" id="L1280">			result = clientLib.getLogicModuleAPI().getContractIDsOfApplicant(accountID, credential);</span>
+<span class="nc" id="L1281">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1282">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1283">			LOGGER.trace(&quot;Error during getContractsOfApplicant&quot;, ex);</span>
+<span class="nc" id="L1284">		}</span>
+<span class="nc" id="L1285">		return result;</span>
 	}
 
 	/**
@@ -1294,16 +1300,17 @@ public final class ClientManagementLib {
 	 */
 	public static Map&lt;ContractID, Contract&gt; getContractsOfApplicant(final AccountID accountID,
 			final PasswordCredential credential, final NamespaceID namespaceIDofProvider) {
-<span class="nc" id="L1297">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceIDofProvider&quot; },</span>
+<span class="nc" id="L1303">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceIDofProvider&quot; },</span>
 				new Object[] { accountID, credential, namespaceIDofProvider });
-<span class="nc" id="L1299">		Map&lt;ContractID, Contract&gt; result = null;</span>
+<span class="nc" id="L1305">		Map&lt;ContractID, Contract&gt; result = null;</span>
 		try {
-<span class="nc" id="L1301">			result = clientLib.getLogicModuleAPI().getContractIDsOfApplicantWithProvider(accountID, credential,</span>
+<span class="nc" id="L1307">			result = clientLib.getLogicModuleAPI().getContractIDsOfApplicantWithProvider(accountID, credential,</span>
 					namespaceIDofProvider);
-<span class="nc" id="L1303">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1304">			LOGGER.warn(&quot;Error during getContractsOfApplicant&quot;, ex);</span>
-<span class="nc" id="L1305">		}</span>
-<span class="nc" id="L1306">		return result;</span>
+<span class="nc" id="L1309">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1310">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1311">			LOGGER.trace(&quot;Error during getContractsOfApplicant&quot;, ex);</span>
+<span class="nc" id="L1312">		}</span>
+<span class="nc" id="L1313">		return result;</span>
 	}
 
 	/**
@@ -1320,15 +1327,16 @@ public final class ClientManagementLib {
 	 */
 	public static boolean registerToPublicContract(final AccountID accountID, final PasswordCredential credential,
 			final ContractID contractID) {
-<span class="nc" id="L1323">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractID&quot; },</span>
+<span class="nc" id="L1330">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractID&quot; },</span>
 				new Object[] { accountID, credential, contractID });
 		try {
-<span class="nc" id="L1326">			clientLib.getLogicModuleAPI().registerToPublicContract(accountID, credential, contractID);</span>
-<span class="nc" id="L1327">			return true;</span>
-<span class="nc" id="L1328">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1329">			LOGGER.warn(&quot;Error during registerToPublicContract&quot;, ex);</span>
+<span class="nc" id="L1333">			clientLib.getLogicModuleAPI().registerToPublicContract(accountID, credential, contractID);</span>
+<span class="nc" id="L1334">			return true;</span>
+<span class="nc" id="L1335">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1336">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1337">			LOGGER.trace(&quot;Error during registerToPublicContract&quot;, ex);</span>
 		}
-<span class="nc" id="L1331">		return false;</span>
+<span class="nc" id="L1339">		return false;</span>
 	}
 
 	/**
@@ -1344,15 +1352,16 @@ public final class ClientManagementLib {
 	 */
 	public static ContractID registerToPublicContractOfNamespace(final AccountID accountID,
 			final PasswordCredential credential, final NamespaceID namespaceID) {
-<span class="nc" id="L1347">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
+<span class="nc" id="L1355">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot; },</span>
 				new Object[] { accountID, credential, namespaceID });
 		try {
-<span class="nc" id="L1350">			return clientLib.getLogicModuleAPI().registerToPublicContractOfNamespace(accountID, credential,</span>
+<span class="nc" id="L1358">			return clientLib.getLogicModuleAPI().registerToPublicContractOfNamespace(accountID, credential,</span>
 					namespaceID);
-<span class="nc" id="L1352">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1353">			LOGGER.warn(&quot;Error during registerToPublicContractOfNamespace&quot;, ex);</span>
+<span class="nc" id="L1360">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1361">			LOGGER.debug(ex.getMessage());</span>
+<span class="nc" id="L1362">			LOGGER.trace(&quot;Error during registerToPublicContractOfNamespace&quot;, ex);</span>
 		}
-<span class="nc" id="L1355">		return null;</span>
+<span class="nc" id="L1364">		return null;</span>
 	}
 
 	/**
@@ -1368,17 +1377,17 @@ public final class ClientManagementLib {
 	 */
 	public static Map&lt;String, byte[]&gt; getStubs(final AccountID applicantAccountID,
 			final PasswordCredential applicantCredential, final LinkedList&lt;ContractID&gt; contractsIDs) {
-<span class="nc" id="L1371">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractIDs&quot; },</span>
+<span class="nc" id="L1380">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractIDs&quot; },</span>
 				new Object[] { applicantAccountID, applicantCredential, contractsIDs });
-<span class="nc" id="L1373">		Map&lt;String, byte[]&gt; stubs = null;</span>
+<span class="nc" id="L1382">		Map&lt;String, byte[]&gt; stubs = null;</span>
 		try {
 			// Get the stubs
-<span class="nc" id="L1376">			stubs = clientLib.getLogicModuleAPI().getStubs(applicantAccountID, applicantCredential, Langs.LANG_JAVA,</span>
+<span class="nc" id="L1385">			stubs = clientLib.getLogicModuleAPI().getStubs(applicantAccountID, applicantCredential, Langs.LANG_JAVA,</span>
 					contractsIDs);
-<span class="nc" id="L1378">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1379">			LOGGER.warn(&quot;Error during getStubs&quot;, ex);</span>
-<span class="nc" id="L1380">		}</span>
-<span class="nc" id="L1381">		return stubs;</span>
+<span class="nc" id="L1387">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1388">			LOGGER.warn(&quot;Error during getStubs&quot;, ex);</span>
+<span class="nc" id="L1389">		}</span>
+<span class="nc" id="L1390">		return stubs;</span>
 	}
 
 	/**
@@ -1398,43 +1407,43 @@ public final class ClientManagementLib {
 	public static Set&lt;String&gt; getAndStoreStubs(final AccountID applicantAccountID,
 			final PasswordCredential applicantCredential, final LinkedList&lt;ContractID&gt; contractsIDs,
 			final String targetDirectoryPath) {
-<span class="nc" id="L1401">		clientLib.checkConnectionAndParams(</span>
+<span class="nc" id="L1410">		clientLib.checkConnectionAndParams(</span>
 				new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;ContractIDs&quot;, &quot;TargetDirectoryPath&quot; },
 				new Object[] { applicantAccountID, applicantCredential, contractsIDs, targetDirectoryPath });
-<span class="nc" id="L1404">		final Set&lt;String&gt; stubsStored = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L1413">		final Set&lt;String&gt; stubsStored = new HashSet&lt;&gt;();</span>
 		try {
 
 			// Clear stubs infos cache
-<span class="nc" id="L1408">			DataClayObject.clearStubInfosCache();</span>
+<span class="nc" id="L1417">			DataClayObject.clearStubInfosCache();</span>
 
 			// Get the stubs
-<span class="nc" id="L1411">			final Map&lt;String, byte[]&gt; stubs = getStubs(applicantAccountID, applicantCredential, contractsIDs);</span>
+<span class="nc" id="L1420">			final Map&lt;String, byte[]&gt; stubs = getStubs(applicantAccountID, applicantCredential, contractsIDs);</span>
 
 			// Create the target directory and store them in it
-<span class="nc" id="L1414">			FileAndAspectsUtils.createDirectory(targetDirectoryPath);</span>
-<span class="nc bnc" id="L1415" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; curEntry : stubs.entrySet()) {</span>
-<span class="nc" id="L1416">				final String className = curEntry.getKey();</span>
-<span class="nc" id="L1417">				String extension = JAVACLASSEXT;</span>
-<span class="nc bnc" id="L1418" title="All 2 branches missed.">				if (className.endsWith(&quot;Aspect&quot;)) {</span>
-<span class="nc" id="L1419">					extension = JAVAASPECTEXT;</span>
-<span class="nc" id="L1420">					final String javaVersion = System.getProperty(&quot;java.version&quot;);</span>
-<span class="nc bnc" id="L1421" title="All 4 branches missed.">					if (!javaVersion.startsWith(&quot;1.7.&quot;) &amp;&amp; !javaVersion.startsWith(&quot;1.8.&quot;)) {</span>
-<span class="nc" id="L1422">						continue;</span>
+<span class="nc" id="L1423">			FileAndAspectsUtils.createDirectory(targetDirectoryPath);</span>
+<span class="nc bnc" id="L1424" title="All 2 branches missed.">			for (final Entry&lt;String, byte[]&gt; curEntry : stubs.entrySet()) {</span>
+<span class="nc" id="L1425">				final String className = curEntry.getKey();</span>
+<span class="nc" id="L1426">				String extension = JAVACLASSEXT;</span>
+<span class="nc bnc" id="L1427" title="All 2 branches missed.">				if (className.endsWith(&quot;Aspect&quot;)) {</span>
+<span class="nc" id="L1428">					extension = JAVAASPECTEXT;</span>
+<span class="nc" id="L1429">					final String javaVersion = System.getProperty(&quot;java.version&quot;);</span>
+<span class="nc bnc" id="L1430" title="All 4 branches missed.">					if (!javaVersion.startsWith(&quot;1.7.&quot;) &amp;&amp; !javaVersion.startsWith(&quot;1.8.&quot;)) {</span>
+<span class="nc" id="L1431">						continue;</span>
 					}
 				}
-<span class="nc bnc" id="L1425" title="All 2 branches missed.">				if (className.endsWith(&quot;Yaml&quot;)) {</span>
-<span class="nc" id="L1426">					extension = BABELEXT;</span>
+<span class="nc bnc" id="L1434" title="All 2 branches missed.">				if (className.endsWith(&quot;Yaml&quot;)) {</span>
+<span class="nc" id="L1435">					extension = BABELEXT;</span>
 				}
-<span class="nc bnc" id="L1428" title="All 2 branches missed.">				if (FileAndAspectsUtils.storeClass(targetDirectoryPath, className + extension,</span>
-<span class="nc" id="L1429">						curEntry.getValue()) != null) {</span>
-<span class="nc" id="L1430">					stubsStored.add(className);</span>
+<span class="nc bnc" id="L1437" title="All 2 branches missed.">				if (FileAndAspectsUtils.storeClass(targetDirectoryPath, className + extension,</span>
+<span class="nc" id="L1438">						curEntry.getValue()) != null) {</span>
+<span class="nc" id="L1439">					stubsStored.add(className);</span>
 				}
-<span class="nc" id="L1432">			}</span>
+<span class="nc" id="L1441">			}</span>
 
-<span class="nc" id="L1434">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1435">			LOGGER.warn(&quot;Error during getAndStoreStubs&quot;, ex);</span>
-<span class="nc" id="L1436">		}</span>
-<span class="nc" id="L1437">		return stubsStored;</span>
+<span class="nc" id="L1443">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1444">			LOGGER.warn(&quot;Error during getAndStoreStubs&quot;, ex);</span>
+<span class="nc" id="L1445">		}</span>
+<span class="nc" id="L1446">		return stubsStored;</span>
 	}
 
 	/**
@@ -1454,7 +1463,7 @@ public final class ClientManagementLib {
 	public static boolean getAndStoreStubsForEnrichment(final AccountID applicantAccountID,
 			final PasswordCredential applicantCredential, final LinkedList&lt;ContractID&gt; contractsIDs,
 			final String targetDirectoryPath) {
-<span class="nc" id="L1457">		throw new UnsupportedOperationException();</span>
+<span class="nc" id="L1466">		throw new UnsupportedOperationException();</span>
 		// TODO: REVIEW enrichment stuff (jmarti 2018)
 		/**
 		 * try { // Get the stubs Map&lt;String, byte[]&gt; stubs =
@@ -1487,15 +1496,15 @@ public final class ClientManagementLib {
 	 */
 	public static InterfaceID newInterface(final AccountID accountID, final PasswordCredential credential,
 			final Interface interfaceSpec) {
-<span class="nc" id="L1490">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Interface&quot; },</span>
+<span class="nc" id="L1499">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;Interface&quot; },</span>
 				new Object[] { accountID, credential, interfaceSpec });
-<span class="nc" id="L1492">		InterfaceID result = null;</span>
+<span class="nc" id="L1501">		InterfaceID result = null;</span>
 		try {
-<span class="nc" id="L1494">			result = clientLib.getLogicModuleAPI().newInterface(accountID, credential, interfaceSpec);</span>
-<span class="nc" id="L1495">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1496">			LOGGER.warn(&quot;Error during newInterface&quot;, ex);</span>
-<span class="nc" id="L1497">		}</span>
-<span class="nc" id="L1498">		return result;</span>
+<span class="nc" id="L1503">			result = clientLib.getLogicModuleAPI().newInterface(accountID, credential, interfaceSpec);</span>
+<span class="nc" id="L1504">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1505">			LOGGER.warn(&quot;Error during newInterface&quot;, ex);</span>
+<span class="nc" id="L1506">		}</span>
+<span class="nc" id="L1507">		return result;</span>
 	}
 
 	/**
@@ -1513,15 +1522,15 @@ public final class ClientManagementLib {
 	 */
 	public static boolean removeInterface(final AccountID accountID, final PasswordCredential credential,
 			final NamespaceID namespaceID, final InterfaceID interfaceID) {
-<span class="nc" id="L1516">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;InterfaceID&quot; },</span>
+<span class="nc" id="L1525">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;NamespaceID&quot;, &quot;InterfaceID&quot; },</span>
 				new Object[] { accountID, credential, namespaceID, interfaceID });
 		try {
-<span class="nc" id="L1519">			clientLib.getLogicModuleAPI().removeInterface(accountID, credential, namespaceID, interfaceID);</span>
-<span class="nc" id="L1520">			return true;</span>
-<span class="nc" id="L1521">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1522">			LOGGER.warn(&quot;Error during removeInterface&quot;, ex);</span>
+<span class="nc" id="L1528">			clientLib.getLogicModuleAPI().removeInterface(accountID, credential, namespaceID, interfaceID);</span>
+<span class="nc" id="L1529">			return true;</span>
+<span class="nc" id="L1530">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1531">			LOGGER.warn(&quot;Error during removeInterface&quot;, ex);</span>
 		}
-<span class="nc" id="L1524">		return false;</span>
+<span class="nc" id="L1533">		return false;</span>
 	}
 
 	/**
@@ -1537,13 +1546,13 @@ public final class ClientManagementLib {
 	 */
 	public static byte[] performSetOfNewAccounts(final AccountID adminID, final PasswordCredential credential,
 			final byte[] yamlRequest) {
-<span class="nc" id="L1540">		byte[] yamlResponse = null;</span>
+<span class="nc" id="L1549">		byte[] yamlResponse = null;</span>
 		try {
-<span class="nc" id="L1542">			yamlResponse = clientLib.getLogicModuleAPI().performSetOfNewAccounts(adminID, credential, yamlRequest);</span>
-<span class="nc" id="L1543">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1544">			LOGGER.warn(&quot;Error during performSetOfNewAccounts&quot;, ex);</span>
-<span class="nc" id="L1545">		}</span>
-<span class="nc" id="L1546">		return yamlResponse;</span>
+<span class="nc" id="L1551">			yamlResponse = clientLib.getLogicModuleAPI().performSetOfNewAccounts(adminID, credential, yamlRequest);</span>
+<span class="nc" id="L1552">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1553">			LOGGER.warn(&quot;Error during performSetOfNewAccounts&quot;, ex);</span>
+<span class="nc" id="L1554">		}</span>
+<span class="nc" id="L1555">		return yamlResponse;</span>
 	}
 
 	/**
@@ -1562,13 +1571,13 @@ public final class ClientManagementLib {
 	 */
 	public static byte[] performSetOfOperations(final AccountID performerID, final PasswordCredential credential,
 			final byte[] yamlRequest) {
-<span class="nc" id="L1565">		byte[] yamlResponse = null;</span>
+<span class="nc" id="L1574">		byte[] yamlResponse = null;</span>
 		try {
-<span class="nc" id="L1567">			yamlResponse = clientLib.getLogicModuleAPI().performSetOfOperations(performerID, credential, yamlRequest);</span>
-<span class="nc" id="L1568">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1569">			LOGGER.warn(&quot;Error during performSetOfOperations&quot;, ex);</span>
-<span class="nc" id="L1570">		}</span>
-<span class="nc" id="L1571">		return yamlResponse;</span>
+<span class="nc" id="L1576">			yamlResponse = clientLib.getLogicModuleAPI().performSetOfOperations(performerID, credential, yamlRequest);</span>
+<span class="nc" id="L1577">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1578">			LOGGER.warn(&quot;Error during performSetOfOperations&quot;, ex);</span>
+<span class="nc" id="L1579">		}</span>
+<span class="nc" id="L1580">		return yamlResponse;</span>
 	}
 
 	/**
@@ -1586,15 +1595,15 @@ public final class ClientManagementLib {
 	 */
 	public static Interface getInterfaceInfo(final AccountID accountID, final PasswordCredential credential,
 			final InterfaceID interfaceID) {
-<span class="nc" id="L1589">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;InterfaceID&quot; },</span>
+<span class="nc" id="L1598">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;InterfaceID&quot; },</span>
 				new Object[] { accountID, credential, interfaceID });
-<span class="nc" id="L1591">		Interface result = null;</span>
+<span class="nc" id="L1600">		Interface result = null;</span>
 		try {
-<span class="nc" id="L1593">			result = clientLib.getLogicModuleAPI().getInterfaceInfo(accountID, credential, interfaceID);</span>
-<span class="nc" id="L1594">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1595">			LOGGER.warn(&quot;Error during getInterfaceInfo&quot;, ex);</span>
-<span class="nc" id="L1596">		}</span>
-<span class="nc" id="L1597">		return result;</span>
+<span class="nc" id="L1602">			result = clientLib.getLogicModuleAPI().getInterfaceInfo(accountID, credential, interfaceID);</span>
+<span class="nc" id="L1603">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1604">			LOGGER.warn(&quot;Error during getInterfaceInfo&quot;, ex);</span>
+<span class="nc" id="L1605">		}</span>
+<span class="nc" id="L1606">		return result;</span>
 	}
 
 	// ============== Data Contract Manager ==============//
@@ -1613,16 +1622,16 @@ public final class ClientManagementLib {
 	 */
 	public static DataContractID newPrivateDataContract(final AccountID proprietaryAccountID,
 			final PasswordCredential proprietaryCredential, final DataContract datacontract) {
-<span class="nc" id="L1616">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContract&quot; },</span>
+<span class="nc" id="L1625">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContract&quot; },</span>
 				new Object[] { proprietaryAccountID, proprietaryCredential, datacontract });
-<span class="nc" id="L1618">		DataContractID result = null;</span>
+<span class="nc" id="L1627">		DataContractID result = null;</span>
 		try {
-<span class="nc" id="L1620">			result = clientLib.getLogicModuleAPI().newDataContract(proprietaryAccountID, proprietaryCredential,</span>
+<span class="nc" id="L1629">			result = clientLib.getLogicModuleAPI().newDataContract(proprietaryAccountID, proprietaryCredential,</span>
 					datacontract);
-<span class="nc" id="L1622">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1623">			LOGGER.warn(&quot;Error during newPrivateDataContract&quot;, ex);</span>
-<span class="nc" id="L1624">		}</span>
-<span class="nc" id="L1625">		return result;</span>
+<span class="nc" id="L1631">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1632">			LOGGER.warn(&quot;Error during newPrivateDataContract&quot;, ex);</span>
+<span class="nc" id="L1633">		}</span>
+<span class="nc" id="L1634">		return result;</span>
 	}
 
 	/**
@@ -1639,16 +1648,16 @@ public final class ClientManagementLib {
 	 */
 	public static DataContractID newPublicDataContract(final AccountID proprietaryAccountID,
 			final PasswordCredential proprietaryCredential, final DataContract datacontract) {
-<span class="nc" id="L1642">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContract&quot; },</span>
+<span class="nc" id="L1651">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContract&quot; },</span>
 				new Object[] { proprietaryAccountID, proprietaryCredential, datacontract });
-<span class="nc" id="L1644">		DataContractID result = null;</span>
+<span class="nc" id="L1653">		DataContractID result = null;</span>
 		try {
-<span class="nc" id="L1646">			result = clientLib.getLogicModuleAPI().newDataContract(proprietaryAccountID, proprietaryCredential,</span>
+<span class="nc" id="L1655">			result = clientLib.getLogicModuleAPI().newDataContract(proprietaryAccountID, proprietaryCredential,</span>
 					datacontract);
-<span class="nc" id="L1648">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1649">			LOGGER.warn(&quot;Error during newPublicDataContract&quot;, ex);</span>
-<span class="nc" id="L1650">		}</span>
-<span class="nc" id="L1651">		return result;</span>
+<span class="nc" id="L1657">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1658">			LOGGER.warn(&quot;Error during newPublicDataContract&quot;, ex);</span>
+<span class="nc" id="L1659">		}</span>
+<span class="nc" id="L1660">		return result;</span>
 	}
 
 	/**
@@ -1664,15 +1673,15 @@ public final class ClientManagementLib {
 	 */
 	public static Map&lt;DataContractID, DataContract&gt; getDataContractsOfProvider(final AccountID accountID,
 			final PasswordCredential credential, final DataSetID datasetID) {
-<span class="nc" id="L1667">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetID&quot; },</span>
+<span class="nc" id="L1676">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetID&quot; },</span>
 				new Object[] { accountID, credential, datasetID });
-<span class="nc" id="L1669">		Map&lt;DataContractID, DataContract&gt; result = null;</span>
+<span class="nc" id="L1678">		Map&lt;DataContractID, DataContract&gt; result = null;</span>
 		try {
-<span class="nc" id="L1671">			result = clientLib.getLogicModuleAPI().getDataContractIDsOfProvider(accountID, credential, datasetID);</span>
-<span class="nc" id="L1672">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1673">			LOGGER.warn(&quot;Error during getDataContractsOfProvider&quot;, ex);</span>
-<span class="nc" id="L1674">		}</span>
-<span class="nc" id="L1675">		return result;</span>
+<span class="nc" id="L1680">			result = clientLib.getLogicModuleAPI().getDataContractIDsOfProvider(accountID, credential, datasetID);</span>
+<span class="nc" id="L1681">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1682">			LOGGER.warn(&quot;Error during getDataContractsOfProvider&quot;, ex);</span>
+<span class="nc" id="L1683">		}</span>
+<span class="nc" id="L1684">		return result;</span>
 	}
 
 	/**
@@ -1689,15 +1698,15 @@ public final class ClientManagementLib {
 
 	public static Map&lt;DataContractID, DataContract&gt; getDataContractsOfApplicant(final AccountID accountID,
 			final PasswordCredential credential) {
-<span class="nc" id="L1692">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
+<span class="nc" id="L1701">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
 				new Object[] { accountID, credential });
-<span class="nc" id="L1694">		Map&lt;DataContractID, DataContract&gt; result = null;</span>
+<span class="nc" id="L1703">		Map&lt;DataContractID, DataContract&gt; result = null;</span>
 		try {
-<span class="nc" id="L1696">			result = clientLib.getLogicModuleAPI().getDataContractIDsOfApplicant(accountID, credential);</span>
-<span class="nc" id="L1697">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1698">			LOGGER.warn(&quot;Error during getDataContractsOfApplicant&quot;, ex);</span>
-<span class="nc" id="L1699">		}</span>
-<span class="nc" id="L1700">		return result;</span>
+<span class="nc" id="L1705">			result = clientLib.getLogicModuleAPI().getDataContractIDsOfApplicant(accountID, credential);</span>
+<span class="nc" id="L1706">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1707">			LOGGER.warn(&quot;Error during getDataContractsOfApplicant&quot;, ex);</span>
+<span class="nc" id="L1708">		}</span>
+<span class="nc" id="L1709">		return result;</span>
 	}
 
 	/**
@@ -1715,16 +1724,16 @@ public final class ClientManagementLib {
 	 */
 	public static DataContract getDataContractInfoOfApplicantWithProvider(final AccountID accountID,
 			final PasswordCredential credential, final DataSetID datasetIDofProvider) {
-<span class="nc" id="L1718">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetID&quot; },</span>
+<span class="nc" id="L1727">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataSetID&quot; },</span>
 				new Object[] { accountID, credential, datasetIDofProvider });
-<span class="nc" id="L1720">		DataContract result = null;</span>
+<span class="nc" id="L1729">		DataContract result = null;</span>
 		try {
-<span class="nc" id="L1722">			result = clientLib.getLogicModuleAPI().getDataContractInfoOfApplicantWithProvider(accountID, credential,</span>
+<span class="nc" id="L1731">			result = clientLib.getLogicModuleAPI().getDataContractInfoOfApplicantWithProvider(accountID, credential,</span>
 					datasetIDofProvider);
-<span class="nc" id="L1724">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1725">			LOGGER.warn(&quot;Error during getDataContractInfoOfApplicantWithProvider&quot;, ex);</span>
-<span class="nc" id="L1726">		}</span>
-<span class="nc" id="L1727">		return result;</span>
+<span class="nc" id="L1733">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1734">			LOGGER.warn(&quot;Error during getDataContractInfoOfApplicantWithProvider&quot;, ex);</span>
+<span class="nc" id="L1735">		}</span>
+<span class="nc" id="L1736">		return result;</span>
 	}
 
 	/**
@@ -1741,40 +1750,37 @@ public final class ClientManagementLib {
 	 */
 	public static boolean registerToPublicDataContract(final AccountID accountID, final PasswordCredential credential,
 			final DataContractID datacontractID) {
-<span class="nc" id="L1744">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContractID&quot; },</span>
+<span class="nc" id="L1753">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot;, &quot;DataContractID&quot; },</span>
 				new Object[] { accountID, credential, datacontractID });
 		try {
-<span class="nc" id="L1747">			clientLib.getLogicModuleAPI().registerToPublicDataContract(accountID, credential, datacontractID);</span>
-<span class="nc" id="L1748">			return true;</span>
-<span class="nc" id="L1749">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1750">			LOGGER.warn(&quot;Error during registerToPublicDataContract&quot;, ex);</span>
+<span class="nc" id="L1756">			clientLib.getLogicModuleAPI().registerToPublicDataContract(accountID, credential, datacontractID);</span>
+<span class="nc" id="L1757">			return true;</span>
+<span class="nc" id="L1758">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1759">			LOGGER.warn(&quot;Error during registerToPublicDataContract&quot;, ex);</span>
 		}
-<span class="nc" id="L1752">		return false;</span>
+<span class="nc" id="L1761">		return false;</span>
 	}
 
 	/**
 	 * Method that retrieves the info of the execution environments of a specific
 	 * language
-	 * 
-	 * @param accountID
-	 *            ID of the account
-	 * @param credential
-	 *            credential of the account
+	 *
 	 * @param language
 	 *            language of the backends to be retrieved
+	 * @param forceUpdateCache Indicates cache of EEs must be updated
 	 * @return info of the of the execution environments of a specific language, indexed by their ID
 	 */
-	public static Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getExecutionEnvironmentsInfo(final AccountID accountID,
-			final PasswordCredential credential, final Langs language) {
+	public static Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getExecutionEnvironmentsInfo(final Langs language,
+																								 boolean forceUpdateCache) {
 		try {
-<span class="nc bnc" id="L1770" title="All 4 branches missed.">			if (language == null || language.equals(Langs.LANG_NONE)) {</span>
-<span class="nc" id="L1771">				LOGGER.error(&quot;A specific language must be provided&quot;);</span>
-<span class="nc" id="L1772">				return null;</span>
+<span class="nc bnc" id="L1776" title="All 4 branches missed.">			if (language == null || language.equals(Langs.LANG_NONE)) {</span>
+<span class="nc" id="L1777">				LOGGER.error(&quot;A specific language must be provided&quot;);</span>
+<span class="nc" id="L1778">				return null;</span>
 			}
-<span class="nc" id="L1774">			return clientLib.getExecutionEnvironmentsInfo(language);</span>
-<span class="nc" id="L1775">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1776">			LOGGER.warn(&quot;Error during getExecutionEnvironmentsInfo&quot;, ex);</span>
-<span class="nc" id="L1777">			return null;</span>
+<span class="nc" id="L1780">			return clientLib.getAllExecutionEnvironmentsInfo(language, forceUpdateCache);</span>
+<span class="nc" id="L1781">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1782">			LOGGER.warn(&quot;Error during getExecutionEnvironmentsInfo&quot;, ex);</span>
+<span class="nc" id="L1783">			return null;</span>
 		}
 	}
 
@@ -1792,17 +1798,7 @@ public final class ClientManagementLib {
 	 */
 	public static Set&lt;String&gt; getBackendNames(final AccountID accountID, final PasswordCredential credential,
 			final Langs backendLanguage) {
-<span class="nc" id="L1795">		clientLib.checkConnectionAndParams(new String[] { &quot;AccountID&quot;, &quot;Credential&quot; },</span>
-				new Object[] { accountID, credential });
-<span class="nc" id="L1797">		Set&lt;String&gt; result = null;</span>
-		try {
-<span class="nc" id="L1799">			result = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L1800">			result = clientLib.getLogicModuleAPI().getExecutionEnvironmentsNames(accountID, credential,</span>
-					backendLanguage);
-<span class="nc" id="L1802">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1803">			LOGGER.warn(&quot;Error during getBackendNames&quot;, ex);</span>
-<span class="nc" id="L1804">		}</span>
-<span class="nc" id="L1805">		return result;</span>
+<span class="nc" id="L1801">		return clientLib.getAllBackendsNames(backendLanguage, true);</span>
 	}
 
 	/**
@@ -1819,8 +1815,8 @@ public final class ClientManagementLib {
 	 */
 	public static void registerEventListenerImpl(final AccountID accountID, final PasswordCredential credentials,
 			final ECA eventListenerImpl) {
-<span class="nc" id="L1822">		clientLib.getLogicModuleAPI().registerEventListenerImplementation(accountID, credentials, eventListenerImpl);</span>
-<span class="nc" id="L1823">	}</span>
+<span class="nc" id="L1818">		clientLib.getLogicModuleAPI().registerEventListenerImplementation(accountID, credentials, eventListenerImpl);</span>
+<span class="nc" id="L1819">	}</span>
 
 	// ============== Listener Registering ==============//
 
@@ -1838,13 +1834,13 @@ public final class ClientManagementLib {
 	 * @return ID of external registered dataClay.
 	 */
 	public static DataClayInstanceID registerExternalDataClay(final String dcHost, final int dcPort) {
-<span class="nc" id="L1841">		clientLib.checkConnectionAndParams(new String[] { &quot;dcID&quot;, &quot;dcName&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; },</span>
-<span class="nc" id="L1842">				new Object[] { dcHost, dcPort });</span>
+<span class="nc" id="L1837">		clientLib.checkConnectionAndParams(new String[] { &quot;dcID&quot;, &quot;dcName&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; },</span>
+<span class="nc" id="L1838">				new Object[] { dcHost, dcPort });</span>
 		try {
-<span class="nc" id="L1844">			return clientLib.registerExternalDataClay(dcHost, dcPort);</span>
-<span class="nc" id="L1845">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1846">			LOGGER.warn(&quot;Error during registerExternalDataClay&quot;, ex);</span>
-<span class="nc" id="L1847">			return null;</span>
+<span class="nc" id="L1840">			return clientLib.registerExternalDataClay(dcHost, dcPort);</span>
+<span class="nc" id="L1841">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1842">			LOGGER.warn(&quot;Error during registerExternalDataClay&quot;, ex);</span>
+<span class="nc" id="L1843">			return null;</span>
 		}
 	}
 	
@@ -1861,13 +1857,13 @@ public final class ClientManagementLib {
 	 */
 	public static DataClayInstanceID registerExternalDataClayOverrideAuthority(final AccountID adminAccountID,
 			final PasswordCredential adminCredential, final String dcHost, final int dcPort, final String authority) {
-<span class="nc" id="L1864">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; , &quot;authority&quot;},</span>
-<span class="nc" id="L1865">				new Object[] { adminAccountID, adminCredential, dcHost, dcPort, authority });</span>
+<span class="nc" id="L1860">		clientLib.checkConnectionAndParams(new String[] { &quot;AdminAccountID&quot;, &quot;AdminCredential&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; , &quot;authority&quot;},</span>
+<span class="nc" id="L1861">				new Object[] { adminAccountID, adminCredential, dcHost, dcPort, authority });</span>
 		try {
-<span class="nc" id="L1867">			return clientLib.registerExternalDataClayOverrideAuthority(adminAccountID, adminCredential, dcHost, dcPort, authority);</span>
-<span class="nc" id="L1868">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1869">			LOGGER.warn(&quot;Error during registerExternalDataClay&quot;, ex);</span>
-<span class="nc" id="L1870">			return null;</span>
+<span class="nc" id="L1863">			return clientLib.registerExternalDataClayOverrideAuthority(adminAccountID, adminCredential, dcHost, dcPort, authority);</span>
+<span class="nc" id="L1864">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1865">			LOGGER.warn(&quot;Error during registerExternalDataClay&quot;, ex);</span>
+<span class="nc" id="L1866">			return null;</span>
 		}
 	}
 	
@@ -1881,18 +1877,18 @@ public final class ClientManagementLib {
 	 *            entry point port of the external dataClay
 	 */
 	public static void updateExternalDataClay(final DataClayInstanceID dcID, final String dcHost, final int dcPort) {
-<span class="nc" id="L1884">		clientLib.checkConnectionAndParams(new String[] { &quot;dcID&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; },</span>
-<span class="nc" id="L1885">				new Object[] { dcID, dcHost, dcPort });</span>
+<span class="nc" id="L1880">		clientLib.checkConnectionAndParams(new String[] { &quot;dcID&quot;, &quot;dcHost&quot;, &quot;dcPort&quot; },</span>
+<span class="nc" id="L1881">				new Object[] { dcID, dcHost, dcPort });</span>
 		try {
-<span class="nc" id="L1887">			clientLib.getLogicModuleAPI().notifyRegistrationOfExternalDataClay(dcID, dcHost, dcPort);</span>
-<span class="nc" id="L1888">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1889">			LOGGER.warn(&quot;Error during updateExternalDataClay&quot;, ex);</span>
-<span class="nc" id="L1890">		}</span>
-<span class="nc" id="L1891">	}</span>
+<span class="nc" id="L1883">			clientLib.getLogicModuleAPI().notifyRegistrationOfExternalDataClay(dcID, dcHost, dcPort);</span>
+<span class="nc" id="L1884">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1885">			LOGGER.warn(&quot;Error during updateExternalDataClay&quot;, ex);</span>
+<span class="nc" id="L1886">		}</span>
+<span class="nc" id="L1887">	}</span>
 
 	/**
 	 * Tries to connect to an external dataClay instance and retrieve its ID. *
-	 * 
+	 *
 	 * @param dcHost
 	 *            hostname of the external dataClay instance
 	 * @param dcPort
@@ -1901,58 +1897,22 @@ public final class ClientManagementLib {
 	 */
 	public static DataClayInstanceID getExternalDataClayID(final String dcHost, final int dcPort) {
 		try {
-<span class="nc" id="L1904">			return clientLib.getExternalDataClayID(dcHost, dcPort);</span>
-<span class="nc" id="L1905">		} catch (final Exception ex) {</span>
-<span class="nc" id="L1906">			LOGGER.warn(&quot;Error during getExternalDataClayID&quot;, ex);</span>
-<span class="nc" id="L1907">			return null;</span>
+<span class="nc" id="L1900">			return clientLib.getExternalDataClayID(dcHost, dcPort);</span>
+<span class="nc" id="L1901">		} catch (final Exception ex) {</span>
+<span class="nc" id="L1902">			LOGGER.warn(&quot;Error during getExternalDataClayID&quot;, ex);</span>
+<span class="nc" id="L1903">			return null;</span>
 		}
 	}
 
 	/**
 	 * Method that retrieves the current dataClay identifier
-	 * 
+	 *
 	 * @return id of the current dataClay (current dataClay is which this clientLib
 	 *         is being connected to)
 	 */
 	public static DataClayInstanceID getDataClayID() {
-<span class="nc" id="L1918">		return clientLib.getDataClayID();</span>
+<span class="nc" id="L1914">		return clientLib.getDataClayID();</span>
 	}
-
-	/**
-	 * Unfederate all objects belonging/federated with external dataClay with id provided
-	 * @param extDataClayID External dataClay ID
-	 */
-	public static void unfederateAllObjects(final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L1926">		clientLib.unfederateAllObjects(extDataClayID);</span>
-<span class="nc" id="L1927">	}</span>
-	
-	/**
-	 * Unfederate all objects belonging/federated with ANY external dataClay 
-	 */
-	public static void unfederateAllObjectsWithAllDCs() {
-<span class="nc" id="L1933">		clientLib.unfederateAllObjectsWithAllDCs();</span>
-<span class="nc" id="L1934">	}</span>
-	
-	/**
-	 * Migrate (unfederate and federate) all current dataClay objects from specified external dataclay di to
-	 * destination dataclay. 
-	 * @param originDataClayID Origin dataclay id
-	 * @param destinationDataClayID Destination dataclay id
-	 */
-	public static void migrateFederatedObjects(final DataClayInstanceID originDataClayID, 
-			final DataClayInstanceID destinationDataClayID) {
-<span class="nc" id="L1944">		clientLib.migrateFederatedObjects(originDataClayID, destinationDataClayID);</span>
-<span class="nc" id="L1945">	}</span>
-
-	/**
-	 * Federate all dataClay objects from specified current dataClay
-	 * destination dataclay. 
-	 * @param destinationDataClayID Destination dataclay id
-	 */
-	public static void federateAllObjects(
-			final DataClayInstanceID destinationDataClayID) {
-<span class="nc" id="L1954">		clientLib.federateAllObjects(destinationDataClayID);</span>
-<span class="nc" id="L1955">	}</span>
 
 	/**
 	 * Import classes in namespace specified from an external dataClay
@@ -1961,54 +1921,54 @@ public final class ClientManagementLib {
 	 */
 	public static void importModelsFromExternalDataClay(final String externalNamespace,
 															 final DataClayInstanceID extDataClayID) {
-<span class="nc" id="L1964">		clientLib.importModelsFromExternalDataClay(externalNamespace, extDataClayID);</span>
-<span class="nc" id="L1965">	}</span>
+<span class="nc" id="L1924">		clientLib.importModelsFromExternalDataClay(externalNamespace, extDataClayID);</span>
+<span class="nc" id="L1925">	}</span>
 	
 	/**
 	 * Activate tracing in dataClay services
-	 * 
+	 *
 	 */
 	public final static void activateTracingInDataClayServices() {
-<span class="nc" id="L1972">		clientLib.activateTracingInDataClayServices();</span>
-<span class="nc" id="L1973">	}</span>
-	
+<span class="nc" id="L1932">		clientLib.activateTracingInDataClayServices();</span>
+<span class="nc" id="L1933">	}</span>
+
 	/**
 	 * Dectivate tracing
 	 */
 	public final static void deactivateTracingInDataClayServices() {
-<span class="nc" id="L1979">		clientLib.deactivateTracingInDataClayServices();</span>
-<span class="nc" id="L1980">	}</span>
+<span class="nc" id="L1939">		clientLib.deactivateTracingInDataClayServices();</span>
+<span class="nc" id="L1940">	}</span>
 
 	/**
 	 * Activate tracing
 	 */
 	public final static void activateTracing(
 			final boolean initializeWrapper) {
-<span class="nc" id="L1987">		clientLib.activateTracing(initializeWrapper);</span>
-<span class="nc" id="L1988">	}</span>
+<span class="nc" id="L1947">		clientLib.activateTracing(initializeWrapper);</span>
+<span class="nc" id="L1948">	}</span>
 
 	/**
 	 * Deactivate tracing
 	 */
 	public final static void deactivateTracing(final boolean finalizeWrapper) {
-<span class="nc" id="L1994">		clientLib.deactivateTracing(finalizeWrapper);</span>
-<span class="nc" id="L1995">	}</span>
+<span class="nc" id="L1954">		clientLib.deactivateTracing(finalizeWrapper);</span>
+<span class="nc" id="L1955">	}</span>
 	
 	/**
 	 * Get traces in dataClay services and store it in current workspace
 	 */
 	public final static void getTracesInDataClayServices() {
-<span class="nc" id="L2001">		clientLib.getTracesInDataClayServices();</span>
-<span class="nc" id="L2002">	}</span>
+<span class="nc" id="L1961">		clientLib.getTracesInDataClayServices();</span>
+<span class="nc" id="L1962">	}</span>
 	
 	/**
 	 * Wait for asynchronous requests to finish.
 	 */
 	public static void waitForAsyncRequestToFinish() {
-<span class="nc bnc" id="L2008" title="All 2 branches missed.">		if (clientLib != null) {</span>
+<span class="nc bnc" id="L1968" title="All 2 branches missed.">		if (clientLib != null) {</span>
 			// Register pending objects
-<span class="nc" id="L2010">			clientLib.waitForAsyncRequestToFinish();</span>
+<span class="nc" id="L1970">			clientLib.waitForAsyncRequestToFinish();</span>
 		}
-<span class="nc" id="L2012">	}</span>
+<span class="nc" id="L1972">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

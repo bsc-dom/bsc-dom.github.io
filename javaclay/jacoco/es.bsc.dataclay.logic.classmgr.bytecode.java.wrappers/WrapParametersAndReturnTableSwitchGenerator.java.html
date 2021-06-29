@@ -6,6 +6,7 @@ package es.bsc.dataclay.logic.classmgr.bytecode.java.wrappers;
 
 import java.util.Collection;
 
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.InstructionAdapter;
@@ -46,8 +47,8 @@ public abstract class WrapParametersAndReturnTableSwitchGenerator extends DataCl
 			final MetaClass themetaClass,
 			final StubInfo thestubInfo, final boolean theisExecClass,
 			final GeneratorAdapter thegn, final InstructionAdapter theia) {
-<span class="nc" id="L49">		super(themetaClass, thestubInfo, theisExecClass, thegn, theia);</span>
-<span class="nc" id="L50">	}</span>
+<span class="nc" id="L50">		super(themetaClass, thestubInfo, theisExecClass, thegn, theia);</span>
+<span class="nc" id="L51">	}</span>
 
 	/**
 	 * Get types to wrap
@@ -75,71 +76,73 @@ public abstract class WrapParametersAndReturnTableSwitchGenerator extends DataCl
 	@Override
 	public final void generateCase(final Implementation impl) {
 
-<span class="nc" id="L78">		final Operation operation = metaClass.getOperation(impl.getOperationID());</span>
+<span class="nc" id="L79">		final Operation operation = metaClass.getOperation(impl.getOperationID());</span>
 
-<span class="nc bnc" id="L80" title="All 2 branches missed.">		if (checkIfNothingToSerialize(operation)) {</span>
-<span class="nc" id="L81">			return;</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">		if (checkIfNothingToSerialize(operation)) {</span>
+<span class="nc" id="L82">			return;</span>
 		}
 
 		// Create a new List&lt;DataClaySerializable&gt;
-<span class="nc" id="L85">		final int listWrappers = gn.newLocal(ByteCodeTypes.LIST);</span>
-<span class="nc" id="L86">		gn.newInstance(ByteCodeTypes.ARRLIST);</span>
-<span class="nc" id="L87">		gn.dup();</span>
-<span class="nc" id="L88">		gn.invokeConstructor(ByteCodeTypes.ARRLIST, ByteCodeMethods.EMPTY_CONSTRUCTOR);</span>
-<span class="nc" id="L89">		gn.storeLocal(listWrappers);</span>
+<span class="nc" id="L86">		final int listWrappers = gn.newLocal(ByteCodeTypes.LIST);</span>
+<span class="nc" id="L87">		gn.newInstance(ByteCodeTypes.ARRLIST);</span>
+<span class="nc" id="L88">		gn.dup();</span>
+<span class="nc" id="L89">		gn.invokeConstructor(ByteCodeTypes.ARRLIST, ByteCodeMethods.EMPTY_CONSTRUCTOR);</span>
+<span class="nc" id="L90">		gn.storeLocal(listWrappers);</span>
 
-<span class="nc" id="L91">		final Collection&lt;es.bsc.dataclay.util.management.classmgr.Type&gt; typesToWrap = getTypesToWrap(operation);</span>
+<span class="nc" id="L92">		final Collection&lt;es.bsc.dataclay.util.management.classmgr.Type&gt; typesToWrap = getTypesToWrap(operation);</span>
 
-<span class="nc" id="L93">		int k = 0;</span>
-<span class="nc bnc" id="L94" title="All 2 branches missed.">		for (final es.bsc.dataclay.util.management.classmgr.Type paramDcType : typesToWrap) {</span>
+<span class="nc" id="L94">		int k = 0;</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		for (final es.bsc.dataclay.util.management.classmgr.Type paramDcType : typesToWrap) {</span>
 
 			// CODE: immutableparams.add(new Wrapper(param[paramIdx])
-<span class="nc" id="L97">			gn.loadLocal(listWrappers);</span>
+<span class="nc" id="L98">			gn.loadLocal(listWrappers);</span>
 
-<span class="nc" id="L99">			final int curParamLocal = gn.newLocal(ByteCodeTypes.OBJECT);</span>
-<span class="nc" id="L100">			this.getParameter(k);</span>
-<span class="nc" id="L101">			gn.storeLocal(curParamLocal);</span>
+<span class="nc" id="L100">			final int curParamLocal = gn.newLocal(ByteCodeTypes.OBJECT);</span>
+<span class="nc" id="L101">			this.getParameter(k);</span>
+<span class="nc" id="L102">			gn.storeLocal(curParamLocal);</span>
 
-<span class="nc" id="L103">			final String typeName = paramDcType.getTypeName();</span>
-<span class="nc bnc" id="L104" title="All 2 branches missed.">			if (Reflector.isImmutableTypeName(typeName)</span>
-<span class="nc bnc" id="L105" title="All 2 branches missed.">					|| Reflector.isPrimitiveTypeName(typeName)</span>
-<span class="nc bnc" id="L106" title="All 2 branches missed.">					|| Reflector.isJavaTypeName(typeName)</span>
-<span class="nc bnc" id="L107" title="All 2 branches missed.">					|| Reflector.isArrayTypeName(typeName)</span>
-<span class="nc bnc" id="L108" title="All 2 branches missed.">					|| typeName.equals(ObjectID.class.getName())) {</span>
+<span class="nc" id="L104">			final String typeName = paramDcType.getTypeName();</span>
+
+<span class="nc bnc" id="L106" title="All 2 branches missed.">			if (Reflector.isImmutableTypeName(typeName)</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">					|| Reflector.isPrimitiveTypeName(typeName)</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">					|| Reflector.isJavaTypeName(typeName)</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">					|| Reflector.isArrayTypeName(typeName)</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">					|| typeName.equals(ObjectID.class.getName())</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">					|| typeName.equals(ExecutionEnvironmentID.class.getName())) {</span>
 				// =========== IMMUTABLES =============== //
 				// =========== LANGUAGE =============== //
 
 				// Wrap immutable
 				// Find wrapper type.
-<span class="nc" id="L114">				final Tuple&lt;Type, Type&gt; wrapperTypes = SerializationCodeGenerator.findWrapperType(typeName,</span>
-<span class="nc" id="L115">						paramDcType.getDescriptor());</span>
-<span class="nc" id="L116">				final Type wrapperType = wrapperTypes.getFirst();</span>
-<span class="nc" id="L117">				final Type paramType = wrapperTypes.getSecond();</span>
+<span class="nc" id="L117">				final Tuple&lt;Type, Type&gt; wrapperTypes = SerializationCodeGenerator.findWrapperType(typeName,</span>
+<span class="nc" id="L118">						paramDcType.getDescriptor());</span>
+<span class="nc" id="L119">				final Type wrapperType = wrapperTypes.getFirst();</span>
+<span class="nc" id="L120">				final Type paramType = wrapperTypes.getSecond();</span>
 				// Get constructor. Constructor always contains as the argument the original
 				// type to wrap.
-<span class="nc" id="L120">				final Method wrapperConstructor = new Method(ByteCodeMethodsNames.INIT_MTHD,</span>
+<span class="nc" id="L123">				final Method wrapperConstructor = new Method(ByteCodeMethodsNames.INIT_MTHD,</span>
 						Type.VOID_TYPE, new Type[] { paramType });
 
-<span class="nc" id="L123">				gn.newInstance(wrapperType);</span>
-<span class="nc" id="L124">				gn.dup();</span>
-<span class="nc" id="L125">				gn.loadLocal(curParamLocal);</span>
-<span class="nc" id="L126">				gn.checkCast(paramType);</span>
-<span class="nc" id="L127">				gn.invokeConstructor(wrapperType, wrapperConstructor);</span>
+<span class="nc" id="L126">				gn.newInstance(wrapperType);</span>
+<span class="nc" id="L127">				gn.dup();</span>
+<span class="nc" id="L128">				gn.loadLocal(curParamLocal);</span>
+<span class="nc" id="L129">				gn.checkCast(paramType);</span>
+<span class="nc" id="L130">				gn.invokeConstructor(wrapperType, wrapperConstructor);</span>
 
-<span class="nc" id="L129">			} else {</span>
+<span class="nc" id="L132">			} else {</span>
 				// If DCobject just add
-<span class="nc" id="L131">				gn.loadLocal(curParamLocal);</span>
+<span class="nc" id="L134">				gn.loadLocal(curParamLocal);</span>
 			}
 
-<span class="nc" id="L134">			gn.invokeInterface(ByteCodeTypes.LIST, ByteCodeMethods.LIST_ADD);</span>
-<span class="nc" id="L135">			gn.pop(); // discard result of put.</span>
+<span class="nc" id="L137">			gn.invokeInterface(ByteCodeTypes.LIST, ByteCodeMethods.LIST_ADD);</span>
+<span class="nc" id="L138">			gn.pop(); // discard result of put.</span>
 
-<span class="nc" id="L137">			k++;</span>
-<span class="nc" id="L138">		}</span>
+<span class="nc" id="L140">			k++;</span>
+<span class="nc" id="L141">		}</span>
 
-<span class="nc" id="L140">		gn.loadLocal(listWrappers);</span>
-<span class="nc" id="L141">		gn.returnValue();</span>
-<span class="nc" id="L142">	}</span>
+<span class="nc" id="L143">		gn.loadLocal(listWrappers);</span>
+<span class="nc" id="L144">		gn.returnValue();</span>
+<span class="nc" id="L145">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

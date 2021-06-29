@@ -197,16 +197,11 @@ public class DataClayExecutionObject extends DataClayObject {
 <span class="nc" id="L197">		this.numRefs = thenumRefs;</span>
 <span class="nc" id="L198">	}</span>
 
-	@Override
-	public List&lt;Object&gt; filter(final String conditions) {
-<span class="nc" id="L202">		return filterObject(conditions);</span>
-	}
-
 	/**
 	 * @return the pendingToRegister
 	 */
 	public boolean isPendingToRegister() {
-<span class="nc" id="L209">		return pendingToRegister;</span>
+<span class="nc" id="L204">		return pendingToRegister;</span>
 	}
 
 	/**
@@ -214,8 +209,8 @@ public class DataClayExecutionObject extends DataClayObject {
 	 *            the pendingToRegister to set
 	 */
 	public void setPendingToRegister(final boolean ispendingToRegister) {
-<span class="nc" id="L217">		this.pendingToRegister = ispendingToRegister;</span>
-<span class="nc" id="L218">	}</span>
+<span class="nc" id="L212">		this.pendingToRegister = ispendingToRegister;</span>
+<span class="nc" id="L213">	}</span>
 
 	/**
 	 * Add lazy task to be run in DataClay.
@@ -233,25 +228,25 @@ public class DataClayExecutionObject extends DataClayObject {
 		}*/
 		
 		// If prefetching is not activated in dataClay, do not add lazy task (even if it exists in the registered model)
-<span class="nc bnc" id="L236" title="All 2 branches missed.">		if (!Configuration.Flags.PREFETCHING_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L237">			return;</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">		if (!Configuration.Flags.PREFETCHING_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L232">			return;</span>
 		}
 
-<span class="nc bnc" id="L240" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L241">			logger.debug(&quot;[==PREFETCHING==] Adding lazy task.&quot;);</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L236">			logger.debug(&quot;[==PREFETCHING==] Adding lazy task.&quot;);</span>
 		}
 
-<span class="nc" id="L244">		final SessionID sessID = getLib().getSessionID();</span>
-<span class="nc" id="L245">		logger.info(&quot;[==PREFETCHING==] Adding lazy task for session {} and implementation {} at {}&quot;, sessID, implID,</span>
-<span class="nc" id="L246">				new Date(System.currentTimeMillis()).toString());</span>
+<span class="nc" id="L239">		final SessionID sessID = getLib().getSessionID();</span>
+<span class="nc" id="L240">		logger.info(&quot;[==PREFETCHING==] Adding lazy task for session {} and implementation {} at {}&quot;, sessID, implID,</span>
+<span class="nc" id="L241">				new Date(System.currentTimeMillis()).toString());</span>
 
 		// Only called in DS
-<span class="nc" id="L249">		final LazyTask lazyTask = new LazyTask(sessID, objectID, implID, classID);</span>
-<span class="nc" id="L250">		final DataServiceRuntime dsRuntime = (DataServiceRuntime) getLib();</span>
-<span class="nc" id="L251">		dsRuntime.getDataService().addLazyTask(objectID, lazyTask);</span>
+<span class="nc" id="L244">		final LazyTask lazyTask = new LazyTask(sessID, objectID, implID, classID);</span>
+<span class="nc" id="L245">		final DataServiceRuntime dsRuntime = (DataServiceRuntime) getLib();</span>
+<span class="nc" id="L246">		dsRuntime.getDataService().addLazyTask(objectID, lazyTask);</span>
 		/****
 		 * Add several times (make sure to have as many threads as duplicate tasks)
 		 ****/
-<span class="nc" id="L255">	}</span>
+<span class="nc" id="L250">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

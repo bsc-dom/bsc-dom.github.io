@@ -40,7 +40,7 @@ public final class LogicModuleSrv {
 	private final String hostname;
 
 	/** Logic module instance. */
-	private LogicModule&lt;?&gt; logicModule;
+	private LogicModule logicModule;
 
 	/** Grpc server. */
 	private LogicModuleServer grpcServer;
@@ -50,6 +50,8 @@ public final class LogicModuleSrv {
 	/** Logic Module configuration. */
 	private final CfgLogic cfgLM;
 	// CHECKSTYLE:ON
+	/** Indicates exit error code if System.exit() is called. */
+<span class="nc" id="L54">	private static int SYSTEM_EXIT_ERROR_CODE = 0;</span>
 
 	/**
 	 * LogicModuleSrv constructor
@@ -59,21 +61,21 @@ public final class LogicModuleSrv {
 	 * @throws InterruptedException
 	 *             if GRPC cannot be started
 	 */
-<span class="nc" id="L62">	public LogicModuleSrv(final CfgLogic thecfgLM) throws InterruptedException {</span>
+<span class="nc" id="L64">	public LogicModuleSrv(final CfgLogic thecfgLM) throws InterruptedException {</span>
 		// Initialize client
-<span class="nc" id="L64">		cfgLM = thecfgLM;</span>
-<span class="nc" id="L65">		tcpPort = cfgLM.getLogicModuleTCPPort();</span>
-<span class="nc" id="L66">		hostname = cfgLM.getLogicModuleHostName();</span>
-<span class="nc" id="L67">		srvName = cfgLM.getLogicModuleName();</span>
-<span class="nc" id="L68">		inMemory = cfgLM.isInMemory();</span>
+<span class="nc" id="L66">		cfgLM = thecfgLM;</span>
+<span class="nc" id="L67">		tcpPort = cfgLM.getLogicModuleTCPPort();</span>
+<span class="nc" id="L68">		hostname = cfgLM.getLogicModuleHostName();</span>
+<span class="nc" id="L69">		srvName = cfgLM.getLogicModuleName();</span>
+<span class="nc" id="L70">		inMemory = cfgLM.isInMemory();</span>
 
 		// Create the LM
-<span class="nc" id="L71">		logicModule = LogicModuleFactory.initLogicModule(srvName, </span>
-<span class="nc" id="L72">				hostname, tcpPort, inMemory, cfgLM.getExposedIPForClient());</span>
+<span class="nc" id="L73">		logicModule = LogicModuleFactory.initLogicModule(srvName, </span>
+<span class="nc" id="L74">				hostname, tcpPort, inMemory, cfgLM.getExposedIPForClient());</span>
 
 		// Bind the service
-<span class="nc" id="L75">		grpcServer = new LogicModuleServer(srvName, tcpPort, logicModule);</span>
-<span class="nc" id="L76">	}</span>
+<span class="nc" id="L77">		grpcServer = new LogicModuleServer(srvName, tcpPort, logicModule);</span>
+<span class="nc" id="L78">	}</span>
 
 	/**
 	 * @param args
@@ -83,9 +85,9 @@ public final class LogicModuleSrv {
 	 */
 	public static void main(final String[] args) throws Exception {
 		// Logic module basic config
-<span class="nc" id="L86">		final CfgLogic thecfgLogic = CfgLogicEnvLoader.parseConfiguration();</span>
-<span class="nc" id="L87">		new LogicModuleSrv(thecfgLogic).start();</span>
-<span class="nc" id="L88">	}</span>
+<span class="nc" id="L88">		final CfgLogic thecfgLogic = CfgLogicEnvLoader.parseConfiguration();</span>
+<span class="nc" id="L89">		new LogicModuleSrv(thecfgLogic).start();</span>
+<span class="nc" id="L90">	}</span>
 
 	/**
 	 * Start service.
@@ -95,29 +97,36 @@ public final class LogicModuleSrv {
 	 */
 	public void start() throws Exception {
 
-<span class="nc" id="L98">		final Thread shutdownHook = new Thread() {</span>
+<span class="nc" id="L100">		final Thread shutdownHook = new Thread() {</span>
 			@Override
 			public void run() {
 				try {
-<span class="nc bnc" id="L102" title="All 2 branches missed.">					if (running) {</span>
-<span class="nc" id="L103">						stopService();</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">					if (running) {</span>
+<span class="nc" id="L105">						stopService();</span>
 					}
-<span class="nc" id="L105">				} catch (final Exception e) {</span>
-<span class="nc" id="L106">					e.printStackTrace();</span>
-<span class="nc" id="L107">				}</span>
-<span class="nc" id="L108">				System.err.println(&quot;LOGICMODULE GRACEFULLY STOPPED&quot;);</span>
-<span class="nc" id="L109">			}</span>
+<span class="nc" id="L107">				} catch (final Exception e) {</span>
+<span class="nc" id="L108">					e.printStackTrace();</span>
+<span class="nc" id="L109">				}</span>
+<span class="nc" id="L110">				System.err.println(&quot;LOGICMODULE GRACEFULLY STOPPED&quot;);</span>
+<span class="nc" id="L111">			}</span>
 			
 		};
-<span class="nc" id="L112">		shutdownHook.setName(srvName + &quot;-ShutdownHook&quot;);</span>
-<span class="nc" id="L113">		Runtime.getRuntime().addShutdownHook(shutdownHook);</span>
-<span class="nc" id="L114">		grpcServer.start();</span>
-<span class="nc" id="L115">		running = true;</span>
-<span class="nc" id="L116">		final String content = &quot;READY&quot;;</span>
-<span class="nc" id="L117">		Files.write(Paths.get(Configuration.Flags.STATE_FILE_PATH.getStringValue()), content.getBytes());</span>
-<span class="nc" id="L118">		grpcServer.blockUntilShutdown();</span>
+<span class="nc" id="L114">		shutdownHook.setName(srvName + &quot;-ShutdownHook&quot;);</span>
+<span class="nc" id="L115">		Runtime.getRuntime().addShutdownHook(shutdownHook);</span>
+<span class="nc" id="L116">		grpcServer.start();</span>
+<span class="nc" id="L117">		running = true;</span>
+<span class="nc" id="L118">		final String content = &quot;READY&quot;;</span>
+<span class="nc" id="L119">		Files.write(Paths.get(Configuration.Flags.STATE_FILE_PATH.getStringValue()), content.getBytes());</span>
+<span class="nc" id="L120">		grpcServer.blockUntilShutdown();</span>
 
-<span class="nc" id="L120">	}</span>
+<span class="nc" id="L122">	}</span>
+
+	// Centralise all System.exit code under control of this class.
+	public static void doExit(int exitStatus) {
+<span class="nc" id="L126">		SYSTEM_EXIT_ERROR_CODE = exitStatus;</span>
+<span class="nc" id="L127">		System.err.println(&quot;!!! DATABASE ERROR. Exiting with code: &quot; + exitStatus);</span>
+<span class="nc" id="L128">		System.exit(exitStatus); // Will invoke run.</span>
+<span class="nc" id="L129">	}</span>
 
 	/**
 	 * Unbinds the service
@@ -126,29 +135,34 @@ public final class LogicModuleSrv {
 	 *             if an exception occurs
 	 */
 	public void stopService() throws Exception {
-<span class="nc" id="L129">		logicModule.setShuttingDown(true);</span>
-<span class="nc" id="L130">		running = false;</span>
+<span class="nc" id="L138">		logicModule.setShuttingDown(true);</span>
+<span class="nc" id="L139">		running = false;</span>
 		
 		// Wait for all nodes to notify
-<span class="nc" id="L133">		logger.debug(&quot;Waiting for all backends to shut down first...&quot;);</span>
-<span class="nc" id="L134">		logicModule.waitForAllNodesShutdown();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">		if (SYSTEM_EXIT_ERROR_CODE == 0) {</span>
+<span class="nc" id="L143">			logger.debug(&quot;Waiting for all backends to shut down first...&quot;);</span>
+<span class="nc" id="L144">			logicModule.waitForAllNodesShutdown();</span>
+		}
 
 		// CHECKSTYLE:ON
-<span class="nc" id="L137">		logicModule.finishCacheThreads();</span>
+<span class="nc" id="L148">		logicModule.finishCacheThreads();</span>
 
-<span class="nc" id="L139">		logger.debug(&quot;Closing managers...&quot;);</span>
-<span class="nc" id="L140">		logicModule.closeManagerDb();</span>
+		// manager dbs close
+<span class="nc" id="L151">		logger.debug(&quot;Closing managers...&quot;);</span>
+<span class="nc" id="L152">		logicModule.closeManagerDb();</span>
 
-<span class="nc" id="L142">		logger.debug(&quot;Closing logic DB...&quot;);</span>
-<span class="nc" id="L143">		logicModule.closeDb();</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">		if (SYSTEM_EXIT_ERROR_CODE == 0) {</span>
+<span class="nc" id="L155">			logger.debug(&quot;Closing logic DB...&quot;);</span>
+<span class="nc" id="L156">			logicModule.closeDb();</span>
+		}
 
-<span class="nc" id="L145">		logicModule = null;</span>
-<span class="nc" id="L146">		logger.debug(&quot;Finishing server connections...&quot;);</span>
-<span class="nc" id="L147">		grpcServer.stop();</span>
-<span class="nc" id="L148">		grpcServer = null;</span>
+<span class="nc" id="L159">		logicModule = null;</span>
+<span class="nc" id="L160">		logger.debug(&quot;Finishing server connections...&quot;);</span>
+<span class="nc" id="L161">		grpcServer.stop();</span>
+<span class="nc" id="L162">		grpcServer = null;</span>
 
-<span class="nc" id="L150">		logger.info(&quot;stopService done!&quot;);</span>
-<span class="nc" id="L151">	}</span>
+<span class="nc" id="L164">		logger.info(&quot;stopService done!&quot;);</span>
+<span class="nc" id="L165">	}</span>
 
 	/**
 	 * Clean MD caches
@@ -157,22 +171,22 @@ public final class LogicModuleSrv {
 	 *             if an exception occurs
 	 */
 	public void cleanMDCaches() throws Exception {
-<span class="nc" id="L160">		logicModule.cleanMetaDataCaches();</span>
-<span class="nc" id="L161">	}</span>
+<span class="nc" id="L174">		logicModule.cleanMetaDataCaches();</span>
+<span class="nc" id="L175">	}</span>
 
 	/**
 	 * @return the reference to LM
 	 */
-	public LogicModule&lt;?&gt; getLogicModule() {
-<span class="nc" id="L167">		return logicModule;</span>
+	public LogicModule getLogicModule() {
+<span class="nc" id="L181">		return logicModule;</span>
 	}
 
 	/**
 	 * Wait for all asynchronous request to finish.
 	 */
 	public void waitAndProcessAllAsyncRequests() {
-<span class="nc" id="L174">		logicModule.waitAndProcessAllAsyncRequests();</span>
-<span class="nc" id="L175">	}</span>
+<span class="nc" id="L188">		logicModule.waitAndProcessAllAsyncRequests();</span>
+<span class="nc" id="L189">	}</span>
 
 	/**
 	 * Return the TCP Port for the LogicModule.
@@ -180,7 +194,7 @@ public final class LogicModuleSrv {
 	 * @return The TCP port.
 	 */
 	public int getTcpPort() {
-<span class="nc" id="L183">		return tcpPort;</span>
+<span class="nc" id="L197">		return tcpPort;</span>
 	}
 
 	/**
@@ -189,7 +203,7 @@ public final class LogicModuleSrv {
 	 * @return The hostname string.
 	 */
 	public String getHostname() {
-<span class="nc" id="L192">		return hostname;</span>
+<span class="nc" id="L206">		return hostname;</span>
 	}
 
 	/**
@@ -203,8 +217,8 @@ public final class LogicModuleSrv {
 	 */
 	public static LogicModuleSrv getForTest(final String[] args) throws Exception {
 		// Logic module basic config
-<span class="nc" id="L206">		final CfgLogic thecfgLogic = CfgLogicEnvLoader.parseConfiguration();</span>
-<span class="nc" id="L207">		return new LogicModuleSrv(thecfgLogic);</span>
+<span class="nc" id="L220">		final CfgLogic thecfgLogic = CfgLogicEnvLoader.parseConfiguration();</span>
+<span class="nc" id="L221">		return new LogicModuleSrv(thecfgLogic);</span>
 	}
 
 }

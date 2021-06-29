@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DataClayObjectMetaData.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util</a> &gt; <span class="el_source">DataClayObjectMetaData.java</span></div><h1>DataClayObjectMetaData.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.util;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -12,12 +13,14 @@ import es.bsc.dataclay.util.ids.MetaClassID;
 import es.bsc.dataclay.util.ids.ObjectID;
 
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** This class represents all metadata (tags) of an object. */
 public final class DataClayObjectMetaData {
 
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L20">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="fc" id="L23">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/**
 	 * @pierlauro sept. 2018 TODO eliminte this creepy, anti-OO and inefficient design with plenty of maps: create a class Tag
@@ -33,56 +36,86 @@ public final class DataClayObjectMetaData {
 	/** Map tag to hint id. */
 	private Map&lt;Integer, ExecutionEnvironmentID&gt; hints;
 
-	/** Map tag to external dataClay ID */
-	private Map&lt;Integer, DataClayInstanceID&gt; extDataClayIDs;
-
 	/** Number of references pointing to object. */
 	private int numRefs;
+
+	/** Object alias. */
+	private String alias;
+
+	/** Indicates if object is read only. */
+	private boolean isReadOnly;
+
+	/** ID of original object in case of new version. */
+	private ObjectID originalObjectID;
+
+	/** ID of root object location (versions, replicas) - first object. */
+<span class="pc" id="L52">	private ExecutionEnvironmentID rootLocation = null;</span>
+
+	/** ID of origin object location (replicas) : origin of the replica. */
+<span class="pc" id="L55">	private ExecutionEnvironmentID originLocation = null;</span>
+
+	/** IDs of locations this object was replicated to. */
+<span class="pc" id="L58">	private Set&lt;ExecutionEnvironmentID&gt; replicaLocations = ConcurrentHashMap.newKeySet();</span>
 
 	/**
 	 * Empty constructor for deserialization.
 	 */
-<span class="fc" id="L45">	public DataClayObjectMetaData() {</span>
+<span class="fc" id="L63">	public DataClayObjectMetaData() {</span>
 
-<span class="fc" id="L47">	}</span>
+<span class="fc" id="L65">	}</span>
 
 	/**
 	 * Constructor
-	 * 
+	 * @param thealias Alias of the object or null if none
+	 * @param theisReadOnly indicates if object is read only
 	 * @param newmapOids
 	 *            Map tag to OID.
 	 * @param newmapClassIDs
 	 *            Map tag to class id.
 	 * @param newmapHints
 	 *            Map tag to hint id.
-	 * @param newextDataClayIDs
-	 *            Map tag to external dataClay id.
 	 * @param newnumRefs
 	 *            Number of references pointing to object.
+	 * @param theoriginalObjectID Original object id in case of new version
+	 * @param therootLocation root location of the original object or null if this is original
+	 * @param theoriginLocation origin location of the object in case of replica
+	 * @param thereplicaLocations IDs of locations this replica-object was replicated to
 	 */
-	public DataClayObjectMetaData(final Map&lt;Integer, ObjectID&gt; newmapOids,
+	public DataClayObjectMetaData(final String thealias, final boolean theisReadOnly, final Map&lt;Integer, ObjectID&gt; newmapOids,
 			final Map&lt;Integer, MetaClassID&gt; newmapClassIDs, final Map&lt;Integer, ExecutionEnvironmentID&gt; newmapHints,
-<span class="nc" id="L65">			final Map&lt;Integer, DataClayInstanceID&gt; newextDataClayIDs, final int newnumRefs) {</span>
-<span class="nc" id="L66">		this.setOids(newmapOids);</span>
-<span class="nc" id="L67">		this.setClassIDs(newmapClassIDs);</span>
-<span class="nc" id="L68">		this.setHints(newmapHints);</span>
-<span class="nc" id="L69">		this.setNumRefs(newnumRefs);</span>
-<span class="nc" id="L70">	}</span>
+			final int newnumRefs,  final ObjectID theoriginalObjectID,
+								  final ExecutionEnvironmentID therootLocation,
+								  final ExecutionEnvironmentID theoriginLocation,
+<span class="nc" id="L89">								  final Set&lt;ExecutionEnvironmentID&gt; thereplicaLocations) {</span>
+<span class="nc" id="L90">		this.setAlias(thealias);</span>
+<span class="nc" id="L91">		this.setIsReadOnly(theisReadOnly);</span>
+<span class="nc" id="L92">		this.setOids(newmapOids);</span>
+<span class="nc" id="L93">		this.setClassIDs(newmapClassIDs);</span>
+<span class="nc" id="L94">		this.setHints(newmapHints);</span>
+<span class="nc" id="L95">		this.setNumRefs(newnumRefs);</span>
+<span class="nc" id="L96">		this.originalObjectID = theoriginalObjectID;</span>
+<span class="nc" id="L97">		this.setRootLocation(therootLocation);</span>
+<span class="nc" id="L98">		this.setOriginLocation(theoriginLocation);</span>
+		// IMPORTANT: clone to avoid modifications of metadata affect already serialized objects
+<span class="nc bnc" id="L100" title="All 2 branches missed.">		if (thereplicaLocations != null) {</span>
+<span class="nc" id="L101">			this.replicaLocations.addAll(thereplicaLocations);</span>
+		}
+<span class="nc" id="L103">	}</span>
 
 	@Override
 	public int hashCode() {
-<span class="nc" id="L74">		return Objects.hash(oids, classIDs, hints);</span>
+<span class="nc" id="L107">		return Objects.hash(alias, oids, classIDs, hints);</span>
 	}
 
 	@Override
 	public boolean equals(final Object obj) {
-<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (obj instanceof DataClayObjectMetaData) {</span>
+<span class="nc bnc" id="L112" title="All 2 branches missed.">		if (obj instanceof DataClayObjectMetaData) {</span>
 
-<span class="nc" id="L81">			final DataClayObjectMetaData candidate = (DataClayObjectMetaData) obj;</span>
-<span class="nc bnc" id="L82" title="All 4 branches missed.">			return oids.equals(candidate.getOids()) &amp;&amp; classIDs.equals(candidate.getClassIDs())</span>
-<span class="nc bnc" id="L83" title="All 2 branches missed.">					&amp;&amp; hints.equals(candidate.getHints());</span>
+<span class="nc" id="L114">			final DataClayObjectMetaData candidate = (DataClayObjectMetaData) obj;</span>
+<span class="nc bnc" id="L115" title="All 4 branches missed.">			return oids.equals(candidate.getOids()) &amp;&amp; classIDs.equals(candidate.getClassIDs())</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">					&amp;&amp; hints.equals(candidate.getHints());</span>
 		} else {
-<span class="nc" id="L85">			return false;</span>
+<span class="nc" id="L118">			return false;</span>
 		}
 	}
 
@@ -90,7 +123,7 @@ public final class DataClayObjectMetaData {
 	 * @return the oids
 	 */
 	public Map&lt;Integer, ObjectID&gt; getOids() {
-<span class="nc" id="L93">		return oids;</span>
+<span class="nc" id="L126">		return oids;</span>
 	}
 
 	/**
@@ -98,14 +131,14 @@ public final class DataClayObjectMetaData {
 	 *            the oids to set
 	 */
 	public void setOids(final Map&lt;Integer, ObjectID&gt; theoids) {
-<span class="nc" id="L101">		this.oids = theoids;</span>
-<span class="nc" id="L102">	}</span>
+<span class="nc" id="L134">		this.oids = theoids;</span>
+<span class="nc" id="L135">	}</span>
 
 	/**
 	 * @return the classIDs
 	 */
 	public Map&lt;Integer, MetaClassID&gt; getClassIDs() {
-<span class="nc" id="L108">		return classIDs;</span>
+<span class="nc" id="L141">		return classIDs;</span>
 	}
 
 	/**
@@ -113,14 +146,14 @@ public final class DataClayObjectMetaData {
 	 *            the classIDs to set
 	 */
 	public void setClassIDs(final Map&lt;Integer, MetaClassID&gt; theclassIDs) {
-<span class="nc" id="L116">		this.classIDs = theclassIDs;</span>
-<span class="nc" id="L117">	}</span>
+<span class="nc" id="L149">		this.classIDs = theclassIDs;</span>
+<span class="nc" id="L150">	}</span>
 
 	/**
 	 * @return the hints
 	 */
 	public Map&lt;Integer, ExecutionEnvironmentID&gt; getHints() {
-<span class="nc" id="L123">		return hints;</span>
+<span class="nc" id="L156">		return hints;</span>
 	}
 
 	/**
@@ -128,8 +161,8 @@ public final class DataClayObjectMetaData {
 	 *            the hints to set
 	 */
 	public void setHints(final Map&lt;Integer, ExecutionEnvironmentID&gt; thehints) {
-<span class="nc" id="L131">		this.hints = thehints;</span>
-<span class="nc" id="L132">	}</span>
+<span class="nc" id="L164">		this.hints = thehints;</span>
+<span class="nc" id="L165">	}</span>
 
 	/**
 	 * @param tag
@@ -138,8 +171,8 @@ public final class DataClayObjectMetaData {
 	 *            the new tag's hint
 	 */
 	public void setHint(final Integer tag, final ExecutionEnvironmentID hint) {
-<span class="nc" id="L141">		this.hints.put(tag, hint);</span>
-<span class="nc" id="L142">	}</span>
+<span class="nc" id="L174">		this.hints.put(tag, hint);</span>
+<span class="nc" id="L175">	}</span>
 
 	/**
 	 * Get object id from tag
@@ -149,7 +182,7 @@ public final class DataClayObjectMetaData {
 	 * @return Object id
 	 */
 	public ObjectID getObjectID(final Integer tag) {
-<span class="nc" id="L152">		return this.oids.get(tag);</span>
+<span class="nc" id="L185">		return this.oids.get(tag);</span>
 	}
 
 	/**
@@ -160,7 +193,7 @@ public final class DataClayObjectMetaData {
 	 * @return Class id
 	 */
 	public MetaClassID getMetaClassID(final Integer tag) {
-<span class="nc" id="L163">		return this.classIDs.get(tag);</span>
+<span class="nc" id="L196">		return this.classIDs.get(tag);</span>
 	}
 
 	/**
@@ -171,18 +204,7 @@ public final class DataClayObjectMetaData {
 	 * @return hint
 	 */
 	public ExecutionEnvironmentID getHint(final Integer tag) {
-<span class="nc" id="L174">		return this.hints.get(tag);</span>
-	}
-
-	/**
-	 * Get a specific dataClayID for a tag
-	 * 
-	 * @param tag
-	 *            the tag of the dataClayID to be retrieved
-	 * @return dataClayID corresponding to given tag
-	 */
-	public DataClayInstanceID getDataClayID(final Integer tag) {
-<span class="nc" id="L185">		return this.extDataClayIDs.get(tag);</span>
+<span class="nc" id="L207">		return this.hints.get(tag);</span>
 	}
 
 	/**
@@ -190,43 +212,60 @@ public final class DataClayObjectMetaData {
 	 * 
 	 * @param oidsMapping
 	 *            Oids mapping
+	 */
+	public void modifyOids(final Map&lt;ObjectID, ObjectID&gt; oidsMapping) {
+<span class="nc bnc" id="L217" title="All 2 branches missed.">		for (final Entry&lt;Integer, ObjectID&gt; curTagEntry : this.oids.entrySet()) {</span>
+<span class="nc" id="L218">			final Integer tag = curTagEntry.getKey();</span>
+<span class="nc" id="L219">			final ObjectID oldOID = curTagEntry.getValue();</span>
+<span class="nc" id="L220">			final ObjectID newOID = oidsMapping.get(oldOID);</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">			if (newOID != null) {</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L223">					DataClayObject.getLib();</span>
+<span class="nc" id="L224">					DataClayRuntime.LOGGER</span>
+<span class="nc" id="L225">							.debug(&quot;[==ModifyIDs==] Setting objectID &quot; + newOID + &quot; instead of &quot; + oldOID);</span>
+				}
+<span class="nc" id="L227">				this.oids.put(tag, newOID);</span>
+				/*if (hintsMapping != null) {
+					final ExecutionEnvironmentID newHint = hintsMapping.get(newOID);
+					if (newHint != null) {
+						if (DEBUG_ENABLED) {
+							DataClayObject.getLib();
+							DataClayRuntime.LOGGER.debug(&quot;[==ModifyIDs==] Setting Hint &quot;
+									+ DataClayObject.getLib().getDSNameOfHint(newHint) + &quot; with oid &quot; + newOID);
+						}
+
+						this.hints.put(tag, newHint);
+					}
+				}*/
+			}
+<span class="nc" id="L241">		}</span>
+
+<span class="nc" id="L243">	}</span>
+
+
+	/**
+	 * Modify hints
+	 *
 	 * @param hintsMapping
 	 *            Hints of objects
 	 */
-	public void modifyOids(final Map&lt;ObjectID, ObjectID&gt; oidsMapping,
-			final Map&lt;ObjectID, ExecutionEnvironmentID&gt; hintsMapping) {
-<span class="nc bnc" id="L198" title="All 2 branches missed.">		for (final Entry&lt;Integer, ObjectID&gt; curTagEntry : this.oids.entrySet()) {</span>
-<span class="nc" id="L199">			final Integer tag = curTagEntry.getKey();</span>
-<span class="nc" id="L200">			final ObjectID oldOID = curTagEntry.getValue();</span>
-<span class="nc" id="L201">			final ObjectID newOID = oidsMapping.get(oldOID);</span>
-<span class="nc bnc" id="L202" title="All 2 branches missed.">			if (newOID != null) {</span>
-<span class="nc bnc" id="L203" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L204">					DataClayObject.getLib();</span>
-<span class="nc" id="L205">					DataClayRuntime.LOGGER</span>
-<span class="nc" id="L206">							.debug(&quot;[==ModifyIDs==] Setting objectID &quot; + newOID + &quot; instead of &quot; + oldOID);</span>
-				}
-<span class="nc" id="L208">				this.oids.put(tag, newOID);</span>
-<span class="nc" id="L209">				final ExecutionEnvironmentID newHint = hintsMapping.get(newOID);</span>
-
-<span class="nc bnc" id="L211" title="All 2 branches missed.">				if (newHint != null) {</span>
-<span class="nc bnc" id="L212" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L213">						DataClayObject.getLib();</span>
-<span class="nc" id="L214">						DataClayRuntime.LOGGER.debug(&quot;[==ModifyIDs==] Setting Hint &quot;</span>
-<span class="nc" id="L215">								+ DataClayObject.getLib().getDSNameOfHint(newHint) + &quot; with oid &quot; + newOID);</span>
-					}
-
-<span class="nc" id="L218">					this.hints.put(tag, newHint);</span>
-				}
+	public void modifyHints(final Map&lt;ObjectID, ExecutionEnvironmentID&gt; hintsMapping) {
+<span class="nc bnc" id="L253" title="All 2 branches missed.">		for (final Entry&lt;Integer, ObjectID&gt; curTagEntry : this.oids.entrySet()) {</span>
+<span class="nc" id="L254">			final Integer tag = curTagEntry.getKey();</span>
+<span class="nc" id="L255">			final ObjectID oid = curTagEntry.getValue();</span>
+<span class="nc" id="L256">			final ExecutionEnvironmentID newHint = hintsMapping.get(oid);</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">			if (newHint != null) {</span>
+<span class="nc" id="L258">				this.hints.put(tag, newHint);</span>
 			}
-<span class="nc" id="L221">		}</span>
+<span class="nc" id="L260">		}</span>
 
-<span class="nc" id="L223">	}</span>
+<span class="nc" id="L262">	}</span>
 
 	/**
 	 * @return the numRefs
 	 */
 	public int getNumRefs() {
-<span class="nc" id="L229">		return numRefs;</span>
+<span class="nc" id="L268">		return numRefs;</span>
 	}
 
 	/**
@@ -234,20 +273,120 @@ public final class DataClayObjectMetaData {
 	 *            the numRefs to set
 	 */
 	public void setNumRefs(final int thenumRefs) {
-<span class="nc" id="L237">		this.numRefs = thenumRefs;</span>
-<span class="nc" id="L238">	}</span>
+<span class="nc" id="L276">		this.numRefs = thenumRefs;</span>
+<span class="nc" id="L277">	}</span>
 
-	public String toString() { 
-<span class="nc" id="L241">		StringBuilder strb = new StringBuilder();</span>
-<span class="nc" id="L242">		strb.append(&quot;{\n&quot;);</span>
-<span class="nc" id="L243">		strb.append(&quot;numRefs = &quot; + this.numRefs + &quot;\n&quot;);</span>
-<span class="nc" id="L244">		strb.append(&quot;oids = &quot; + this.oids + &quot;\n&quot;);</span>
-<span class="nc" id="L245">		strb.append(&quot;classIDs = &quot; + this.classIDs + &quot;\n&quot;);</span>
-<span class="nc" id="L246">		strb.append(&quot;hints = &quot; + this.hints + &quot;\n&quot;);</span>
-<span class="nc" id="L247">		strb.append(&quot;extDataClayIDs = &quot; + this.extDataClayIDs + &quot;\n&quot;);</span>
-<span class="nc" id="L248">		strb.append(&quot;}\n&quot;);</span>
-<span class="nc" id="L249">		return strb.toString();</span>
+	/**
+	 *
+	 * @return root location of the object or null if current is root
+	 */
+	public ExecutionEnvironmentID getRootLocation() {
+<span class="nc" id="L284">		return rootLocation;</span>
 	}
 
+	/**
+	 * Set root location of the object
+	 * @param rootLocation root location to set
+	 */
+	public void setRootLocation(ExecutionEnvironmentID rootLocation) {
+<span class="nc" id="L292">		this.rootLocation = rootLocation;</span>
+<span class="nc" id="L293">	}</span>
+
+	/**
+	 *
+	 * @return origin location of the object or null if current is origin
+	 */
+	public ExecutionEnvironmentID getOriginLocation() {
+<span class="nc" id="L300">		return originLocation;</span>
+	}
+
+	/**
+	 * Set origin location of the object
+	 * @param originLocation origin location to set
+	 */
+	public void setOriginLocation(ExecutionEnvironmentID originLocation) {
+<span class="nc" id="L308">		this.originLocation = originLocation;</span>
+<span class="nc" id="L309">	}</span>
+
+	/**
+	 * Get all replica locations
+	 * @return Replica locations
+	 */
+	public Set&lt;ExecutionEnvironmentID&gt; getReplicaLocations() {
+<span class="nc" id="L316">		return replicaLocations;</span>
+	}
+
+	/**
+	 * Set replica locations
+	 * @param replicaLocations replica locations to set
+	 */
+	public void setReplicaLocations(Set&lt;ExecutionEnvironmentID&gt; replicaLocations) {
+<span class="nc" id="L324">		this.replicaLocations = replicaLocations;</span>
+<span class="nc" id="L325">	}</span>
+
+	/**
+	 * Get alias
+	 * @return the alias of the object
+	 */
+	public String getAlias() {
+<span class="nc" id="L332">		return alias;</span>
+	}
+
+	/**
+	 * Set the alias of the object
+	 * @param alias the alias of the object
+	 */
+	public void setAlias(String alias) {
+<span class="nc" id="L340">		this.alias = alias;</span>
+<span class="nc" id="L341">	}</span>
+
+	public String toString() { 
+<span class="nc" id="L344">		StringBuilder strb = new StringBuilder();</span>
+<span class="nc" id="L345">		strb.append(&quot;{\n&quot;);</span>
+<span class="nc" id="L346">		strb.append(&quot;alias = &quot; + this.alias + &quot;\n&quot;);</span>
+<span class="nc" id="L347">		strb.append(&quot;numRefs = &quot; + this.numRefs + &quot;\n&quot;);</span>
+<span class="nc" id="L348">		strb.append(&quot;isReadOnly = &quot; + this.isReadOnly + &quot;\n&quot;);</span>
+<span class="nc" id="L349">		strb.append(&quot;oids = &quot; + this.oids + &quot;\n&quot;);</span>
+<span class="nc" id="L350">		strb.append(&quot;classIDs = &quot; + this.classIDs + &quot;\n&quot;);</span>
+<span class="nc" id="L351">		strb.append(&quot;hints = &quot; + this.hints + &quot;\n&quot;);</span>
+<span class="nc" id="L352">		strb.append(&quot;originalObjectID = &quot; + this.originalObjectID + &quot;\n&quot;);</span>
+<span class="nc" id="L353">		strb.append(&quot;rootLocation = &quot; + this.rootLocation + &quot;\n&quot;);</span>
+<span class="nc" id="L354">		strb.append(&quot;originLocation = &quot; + this.originLocation + &quot;\n&quot;);</span>
+<span class="nc" id="L355">		strb.append(&quot;replicaLocations = &quot; + this.replicaLocations + &quot;\n&quot;);</span>
+<span class="nc" id="L356">		strb.append(&quot;}\n&quot;);</span>
+<span class="nc" id="L357">		return strb.toString();</span>
+	}
+
+	/**
+	 * Get original object ID if versioned
+	 * @return Original object ID
+	 */
+	public ObjectID getOriginalObjectID() {
+<span class="nc" id="L365">		return this.originalObjectID;</span>
+	}
+
+	/**
+	 * Set original object ID
+	 * @param origObjectID original object ID to set
+	 */
+	public void setOriginalObjectID(ObjectID origObjectID) {
+<span class="nc" id="L373">		this.originalObjectID = origObjectID;</span>
+<span class="nc" id="L374">	}</span>
+
+	/**
+	 * Get if object is read only
+	 * @return Boolean indicating if object is read only or not
+	 */
+	public boolean getIsReadOnly() {
+<span class="nc" id="L381">		return this.isReadOnly;</span>
+	}
+
+	/**
+	 * set if object is read only
+	 * @param newisReadOnly  Boolean indicating if object is read only or not
+	 */
+	public void setIsReadOnly(boolean newisReadOnly) {
+<span class="nc" id="L389">		this.isReadOnly = newisReadOnly;</span>
+<span class="nc" id="L390">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

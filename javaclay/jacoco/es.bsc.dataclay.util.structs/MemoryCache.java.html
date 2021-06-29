@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MemoryCache.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.util.structs</a> &gt; <span class="el_source">MemoryCache.java</span></div><h1>MemoryCache.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.util.structs;
+
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.*;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import es.bsc.dataclay.dbhandler.sql.DataServiceDBSQLStatements;
+import es.bsc.dataclay.logic.accountmgr.AccountMgrSQLStatements;
+import es.bsc.dataclay.logic.classmgr.ClassManagerSQLStatements;
+import es.bsc.dataclay.logic.contractmgr.ContractManagerSQLStatements;
+import es.bsc.dataclay.logic.datacontractmgr.DataContractManagerSQLStatements;
+import es.bsc.dataclay.logic.datasetmgr.DataSetManagerSQLStatements;
+import es.bsc.dataclay.logic.interfacemgr.InterfaceManagerSQLStatements;
+import es.bsc.dataclay.logic.logicmetadata.LogicMetadataSQLStatements;
+import es.bsc.dataclay.logic.namespacemgr.NamespaceManagerSQLStatements;
+import es.bsc.dataclay.logic.notificationmgr.NotificationMgrSQLStatements;
+import es.bsc.dataclay.logic.sessionmgr.SessionManagerSQLStatements;
+import es.bsc.dataclay.metadataservice.MetaDataServiceSQLStatements;
+import es.bsc.dataclay.util.Configuration;
+
+public class MemoryCache&lt;A, B&gt; {
+
+    /** Cache threads. */
+<span class="fc" id="L26">    private static final ScheduledExecutorService execService = Executors.newSingleThreadScheduledExecutor();</span>
+    /** List of all caches. */
+<span class="fc" id="L28">    private static final List&lt;MemoryCache&gt; ALL_CACHES = new ArrayList&lt;&gt;();</span>
+
+    static {
+<span class="fc" id="L31">        final Runnable task = () -&gt; {</span>
+<span class="nc bnc" id="L32" title="All 2 branches missed.">            for (MemoryCache cache : ALL_CACHES) {</span>
+<span class="nc" id="L33">                cache.cleanUp();</span>
+<span class="nc" id="L34">            }</span>
+            //DataServiceDBSQLStatements.SqlStatements.unloadStatements();
+<span class="nc" id="L36">            AccountMgrSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L37">            ClassManagerSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L38">            ContractManagerSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L39">            DataContractManagerSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L40">            DataSetManagerSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L41">            InterfaceManagerSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L42">            LogicMetadataSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L43">            NamespaceManagerSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L44">            NotificationMgrSQLStatements.SqlStatements.unloadStatements();</span>
+<span class="nc" id="L45">            SessionManagerSQLStatements.SqlStatements.unloadStatements();</span>
+            //MetaDataServiceSQLStatements.SqlStatements.unloadStatements();
+<span class="nc" id="L47">            System.gc();</span>
+<span class="nc" id="L48">        };</span>
+        //FIXME: race condition while reading enum + cleaning
+<span class="fc" id="L50">        execService.scheduleAtFixedRate(task, Configuration.Flags.METADATA_CLEAN_PERIOD_MILLIS.getIntValue(),</span>
+<span class="fc" id="L51">                Configuration.Flags.METADATA_CLEAN_PERIOD_MILLIS.getIntValue(), TimeUnit.SECONDS);</span>
+<span class="fc" id="L52">    }</span>
+
+<span class="fc" id="L54">    private Cache&lt;A, B&gt;  cache = CacheBuilder.newBuilder().weakKeys()</span>
+<span class="fc" id="L55">                .expireAfterWrite(Configuration.Flags.METADATA_CACHE_ENTRY_EXPIRATION_MILLIS.getIntValue(), TimeUnit.SECONDS).build();</span>
+
+<span class="fc" id="L57">    public MemoryCache() {</span>
+<span class="fc" id="L58">        ALL_CACHES.add(this);</span>
+<span class="fc" id="L59">    }</span>
+
+
+    public B get(A key) {
+<span class="fc" id="L63">        return cache.getIfPresent(key);</span>
+    }
+
+    public void put(A key, B obj) {
+<span class="fc" id="L67">        cache.put(key, obj);</span>
+<span class="fc" id="L68">    }</span>
+
+    public void cleanUp() {
+<span class="nc" id="L71">        cache.cleanUp();</span>
+<span class="nc" id="L72">    }</span>
+
+    public void clear() {
+<span class="nc" id="L75">        cache.asMap().clear();</span>
+<span class="nc" id="L76">    }</span>
+
+    public B remove(final A key) {
+<span class="fc" id="L79">        return cache.asMap().remove(key);</span>
+    }
+
+    public boolean containsKey(final A key) {
+<span class="fc" id="L83">        return cache.asMap().containsKey(key);</span>
+    }
+
+    public boolean containsValue(final B value) {
+<span class="nc" id="L87">        return cache.asMap().containsValue(value);</span>
+    }
+
+    public Set&lt;Map.Entry&lt;A, B&gt;&gt; entrySet() {
+<span class="nc" id="L91">        return cache.asMap().entrySet();</span>
+    }
+
+    public boolean isEmpty() {
+<span class="nc" id="L95">        return cache.asMap().isEmpty();</span>
+    }
+
+    public void putAll(final Map&lt;? extends A, ? extends B&gt; m) {
+<span class="nc" id="L99">        cache.asMap().putAll(m);</span>
+<span class="nc" id="L100">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

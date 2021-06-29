@@ -11,7 +11,7 @@ public class SQLiteHandlerConfig extends DBHandlerConf {
 
 	private static final long serialVersionUID = -2609239598328535411L;
 
-<span class="pc" id="L14">	private final String folder = Configuration.Flags.STORAGE_PATH.getStringValue();</span>
+	private String folder;
 
 <span class="pc" id="L16">	private boolean inMemory = false;</span>
 
@@ -19,14 +19,11 @@ public class SQLiteHandlerConfig extends DBHandlerConf {
 
 <span class="nc" id="L20">	public SQLiteHandlerConfig() {}</span>
 
-<span class="fc" id="L22">	public SQLiteHandlerConfig(final String newdbname) {</span>
+<span class="fc" id="L22">	public SQLiteHandlerConfig(final String path, final String newdbname, boolean inMemory) {</span>
 <span class="fc" id="L23">		this.dbName = newdbname;</span>
-<span class="fc" id="L24">	}</span>
-
-	public SQLiteHandlerConfig(final String newdbname, boolean inMemory) {
-<span class="fc" id="L27">		this(newdbname);</span>
-<span class="fc" id="L28">		this.inMemory = inMemory;</span>
-<span class="fc" id="L29">	}</span>
+<span class="fc" id="L24">		this.inMemory = inMemory;</span>
+<span class="fc" id="L25">		this.folder = path;</span>
+<span class="fc" id="L26">	}</span>
 
 	/**
 	 * Gets folder.
@@ -34,27 +31,28 @@ public class SQLiteHandlerConfig extends DBHandlerConf {
 	 * @return the folder
 	 */
 	public String getFolder() {
-<span class="fc" id="L37">		return folder;</span>
+<span class="fc" id="L34">		return folder;</span>
 	}
+
 
 	@Override
 	public DBHandler getDBHandler() {
 		// create directory
-<span class="fc" id="L43">		new File(getFolder()).mkdirs();</span>
-<span class="fc" id="L44">		return new SQLiteHandler(this);</span>
+<span class="fc" id="L41">		new File(getFolder()).mkdirs();</span>
+<span class="fc" id="L42">		return new SQLiteHandler(this);</span>
 	}
 
 	public String getDbPath() {
-<span class="fc" id="L48">		return folder + '/' + dbName;</span>
+<span class="fc" id="L46">		return folder + '/' + dbName;</span>
 	}
 
 	public boolean isInMemory() {
-<span class="fc" id="L52">		return inMemory;</span>
+<span class="fc" id="L50">		return inMemory;</span>
 	}
 
 	@Override
 	public String toString() {
-<span class="nc" id="L57">		return &quot;SQLiteHandlerConfig [dbPath = &quot; + getDbPath() + &quot;]&quot;;</span>
+<span class="nc" id="L55">		return &quot;SQLiteHandlerConfig [dbPath = &quot; + getDbPath() + &quot;]&quot;;</span>
 	}
 
 	/**
@@ -63,7 +61,7 @@ public class SQLiteHandlerConfig extends DBHandlerConf {
 	 */
 	@Override
 	public void setDbname(final String newdbname) {
-<span class="nc" id="L66">		this.dbName = newdbname;</span>
-<span class="nc" id="L67">	}</span>
+<span class="nc" id="L64">		this.dbName = newdbname;</span>
+<span class="nc" id="L65">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

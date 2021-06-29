@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationMgrSQLStatements.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.notificationmgr</a> &gt; <span class="el_source">NotificationMgrSQLStatements.java</span></div><h1>NotificationMgrSQLStatements.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.logic.notificationmgr;
 
+import es.bsc.dataclay.logic.accountmgr.AccountMgrSQLStatements;
+import es.bsc.dataclay.logic.namespacemgr.NamespaceManagerSQLStatements;
+
 import java.util.ResourceBundle;
 
 /**
  * This class represents SQL statements.
  */
 public final class NotificationMgrSQLStatements {
-
-	/** Properties. */
-<span class="nc" id="L12">	private static ResourceBundle props = null;</span>
 
 	/**
 	 * Utility classes should have private constructor.
@@ -19,78 +19,94 @@ public final class NotificationMgrSQLStatements {
 	}
 
 	/**
-	 * Init properties of the properties file
-	 */
-	static {
-<span class="nc bnc" id="L25" title="All 2 branches missed.">		if (props == null) {</span>
-<span class="nc" id="L26">			props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.notification_mgr_sql&quot;);</span>
-		}
-<span class="nc" id="L28">	}</span>
-
-	/**
 	 * This enumeration represent all possible SQL statements.
 	 */
-<span class="nc" id="L33">	public enum SqlStatements {</span>
+<span class="nc" id="L24">	public enum SqlStatements {</span>
 
 		/** Create Listeners table. */
-<span class="nc" id="L36">		CREATE_TABLE_EVENT_LISTENERS,</span>
+<span class="nc" id="L27">		CREATE_TABLE_EVENT_LISTENERS,</span>
 
 		/** Create messages table. */
-<span class="nc" id="L39">		CREATE_TABLE_EVENT_MESSAGES,</span>
+<span class="nc" id="L30">		CREATE_TABLE_EVENT_MESSAGES,</span>
 
 		/** Drop listeners table. */
-<span class="nc" id="L42">		DROP_TABLE_EVENT_LISTENERS,</span>
+<span class="nc" id="L33">		DROP_TABLE_EVENT_LISTENERS,</span>
 
 		/** Drop messages table. */
-<span class="nc" id="L45">		DROP_TABLE_EVENT_MESSAGES,</span>
+<span class="nc" id="L36">		DROP_TABLE_EVENT_MESSAGES,</span>
 
 		/** Insert ECA sql query. */
-<span class="nc" id="L48">		INSERT_ECA,</span>
+<span class="nc" id="L39">		INSERT_ECA,</span>
 
 		/** Insert Message sql query. */
-<span class="nc" id="L51">		INSERT_MESSAGE,</span>
+<span class="nc" id="L42">		INSERT_MESSAGE,</span>
 
 		/** Delete message. */
-<span class="nc" id="L54">		DELETE_MESSAGE,</span>
+<span class="nc" id="L45">		DELETE_MESSAGE,</span>
 
 		/** Update ECA. */
-<span class="nc" id="L57">		UPDATE_ECA,</span>
+<span class="nc" id="L48">		UPDATE_ECA,</span>
 
 		/** Update message. */
-<span class="nc" id="L60">		UPDATE_MESSAGE,</span>
+<span class="nc" id="L51">		UPDATE_MESSAGE,</span>
 
 		/** Select all messages. */
-<span class="nc" id="L63">		SELECT_ALL_MESSAGES,</span>
+<span class="nc" id="L54">		SELECT_ALL_MESSAGES,</span>
 
 		/** Select all Ecas. */
-<span class="nc" id="L66">		SELECT_ALL_ECAS,</span>
+<span class="nc" id="L57">		SELECT_ALL_ECAS,</span>
 
 		/** Select all ecas limited. */
-<span class="nc" id="L69">		SELECT_ALL_ECAS_LIMITED,</span>
+<span class="nc" id="L60">		SELECT_ALL_ECAS_LIMITED,</span>
 
 		/** Select all messages limited. */
-<span class="nc" id="L72">		SELECT_ALL_MESSAGES_LIMITED;</span>
+<span class="nc" id="L63">		SELECT_ALL_MESSAGES_LIMITED;</span>
 
 		/** SQL statement. */
 		private String sqlStatement;
 
+
+		/** Indicates statements are loaded in memory. */
+<span class="nc" id="L70">		private static boolean LOADED = false;</span>
+		/**
+		 * Unload statements.
+		 */
+		public static void unloadStatements() {
+<span class="nc" id="L75">			LOADED = false;</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">			for (AccountMgrSQLStatements.SqlStatements statement : AccountMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="nc" id="L77">				statement.setSqlStatement(null);</span>
+			}
+<span class="nc" id="L79">		}</span>
+
+
 		/**
 		 * Init properties of the properties file
 		 */
-		private void init() {
-<span class="nc" id="L81">			final String sqlSt = props.getString(this.name());</span>
-<span class="nc" id="L82">			setSqlStatement(sqlSt);</span>
-<span class="nc" id="L83">		}</span>
+		public static void loadStatements() {
+<span class="nc" id="L86">			ResourceBundle props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.notification_mgr_sql&quot;);</span>
+<span class="nc bnc" id="L87" title="All 2 branches missed.">			for (NotificationMgrSQLStatements.SqlStatements statement : NotificationMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="nc" id="L88">				statement.init(props);</span>
+			}
+<span class="nc" id="L90">			LOADED = true;</span>
+<span class="nc" id="L91">		}</span>
+
+		/**
+		 * Init properties of the properties file
+		 */
+		private void init(ResourceBundle props) {
+<span class="nc" id="L97">			final String sqlSt = props.getString(this.name());</span>
+<span class="nc" id="L98">			setSqlStatement(sqlSt);</span>
+<span class="nc" id="L99">		}</span>
 
 		/**
 		 * Get the sqlStatement
 		 * @return the sqlStatement
 		 */
 		public String getSqlStatement() {
-<span class="nc bnc" id="L90" title="All 2 branches missed.">			if (sqlStatement == null) {</span>
-<span class="nc" id="L91">				init();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">			if (!LOADED) {</span>
+<span class="nc" id="L107">				loadStatements();</span>
 			}
-<span class="nc" id="L93">			return sqlStatement;</span>
+<span class="nc" id="L109">			return sqlStatement;</span>
 		}
 
 		/**
@@ -99,8 +115,8 @@ public final class NotificationMgrSQLStatements {
 		 *            the sqlStatement
 		 */
 		public void setSqlStatement(final String newsqlStatement) {
-<span class="nc" id="L102">			sqlStatement = newsqlStatement;</span>
-<span class="nc" id="L103">		}</span>
+<span class="nc" id="L118">			sqlStatement = newsqlStatement;</span>
+<span class="nc" id="L119">		}</span>
 
 	}
 }

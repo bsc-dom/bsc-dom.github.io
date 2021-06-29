@@ -6,17 +6,12 @@ package es.bsc.dataclay.communication.grpc;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Queue;
-import java.util.StringJoiner;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import es.bsc.dataclay.util.ids.*;
+import es.bsc.dataclay.util.management.metadataservice.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -37,27 +32,6 @@ import es.bsc.dataclay.serialization.lib.SerializationLibUtils;
 import es.bsc.dataclay.serialization.lib.SerializedParametersOrReturn;
 import es.bsc.dataclay.util.Configuration;
 import es.bsc.dataclay.util.DataClayObjectMetaData;
-import es.bsc.dataclay.util.ids.AccountID;
-import es.bsc.dataclay.util.ids.ContractID;
-import es.bsc.dataclay.util.ids.CredentialID;
-import es.bsc.dataclay.util.ids.DataClayInstanceID;
-import es.bsc.dataclay.util.ids.DataContractID;
-import es.bsc.dataclay.util.ids.DataSetID;
-import es.bsc.dataclay.util.ids.ECAID;
-import es.bsc.dataclay.util.ids.EventMessageID;
-import es.bsc.dataclay.util.ids.EventObjsMeetConditionID;
-import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
-import es.bsc.dataclay.util.ids.ImplementationID;
-import es.bsc.dataclay.util.ids.InterfaceID;
-import es.bsc.dataclay.util.ids.MetaClassID;
-import es.bsc.dataclay.util.ids.NamespaceID;
-import es.bsc.dataclay.util.ids.ObjectID;
-import es.bsc.dataclay.util.ids.OperationID;
-import es.bsc.dataclay.util.ids.PropertyID;
-import es.bsc.dataclay.util.ids.QualitativeRegistryID;
-import es.bsc.dataclay.util.ids.ResourceID;
-import es.bsc.dataclay.util.ids.SessionID;
-import es.bsc.dataclay.util.ids.StorageLocationID;
 import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
 
 import com.google.protobuf.MapEntry;
@@ -68,16 +42,29 @@ import com.google.protobuf.MapEntry;
 public final class Utils {
 
 	/** Logger. */
-<span class="nc" id="L71">	private static final Logger LOGGER = LogManager.getLogger(&quot;exceptions&quot;);</span>
+<span class="nc" id="L45">	private static final Logger LOGGER = LogManager.getLogger(&quot;exceptions&quot;);</span>
 
 	/** Indicates if debug is enabled. */
-<span class="nc" id="L74">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="nc" id="L48">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/**
 	 * Utility classes should have private constructor.
 	 */
 	private Utils() {
 
+	}
+
+	/**
+	 * Get string representation of ID
+	 * @param id ID to get representation from
+	 * @return String represation or null if id is null
+	 */
+	public static String getMsgID(final ID id) {
+<span class="nc bnc" id="L63" title="All 2 branches missed.">		if (id == null) {</span>
+<span class="nc" id="L64">			return &quot;&quot;;</span>
+		} else {
+<span class="nc" id="L66">			return id.toString();</span>
+		}
 	}
 
 	/**
@@ -89,13 +76,14 @@ public final class Utils {
 	 */
 	public static PasswordCredential getCredential(
 			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential cred) {
-<span class="nc bnc" id="L92" title="All 2 branches missed.">		if (cred == null || cred</span>
-<span class="nc bnc" id="L93" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential.getDefaultInstance())) {</span>
-<span class="nc" id="L94">			return null;</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">		if (cred == null || cred</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential.getDefaultInstance())) {</span>
+<span class="nc" id="L81">			return null;</span>
 		} else {
-<span class="nc" id="L96">			return new PasswordCredential(cred.getPassword());</span>
+<span class="nc" id="L83">			return new PasswordCredential(cred.getPassword());</span>
 		}
 	}
+
 
 	/**
 	 * Get AccountID ID from Protobuf ID
@@ -104,12 +92,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return AccountID
 	 */
-	public static AccountID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.AccountID idMsg) {
-<span class="nc bnc" id="L108" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L109" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.AccountID.getDefaultInstance())) {</span>
-<span class="nc" id="L110">			return null;</span>
+	public static AccountID getAccountID(final String idMsg) {
+<span class="nc bnc" id="L96" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L97">			return null;</span>
 		} else {
-<span class="nc" id="L112">			return new AccountID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L99">			return new AccountID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -120,12 +107,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return ContractID
 	 */
-	public static ContractID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ContractID idMsg) {
-<span class="nc bnc" id="L124" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L125" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ContractID.getDefaultInstance())) {</span>
-<span class="nc" id="L126">			return null;</span>
+	public static ContractID getContractID(final String idMsg) {
+<span class="nc bnc" id="L111" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L112">			return null;</span>
 		} else {
-<span class="nc" id="L128">			return new ContractID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L114">			return new ContractID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -136,13 +122,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return CredentialID
 	 */
-	public static CredentialID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.CredentialID idMsg) {
-<span class="nc bnc" id="L141" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L142" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.CredentialID.getDefaultInstance())) {</span>
-<span class="nc" id="L143">			return null;</span>
+	public static CredentialID getCredentialID(String idMsg) {
+<span class="nc bnc" id="L126" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L127">			return null;</span>
 		} else {
-<span class="nc" id="L145">			return new CredentialID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L129">			return new CredentialID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -153,13 +137,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return DataContractID
 	 */
-	public static DataContractID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataContractID idMsg) {
-<span class="nc bnc" id="L158" title="All 4 branches missed.">		if (idMsg == null || idMsg.equals(</span>
-<span class="nc" id="L159">				es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataContractID.getDefaultInstance())) {</span>
-<span class="nc" id="L160">			return null;</span>
+	public static DataContractID getDataContractID(String idMsg) {
+<span class="nc bnc" id="L141" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L142">			return null;</span>
 		} else {
-<span class="nc" id="L162">			return new DataContractID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L144">			return new DataContractID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -170,12 +152,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return DataSetID
 	 */
-	public static DataSetID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataSetID idMsg) {
-<span class="nc bnc" id="L174" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L175" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataSetID.getDefaultInstance())) {</span>
-<span class="nc" id="L176">			return null;</span>
+	public static DataSetID getDataSetID(final String idMsg) {
+<span class="nc bnc" id="L156" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L157">			return null;</span>
 		} else {
-<span class="nc" id="L178">			return new DataSetID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L159">			return new DataSetID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -186,13 +167,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return NamespaceID
 	 */
-	public static NamespaceID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.NamespaceID idMsg) {
-<span class="nc bnc" id="L191" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L192" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.NamespaceID.getDefaultInstance())) {</span>
-<span class="nc" id="L193">			return null;</span>
+	public static NamespaceID getNamespaceID(final String idMsg) {
+<span class="nc bnc" id="L171" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L172">			return null;</span>
 		} else {
-<span class="nc" id="L195">			return new NamespaceID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L174">			return new NamespaceID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -203,12 +182,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return ECAID
 	 */
-	public static ECAID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ECAID idMsg) {
-<span class="nc bnc" id="L207" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L208" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ECAID.getDefaultInstance())) {</span>
-<span class="nc" id="L209">			return null;</span>
+	public static ECAID getECAID(final String idMsg) {
+<span class="nc bnc" id="L186" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L187">			return null;</span>
 		} else {
-<span class="nc" id="L211">			return new ECAID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L189">			return new ECAID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -219,13 +197,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return EventMessageID
 	 */
-	public static EventMessageID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventMessageID idMsg) {
-<span class="nc bnc" id="L224" title="All 4 branches missed.">		if (idMsg == null || idMsg.equals(</span>
-<span class="nc" id="L225">				es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventMessageID.getDefaultInstance())) {</span>
-<span class="nc" id="L226">			return null;</span>
+	public static EventMessageID getEventMessageID(final String idMsg) {
+<span class="nc bnc" id="L201" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L202">			return null;</span>
 		} else {
-<span class="nc" id="L228">			return new EventMessageID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L204">			return new EventMessageID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -236,14 +212,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return EventObjsMeetConditionID
 	 */
-	public static EventObjsMeetConditionID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventObjsMeetConditionID idMsg) {
-<span class="nc bnc" id="L241" title="All 2 branches missed.">		if (idMsg == null</span>
-<span class="nc bnc" id="L242" title="All 2 branches missed.">				|| idMsg.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventObjsMeetConditionID</span>
-<span class="nc" id="L243">						.getDefaultInstance())) {</span>
-<span class="nc" id="L244">			return null;</span>
+	public static EventObjsMeetConditionID getEventObjsMeetConditionID(String idMsg) {
+<span class="nc bnc" id="L216" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L217">			return null;</span>
 		} else {
-<span class="nc" id="L246">			return new EventObjsMeetConditionID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L219">			return new EventObjsMeetConditionID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -254,14 +227,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return ExecutionEnvironmentID
 	 */
-	public static ExecutionEnvironmentID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExecutionEnvironmentID idMsg) {
-<span class="nc bnc" id="L259" title="All 2 branches missed.">		if (idMsg == null</span>
-<span class="nc bnc" id="L260" title="All 2 branches missed.">				|| idMsg.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExecutionEnvironmentID</span>
-<span class="nc" id="L261">						.getDefaultInstance())) {</span>
-<span class="nc" id="L262">			return null;</span>
+	public static ExecutionEnvironmentID getExecutionEnvironmentID(String idMsg) {
+<span class="nc bnc" id="L231" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L232">			return null;</span>
 		} else {
-<span class="nc" id="L264">			return new ExecutionEnvironmentID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L234">			return new ExecutionEnvironmentID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -272,13 +242,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return ImplementationID
 	 */
-	public static ImplementationID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ImplementationID idMsg) {
-<span class="nc bnc" id="L277" title="All 4 branches missed.">		if (idMsg == null || idMsg.equals(</span>
-<span class="nc" id="L278">				es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ImplementationID.getDefaultInstance())) {</span>
-<span class="nc" id="L279">			return null;</span>
+	public static ImplementationID getImplementationID(String idMsg) {
+<span class="nc bnc" id="L246" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L247">			return null;</span>
 		} else {
-<span class="nc" id="L281">			return new ImplementationID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L249">			return new ImplementationID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -289,13 +257,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return InterfaceID
 	 */
-	public static InterfaceID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.InterfaceID idMsg) {
-<span class="nc bnc" id="L294" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L295" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.InterfaceID.getDefaultInstance())) {</span>
-<span class="nc" id="L296">			return null;</span>
+	public static InterfaceID getInterfaceID(String idMsg) {
+<span class="nc bnc" id="L261" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L262">			return null;</span>
 		} else {
-<span class="nc" id="L298">			return new InterfaceID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L264">			return new InterfaceID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -306,13 +272,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return MetaClassID
 	 */
-	public static MetaClassID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.MetaClassID idMsg) {
-<span class="nc bnc" id="L311" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L312" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.MetaClassID.getDefaultInstance())) {</span>
-<span class="nc" id="L313">			return null;</span>
+	public static MetaClassID getMetaClassID(String idMsg) {
+<span class="nc bnc" id="L276" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L277">			return null;</span>
 		} else {
-<span class="nc" id="L315">			return new MetaClassID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L279">			return new MetaClassID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -323,12 +287,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return ObjectID
 	 */
-	public static ObjectID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID idMsg) {
-<span class="nc bnc" id="L327" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L328" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID.getDefaultInstance())) {</span>
-<span class="nc" id="L329">			return null;</span>
+	public static ObjectID getObjectID(final String idMsg) {
+<span class="nc bnc" id="L291" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L292">			return null;</span>
 		} else {
-<span class="nc" id="L331">			return new ObjectID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L294">			return new ObjectID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -339,13 +302,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return OperationID
 	 */
-	public static OperationID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.OperationID idMsg) {
-<span class="nc bnc" id="L344" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L345" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.OperationID.getDefaultInstance())) {</span>
-<span class="nc" id="L346">			return null;</span>
+	public static OperationID getOperationID(String idMsg) {
+<span class="nc bnc" id="L306" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L307">			return null;</span>
 		} else {
-<span class="nc" id="L348">			return new OperationID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L309">			return new OperationID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -356,12 +317,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return PropertyID
 	 */
-	public static PropertyID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.PropertyID idMsg) {
-<span class="nc bnc" id="L360" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L361" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.PropertyID.getDefaultInstance())) {</span>
-<span class="nc" id="L362">			return null;</span>
+	public static PropertyID getPropertyID(final String idMsg) {
+<span class="nc bnc" id="L321" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L322">			return null;</span>
 		} else {
-<span class="nc" id="L364">			return new PropertyID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L324">			return new PropertyID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -372,14 +332,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return QualitativeRegistryID
 	 */
-	public static QualitativeRegistryID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.QualitativeRegistryID idMsg) {
-<span class="nc bnc" id="L377" title="All 2 branches missed.">		if (idMsg == null</span>
-<span class="nc bnc" id="L378" title="All 2 branches missed.">				|| idMsg.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.QualitativeRegistryID</span>
-<span class="nc" id="L379">						.getDefaultInstance())) {</span>
-<span class="nc" id="L380">			return null;</span>
+	public static QualitativeRegistryID getQualitativeRegistryID(String idMsg) {
+<span class="nc bnc" id="L336" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L337">			return null;</span>
 		} else {
-<span class="nc" id="L382">			return new QualitativeRegistryID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L339">			return new QualitativeRegistryID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -390,12 +347,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return ResourceID
 	 */
-	public static ResourceID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ResourceID idMsg) {
-<span class="nc bnc" id="L394" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L395" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ResourceID.getDefaultInstance())) {</span>
-<span class="nc" id="L396">			return null;</span>
+	public static ResourceID getResourceID(final String idMsg) {
+<span class="nc bnc" id="L351" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L352">			return null;</span>
 		} else {
-<span class="nc" id="L398">			return new ResourceID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L354">			return new ResourceID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -406,12 +362,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return SessionID
 	 */
-	public static SessionID getID(final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SessionID idMsg) {
-<span class="nc bnc" id="L410" title="All 2 branches missed.">		if (idMsg == null || idMsg</span>
-<span class="nc bnc" id="L411" title="All 2 branches missed.">				.equals(es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SessionID.getDefaultInstance())) {</span>
-<span class="nc" id="L412">			return null;</span>
+	public static SessionID getSessionID(final String idMsg) {
+<span class="nc bnc" id="L366" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L367">			return null;</span>
 		} else {
-<span class="nc" id="L414">			return new SessionID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L369">			return new SessionID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -422,13 +377,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return StorageLocationID
 	 */
-	public static StorageLocationID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.StorageLocationID idMsg) {
-<span class="nc bnc" id="L427" title="All 4 branches missed.">		if (idMsg == null || idMsg.equals(</span>
-<span class="nc" id="L428">				es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.StorageLocationID.getDefaultInstance())) {</span>
-<span class="nc" id="L429">			return null;</span>
+	public static StorageLocationID getStorageLocationID(String idMsg) {
+<span class="nc bnc" id="L381" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L382">			return null;</span>
 		} else {
-<span class="nc" id="L431">			return new StorageLocationID(UUID.fromString(idMsg.getUuid()));</span>
+<span class="nc" id="L384">			return new StorageLocationID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -439,505 +392,11 @@ public final class Utils {
 	 *            Message ID
 	 * @return DataClayID
 	 */
-	public static DataClayInstanceID getID(
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataClayInstanceID idMsg) {
-<span class="nc bnc" id="L444" title="All 4 branches missed.">		if (idMsg == null || idMsg.equals(</span>
-<span class="nc" id="L445">				es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataClayInstanceID.getDefaultInstance())) {</span>
-<span class="nc" id="L446">			return null;</span>
+	public static DataClayInstanceID getDataClayInstanceID(String idMsg) {
+<span class="nc bnc" id="L396" title="All 4 branches missed.">		if (idMsg == null || idMsg.isEmpty()) {</span>
+<span class="nc" id="L397">			return null;</span>
 		} else {
-<span class="nc" id="L448">			return new DataClayInstanceID(UUID.fromString(idMsg.getUuid()));</span>
-		}
-	}
-
-	/**
-	 * Get ObjectID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return ObjectID
-	 */
-	public static ObjectID getObjectIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L460" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L461">			return null;</span>
-		} else {
-<span class="nc" id="L463">			return new ObjectID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get MetaClassID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return MetaClassID
-	 */
-	public static MetaClassID getMetaClassIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L475" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L476">			return null;</span>
-		} else {
-<span class="nc" id="L478">			return new MetaClassID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get DataContractID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return DataContractID
-	 */
-	public static DataContractID getDataContractIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L490" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L491">			return null;</span>
-		} else {
-<span class="nc" id="L493">			return new DataContractID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get ContractID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return ContractID
-	 */
-	public static ContractID getContractIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L505" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L506">			return null;</span>
-		} else {
-<span class="nc" id="L508">			return new ContractID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get AccountID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return AccountID
-	 */
-	public static AccountID getAccountIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L520" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L521">			return null;</span>
-		} else {
-<span class="nc" id="L523">			return new AccountID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get StorageLocationID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return StorageLocationID
-	 */
-	public static StorageLocationID getStorageLocationIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L535" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L536">			return null;</span>
-		} else {
-<span class="nc" id="L538">			return new StorageLocationID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get ExecutionEnvironmentID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return ExecutionEnvironmentID
-	 */
-	public static ExecutionEnvironmentID getExecutionEnvironmentIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L550" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L551">			return null;</span>
-		} else {
-<span class="nc" id="L553">			return new ExecutionEnvironmentID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get SessionID from uuid string
-	 * 
-	 * @param msgStr
-	 *            UUID string
-	 * @return SessionID
-	 */
-	public static SessionID getSessionIDFromUUID(final String msgStr) {
-<span class="nc bnc" id="L565" title="All 4 branches missed.">		if (msgStr == null || msgStr.trim().isEmpty()) {</span>
-<span class="nc" id="L566">			return null;</span>
-		} else {
-<span class="nc" id="L568">			return new SessionID(msgStr);</span>
-		}
-	}
-
-	/**
-	 * Get message ID from Account ID
-	 * 
-	 * @param id
-	 *            Account ID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.AccountID getMsgID(final AccountID id) {
-<span class="nc bnc" id="L580" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L581">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.AccountID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L583">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.AccountID.newBuilder()</span>
-<span class="nc" id="L584">					.setUuid(id.getId().toString()).build();</span>
-		}
-	}
-
-	/**
-	 * Get message ID from ContractID
-	 * 
-	 * @param id
-	 *            ContractID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ContractID getMsgID(final ContractID id) {
-<span class="nc bnc" id="L596" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L597">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ContractID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L599">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ContractID.newBuilder()</span>
-<span class="nc" id="L600">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from CredentialID
-	 * 
-	 * @param id
-	 *            CredentialID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.CredentialID getMsgID(
-			final CredentialID id) {
-<span class="nc bnc" id="L614" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L615">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.CredentialID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L617">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.CredentialID.newBuilder()</span>
-<span class="nc" id="L618">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from DataContractID
-	 * 
-	 * @param id
-	 *            DataContractID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataContractID getMsgID(
-			final DataContractID id) {
-<span class="nc bnc" id="L632" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L633">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataContractID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L635">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataContractID.newBuilder()</span>
-<span class="nc" id="L636">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from DataSetID
-	 * 
-	 * @param id
-	 *            DataSetID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataSetID getMsgID(final DataSetID id) {
-<span class="nc bnc" id="L649" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L650">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataSetID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L652">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataSetID.newBuilder()</span>
-<span class="nc" id="L653">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from NamespaceID
-	 * 
-	 * @param id
-	 *            NamespaceID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.NamespaceID getMsgID(
-			final NamespaceID id) {
-<span class="nc bnc" id="L667" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L668">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.NamespaceID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L670">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.NamespaceID.newBuilder()</span>
-<span class="nc" id="L671">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from ECAID
-	 * 
-	 * @param id
-	 *            ECAID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ECAID getMsgID(final ECAID id) {
-<span class="nc bnc" id="L684" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L685">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ECAID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L687">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ECAID.newBuilder()</span>
-<span class="nc" id="L688">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from EventMessageID
-	 * 
-	 * @param id
-	 *            EventMessageID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventMessageID getMsgID(
-			final EventMessageID id) {
-<span class="nc bnc" id="L702" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L703">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventMessageID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L705">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventMessageID.newBuilder()</span>
-<span class="nc" id="L706">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from EventObjsMeetConditionID
-	 * 
-	 * @param id
-	 *            EventObjsMeetConditionID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventObjsMeetConditionID getMsgID(
-			final EventObjsMeetConditionID id) {
-<span class="nc bnc" id="L720" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L721">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventObjsMeetConditionID</span>
-<span class="nc" id="L722">					.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L724">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.EventObjsMeetConditionID.newBuilder()</span>
-<span class="nc" id="L725">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from ExecutionEnvironmentID
-	 * 
-	 * @param id
-	 *            ExecutionEnvironmentID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExecutionEnvironmentID getMsgID(
-			final ExecutionEnvironmentID id) {
-<span class="nc bnc" id="L739" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L740">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExecutionEnvironmentID</span>
-<span class="nc" id="L741">					.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L743">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ExecutionEnvironmentID.newBuilder()</span>
-<span class="nc" id="L744">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from ImplementationID
-	 * 
-	 * @param id
-	 *            ImplementationID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ImplementationID getMsgID(
-			final ImplementationID id) {
-<span class="nc bnc" id="L758" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L759">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ImplementationID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L761">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ImplementationID.newBuilder()</span>
-<span class="nc" id="L762">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from InterfaceID
-	 * 
-	 * @param id
-	 *            InterfaceID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.InterfaceID getMsgID(
-			final InterfaceID id) {
-<span class="nc bnc" id="L776" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L777">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.InterfaceID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L779">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.InterfaceID.newBuilder()</span>
-<span class="nc" id="L780">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from MetaClassID
-	 * 
-	 * @param id
-	 *            MetaClassID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.MetaClassID getMsgID(
-			final MetaClassID id) {
-<span class="nc bnc" id="L794" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L795">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.MetaClassID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L797">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.MetaClassID.newBuilder()</span>
-<span class="nc" id="L798">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from ObjectID
-	 * 
-	 * @param id
-	 *            ObjectID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID getMsgID(final ObjectID id) {
-<span class="nc bnc" id="L811" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L812">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L814">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ObjectID.newBuilder()</span>
-<span class="nc" id="L815">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from OperationID
-	 * 
-	 * @param id
-	 *            OperationID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.OperationID getMsgID(
-			final OperationID id) {
-<span class="nc bnc" id="L829" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L830">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.OperationID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L832">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.OperationID.newBuilder()</span>
-<span class="nc" id="L833">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from PropertyID
-	 * 
-	 * @param id
-	 *            PropertyID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.PropertyID getMsgID(final PropertyID id) {
-<span class="nc bnc" id="L846" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L847">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.PropertyID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L849">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.PropertyID.newBuilder()</span>
-<span class="nc" id="L850">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from QualitativeRegistryID
-	 * 
-	 * @param id
-	 *            QualitativeRegistryID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.QualitativeRegistryID getMsgID(
-			final QualitativeRegistryID id) {
-<span class="nc bnc" id="L864" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L865">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.QualitativeRegistryID</span>
-<span class="nc" id="L866">					.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L868">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.QualitativeRegistryID.newBuilder()</span>
-<span class="nc" id="L869">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from ResourceID
-	 * 
-	 * @param id
-	 *            ResourceID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ResourceID getMsgID(final ResourceID id) {
-<span class="nc bnc" id="L882" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L883">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ResourceID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L885">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.ResourceID.newBuilder()</span>
-<span class="nc" id="L886">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from SessionID
-	 * 
-	 * @param id
-	 *            SessionID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SessionID getMsgID(final SessionID id) {
-<span class="nc bnc" id="L899" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L900">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SessionID.getDefaultInstance();</span>
-		} else {
-			final es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SessionID sessIDMsg = es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.SessionID
-<span class="nc" id="L903">					.newBuilder().setUuid(id.getId().toString()).build();</span>
-<span class="nc" id="L904">			return sessIDMsg;</span>
-		}
-	}
-
-	/**
-	 * Get message ID from StorageLocationID
-	 * 
-	 * @param id
-	 *            StorageLocationID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.StorageLocationID getMsgID(
-			final StorageLocationID id) {
-<span class="nc bnc" id="L917" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L918">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.StorageLocationID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L920">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.StorageLocationID.newBuilder()</span>
-<span class="nc" id="L921">					.setUuid(id.getId().toString()).build();</span>
-
-		}
-	}
-
-	/**
-	 * Get message ID from DataClayID
-	 * 
-	 * @param id
-	 *            DataClayID
-	 * @return Protocol buffers message ID
-	 */
-	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataClayInstanceID getMsgID(
-			final DataClayInstanceID id) {
-<span class="nc bnc" id="L935" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L936">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataClayInstanceID.getDefaultInstance();</span>
-		} else {
-<span class="nc" id="L938">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.DataClayInstanceID.newBuilder()</span>
-<span class="nc" id="L939">					.setUuid(id.getId().toString()).build();</span>
-
+<span class="nc" id="L399">			return new DataClayInstanceID(UUID.fromString(idMsg));</span>
 		}
 	}
 
@@ -950,11 +409,11 @@ public final class Utils {
 	 */
 	public static es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential getCredential(
 			final PasswordCredential cred) {
-<span class="nc bnc" id="L953" title="All 2 branches missed.">		if (cred == null) {</span>
-<span class="nc" id="L954">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential.getDefaultInstance();</span>
+<span class="nc bnc" id="L412" title="All 2 branches missed.">		if (cred == null) {</span>
+<span class="nc" id="L413">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential.getDefaultInstance();</span>
 		} else {
-<span class="nc" id="L956">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential.newBuilder()</span>
-<span class="nc" id="L957">					.setPassword(cred.getPassword()).build();</span>
+<span class="nc" id="L415">			return es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Credential.newBuilder()</span>
+<span class="nc" id="L416">					.setPassword(cred.getPassword()).build();</span>
 		}
 	}
 
@@ -965,9 +424,9 @@ public final class Utils {
 	 *            Observer
 	 */
 	public static void returnExceptionInfoMessage(final io.grpc.stub.StreamObserver&lt;ExceptionInfo&gt; responseObserver) {
-<span class="nc" id="L968">		final ExceptionInfo resp = ExceptionInfo.newBuilder().build();</span>
-<span class="nc" id="L969">		responseObserver.onNext(resp);</span>
-<span class="nc" id="L970">	}</span>
+<span class="nc" id="L427">		final ExceptionInfo resp = ExceptionInfo.newBuilder().build();</span>
+<span class="nc" id="L428">		responseObserver.onNext(resp);</span>
+<span class="nc" id="L429">	}</span>
 
 	/**
 	 * Get MetaData GRPC message from DataClayMetaData
@@ -978,41 +437,53 @@ public final class Utils {
 	 */
 	public static CommonMessages.DataClayObjectMetaData getMetaData(final DataClayObjectMetaData metadata) {
 		final CommonMessages.DataClayObjectMetaData.Builder metadataBuilder = CommonMessages.DataClayObjectMetaData
-<span class="nc" id="L981">				.newBuilder();</span>
+<span class="nc" id="L440">				.newBuilder();</span>
 
-<span class="nc bnc" id="L983" title="All 2 branches missed.">		if (metadata.getOids() != null) {</span>
-<span class="nc bnc" id="L984" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectID&gt; oidEntry : metadata.getOids().entrySet()) {</span>
-<span class="nc bnc" id="L985" title="All 2 branches missed.">				if (oidEntry.getValue() != null) {</span>
-<span class="nc" id="L986">					final CommonMessages.ObjectID oidIDmsg = Utils.getMsgID(oidEntry.getValue());</span>
-<span class="nc" id="L987">					metadataBuilder.putOids(oidEntry.getKey(), oidIDmsg);</span>
+<span class="nc bnc" id="L442" title="All 2 branches missed.">		if (metadata.getOids() != null) {</span>
+<span class="nc bnc" id="L443" title="All 2 branches missed.">			for (final Entry&lt;Integer, ObjectID&gt; oidEntry : metadata.getOids().entrySet()) {</span>
+<span class="nc bnc" id="L444" title="All 2 branches missed.">				if (oidEntry.getValue() != null) {</span>
+<span class="nc" id="L445">					final String oidIDmsg = Utils.getMsgID(oidEntry.getValue());</span>
+<span class="nc" id="L446">					metadataBuilder.putOids(oidEntry.getKey(), oidIDmsg);</span>
 					// System.err.println(&quot;OID entry bytes = &quot; + Reflector.bytesToHex(
 					// oidIDmsg.toByteArray()));
 				}
-<span class="nc" id="L991">			}</span>
+<span class="nc" id="L450">			}</span>
 		}
 
-<span class="nc bnc" id="L994" title="All 2 branches missed.">		if (metadata.getClassIDs() != null) {</span>
-<span class="nc bnc" id="L995" title="All 2 branches missed.">			for (final Entry&lt;Integer, MetaClassID&gt; classIDEntry : metadata.getClassIDs().entrySet()) {</span>
-<span class="nc bnc" id="L996" title="All 2 branches missed.">				if (classIDEntry.getValue() != null) {</span>
-<span class="nc" id="L997">					final CommonMessages.MetaClassID classIDmsg = Utils.getMsgID(classIDEntry.getValue());</span>
-<span class="nc" id="L998">					metadataBuilder.putClassids(classIDEntry.getKey(), classIDmsg);</span>
+<span class="nc bnc" id="L453" title="All 2 branches missed.">		if (metadata.getClassIDs() != null) {</span>
+<span class="nc bnc" id="L454" title="All 2 branches missed.">			for (final Entry&lt;Integer, MetaClassID&gt; classIDEntry : metadata.getClassIDs().entrySet()) {</span>
+<span class="nc bnc" id="L455" title="All 2 branches missed.">				if (classIDEntry.getValue() != null) {</span>
+<span class="nc" id="L456">					final String classIDmsg = Utils.getMsgID(classIDEntry.getValue());</span>
+<span class="nc" id="L457">					metadataBuilder.putClassids(classIDEntry.getKey(), classIDmsg);</span>
 					// System.err.println(&quot;ClassID entry bytes = &quot; + Reflector.bytesToHex(
 					// classIDmsg.toByteArray()));
 				}
-<span class="nc" id="L1002">			}</span>
+<span class="nc" id="L461">			}</span>
 		}
 
-<span class="nc bnc" id="L1005" title="All 2 branches missed.">		if (metadata.getHints() != null) {</span>
-<span class="nc bnc" id="L1006" title="All 2 branches missed.">			for (final Entry&lt;Integer, ExecutionEnvironmentID&gt; hintEntry : metadata.getHints().entrySet()) {</span>
-<span class="nc bnc" id="L1007" title="All 4 branches missed.">				if (hintEntry.getKey() != null &amp;&amp; hintEntry.getValue() != null) {</span>
-<span class="nc" id="L1008">					metadataBuilder.putHints(hintEntry.getKey(), Utils.getMsgID(hintEntry.getValue()));</span>
+<span class="nc bnc" id="L464" title="All 2 branches missed.">		if (metadata.getHints() != null) {</span>
+<span class="nc bnc" id="L465" title="All 2 branches missed.">			for (final Entry&lt;Integer, ExecutionEnvironmentID&gt; hintEntry : metadata.getHints().entrySet()) {</span>
+<span class="nc bnc" id="L466" title="All 4 branches missed.">				if (hintEntry.getKey() != null &amp;&amp; hintEntry.getValue() != null) {</span>
+<span class="nc" id="L467">					metadataBuilder.putHints(hintEntry.getKey(), Utils.getMsgID(hintEntry.getValue()));</span>
 				}
-<span class="nc" id="L1010">			}</span>
+<span class="nc" id="L469">			}</span>
 		}
-
-<span class="nc" id="L1013">		metadataBuilder.setNumRefs(metadata.getNumRefs());</span>
-
-<span class="nc" id="L1015">		return metadataBuilder.build();</span>
+<span class="nc bnc" id="L471" title="All 2 branches missed.">		if (metadata.getReplicaLocations() != null) {</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">			for (final ExecutionEnvironmentID loc : metadata.getReplicaLocations()) {</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">				if (loc != null) {</span>
+<span class="nc" id="L474">					metadataBuilder.addReplicaLocations(Utils.getMsgID(loc));</span>
+				}
+<span class="nc" id="L476">			}</span>
+		}
+<span class="nc bnc" id="L478" title="All 2 branches missed.">		if (metadata.getAlias() != null) {</span>
+<span class="nc" id="L479">			metadataBuilder.setAlias(metadata.getAlias());</span>
+		}
+<span class="nc" id="L481">		metadataBuilder.setRootLocation(Utils.getMsgID(metadata.getRootLocation()));</span>
+<span class="nc" id="L482">		metadataBuilder.setOriginLocation(Utils.getMsgID(metadata.getOriginLocation()));</span>
+<span class="nc" id="L483">		metadataBuilder.setIsReadOnly(metadata.getIsReadOnly());</span>
+<span class="nc" id="L484">		metadataBuilder.setOrigObjectID(Utils.getMsgID(metadata.getOriginalObjectID()));</span>
+<span class="nc" id="L485">		metadataBuilder.setNumRefs(metadata.getNumRefs());</span>
+<span class="nc" id="L486">		return metadataBuilder.build();</span>
 
 	}
 
@@ -1024,51 +495,208 @@ public final class Utils {
 	 * @return the metadata included within the message
 	 */
 	public static DataClayObjectMetaData getMetaData(final CommonMessages.DataClayObjectMetaData msg) {
-<span class="nc" id="L1027">		final Map&lt;Integer, MetaClassID&gt; classIDs = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L1028">		final Map&lt;Integer, ObjectID&gt; oids = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L1029">		final Map&lt;Integer, ExecutionEnvironmentID&gt; hints = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L1030">		final Map&lt;Integer, DataClayInstanceID&gt; extDataClayIDs = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L498">		final Map&lt;Integer, MetaClassID&gt; classIDs = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L499">		final Map&lt;Integer, ObjectID&gt; oids = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L500">		final Map&lt;Integer, ExecutionEnvironmentID&gt; hints = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L501">		final Map&lt;Integer, DataClayInstanceID&gt; extDataClayIDs = new ConcurrentHashMap&lt;&gt;();</span>
 
-<span class="nc bnc" id="L1032" title="All 2 branches missed.">		if (msg.getClassidsMap() != null) {</span>
-<span class="nc bnc" id="L1033" title="All 2 branches missed.">			for (final Entry&lt;Integer, CommonMessages.MetaClassID&gt; classIDEntry : msg.getClassidsMap().entrySet()) {</span>
-<span class="nc bnc" id="L1034" title="All 4 branches missed.">				if (classIDEntry.getKey() != null &amp;&amp; classIDEntry.getValue() != null) {</span>
-<span class="nc" id="L1035">					final MetaClassID classID = Utils.getID(classIDEntry.getValue());</span>
-<span class="nc bnc" id="L1036" title="All 2 branches missed.">					if (classID != null) {</span>
-<span class="nc" id="L1037">						classIDs.put(classIDEntry.getKey(), classID);</span>
+<span class="nc bnc" id="L503" title="All 2 branches missed.">		if (msg.getClassidsMap() != null) {</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">			for (final Entry&lt;Integer, String&gt; classIDEntry : msg.getClassidsMap().entrySet()) {</span>
+<span class="nc bnc" id="L505" title="All 4 branches missed.">				if (classIDEntry.getKey() != null &amp;&amp; classIDEntry.getValue() != null) {</span>
+<span class="nc" id="L506">					final MetaClassID classID = Utils.getMetaClassID(classIDEntry.getValue());</span>
+<span class="nc bnc" id="L507" title="All 2 branches missed.">					if (classID != null) {</span>
+<span class="nc" id="L508">						classIDs.put(classIDEntry.getKey(), classID);</span>
 					}
 				}
-<span class="nc" id="L1040">			}</span>
+<span class="nc" id="L511">			}</span>
 		}
 
-<span class="nc bnc" id="L1043" title="All 2 branches missed.">		if (msg.getOidsMap() != null) {</span>
-<span class="nc bnc" id="L1044" title="All 2 branches missed.">			for (final Entry&lt;Integer, CommonMessages.ObjectID&gt; entry : msg.getOidsMap().entrySet()) {</span>
-<span class="nc bnc" id="L1045" title="All 4 branches missed.">				if (entry.getKey() != null &amp;&amp; entry.getValue() != null) {</span>
-<span class="nc" id="L1046">					oids.put(entry.getKey(), Utils.getID(entry.getValue()));</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">		if (msg.getOidsMap() != null) {</span>
+<span class="nc bnc" id="L515" title="All 2 branches missed.">			for (final Entry&lt;Integer, String&gt; entry : msg.getOidsMap().entrySet()) {</span>
+<span class="nc bnc" id="L516" title="All 4 branches missed.">				if (entry.getKey() != null &amp;&amp; entry.getValue() != null) {</span>
+<span class="nc" id="L517">					oids.put(entry.getKey(), Utils.getObjectID(entry.getValue()));</span>
 				}
-<span class="nc" id="L1048">			}</span>
+<span class="nc" id="L519">			}</span>
 		}
 
-<span class="nc bnc" id="L1051" title="All 2 branches missed.">		if (msg.getHintsMap() != null) {</span>
-<span class="nc bnc" id="L1052" title="All 2 branches missed.">			for (final Entry&lt;Integer, CommonMessages.ExecutionEnvironmentID&gt; entry : msg.getHintsMap().entrySet()) {</span>
-<span class="nc bnc" id="L1053" title="All 4 branches missed.">				if (entry.getKey() != null &amp;&amp; entry.getValue() != null) {</span>
-<span class="nc" id="L1054">					hints.put(entry.getKey(), Utils.getID(entry.getValue()));</span>
+<span class="nc bnc" id="L522" title="All 2 branches missed.">		if (msg.getHintsMap() != null) {</span>
+<span class="nc bnc" id="L523" title="All 2 branches missed.">			for (final Entry&lt;Integer, String&gt; entry : msg.getHintsMap().entrySet()) {</span>
+<span class="nc bnc" id="L524" title="All 4 branches missed.">				if (entry.getKey() != null &amp;&amp; entry.getValue() != null) {</span>
+<span class="nc" id="L525">					hints.put(entry.getKey(), Utils.getExecutionEnvironmentID(entry.getValue()));</span>
 				}
-<span class="nc" id="L1056">			}</span>
+<span class="nc" id="L527">			}</span>
 		}
 
-<span class="nc bnc" id="L1059" title="All 2 branches missed.">		if (msg.getExtDataClayIDsMap() != null) {</span>
-<span class="nc bnc" id="L1060" title="All 2 branches missed.">			for (final Entry&lt;Integer, CommonMessages.DataClayInstanceID&gt; entry : msg.getExtDataClayIDsMap()</span>
-<span class="nc" id="L1061">					.entrySet()) {</span>
-<span class="nc bnc" id="L1062" title="All 4 branches missed.">				if (entry.getKey() != null &amp;&amp; entry.getValue() != null) {</span>
-<span class="nc" id="L1063">					extDataClayIDs.put(entry.getKey(), Utils.getID(entry.getValue()));</span>
-				}
-<span class="nc" id="L1065">			}</span>
-		}
+<span class="nc" id="L530">		final int numRefs = msg.getNumRefs();</span>
+<span class="nc" id="L531">		final ObjectID origObjectID = Utils.getObjectID(msg.getOrigObjectID());</span>
+<span class="nc" id="L532">		final ExecutionEnvironmentID rootLocation = Utils.getExecutionEnvironmentID(msg.getRootLocation());</span>
+<span class="nc" id="L533">		final ExecutionEnvironmentID origLocation = Utils.getExecutionEnvironmentID(msg.getOriginLocation());</span>
+<span class="nc" id="L534">		final Set&lt;ExecutionEnvironmentID&gt; replicaLocations = ConcurrentHashMap.newKeySet();</span>
+<span class="nc bnc" id="L535" title="All 2 branches missed.">		for (String eeID : msg.getReplicaLocationsList()) {</span>
+<span class="nc" id="L536">			replicaLocations.add(Utils.getExecutionEnvironmentID(eeID));</span>
+<span class="nc" id="L537">		}</span>
 
-<span class="nc" id="L1068">		final int numRefs = msg.getNumRefs();</span>
-<span class="nc" id="L1069">		return new DataClayObjectMetaData(oids, classIDs, hints, extDataClayIDs, numRefs);</span>
+
+<span class="nc" id="L540">		return new DataClayObjectMetaData(msg.getAlias(), msg.getIsReadOnly(), oids, classIDs, hints, numRefs,</span>
+				origObjectID, rootLocation, origLocation, replicaLocations);
 
 	}
+
+	/**
+	 * Return a message for GRPC call
+	 *
+	 * @param object object to convert
+	 * @return the resulting message
+	 */
+	public static CommonMessages.MetaDataInfo getMetaDataInfo(
+			final MetaDataInfo object) {
+<span class="nc bnc" id="L553" title="All 2 branches missed.">		if (object == null) {</span>
+<span class="nc" id="L554">			return CommonMessages.MetaDataInfo.getDefaultInstance();</span>
+		}
+<span class="nc" id="L556">		CommonMessages.MetaDataInfo.Builder builder = CommonMessages.MetaDataInfo.newBuilder();</span>
+<span class="nc" id="L557">		builder.setObjectID(Utils.getMsgID(object.getDataClayID()));</span>
+<span class="nc" id="L558">		builder.setIsReadOnly(object.getIsReadOnly());</span>
+<span class="nc" id="L559">		builder.setDatasetID(Utils.getMsgID(object.getDatasetID()));</span>
+<span class="nc" id="L560">		builder.setMetaclassID(Utils.getMsgID(object.getMetaclassID()));</span>
+<span class="nc" id="L561">		builder.setOwnerID(Utils.getMsgID(object.getOwnerID()));</span>
+<span class="nc bnc" id="L562" title="All 2 branches missed.">		if (object.getAlias() != null) {</span>
+<span class="nc" id="L563">			builder.setAlias(object.getAlias());</span>
+		}
+<span class="nc bnc" id="L565" title="All 2 branches missed.">		for (ExecutionEnvironmentID loc : object.getLocations()) {</span>
+<span class="nc" id="L566">			builder.addLocations(Utils.getMsgID(loc));</span>
+<span class="nc" id="L567">		}</span>
+<span class="nc" id="L568">		return builder.build();</span>
+	}
+
+	/**
+	 * Return an object FROM grpc message
+	 *
+	 * @param msg object to convert
+	 * @return the resulting object
+	 */
+	public static MetaDataInfo getMetaDataInfo(
+			final CommonMessages.MetaDataInfo msg) {
+
+<span class="nc bnc" id="L580" title="All 2 branches missed.">		if (msg.equals(CommonMessages.MetaDataInfo.getDefaultInstance())) {</span>
+<span class="nc" id="L581">			return null;</span>
+		}
+
+<span class="nc" id="L584">		Set&lt;ExecutionEnvironmentID&gt; locs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L585" title="All 2 branches missed.">		for (String eeID : msg.getLocationsList()) {</span>
+<span class="nc" id="L586">			locs.add(Utils.getExecutionEnvironmentID(eeID));</span>
+<span class="nc" id="L587">		}</span>
+<span class="nc" id="L588">		MetaDataInfo mdInfo = new MetaDataInfo(</span>
+<span class="nc" id="L589">				Utils.getObjectID(msg.getObjectID()),</span>
+<span class="nc" id="L590">				Utils.getDataSetID(msg.getDatasetID()),</span>
+<span class="nc" id="L591">				Utils.getMetaClassID(msg.getMetaclassID()),</span>
+<span class="nc" id="L592">				msg.getIsReadOnly(),</span>
+<span class="nc" id="L593">				locs, msg.getAlias(), Utils.getAccountID(msg.getOwnerID()));</span>
+<span class="nc" id="L594">		return mdInfo;</span>
+	}
+
+	/**
+	 * Return a message for GRPC call
+	 *
+	 * @param object object to convert
+	 * @return the resulting message
+	 */
+	public static CommonMessages.ExecutionEnvironmentInfo getExecutionEnvironment(
+			final ExecutionEnvironment object) {
+<span class="nc" id="L605">		CommonMessages.ExecutionEnvironmentInfo.Builder builder = CommonMessages.ExecutionEnvironmentInfo.newBuilder();</span>
+<span class="nc" id="L606">		builder.setId(Utils.getMsgID(object.getDataClayID()));</span>
+<span class="nc" id="L607">		builder.setHostname(object.getHostname());</span>
+<span class="nc" id="L608">		builder.setName(object.getName());</span>
+<span class="nc" id="L609">		builder.setPort(object.getPort());</span>
+<span class="nc" id="L610">		builder.setDataClayInstanceID(Utils.getMsgID(object.getDataClayInstanceID()));</span>
+<span class="nc" id="L611">		builder.setLanguage(object.getLang());</span>
+<span class="nc" id="L612">		return builder.build();</span>
+	}
+
+	/**
+	 * Return an object FROM grpc message
+	 *
+	 * @param msg object to convert
+	 * @return the resulting object
+	 */
+	public static ExecutionEnvironment getExecutionEnvironment(
+			final CommonMessages.ExecutionEnvironmentInfo msg) {
+<span class="nc" id="L623">		ExecutionEnvironment eeLoc = new ExecutionEnvironment(</span>
+<span class="nc" id="L624">				msg.getHostname(),</span>
+<span class="nc" id="L625">				msg.getName(),</span>
+<span class="nc" id="L626">				msg.getPort(),</span>
+<span class="nc" id="L627">				msg.getLanguage(),</span>
+<span class="nc" id="L628">				Utils.getDataClayInstanceID(msg.getDataClayInstanceID()));</span>
+<span class="nc" id="L629">		eeLoc.setDataClayID(Utils.getExecutionEnvironmentID(msg.getId()));</span>
+<span class="nc" id="L630">		return eeLoc;</span>
+	}
+
+	/**
+	 * Return a message for GRPC call
+	 *
+	 * @param object object to convert
+	 * @return the resulting message
+	 */
+	public static CommonMessages.StorageLocationInfo getStorageLocation(
+			final StorageLocation object) {
+<span class="nc" id="L641">		CommonMessages.StorageLocationInfo.Builder builder = CommonMessages.StorageLocationInfo.newBuilder();</span>
+<span class="nc" id="L642">		builder.setId(Utils.getMsgID(object.getDataClayID()));</span>
+<span class="nc" id="L643">		builder.setHostname(object.getHostname());</span>
+<span class="nc" id="L644">		builder.setName(object.getName());</span>
+<span class="nc" id="L645">		builder.setPort(object.getStorageTCPPort());</span>
+<span class="nc" id="L646">		return builder.build();</span>
+	}
+
+	/**
+	 * Return an object FROM grpc message
+	 *
+	 * @param msg object to convert
+	 * @return the resulting object
+	 */
+	public static StorageLocation getStorageLocation(
+			final CommonMessages.StorageLocationInfo msg) {
+<span class="nc" id="L657">		StorageLocation stLoc = new StorageLocation(</span>
+<span class="nc" id="L658">				msg.getHostname(),</span>
+<span class="nc" id="L659">				msg.getName(),</span>
+<span class="nc" id="L660">				msg.getPort());</span>
+<span class="nc" id="L661">		stLoc.setDataClayID(Utils.getStorageLocationID(msg.getId()));</span>
+<span class="nc" id="L662">		return stLoc;</span>
+	}
+
+	/**
+	 * Return a message for GRPC call
+	 *
+	 * @param dataClayInstance object to convert
+	 * @return the resulting message
+	 */
+	public static CommonMessages.DataClayInstance getDataClayInstance(
+			final DataClayInstance dataClayInstance) {
+<span class="nc" id="L673">		CommonMessages.DataClayInstance.Builder builder = CommonMessages.DataClayInstance.newBuilder();</span>
+<span class="nc" id="L674">		builder.setId(Utils.getMsgID(dataClayInstance.getDcID()));</span>
+<span class="nc" id="L675">		builder.addAllHosts(dataClayInstance.getHosts());</span>
+<span class="nc" id="L676">		builder.addAllPorts(dataClayInstance.getPorts());</span>
+<span class="nc" id="L677">		return builder.build();</span>
+	}
+
+	/**
+	 * Return an object FROM grpc message
+	 *
+	 * @param dataClayInstanceMsg object to convert
+	 * @return the resulting message
+	 */
+	public static DataClayInstance getDataClayInstance(
+			final CommonMessages.DataClayInstance dataClayInstanceMsg) {
+<span class="nc" id="L688">		String[] hosts = new String[dataClayInstanceMsg.getHostsCount()];</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">		for (int i = 0; i &lt; hosts.length; ++i) {</span>
+<span class="nc" id="L690">			hosts[i] = dataClayInstanceMsg.getHosts(i);</span>
+		}
+<span class="nc" id="L692">		Integer[] ports = new Integer[dataClayInstanceMsg.getPortsCount()];</span>
+<span class="nc bnc" id="L693" title="All 2 branches missed.">		for (int i = 0; i &lt; hosts.length; ++i) {</span>
+<span class="nc" id="L694">			ports[i] = dataClayInstanceMsg.getPorts(i);</span>
+		}
+<span class="nc" id="L696">		return new DataClayInstance(Utils.getDataClayInstanceID(dataClayInstanceMsg.getId()),</span>
+				hosts, ports);
+	}
+
 
 	/**
 	 * Return a message containing an object with data (parameter or return)
@@ -1080,27 +708,27 @@ public final class Utils {
 	public static CommonMessages.ObjectWithDataParamOrReturn getObjectWithDataParamOrReturn(
 			final ObjectWithDataParamOrReturn volParamOrRet) {
 		final CommonMessages.ObjectWithDataParamOrReturn.Builder volBuilder = CommonMessages.ObjectWithDataParamOrReturn
-<span class="nc" id="L1083">				.newBuilder();</span>
-<span class="nc" id="L1084">		final CommonMessages.MetaClassID classIDmsg = Utils.getMsgID(volParamOrRet.getClassID());</span>
-<span class="nc" id="L1085">		volBuilder.setClassid(classIDmsg);</span>
+<span class="nc" id="L711">				.newBuilder();</span>
+<span class="nc" id="L712">		final String classIDmsg = Utils.getMsgID(volParamOrRet.getClassID());</span>
+<span class="nc" id="L713">		volBuilder.setClassid(classIDmsg);</span>
 		// System.err.println(&quot;ObjwData class ID size : &quot; +
 		// classIDmsg.getSerializedSize());
 
-<span class="nc" id="L1089">		final CommonMessages.ObjectID objectIDmsg = Utils.getMsgID(volParamOrRet.getObjectID());</span>
-<span class="nc" id="L1090">		volBuilder.setOid(objectIDmsg);</span>
+<span class="nc" id="L717">		final String objectIDmsg = Utils.getMsgID(volParamOrRet.getObjectID());</span>
+<span class="nc" id="L718">		volBuilder.setOid(objectIDmsg);</span>
 		// System.err.println(&quot;ObjwData oid ID size : &quot; +
 		// objectIDmsg.getSerializedSize());
 
-<span class="nc bnc" id="L1094" title="All 2 branches missed.">		if (volParamOrRet.getMetaData() != null) {</span>
-<span class="nc" id="L1095">			final CommonMessages.DataClayObjectMetaData mdata = Utils.getMetaData(volParamOrRet.getMetaData());</span>
-<span class="nc" id="L1096">			volBuilder.setMetadata(mdata);</span>
+<span class="nc bnc" id="L722" title="All 2 branches missed.">		if (volParamOrRet.getMetaData() != null) {</span>
+<span class="nc" id="L723">			final CommonMessages.DataClayObjectMetaData mdata = Utils.getMetaData(volParamOrRet.getMetaData());</span>
+<span class="nc" id="L724">			volBuilder.setMetadata(mdata);</span>
 		}
 		// System.err.println(&quot;ObjwData metadata size : &quot; + mdata.getSerializedSize());
 
-<span class="nc" id="L1100">		final ByteString objByteString = volParamOrRet.getSerializedBytes().getByteString();</span>
-<span class="nc" id="L1101">		volBuilder.setObjbytes(objByteString);</span>
+<span class="nc" id="L728">		final ByteString objByteString = volParamOrRet.getSerializedBytes().getByteString();</span>
+<span class="nc" id="L729">		volBuilder.setObjbytes(objByteString);</span>
 		// System.err.println(&quot;ObjwData bytestring size : &quot; + objByteString.size());
-<span class="nc" id="L1103">		return volBuilder.build();</span>
+<span class="nc" id="L731">		return volBuilder.build();</span>
 	}
 
 	/**
@@ -1112,11 +740,11 @@ public final class Utils {
 	 */
 	public static ObjectWithDataParamOrReturn getObjectWithDataParamOrReturn(
 			final CommonMessages.ObjectWithDataParamOrReturn volParamOrRet) {
-<span class="nc" id="L1115">		final ObjectID oid = Utils.getID(volParamOrRet.getOid());</span>
-<span class="nc" id="L1116">		final MetaClassID classid = Utils.getID(volParamOrRet.getClassid());</span>
-<span class="nc" id="L1117">		final DataClayObjectMetaData mdata = Utils.getMetaData(volParamOrRet.getMetadata());</span>
-<span class="nc" id="L1118">		final DataClayByteArray byteArray = new DataClayByteArray(volParamOrRet.getObjbytes());</span>
-<span class="nc" id="L1119">		return new ObjectWithDataParamOrReturn(oid, classid, mdata, byteArray);</span>
+<span class="nc" id="L743">		final ObjectID oid = Utils.getObjectID(volParamOrRet.getOid());</span>
+<span class="nc" id="L744">		final MetaClassID classid = Utils.getMetaClassID(volParamOrRet.getClassid());</span>
+<span class="nc" id="L745">		final DataClayObjectMetaData mdata = Utils.getMetaData(volParamOrRet.getMetadata());</span>
+<span class="nc" id="L746">		final DataClayByteArray byteArray = new DataClayByteArray(volParamOrRet.getObjbytes());</span>
+<span class="nc" id="L747">		return new ObjectWithDataParamOrReturn(oid, classid, mdata, byteArray);</span>
 	}
 
 	/**
@@ -1128,20 +756,20 @@ public final class Utils {
 	 */
 	public static CommonMessages.LanguageParamOrReturn getLanguageParamOrReturn(
 			final LanguageParamOrReturn paramOrRet) {
-<span class="nc" id="L1131">		final CommonMessages.LanguageParamOrReturn.Builder builder = CommonMessages.LanguageParamOrReturn.newBuilder();</span>
+<span class="nc" id="L759">		final CommonMessages.LanguageParamOrReturn.Builder builder = CommonMessages.LanguageParamOrReturn.newBuilder();</span>
 
-<span class="nc" id="L1133">		final CommonMessages.DataClayObjectMetaData mdata = Utils.getMetaData(paramOrRet.getMetaData());</span>
-<span class="nc" id="L1134">		builder.setMetadata(mdata);</span>
+<span class="nc" id="L761">		final CommonMessages.DataClayObjectMetaData mdata = Utils.getMetaData(paramOrRet.getMetaData());</span>
+<span class="nc" id="L762">		builder.setMetadata(mdata);</span>
 		// System.err.println(&quot;Lang param metadata lenght = &quot; +
 		// mdata.getSerializedSize());
 		// System.err.println(&quot;Lang param metadata = &quot; + Reflector.bytesToHex(
 		// mdata.toByteArray()));
 
-<span class="nc" id="L1140">		final ByteString objBytes = paramOrRet.getSerializedBytes().getByteString();</span>
-<span class="nc" id="L1141">		builder.setObjbytes(objBytes);</span>
+<span class="nc" id="L768">		final ByteString objBytes = paramOrRet.getSerializedBytes().getByteString();</span>
+<span class="nc" id="L769">		builder.setObjbytes(objBytes);</span>
 		// System.err.println(&quot;Lang param obj.bytes lenght = &quot; + objBytes.size());
 
-<span class="nc" id="L1144">		return builder.build();</span>
+<span class="nc" id="L772">		return builder.build();</span>
 	}
 
 	/**
@@ -1153,9 +781,9 @@ public final class Utils {
 	 */
 	public static LanguageParamOrReturn getLanguageParamOrReturn(
 			final CommonMessages.LanguageParamOrReturn paramOrRet) {
-<span class="nc" id="L1156">		final DataClayObjectMetaData mdata = Utils.getMetaData(paramOrRet.getMetadata());</span>
-<span class="nc" id="L1157">		final DataClayByteArray byteArray = new DataClayByteArray(paramOrRet.getObjbytes());</span>
-<span class="nc" id="L1158">		return new LanguageParamOrReturn(mdata, byteArray);</span>
+<span class="nc" id="L784">		final DataClayObjectMetaData mdata = Utils.getMetaData(paramOrRet.getMetadata());</span>
+<span class="nc" id="L785">		final DataClayByteArray byteArray = new DataClayByteArray(paramOrRet.getObjbytes());</span>
+<span class="nc" id="L786">		return new LanguageParamOrReturn(mdata, byteArray);</span>
 	}
 
 	/**
@@ -1167,8 +795,8 @@ public final class Utils {
 	 */
 	public static ImmutableParamOrReturn getImmutableParamOrReturn(
 			final CommonMessages.ImmutableParamOrReturn paramOrRet) {
-<span class="nc" id="L1170">		final DataClayByteArray byteArray = new DataClayByteArray(paramOrRet.getObjbytes());</span>
-<span class="nc" id="L1171">		return new ImmutableParamOrReturn(byteArray);</span>
+<span class="nc" id="L798">		final DataClayByteArray byteArray = new DataClayByteArray(paramOrRet.getObjbytes());</span>
+<span class="nc" id="L799">		return new ImmutableParamOrReturn(byteArray);</span>
 	}
 
 	/**
@@ -1181,9 +809,9 @@ public final class Utils {
 	public static CommonMessages.ImmutableParamOrReturn getImmutableParamOrReturn(
 			final ImmutableParamOrReturn paramOrRet) {
 		final CommonMessages.ImmutableParamOrReturn.Builder builder = CommonMessages.ImmutableParamOrReturn
-<span class="nc" id="L1184">				.newBuilder();</span>
-<span class="nc" id="L1185">		builder.setObjbytes(paramOrRet.getSerializedBytes().getByteString());</span>
-<span class="nc" id="L1186">		return builder.build();</span>
+<span class="nc" id="L812">				.newBuilder();</span>
+<span class="nc" id="L813">		builder.setObjbytes(paramOrRet.getSerializedBytes().getByteString());</span>
+<span class="nc" id="L814">		return builder.build();</span>
 	}
 
 	/**
@@ -1196,19 +824,19 @@ public final class Utils {
 	public static CommonMessages.PersistentParamOrReturn getPersistentParamOrReturn(
 			final PersistentParamOrReturn paramOrRet) {
 		final CommonMessages.PersistentParamOrReturn.Builder builder = CommonMessages.PersistentParamOrReturn
-<span class="nc" id="L1199">				.newBuilder();</span>
-<span class="nc" id="L1200">		builder.setOid(Utils.getMsgID(paramOrRet.getObjectID()));</span>
-<span class="nc bnc" id="L1201" title="All 2 branches missed.">		if (paramOrRet.getHint() != null) {</span>
-<span class="nc" id="L1202">			builder.setHint(Utils.getMsgID(paramOrRet.getHint()));</span>
+<span class="nc" id="L827">				.newBuilder();</span>
+<span class="nc" id="L828">		builder.setOid(Utils.getMsgID(paramOrRet.getObjectID()));</span>
+<span class="nc bnc" id="L829" title="All 2 branches missed.">		if (paramOrRet.getHint() != null) {</span>
+<span class="nc" id="L830">			builder.setHint(Utils.getMsgID(paramOrRet.getHint()));</span>
 		}
-<span class="nc bnc" id="L1204" title="All 2 branches missed.">		if (paramOrRet.getClassID() != null) {</span>
-<span class="nc" id="L1205">			builder.setClassID(Utils.getMsgID(paramOrRet.getClassID()));</span>
+<span class="nc bnc" id="L832" title="All 2 branches missed.">		if (paramOrRet.getClassID() != null) {</span>
+<span class="nc" id="L833">			builder.setClassID(Utils.getMsgID(paramOrRet.getClassID()));</span>
 		}
-<span class="nc bnc" id="L1207" title="All 2 branches missed.">		if (paramOrRet.getExtDataClayID() != null) {</span>
-<span class="nc" id="L1208">			builder.setExtDataClayID(Utils.getMsgID(paramOrRet.getExtDataClayID()));</span>
+<span class="nc bnc" id="L835" title="All 2 branches missed.">		if (paramOrRet.getExtDataClayID() != null) {</span>
+<span class="nc" id="L836">			builder.setExtDataClayID(Utils.getMsgID(paramOrRet.getExtDataClayID()));</span>
 		}
 
-<span class="nc" id="L1211">		return builder.build();</span>
+<span class="nc" id="L839">		return builder.build();</span>
 	}
 
 	/**
@@ -1221,20 +849,15 @@ public final class Utils {
 	public static PersistentParamOrReturn getPersistentParamOrReturn(
 			final CommonMessages.PersistentParamOrReturn paramOrRet) {
 
-<span class="nc" id="L1224">		MetaClassID classID = null;</span>
-<span class="nc" id="L1225">		ExecutionEnvironmentID hint = null;</span>
-<span class="nc" id="L1226">		DataClayInstanceID extDataClayID = null;</span>
-<span class="nc bnc" id="L1227" title="All 2 branches missed.">		if (paramOrRet.hasHint()) {</span>
-<span class="nc" id="L1228">			hint = Utils.getID(paramOrRet.getHint());</span>
-		}
-<span class="nc bnc" id="L1230" title="All 2 branches missed.">		if (paramOrRet.hasClassID()) {</span>
-<span class="nc" id="L1231">			classID = Utils.getID(paramOrRet.getClassID());</span>
-		}
-<span class="nc bnc" id="L1233" title="All 2 branches missed.">		if (paramOrRet.hasExtDataClayID()) {</span>
-<span class="nc" id="L1234">			extDataClayID = Utils.getID(paramOrRet.getExtDataClayID());</span>
-		}
+<span class="nc" id="L852">		MetaClassID classID = null;</span>
+<span class="nc" id="L853">		ExecutionEnvironmentID hint = null;</span>
+<span class="nc" id="L854">		DataClayInstanceID extDataClayID = null;</span>
+<span class="nc" id="L855">		hint = Utils.getExecutionEnvironmentID(paramOrRet.getHint());</span>
+<span class="nc" id="L856">		classID = Utils.getMetaClassID(paramOrRet.getClassID());</span>
+<span class="nc" id="L857">		extDataClayID = Utils.getDataClayInstanceID(paramOrRet.getExtDataClayID());</span>
 
-<span class="nc" id="L1237">		return new PersistentParamOrReturn(Utils.getID(paramOrRet.getOid()), hint, classID, extDataClayID);</span>
+
+<span class="nc" id="L860">		return new PersistentParamOrReturn(Utils.getObjectID(paramOrRet.getOid()), hint, classID, extDataClayID);</span>
 	}
 
 	/**
@@ -1248,40 +871,40 @@ public final class Utils {
 			final SerializedParametersOrReturn serParamsOrRet) {
 
 		final CommonMessages.SerializedParametersOrReturn.Builder builder = CommonMessages.SerializedParametersOrReturn
-<span class="nc" id="L1251">				.newBuilder();</span>
+<span class="nc" id="L874">				.newBuilder();</span>
 
-<span class="nc" id="L1253">		builder.setNumParams(serParamsOrRet.getNumParams());</span>
-<span class="nc bnc" id="L1254" title="All 2 branches missed.">		for (final Entry&lt;Integer, ImmutableParamOrReturn&gt; langEntry : serParamsOrRet.getImmObjs().entrySet()) {</span>
-<span class="nc" id="L1255">			final CommonMessages.ImmutableParamOrReturn immParamMsg = Utils</span>
-<span class="nc" id="L1256">					.getImmutableParamOrReturn(langEntry.getValue());</span>
-<span class="nc" id="L1257">			builder.putImmParams(langEntry.getKey(), immParamMsg);</span>
+<span class="nc" id="L876">		builder.setNumParams(serParamsOrRet.getNumParams());</span>
+<span class="nc bnc" id="L877" title="All 2 branches missed.">		for (final Entry&lt;Integer, ImmutableParamOrReturn&gt; langEntry : serParamsOrRet.getImmObjs().entrySet()) {</span>
+<span class="nc" id="L878">			final CommonMessages.ImmutableParamOrReturn immParamMsg = Utils</span>
+<span class="nc" id="L879">					.getImmutableParamOrReturn(langEntry.getValue());</span>
+<span class="nc" id="L880">			builder.putImmParams(langEntry.getKey(), immParamMsg);</span>
 			// System.err.println(&quot;Imm param bytes lenght = &quot; +
 			// immParamMsg.getSerializedSize());
 
-<span class="nc" id="L1261">		}</span>
-<span class="nc bnc" id="L1262" title="All 2 branches missed.">		for (final Entry&lt;Integer, LanguageParamOrReturn&gt; langEntry : serParamsOrRet.getLangObjs().entrySet()) {</span>
-<span class="nc" id="L1263">			final CommonMessages.LanguageParamOrReturn langParamMsg = Utils</span>
-<span class="nc" id="L1264">					.getLanguageParamOrReturn(langEntry.getValue());</span>
-<span class="nc" id="L1265">			builder.putLangParams(langEntry.getKey(), langParamMsg);</span>
+<span class="nc" id="L884">		}</span>
+<span class="nc bnc" id="L885" title="All 2 branches missed.">		for (final Entry&lt;Integer, LanguageParamOrReturn&gt; langEntry : serParamsOrRet.getLangObjs().entrySet()) {</span>
+<span class="nc" id="L886">			final CommonMessages.LanguageParamOrReturn langParamMsg = Utils</span>
+<span class="nc" id="L887">					.getLanguageParamOrReturn(langEntry.getValue());</span>
+<span class="nc" id="L888">			builder.putLangParams(langEntry.getKey(), langParamMsg);</span>
 			// System.err.println(&quot;Lang param bytes lenght = &quot; +
 			// langParamMsg.getSerializedSize());
 
-<span class="nc" id="L1269">		}</span>
-<span class="nc bnc" id="L1270" title="All 2 branches missed.">		for (final Entry&lt;Integer, PersistentParamOrReturn&gt; entry : serParamsOrRet.getPersistentRefs().entrySet()) {</span>
-<span class="nc" id="L1271">			final CommonMessages.PersistentParamOrReturn persMsg = Utils.getPersistentParamOrReturn(entry.getValue());</span>
-<span class="nc" id="L1272">			builder.putPersParams(entry.getKey(), persMsg);</span>
+<span class="nc" id="L892">		}</span>
+<span class="nc bnc" id="L893" title="All 2 branches missed.">		for (final Entry&lt;Integer, PersistentParamOrReturn&gt; entry : serParamsOrRet.getPersistentRefs().entrySet()) {</span>
+<span class="nc" id="L894">			final CommonMessages.PersistentParamOrReturn persMsg = Utils.getPersistentParamOrReturn(entry.getValue());</span>
+<span class="nc" id="L895">			builder.putPersParams(entry.getKey(), persMsg);</span>
 			// System.err.println(&quot;Pers param bytes lenght = &quot; +
 			// persMsg.getSerializedSize());
-<span class="nc" id="L1275">		}</span>
-<span class="nc bnc" id="L1276" title="All 2 branches missed.">		for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; entry : serParamsOrRet.getVolatileObjs().entrySet()) {</span>
-<span class="nc" id="L1277">			final CommonMessages.ObjectWithDataParamOrReturn objDataParamMsg = Utils</span>
-<span class="nc" id="L1278">					.getObjectWithDataParamOrReturn(entry.getValue());</span>
-<span class="nc" id="L1279">			builder.putVolatileParams(entry.getKey(), objDataParamMsg);</span>
+<span class="nc" id="L898">		}</span>
+<span class="nc bnc" id="L899" title="All 2 branches missed.">		for (final Entry&lt;Integer, ObjectWithDataParamOrReturn&gt; entry : serParamsOrRet.getVolatileObjs().entrySet()) {</span>
+<span class="nc" id="L900">			final CommonMessages.ObjectWithDataParamOrReturn objDataParamMsg = Utils</span>
+<span class="nc" id="L901">					.getObjectWithDataParamOrReturn(entry.getValue());</span>
+<span class="nc" id="L902">			builder.putVolatileParams(entry.getKey(), objDataParamMsg);</span>
 			// System.err.println(&quot;Obj.Data param bytes lenght = &quot; +
 			// objDataParamMsg.getSerializedSize());
 
-<span class="nc" id="L1283">		}</span>
-<span class="nc" id="L1284">		return builder.build();</span>
+<span class="nc" id="L906">		}</span>
+<span class="nc" id="L907">		return builder.build();</span>
 	}
 
 	/**
@@ -1293,28 +916,28 @@ public final class Utils {
 	 */
 	public static SerializedParametersOrReturn getParamsOrReturn(
 			final CommonMessages.SerializedParametersOrReturn serParamsOrRetMsg) {
-<span class="nc" id="L1296">		final int numParams = serParamsOrRetMsg.getNumParams();</span>
-<span class="nc" id="L1297">		final Map&lt;Integer, ImmutableParamOrReturn&gt; immObjs = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L1298">		final Map&lt;Integer, LanguageParamOrReturn&gt; langObjs = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L1299">		final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volObjs = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc" id="L1300">		final Map&lt;Integer, PersistentParamOrReturn&gt; persObjs = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L1301" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.ImmutableParamOrReturn&gt; entry : serParamsOrRetMsg.getImmParamsMap()</span>
-<span class="nc" id="L1302">				.entrySet()) {</span>
-<span class="nc" id="L1303">			immObjs.put(entry.getKey(), Utils.getImmutableParamOrReturn(entry.getValue()));</span>
-<span class="nc" id="L1304">		}</span>
-<span class="nc bnc" id="L1305" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.LanguageParamOrReturn&gt; entry : serParamsOrRetMsg.getLangParamsMap()</span>
-<span class="nc" id="L1306">				.entrySet()) {</span>
-<span class="nc" id="L1307">			langObjs.put(entry.getKey(), Utils.getLanguageParamOrReturn(entry.getValue()));</span>
-<span class="nc" id="L1308">		}</span>
-<span class="nc bnc" id="L1309" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.ObjectWithDataParamOrReturn&gt; entry : serParamsOrRetMsg</span>
-<span class="nc" id="L1310">				.getVolatileParamsMap().entrySet()) {</span>
-<span class="nc" id="L1311">			volObjs.put(entry.getKey(), Utils.getObjectWithDataParamOrReturn(entry.getValue()));</span>
-<span class="nc" id="L1312">		}</span>
-<span class="nc bnc" id="L1313" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.PersistentParamOrReturn&gt; entry : serParamsOrRetMsg.getPersParamsMap()</span>
-<span class="nc" id="L1314">				.entrySet()) {</span>
-<span class="nc" id="L1315">			persObjs.put(entry.getKey(), Utils.getPersistentParamOrReturn(entry.getValue()));</span>
-<span class="nc" id="L1316">		}</span>
-<span class="nc" id="L1317">		return new SerializedParametersOrReturn(numParams, immObjs, langObjs, volObjs, persObjs);</span>
+<span class="nc" id="L919">		final int numParams = serParamsOrRetMsg.getNumParams();</span>
+<span class="nc" id="L920">		final Map&lt;Integer, ImmutableParamOrReturn&gt; immObjs = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L921">		final Map&lt;Integer, LanguageParamOrReturn&gt; langObjs = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L922">		final Map&lt;Integer, ObjectWithDataParamOrReturn&gt; volObjs = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L923">		final Map&lt;Integer, PersistentParamOrReturn&gt; persObjs = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L924" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.ImmutableParamOrReturn&gt; entry : serParamsOrRetMsg.getImmParamsMap()</span>
+<span class="nc" id="L925">				.entrySet()) {</span>
+<span class="nc" id="L926">			immObjs.put(entry.getKey(), Utils.getImmutableParamOrReturn(entry.getValue()));</span>
+<span class="nc" id="L927">		}</span>
+<span class="nc bnc" id="L928" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.LanguageParamOrReturn&gt; entry : serParamsOrRetMsg.getLangParamsMap()</span>
+<span class="nc" id="L929">				.entrySet()) {</span>
+<span class="nc" id="L930">			langObjs.put(entry.getKey(), Utils.getLanguageParamOrReturn(entry.getValue()));</span>
+<span class="nc" id="L931">		}</span>
+<span class="nc bnc" id="L932" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.ObjectWithDataParamOrReturn&gt; entry : serParamsOrRetMsg</span>
+<span class="nc" id="L933">				.getVolatileParamsMap().entrySet()) {</span>
+<span class="nc" id="L934">			volObjs.put(entry.getKey(), Utils.getObjectWithDataParamOrReturn(entry.getValue()));</span>
+<span class="nc" id="L935">		}</span>
+<span class="nc bnc" id="L936" title="All 2 branches missed.">		for (final Entry&lt;Integer, CommonMessages.PersistentParamOrReturn&gt; entry : serParamsOrRetMsg.getPersParamsMap()</span>
+<span class="nc" id="L937">				.entrySet()) {</span>
+<span class="nc" id="L938">			persObjs.put(entry.getKey(), Utils.getPersistentParamOrReturn(entry.getValue()));</span>
+<span class="nc" id="L939">		}</span>
+<span class="nc" id="L940">		return new SerializedParametersOrReturn(numParams, immObjs, langObjs, volObjs, persObjs);</span>
 	}
 
 	private static final int MAX_BYTES_PER_LINE = 16;
@@ -1322,7 +945,7 @@ public final class Utils {
 	private static final String COLUMN_SEPARATOR = &quot;|&quot;;
 	private static final String LINE_SEPARATOR = &quot;-&quot;;
 
-<span class="nc" id="L1325">	protected static final char[] hexArray = &quot;0123456789ABCDEF&quot;.toCharArray();</span>
+<span class="nc" id="L948">	protected static final char[] hexArray = &quot;0123456789ABCDEF&quot;.toCharArray();</span>
 
 	/**
 	 * Get bytes to hexadecimal Strings
@@ -1332,17 +955,17 @@ public final class Utils {
 	 * @return Hexadecimal strings
 	 */
 	public static synchronized Queue&lt;String&gt; bytesToHex(final byte[] bytes) {
-<span class="nc" id="L1335">		final char[] hexChars = new char[bytes.length * 2];</span>
-<span class="nc bnc" id="L1336" title="All 2 branches missed.">		for (int j = 0; j &lt; bytes.length; j++) {</span>
-<span class="nc" id="L1337">			final int v = bytes[j] &amp; 0xFF;</span>
-<span class="nc" id="L1338">			hexChars[j * 2] = hexArray[v &gt;&gt;&gt; 4];</span>
-<span class="nc" id="L1339">			hexChars[j * 2 + 1] = hexArray[v &amp; 0x0F];</span>
+<span class="nc" id="L958">		final char[] hexChars = new char[bytes.length * 2];</span>
+<span class="nc bnc" id="L959" title="All 2 branches missed.">		for (int j = 0; j &lt; bytes.length; j++) {</span>
+<span class="nc" id="L960">			final int v = bytes[j] &amp; 0xFF;</span>
+<span class="nc" id="L961">			hexChars[j * 2] = hexArray[v &gt;&gt;&gt; 4];</span>
+<span class="nc" id="L962">			hexChars[j * 2 + 1] = hexArray[v &amp; 0x0F];</span>
 		}
-<span class="nc" id="L1341">		final Queue&lt;String&gt; listBytes = new LinkedList&lt;&gt;();</span>
-<span class="nc bnc" id="L1342" title="All 2 branches missed.">		for (final char hexChar : hexChars) {</span>
-<span class="nc" id="L1343">			listBytes.add(String.valueOf(hexChar));</span>
+<span class="nc" id="L964">		final Queue&lt;String&gt; listBytes = new LinkedList&lt;&gt;();</span>
+<span class="nc bnc" id="L965" title="All 2 branches missed.">		for (final char hexChar : hexChars) {</span>
+<span class="nc" id="L966">			listBytes.add(String.valueOf(hexChar));</span>
 		}
-<span class="nc" id="L1345">		return listBytes;</span>
+<span class="nc" id="L968">		return listBytes;</span>
 	}
 
 	/**
@@ -1353,53 +976,53 @@ public final class Utils {
 	 * @return Number of bytes needed for a GRPC tag.
 	 */
 	public static synchronized int getNumBytesNeededInVLQInt(final int numNextBytes) {
-<span class="nc" id="L1356">		int bytesNeeded = 0;</span>
-<span class="nc" id="L1357">		int curMaxSize = 0;</span>
-<span class="nc" id="L1358">		final int bitsAvailablePerByte = 7;</span>
-<span class="nc bnc" id="L1359" title="All 2 branches missed.">		while (curMaxSize &lt; numNextBytes) {</span>
-<span class="nc" id="L1360">			bytesNeeded++;</span>
-<span class="nc" id="L1361">			curMaxSize = (int) Math.pow(2, bitsAvailablePerByte * bytesNeeded);</span>
+<span class="nc" id="L979">		int bytesNeeded = 0;</span>
+<span class="nc" id="L980">		int curMaxSize = 0;</span>
+<span class="nc" id="L981">		final int bitsAvailablePerByte = 7;</span>
+<span class="nc bnc" id="L982" title="All 2 branches missed.">		while (curMaxSize &lt; numNextBytes) {</span>
+<span class="nc" id="L983">			bytesNeeded++;</span>
+<span class="nc" id="L984">			curMaxSize = (int) Math.pow(2, bitsAvailablePerByte * bytesNeeded);</span>
 		}
-<span class="nc" id="L1363">		return bytesNeeded;</span>
+<span class="nc" id="L986">		return bytesNeeded;</span>
 	}
 
 	/**
 	 * Print bytes header
 	 */
 	public static synchronized void printBytesHeader(final Queue&lt;String&gt; byteStr, final int byteIndex) {
-<span class="nc" id="L1370">		System.out.println();</span>
-<span class="nc bnc" id="L1371" title="All 2 branches missed.">		for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
-<span class="nc bnc" id="L1372" title="All 2 branches missed.">			for (int i = 0; i &lt; MAX_CHARS_PER_BYTE; ++i) {</span>
-<span class="nc" id="L1373">				System.out.print(&quot;=&quot;);</span>
+<span class="nc" id="L993">		System.out.println();</span>
+<span class="nc bnc" id="L994" title="All 2 branches missed.">		for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
+<span class="nc bnc" id="L995" title="All 2 branches missed.">			for (int i = 0; i &lt; MAX_CHARS_PER_BYTE; ++i) {</span>
+<span class="nc" id="L996">				System.out.print(&quot;=&quot;);</span>
 			}
 		}
-<span class="nc" id="L1376">		System.out.println();</span>
+<span class="nc" id="L999">		System.out.println();</span>
 
-<span class="nc" id="L1378">		System.out.print(COLUMN_SEPARATOR);</span>
-<span class="nc bnc" id="L1379" title="All 2 branches missed.">		for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
-<span class="nc" id="L1380">			int maxLength = MAX_CHARS_PER_BYTE - 1;</span>
-<span class="nc bnc" id="L1381" title="All 2 branches missed.">			for (int i = 0; i &lt; MAX_CHARS_PER_BYTE - 1; ++i) {</span>
-<span class="nc bnc" id="L1382" title="All 2 branches missed.">				if (i == Math.round(MAX_CHARS_PER_BYTE / 2.0) - 1) {</span>
-<span class="nc" id="L1383">					System.out.print(j + byteIndex);</span>
-<span class="nc" id="L1384">					maxLength = maxLength - String.valueOf(j + byteIndex).length();</span>
+<span class="nc" id="L1001">		System.out.print(COLUMN_SEPARATOR);</span>
+<span class="nc bnc" id="L1002" title="All 2 branches missed.">		for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
+<span class="nc" id="L1003">			int maxLength = MAX_CHARS_PER_BYTE - 1;</span>
+<span class="nc bnc" id="L1004" title="All 2 branches missed.">			for (int i = 0; i &lt; MAX_CHARS_PER_BYTE - 1; ++i) {</span>
+<span class="nc bnc" id="L1005" title="All 2 branches missed.">				if (i == Math.round(MAX_CHARS_PER_BYTE / 2.0) - 1) {</span>
+<span class="nc" id="L1006">					System.out.print(j + byteIndex);</span>
+<span class="nc" id="L1007">					maxLength = maxLength - String.valueOf(j + byteIndex).length();</span>
 				} else {
-<span class="nc" id="L1386">					System.out.print(&quot; &quot;);</span>
-<span class="nc bnc" id="L1387" title="All 2 branches missed.">					if (i &gt;= maxLength) {</span>
-<span class="nc" id="L1388">						break;</span>
+<span class="nc" id="L1009">					System.out.print(&quot; &quot;);</span>
+<span class="nc bnc" id="L1010" title="All 2 branches missed.">					if (i &gt;= maxLength) {</span>
+<span class="nc" id="L1011">						break;</span>
 					}
 				}
 			}
-<span class="nc" id="L1392">			System.out.print(COLUMN_SEPARATOR);</span>
+<span class="nc" id="L1015">			System.out.print(COLUMN_SEPARATOR);</span>
 		}
-<span class="nc" id="L1394">		System.out.println();</span>
+<span class="nc" id="L1017">		System.out.println();</span>
 
-<span class="nc bnc" id="L1396" title="All 2 branches missed.">		for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
-<span class="nc bnc" id="L1397" title="All 2 branches missed.">			for (int i = 0; i &lt; MAX_CHARS_PER_BYTE; ++i) {</span>
-<span class="nc" id="L1398">				System.out.print(LINE_SEPARATOR);</span>
+<span class="nc bnc" id="L1019" title="All 2 branches missed.">		for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
+<span class="nc bnc" id="L1020" title="All 2 branches missed.">			for (int i = 0; i &lt; MAX_CHARS_PER_BYTE; ++i) {</span>
+<span class="nc" id="L1021">				System.out.print(LINE_SEPARATOR);</span>
 			}
 		}
-<span class="nc" id="L1401">		System.out.println();</span>
-<span class="nc" id="L1402">	}</span>
+<span class="nc" id="L1024">		System.out.println();</span>
+<span class="nc" id="L1025">	}</span>
 
 	/**
 	 * Print grpc tag
@@ -1416,8 +1039,8 @@ public final class Utils {
 	 */
 	private static synchronized int printGrpcTagField(final String typeName, final int serializedSize,
 			final Queue&lt;String&gt; byteStr, final int currentByteIndex) {
-<span class="nc" id="L1419">		final int numBytesNeededPerTag = getNumBytesNeededInVLQInt(serializedSize) + 1; // tag + numBytes</span>
-<span class="nc" id="L1420">		return printBytes(typeName, numBytesNeededPerTag, byteStr, currentByteIndex);</span>
+<span class="nc" id="L1042">		final int numBytesNeededPerTag = getNumBytesNeededInVLQInt(serializedSize) + 1; // tag + numBytes</span>
+<span class="nc" id="L1043">		return printBytes(typeName, numBytesNeededPerTag, byteStr, currentByteIndex);</span>
 	}
 
 	/**
@@ -1435,37 +1058,37 @@ public final class Utils {
 	 */
 	private static synchronized int printBytes(final String typeName, final int numBytes, final Queue&lt;String&gt; byteStr,
 			final int byteIndex) {
-<span class="nc" id="L1438">		int currentByteIndex = byteIndex;</span>
-<span class="nc bnc" id="L1439" title="All 2 branches missed.">		for (int i = 0; i &lt; numBytes; ++i) {</span>
+<span class="nc" id="L1061">		int currentByteIndex = byteIndex;</span>
+<span class="nc bnc" id="L1062" title="All 2 branches missed.">		for (int i = 0; i &lt; numBytes; ++i) {</span>
 
-<span class="nc bnc" id="L1441" title="All 2 branches missed.">			if (currentByteIndex % MAX_BYTES_PER_LINE == 0) {</span>
-<span class="nc bnc" id="L1442" title="All 2 branches missed.">				if (currentByteIndex &gt; 0) {</span>
-<span class="nc" id="L1443">					System.out.print(COLUMN_SEPARATOR);</span>
+<span class="nc bnc" id="L1064" title="All 2 branches missed.">			if (currentByteIndex % MAX_BYTES_PER_LINE == 0) {</span>
+<span class="nc bnc" id="L1065" title="All 2 branches missed.">				if (currentByteIndex &gt; 0) {</span>
+<span class="nc" id="L1066">					System.out.print(COLUMN_SEPARATOR);</span>
 				}
-<span class="nc" id="L1445">				printBytesHeader(byteStr, currentByteIndex);</span>
+<span class="nc" id="L1068">				printBytesHeader(byteStr, currentByteIndex);</span>
 			}
 
-<span class="nc" id="L1448">			String tagToWrite = COLUMN_SEPARATOR + &quot;0x&quot;;</span>
+<span class="nc" id="L1071">			String tagToWrite = COLUMN_SEPARATOR + &quot;0x&quot;;</span>
 
-<span class="nc bnc" id="L1450" title="All 4 branches missed.">			if (byteStr == null || byteStr.isEmpty()) {</span>
-<span class="nc" id="L1451">				tagToWrite += &quot;??&quot;;</span>
+<span class="nc bnc" id="L1073" title="All 4 branches missed.">			if (byteStr == null || byteStr.isEmpty()) {</span>
+<span class="nc" id="L1074">				tagToWrite += &quot;??&quot;;</span>
 			} else {
-<span class="nc" id="L1453">				tagToWrite += byteStr.poll();</span>
-<span class="nc" id="L1454">				tagToWrite += byteStr.poll();</span>
+<span class="nc" id="L1076">				tagToWrite += byteStr.poll();</span>
+<span class="nc" id="L1077">				tagToWrite += byteStr.poll();</span>
 			}
-<span class="nc" id="L1456">			tagToWrite += &quot; &quot;;</span>
-<span class="nc bnc" id="L1457" title="All 2 branches missed.">			if (typeName != null) {</span>
-<span class="nc" id="L1458">				tagToWrite += typeName;</span>
+<span class="nc" id="L1079">			tagToWrite += &quot; &quot;;</span>
+<span class="nc bnc" id="L1080" title="All 2 branches missed.">			if (typeName != null) {</span>
+<span class="nc" id="L1081">				tagToWrite += typeName;</span>
 			}
 
-<span class="nc" id="L1461">			System.out.print(tagToWrite); // Embedded Message</span>
-<span class="nc" id="L1462">			final int freeSpace = MAX_CHARS_PER_BYTE - tagToWrite.length(); // 23*Nbytes spaces</span>
-<span class="nc bnc" id="L1463" title="All 2 branches missed.">			for (int j = 0; j &lt; freeSpace; ++j) {</span>
-<span class="nc" id="L1464">				System.out.print(&quot; &quot;);</span>
+<span class="nc" id="L1084">			System.out.print(tagToWrite); // Embedded Message</span>
+<span class="nc" id="L1085">			final int freeSpace = MAX_CHARS_PER_BYTE - tagToWrite.length(); // 23*Nbytes spaces</span>
+<span class="nc bnc" id="L1086" title="All 2 branches missed.">			for (int j = 0; j &lt; freeSpace; ++j) {</span>
+<span class="nc" id="L1087">				System.out.print(&quot; &quot;);</span>
 			}
-<span class="nc" id="L1466">			currentByteIndex++;</span>
+<span class="nc" id="L1089">			currentByteIndex++;</span>
 		}
-<span class="nc" id="L1468">		return currentByteIndex;</span>
+<span class="nc" id="L1091">		return currentByteIndex;</span>
 	}
 
 	/**
@@ -1475,8 +1098,8 @@ public final class Utils {
 	 *            GRPC message
 	 */
 	public static synchronized void printMsg(final com.google.protobuf.GeneratedMessageV3 msg) {
-<span class="nc" id="L1478">		printMsg(msg, 0, new ConcurrentHashMap&lt;String, String&gt;());</span>
-<span class="nc" id="L1479">	}</span>
+<span class="nc" id="L1101">		printMsg(msg, 0, new ConcurrentHashMap&lt;String, String&gt;());</span>
+<span class="nc" id="L1102">	}</span>
 
 	/**
 	 * Print grpc message Aux function
@@ -1492,58 +1115,58 @@ public final class Utils {
 	private static synchronized int printMsg(final com.google.protobuf.GeneratedMessageV3 msg, final int byteIndex,
 			final Map&lt;String, String&gt; tagsMap) {
 
-<span class="nc" id="L1495">		boolean isFirst = false;</span>
-<span class="nc" id="L1496">		int currentByteIndex = byteIndex;</span>
-<span class="nc bnc" id="L1497" title="All 2 branches missed.">		if (currentByteIndex == 0) {</span>
-<span class="nc" id="L1498">			System.out.println(&quot;Message size : &quot; + msg.getSerializedSize());</span>
-<span class="nc" id="L1499">			isFirst = true;</span>
+<span class="nc" id="L1118">		boolean isFirst = false;</span>
+<span class="nc" id="L1119">		int currentByteIndex = byteIndex;</span>
+<span class="nc bnc" id="L1120" title="All 2 branches missed.">		if (currentByteIndex == 0) {</span>
+<span class="nc" id="L1121">			System.out.println(&quot;Message size : &quot; + msg.getSerializedSize());</span>
+<span class="nc" id="L1122">			isFirst = true;</span>
 		}
 
-<span class="nc" id="L1502">		final Queue&lt;String&gt; bytesAsStr = bytesToHex(msg.toByteArray());</span>
+<span class="nc" id="L1125">		final Queue&lt;String&gt; bytesAsStr = bytesToHex(msg.toByteArray());</span>
 
-<span class="nc bnc" id="L1504" title="All 2 branches missed.">		for (final Entry&lt;FieldDescriptor, Object&gt; fieldEntry : msg.getAllFields().entrySet()) {</span>
-<span class="nc" id="L1505">			final FieldDescriptor fDescriptor = fieldEntry.getKey();</span>
+<span class="nc bnc" id="L1127" title="All 2 branches missed.">		for (final Entry&lt;FieldDescriptor, Object&gt; fieldEntry : msg.getAllFields().entrySet()) {</span>
+<span class="nc" id="L1128">			final FieldDescriptor fDescriptor = fieldEntry.getKey();</span>
 
 			// print value
-<span class="nc" id="L1508">			final Object fieldValue = fieldEntry.getValue();</span>
+<span class="nc" id="L1131">			final Object fieldValue = fieldEntry.getValue();</span>
 
 			// Print value
-<span class="nc" id="L1511">			currentByteIndex = printValue(fieldValue, fDescriptor.getName(), bytesAsStr, currentByteIndex, tagsMap);</span>
+<span class="nc" id="L1134">			currentByteIndex = printValue(fieldValue, fDescriptor.getName(), bytesAsStr, currentByteIndex, tagsMap);</span>
 
-<span class="nc" id="L1513">		}</span>
-<span class="nc bnc" id="L1514" title="All 2 branches missed.">		if (isFirst) {</span>
-<span class="nc" id="L1515">			System.out.println();</span>
-<span class="nc bnc" id="L1516" title="All 2 branches missed.">			for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
-<span class="nc bnc" id="L1517" title="All 2 branches missed.">				for (int i = 0; i &lt; MAX_CHARS_PER_BYTE; ++i) {</span>
-<span class="nc" id="L1518">					System.out.print(&quot;=&quot;);</span>
+<span class="nc" id="L1136">		}</span>
+<span class="nc bnc" id="L1137" title="All 2 branches missed.">		if (isFirst) {</span>
+<span class="nc" id="L1138">			System.out.println();</span>
+<span class="nc bnc" id="L1139" title="All 2 branches missed.">			for (int j = 0; j &lt; MAX_BYTES_PER_LINE; ++j) {</span>
+<span class="nc bnc" id="L1140" title="All 2 branches missed.">				for (int i = 0; i &lt; MAX_CHARS_PER_BYTE; ++i) {</span>
+<span class="nc" id="L1141">					System.out.print(&quot;=&quot;);</span>
 				}
 			}
-<span class="nc" id="L1521">			System.out.println();</span>
-<span class="nc" id="L1522">			final List&lt;String&gt; orderedList = new ArrayList&lt;&gt;(tagsMap.values());</span>
-<span class="nc" id="L1523">			java.util.Collections.sort(orderedList);</span>
-<span class="nc" id="L1524">			int curInColumn = 0;</span>
-<span class="nc bnc" id="L1525" title="All 2 branches missed.">			for (final String currentStr : orderedList) {</span>
-<span class="nc bnc" id="L1526" title="All 2 branches missed.">				for (final Entry&lt;String, String&gt; tagEntry : tagsMap.entrySet()) {</span>
-<span class="nc bnc" id="L1527" title="All 2 branches missed.">					if (tagEntry.getValue().equals(currentStr)) {</span>
-<span class="nc" id="L1528">						final String toPrint = &quot;|&quot; + tagEntry.getValue() + &quot;: &quot; + tagEntry.getKey();</span>
-<span class="nc" id="L1529">						System.out.print(toPrint);</span>
-<span class="nc" id="L1530">						curInColumn++;</span>
-<span class="nc bnc" id="L1531" title="All 2 branches missed.">						if (curInColumn % 5 == 0) {</span>
-<span class="nc" id="L1532">							System.out.println();</span>
+<span class="nc" id="L1144">			System.out.println();</span>
+<span class="nc" id="L1145">			final List&lt;String&gt; orderedList = new ArrayList&lt;&gt;(tagsMap.values());</span>
+<span class="nc" id="L1146">			java.util.Collections.sort(orderedList);</span>
+<span class="nc" id="L1147">			int curInColumn = 0;</span>
+<span class="nc bnc" id="L1148" title="All 2 branches missed.">			for (final String currentStr : orderedList) {</span>
+<span class="nc bnc" id="L1149" title="All 2 branches missed.">				for (final Entry&lt;String, String&gt; tagEntry : tagsMap.entrySet()) {</span>
+<span class="nc bnc" id="L1150" title="All 2 branches missed.">					if (tagEntry.getValue().equals(currentStr)) {</span>
+<span class="nc" id="L1151">						final String toPrint = &quot;|&quot; + tagEntry.getValue() + &quot;: &quot; + tagEntry.getKey();</span>
+<span class="nc" id="L1152">						System.out.print(toPrint);</span>
+<span class="nc" id="L1153">						curInColumn++;</span>
+<span class="nc bnc" id="L1154" title="All 2 branches missed.">						if (curInColumn % 5 == 0) {</span>
+<span class="nc" id="L1155">							System.out.println();</span>
 						} else {
-<span class="nc" id="L1534">							final int freeSpaces = MAX_CHARS_PER_BYTE * 3 - toPrint.length();</span>
-<span class="nc bnc" id="L1535" title="All 2 branches missed.">							for (int i = 0; i &lt; freeSpaces; ++i) {</span>
-<span class="nc" id="L1536">								System.out.print(&quot; &quot;);</span>
+<span class="nc" id="L1157">							final int freeSpaces = MAX_CHARS_PER_BYTE * 3 - toPrint.length();</span>
+<span class="nc bnc" id="L1158" title="All 2 branches missed.">							for (int i = 0; i &lt; freeSpaces; ++i) {</span>
+<span class="nc" id="L1159">								System.out.print(&quot; &quot;);</span>
 							}
 						}
-<span class="nc" id="L1539">						break;</span>
+<span class="nc" id="L1162">						break;</span>
 					}
-<span class="nc" id="L1541">				}</span>
-<span class="nc" id="L1542">			}</span>
-<span class="nc" id="L1543">			System.out.println();</span>
+<span class="nc" id="L1164">				}</span>
+<span class="nc" id="L1165">			}</span>
+<span class="nc" id="L1166">			System.out.println();</span>
 		}
 
-<span class="nc" id="L1546">		return currentByteIndex;</span>
+<span class="nc" id="L1169">		return currentByteIndex;</span>
 	}
 
 	/**
@@ -1561,12 +1184,12 @@ public final class Utils {
 	 */
 	private static synchronized int printFTTag(final String fieldDescriptorName, final Queue&lt;String&gt; bytesAsStr,
 			final int byteIndex, final Map&lt;String, String&gt; tagsMap) {
-<span class="nc" id="L1564">		String tagName = tagsMap.get(fieldDescriptorName);</span>
-<span class="nc bnc" id="L1565" title="All 2 branches missed.">		if (tagName == null) {</span>
-<span class="nc" id="L1566">			tagName = &quot;FT&quot; + tagsMap.size();</span>
-<span class="nc" id="L1567">			tagsMap.put(fieldDescriptorName, tagName);</span>
+<span class="nc" id="L1187">		String tagName = tagsMap.get(fieldDescriptorName);</span>
+<span class="nc bnc" id="L1188" title="All 2 branches missed.">		if (tagName == null) {</span>
+<span class="nc" id="L1189">			tagName = &quot;FT&quot; + tagsMap.size();</span>
+<span class="nc" id="L1190">			tagsMap.put(fieldDescriptorName, tagName);</span>
 		}
-<span class="nc" id="L1569">		return printGrpcTagField(tagName, 0, bytesAsStr, byteIndex);</span>
+<span class="nc" id="L1192">		return printGrpcTagField(tagName, 0, bytesAsStr, byteIndex);</span>
 	}
 
 	/**
@@ -1586,12 +1209,12 @@ public final class Utils {
 	 */
 	private static synchronized int printEMTag(final String fieldDescriptorName, final Queue&lt;String&gt; bytesAsStr,
 			final int byteIndex, final Map&lt;String, String&gt; tagsMap, final int serializedSize) {
-<span class="nc" id="L1589">		String tagName = tagsMap.get(fieldDescriptorName);</span>
-<span class="nc bnc" id="L1590" title="All 2 branches missed.">		if (tagName == null) {</span>
-<span class="nc" id="L1591">			tagName = &quot;EM&quot; + tagsMap.size();</span>
-<span class="nc" id="L1592">			tagsMap.put(fieldDescriptorName, tagName);</span>
+<span class="nc" id="L1212">		String tagName = tagsMap.get(fieldDescriptorName);</span>
+<span class="nc bnc" id="L1213" title="All 2 branches missed.">		if (tagName == null) {</span>
+<span class="nc" id="L1214">			tagName = &quot;EM&quot; + tagsMap.size();</span>
+<span class="nc" id="L1215">			tagsMap.put(fieldDescriptorName, tagName);</span>
 		}
-<span class="nc" id="L1594">		return printGrpcTagField(tagName, serializedSize, bytesAsStr, byteIndex);</span>
+<span class="nc" id="L1217">		return printGrpcTagField(tagName, serializedSize, bytesAsStr, byteIndex);</span>
 	}
 
 	/**
@@ -1603,27 +1226,27 @@ public final class Utils {
 	 */
 	@SuppressWarnings(&quot;rawtypes&quot;)
 	private static synchronized int getSerializedSize(final Object fieldValue) {
-<span class="nc bnc" id="L1606" title="All 2 branches missed.">		if (fieldValue instanceof Long) {</span>
-<span class="nc" id="L1607">			return 8;</span>
-<span class="nc bnc" id="L1608" title="All 2 branches missed.">		} else if (fieldValue instanceof Integer) {</span>
-<span class="nc" id="L1609">			return Math.max(1, getNumBytesNeededInVLQInt((Integer) fieldValue));</span>
-<span class="nc bnc" id="L1610" title="All 2 branches missed.">		} else if (fieldValue instanceof com.google.protobuf.GeneratedMessageV3) {</span>
-<span class="nc" id="L1611">			final com.google.protobuf.GeneratedMessageV3 fieldMsg = (com.google.protobuf.GeneratedMessageV3) fieldValue;</span>
-<span class="nc" id="L1612">			return Math.max(2, fieldMsg.getSerializedSize());</span>
-<span class="nc bnc" id="L1613" title="All 2 branches missed.">		} else if (fieldValue instanceof List) {</span>
-<span class="nc" id="L1614">			int acumSize = 0;</span>
-<span class="nc bnc" id="L1615" title="All 2 branches missed.">			for (final Object fieldElement : (List) fieldValue) {</span>
-<span class="nc" id="L1616">				acumSize += getSerializedSize(fieldElement);</span>
-<span class="nc" id="L1617">			}</span>
-<span class="nc" id="L1618">			return acumSize;</span>
-<span class="nc bnc" id="L1619" title="All 2 branches missed.">		} else if (fieldValue instanceof MapEntry) {</span>
-<span class="nc" id="L1620">			final MapEntry entry = (MapEntry) fieldValue;</span>
-<span class="nc" id="L1621">			return entry.getSerializedSize();</span>
-<span class="nc bnc" id="L1622" title="All 2 branches missed.">		} else if (fieldValue instanceof ByteString) {</span>
-<span class="nc" id="L1623">			final ByteString bString = (ByteString) fieldValue;</span>
-<span class="nc" id="L1624">			return bString.size();</span>
+<span class="nc bnc" id="L1229" title="All 2 branches missed.">		if (fieldValue instanceof Long) {</span>
+<span class="nc" id="L1230">			return 8;</span>
+<span class="nc bnc" id="L1231" title="All 2 branches missed.">		} else if (fieldValue instanceof Integer) {</span>
+<span class="nc" id="L1232">			return Math.max(1, getNumBytesNeededInVLQInt((Integer) fieldValue));</span>
+<span class="nc bnc" id="L1233" title="All 2 branches missed.">		} else if (fieldValue instanceof com.google.protobuf.GeneratedMessageV3) {</span>
+<span class="nc" id="L1234">			final com.google.protobuf.GeneratedMessageV3 fieldMsg = (com.google.protobuf.GeneratedMessageV3) fieldValue;</span>
+<span class="nc" id="L1235">			return Math.max(2, fieldMsg.getSerializedSize());</span>
+<span class="nc bnc" id="L1236" title="All 2 branches missed.">		} else if (fieldValue instanceof List) {</span>
+<span class="nc" id="L1237">			int acumSize = 0;</span>
+<span class="nc bnc" id="L1238" title="All 2 branches missed.">			for (final Object fieldElement : (List) fieldValue) {</span>
+<span class="nc" id="L1239">				acumSize += getSerializedSize(fieldElement);</span>
+<span class="nc" id="L1240">			}</span>
+<span class="nc" id="L1241">			return acumSize;</span>
+<span class="nc bnc" id="L1242" title="All 2 branches missed.">		} else if (fieldValue instanceof MapEntry) {</span>
+<span class="nc" id="L1243">			final MapEntry entry = (MapEntry) fieldValue;</span>
+<span class="nc" id="L1244">			return entry.getSerializedSize();</span>
+<span class="nc bnc" id="L1245" title="All 2 branches missed.">		} else if (fieldValue instanceof ByteString) {</span>
+<span class="nc" id="L1246">			final ByteString bString = (ByteString) fieldValue;</span>
+<span class="nc" id="L1247">			return bString.size();</span>
 		}
-<span class="nc" id="L1626">		return 0;</span>
+<span class="nc" id="L1249">		return 0;</span>
 	}
 
 	/**
@@ -1645,41 +1268,41 @@ public final class Utils {
 	private static synchronized int printValue(final Object fieldValue, final String fieldDescriptorName,
 			final Queue&lt;String&gt; bytesAsStr, final int byteIndex, final Map&lt;String, String&gt; tagsMap) {
 
-<span class="nc" id="L1648">		int currentByteIndex = byteIndex;</span>
+<span class="nc" id="L1271">		int currentByteIndex = byteIndex;</span>
 
-<span class="nc bnc" id="L1650" title="All 2 branches missed.">		if (fieldValue instanceof Long) {</span>
-<span class="nc" id="L1651">			final int size = getSerializedSize(fieldValue);</span>
-<span class="nc" id="L1652">			currentByteIndex = printFTTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap);</span>
-<span class="nc" id="L1653">			currentByteIndex = printBytes(null, size, bytesAsStr, currentByteIndex);</span>
-<span class="nc bnc" id="L1654" title="All 2 branches missed.">		} else if (fieldValue instanceof Integer) {</span>
-<span class="nc" id="L1655">			final int size = getSerializedSize(fieldValue);</span>
-<span class="nc" id="L1656">			currentByteIndex = printFTTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap);</span>
-<span class="nc" id="L1657">			currentByteIndex = printBytes(null, size, bytesAsStr, currentByteIndex);</span>
-<span class="nc bnc" id="L1658" title="All 2 branches missed.">		} else if (fieldValue instanceof com.google.protobuf.GeneratedMessageV3) {</span>
-<span class="nc" id="L1659">			final int size = getSerializedSize(fieldValue);</span>
-<span class="nc" id="L1660">			final com.google.protobuf.GeneratedMessageV3 fieldMsg = (com.google.protobuf.GeneratedMessageV3) fieldValue;</span>
-<span class="nc" id="L1661">			currentByteIndex = printEMTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap, size);</span>
-<span class="nc" id="L1662">			currentByteIndex = printMsg(fieldMsg, currentByteIndex, tagsMap);</span>
-<span class="nc bnc" id="L1663" title="All 2 branches missed.">		} else if (fieldValue instanceof List) {</span>
-<span class="nc bnc" id="L1664" title="All 2 branches missed.">			for (final Object fieldElement : (List) fieldValue) {</span>
-<span class="nc" id="L1665">				currentByteIndex = printValue(fieldElement, &quot;ListElement&quot;, bytesAsStr, currentByteIndex, tagsMap);</span>
-<span class="nc" id="L1666">			}</span>
-<span class="nc bnc" id="L1667" title="All 2 branches missed.">		} else if (fieldValue instanceof MapEntry) {</span>
-<span class="nc" id="L1668">			final int size = getSerializedSize(fieldValue);</span>
-<span class="nc" id="L1669">			currentByteIndex = printEMTag(&quot;MapEntry&quot;, bytesAsStr, currentByteIndex, tagsMap, size);</span>
-<span class="nc" id="L1670">			final MapEntry entry = (MapEntry) fieldValue;</span>
-<span class="nc" id="L1671">			currentByteIndex = printValue(entry.getKey(), &quot;MapKey&quot;, bytesAsStr, currentByteIndex, tagsMap);</span>
-<span class="nc" id="L1672">			currentByteIndex = printValue(entry.getValue(), &quot;MapValue&quot;, bytesAsStr, currentByteIndex, tagsMap);</span>
-<span class="nc bnc" id="L1673" title="All 2 branches missed.">		} else if (fieldValue instanceof ByteString) {</span>
-<span class="nc" id="L1674">			final int size = getSerializedSize(fieldValue);</span>
-<span class="nc" id="L1675">			currentByteIndex = printEMTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap, size);</span>
-<span class="nc" id="L1676">			currentByteIndex = printBytes(null, size, bytesAsStr, currentByteIndex);</span>
+<span class="nc bnc" id="L1273" title="All 2 branches missed.">		if (fieldValue instanceof Long) {</span>
+<span class="nc" id="L1274">			final int size = getSerializedSize(fieldValue);</span>
+<span class="nc" id="L1275">			currentByteIndex = printFTTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap);</span>
+<span class="nc" id="L1276">			currentByteIndex = printBytes(null, size, bytesAsStr, currentByteIndex);</span>
+<span class="nc bnc" id="L1277" title="All 2 branches missed.">		} else if (fieldValue instanceof Integer) {</span>
+<span class="nc" id="L1278">			final int size = getSerializedSize(fieldValue);</span>
+<span class="nc" id="L1279">			currentByteIndex = printFTTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap);</span>
+<span class="nc" id="L1280">			currentByteIndex = printBytes(null, size, bytesAsStr, currentByteIndex);</span>
+<span class="nc bnc" id="L1281" title="All 2 branches missed.">		} else if (fieldValue instanceof com.google.protobuf.GeneratedMessageV3) {</span>
+<span class="nc" id="L1282">			final int size = getSerializedSize(fieldValue);</span>
+<span class="nc" id="L1283">			final com.google.protobuf.GeneratedMessageV3 fieldMsg = (com.google.protobuf.GeneratedMessageV3) fieldValue;</span>
+<span class="nc" id="L1284">			currentByteIndex = printEMTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap, size);</span>
+<span class="nc" id="L1285">			currentByteIndex = printMsg(fieldMsg, currentByteIndex, tagsMap);</span>
+<span class="nc bnc" id="L1286" title="All 2 branches missed.">		} else if (fieldValue instanceof List) {</span>
+<span class="nc bnc" id="L1287" title="All 2 branches missed.">			for (final Object fieldElement : (List) fieldValue) {</span>
+<span class="nc" id="L1288">				currentByteIndex = printValue(fieldElement, &quot;ListElement&quot;, bytesAsStr, currentByteIndex, tagsMap);</span>
+<span class="nc" id="L1289">			}</span>
+<span class="nc bnc" id="L1290" title="All 2 branches missed.">		} else if (fieldValue instanceof MapEntry) {</span>
+<span class="nc" id="L1291">			final int size = getSerializedSize(fieldValue);</span>
+<span class="nc" id="L1292">			currentByteIndex = printEMTag(&quot;MapEntry&quot;, bytesAsStr, currentByteIndex, tagsMap, size);</span>
+<span class="nc" id="L1293">			final MapEntry entry = (MapEntry) fieldValue;</span>
+<span class="nc" id="L1294">			currentByteIndex = printValue(entry.getKey(), &quot;MapKey&quot;, bytesAsStr, currentByteIndex, tagsMap);</span>
+<span class="nc" id="L1295">			currentByteIndex = printValue(entry.getValue(), &quot;MapValue&quot;, bytesAsStr, currentByteIndex, tagsMap);</span>
+<span class="nc bnc" id="L1296" title="All 2 branches missed.">		} else if (fieldValue instanceof ByteString) {</span>
+<span class="nc" id="L1297">			final int size = getSerializedSize(fieldValue);</span>
+<span class="nc" id="L1298">			currentByteIndex = printEMTag(fieldDescriptorName, bytesAsStr, currentByteIndex, tagsMap, size);</span>
+<span class="nc" id="L1299">			currentByteIndex = printBytes(null, size, bytesAsStr, currentByteIndex);</span>
 
-<span class="nc" id="L1678">		} else {</span>
-<span class="nc" id="L1679">			System.err.println(&quot;Missing &quot; + fieldValue.getClass().getName());</span>
+<span class="nc" id="L1301">		} else {</span>
+<span class="nc" id="L1302">			System.err.println(&quot;Missing &quot; + fieldValue.getClass().getName());</span>
 		}
 
-<span class="nc" id="L1682">		return currentByteIndex;</span>
+<span class="nc" id="L1305">		return currentByteIndex;</span>
 
 	}
 
@@ -1698,17 +1321,17 @@ public final class Utils {
 	 */
 	private static CommonMessages.ExceptionInfo getExcInfo(final boolean isExc, final ByteString serializedExc,
 			final ByteString excMessage) {
-<span class="nc" id="L1701">		final CommonMessages.ExceptionInfo.Builder builder = CommonMessages.ExceptionInfo.newBuilder();</span>
+<span class="nc" id="L1324">		final CommonMessages.ExceptionInfo.Builder builder = CommonMessages.ExceptionInfo.newBuilder();</span>
 
-<span class="nc" id="L1703">		builder.setIsException(isExc);</span>
-<span class="nc bnc" id="L1704" title="All 2 branches missed.">		if (serializedExc != null) {</span>
-<span class="nc" id="L1705">			builder.setSerializedException(serializedExc);</span>
+<span class="nc" id="L1326">		builder.setIsException(isExc);</span>
+<span class="nc bnc" id="L1327" title="All 2 branches missed.">		if (serializedExc != null) {</span>
+<span class="nc" id="L1328">			builder.setSerializedException(serializedExc);</span>
 		}
-<span class="nc bnc" id="L1707" title="All 2 branches missed.">		if (excMessage != null) {</span>
-<span class="nc" id="L1708">			builder.setExceptionMessage(excMessage);</span>
+<span class="nc bnc" id="L1330" title="All 2 branches missed.">		if (excMessage != null) {</span>
+<span class="nc" id="L1331">			builder.setExceptionMessage(excMessage);</span>
 		}
 
-<span class="nc" id="L1711">		return builder.build();</span>
+<span class="nc" id="L1334">		return builder.build();</span>
 	}
 
 	/**
@@ -1719,11 +1342,11 @@ public final class Utils {
 	 * @return string StackTrace
 	 */
 	private static String exceptionStacktraceToString(final Exception e) {
-<span class="nc" id="L1722">		final ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
-<span class="nc" id="L1723">		final PrintStream ps = new PrintStream(baos);</span>
-<span class="nc" id="L1724">		e.printStackTrace(ps);</span>
-<span class="nc" id="L1725">		ps.close();</span>
-<span class="nc" id="L1726">		return baos.toString();</span>
+<span class="nc" id="L1345">		final ByteArrayOutputStream baos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L1346">		final PrintStream ps = new PrintStream(baos);</span>
+<span class="nc" id="L1347">		e.printStackTrace(ps);</span>
+<span class="nc" id="L1348">		ps.close();</span>
+<span class="nc" id="L1349">		return baos.toString();</span>
 	}
 
 	/**
@@ -1735,57 +1358,58 @@ public final class Utils {
 	 */
 	private static ByteString getSerializedExceptionMessage(final DataClayException e) {
 
-<span class="nc" id="L1738">		final String stack = exceptionStacktraceToString(e);</span>
-<span class="nc" id="L1739">		final String excMess = e.getLocalizedMessage();</span>
-<span class="nc" id="L1740">		final String errorcode = e.getErrorcode().toString();</span>
+<span class="nc" id="L1361">		final String stack = exceptionStacktraceToString(e);</span>
+<span class="nc" id="L1362">		final String excMess = e.getLocalizedMessage();</span>
+<span class="nc" id="L1363">		final String errorcode = e.getErrorcode().toString();</span>
 
-<span class="nc" id="L1742">		final char[] chars = new char[146];</span>
-<span class="nc" id="L1743">		Arrays.fill(chars, '-');</span>
-<span class="nc" id="L1744">		final String s = new String(chars);</span>
+<span class="nc" id="L1365">		final char[] chars = new char[146];</span>
+<span class="nc" id="L1366">		Arrays.fill(chars, '-');</span>
+<span class="nc" id="L1367">		final String s = new String(chars);</span>
 
-<span class="nc" id="L1746">		final String joined = new StringJoiner(&quot;&quot;).add(&quot;\n&quot;).add(s).add(&quot;\n Error Message: &quot;).add(excMess)</span>
-<span class="nc" id="L1747">				.add(&quot;\n\n Error Code: &quot;).add(errorcode).add(&quot;\n&quot;).add(s).add(&quot;\n Server StackTrace: &quot;).add(stack)</span>
-<span class="nc" id="L1748">				.add(s).toString();</span>
+<span class="nc" id="L1369">		final String joined = new StringJoiner(&quot;&quot;).add(&quot;\n&quot;).add(s).add(&quot;\n Error Message: &quot;).add(excMess)</span>
+<span class="nc" id="L1370">				.add(&quot;\n\n Error Code: &quot;).add(errorcode).add(&quot;\n&quot;).add(s).add(&quot;\n Server StackTrace: &quot;).add(stack)</span>
+<span class="nc" id="L1371">				.add(s).toString();</span>
 
-<span class="nc" id="L1750">		return ByteString.copyFromUtf8(joined);</span>
+<span class="nc" id="L1373">		return ByteString.copyFromUtf8(joined);</span>
 	}
 
 	/**
 	 * Serialize Exception
 	 * 
-	 * @param dcEx
+	 * @param ex
 	 *            Exception to serialize
 	 * @return Serialized exception
 	 */
 	public static ExceptionInfo serializeException(final Exception ex) {
 
 		// wrap exception if needed
-<span class="nc" id="L1763">		DataClayException dcEx = null;</span>
-<span class="nc bnc" id="L1764" title="All 2 branches missed.">		if (ex instanceof DataClayException) {</span>
-<span class="nc" id="L1765">			dcEx = (DataClayException) ex;</span>
+<span class="nc" id="L1386">		DataClayException dcEx = null;</span>
+<span class="nc bnc" id="L1387" title="All 2 branches missed.">		if (ex instanceof DataClayException) {</span>
+<span class="nc" id="L1388">			dcEx = (DataClayException) ex;</span>
 		} else {
-<span class="nc" id="L1767">			dcEx = new DataClayException(ex);</span>
+<span class="nc" id="L1390">			dcEx = new DataClayException(ex);</span>
 		}
 
 		// Create response with exception
-<span class="nc bnc" id="L1771" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1772">			LOGGER.debug(&quot;[==EXCEPTION==] Sending DataClayException GRPC response: &quot;, ex);</span>
+<span class="nc bnc" id="L1394" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1395">			LOGGER.debug(&quot;[==EXCEPTION==] Sending exception {}. Activate trace to see stack trace&quot;, ex.getClass().getName());</span>
+<span class="nc" id="L1396">			LOGGER.debug(&quot;[==EXCEPTION==] Sending DataClayException GRPC response: &quot;, ex);</span>
 		}
-<span class="nc" id="L1774">		final DataClayByteBuffer dcBuffer = SerializationLibUtils.newByteBuffer();</span>
-<span class="nc" id="L1775">		byte[] serializedBytes = null;</span>
-<span class="nc" id="L1776">		ExceptionInfo resp = null;</span>
+<span class="nc" id="L1398">		final DataClayByteBuffer dcBuffer = SerializationLibUtils.newByteBuffer();</span>
+<span class="nc" id="L1399">		byte[] serializedBytes = null;</span>
+<span class="nc" id="L1400">		ExceptionInfo resp = null;</span>
 		try {
 			// Serialize exception and set the ExcInfo message
-<span class="nc" id="L1779">			dcEx.serialize(dcBuffer, false, null, null, null, null);</span>
-<span class="nc" id="L1780">			serializedBytes = dcBuffer.getArray();</span>
+<span class="nc" id="L1403">			dcEx.serialize(dcBuffer, false, null, null, null, null);</span>
+<span class="nc" id="L1404">			serializedBytes = dcBuffer.getArray();</span>
 
-<span class="nc" id="L1782">			resp = (Utils.getExcInfo(true, ByteString.copyFrom(serializedBytes),</span>
-<span class="nc" id="L1783">					Utils.getSerializedExceptionMessage(dcEx)));</span>
+<span class="nc" id="L1406">			resp = (Utils.getExcInfo(true, ByteString.copyFrom(serializedBytes),</span>
+<span class="nc" id="L1407">					Utils.getSerializedExceptionMessage(dcEx)));</span>
 		} finally {
-<span class="nc" id="L1785">			dcBuffer.release();</span>
+<span class="nc" id="L1409">			dcBuffer.release();</span>
 
 		}
-<span class="nc" id="L1788">		return resp;</span>
+<span class="nc" id="L1412">		return resp;</span>
 	}
 
 	/**
@@ -1795,28 +1419,29 @@ public final class Utils {
 	 *            ExceptionInfo response message
 	 */
 	public static void checkIsExc(final ExceptionInfo response) {
-<span class="nc bnc" id="L1798" title="All 2 branches missed.">		if (response.getIsException()) {</span>
+<span class="nc bnc" id="L1422" title="All 2 branches missed.">		if (response.getIsException()) {</span>
 
-<span class="nc" id="L1800">			final DataClayException dcEx = new DataClayException();</span>
-<span class="nc" id="L1801">			dcEx.setExceptionMessage(response.getExceptionMessage().toStringUtf8());</span>
-<span class="nc" id="L1802">			final ByteString serializedExceptionBytes = response.getSerializedException();</span>
-<span class="nc bnc" id="L1803" title="All 2 branches missed.">			if (serializedExceptionBytes.size() == 0) {</span>
+<span class="nc" id="L1424">			final DataClayException dcEx = new DataClayException();</span>
+<span class="nc" id="L1425">			dcEx.setExceptionMessage(response.getExceptionMessage().toStringUtf8());</span>
+<span class="nc" id="L1426">			final ByteString serializedExceptionBytes = response.getSerializedException();</span>
+<span class="nc bnc" id="L1427" title="All 2 branches missed.">			if (serializedExceptionBytes.size() == 0) {</span>
 				// Python generic exception without bytes, just message
-<span class="nc" id="L1805">				throw dcEx;</span>
+<span class="nc" id="L1429">				throw dcEx;</span>
 			} else {
-<span class="nc" id="L1807">				final DataClayByteArray serializedException = new DataClayByteArray(serializedExceptionBytes);</span>
-<span class="nc" id="L1808">				DataClayDeserializationLib.createBufferAndDeserialize(serializedException, dcEx, null, null, null);</span>
+<span class="nc" id="L1431">				final DataClayByteArray serializedException = new DataClayByteArray(serializedExceptionBytes);</span>
+<span class="nc" id="L1432">				DataClayDeserializationLib.createBufferAndDeserialize(serializedException, dcEx, null, null, null);</span>
 
 				// WARNING: Currently only sending runtime exceptions
-<span class="nc" id="L1811">				final RuntimeException cause = (RuntimeException) dcEx.getCause();</span>
-<span class="nc bnc" id="L1812" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1813">					LOGGER.debug(&quot;[==EXCEPTION==] Received DataClayException GRPC response: &quot;, cause);</span>
+<span class="nc" id="L1435">				final RuntimeException cause = (RuntimeException) dcEx.getCause();</span>
+<span class="nc bnc" id="L1436" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1437">					LOGGER.debug(&quot;[==EXCEPTION==] Sending exception {}. Activate trace to see stack trace&quot;, cause.getMessage());</span>
+<span class="nc" id="L1438">					LOGGER.trace(&quot;[==EXCEPTION==] Received DataClayException GRPC response: &quot;, cause);</span>
 				}
-<span class="nc" id="L1815">				throw cause;</span>
+<span class="nc" id="L1440">				throw cause;</span>
 
 			}
 		}
-<span class="nc" id="L1819">	}</span>
+<span class="nc" id="L1444">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

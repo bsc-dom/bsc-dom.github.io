@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import es.bsc.dataclay.util.Configuration;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Set;
 
@@ -24,7 +26,8 @@ import java.util.Set;
  */
 public class LruCache&lt;A, B&gt; {
 
-	
+<span class="fc" id="L29">	private static final Logger logger = LogManager.getLogger(&quot;LruCache&quot;);</span>
+
 	/** Map used for this cache. */
 	private final Map&lt;A, B&gt; map;
 	
@@ -33,51 +36,51 @@ public class LruCache&lt;A, B&gt; {
 	 * @param theMaxEntries
 	 *            Maximum entries in Cache.
 	 */
-<span class="fc" id="L36">	public LruCache(final int theMaxEntries) {</span>
-<span class="fc" id="L37">		final int capacity = theMaxEntries;</span>
-<span class="fc" id="L38">		map = Collections.synchronizedMap(</span>
-<span class="fc" id="L39">				new CacheLinkedHashMap&lt;A, B&gt;(capacity, Configuration.Flags.LRU_LOAD_FACTOR.getFloatValue(), </span>
+<span class="fc" id="L39">	public LruCache(final int theMaxEntries) {</span>
+<span class="fc" id="L40">		final int capacity = theMaxEntries;</span>
+<span class="fc" id="L41">		map = Collections.synchronizedMap(</span>
+<span class="fc" id="L42">				new CacheLinkedHashMap&lt;A, B&gt;(capacity, Configuration.Flags.LRU_LOAD_FACTOR.getFloatValue(), </span>
 						true));
-<span class="fc" id="L41">	}</span>
+<span class="fc" id="L44">	}</span>
 
 
 
 	//CHECKSTYLE:OFF
 	public B put(final A key, final B value) {
-<span class="fc" id="L47">		return map.put(key, value);</span>
+<span class="fc" id="L50">		return map.put(key, value);</span>
 	}
 	
-	public B get(final A key) { 
-<span class="fc" id="L51">		return map.get(key);</span>
+	public B get(final A key) {
+<span class="fc" id="L54">		return map.get(key);</span>
 	}
 	
-	public B remove(final A key) { 
-<span class="fc" id="L55">		return map.remove(key);</span>
+	public B remove(final A key) {
+<span class="nc" id="L58">		return map.remove(key);</span>
 	}
 	
 	public boolean containsKey(final A key) { 
-<span class="fc" id="L59">		return map.containsKey(key);</span>
+<span class="fc" id="L62">		return map.containsKey(key);</span>
 	}
 	
 	public boolean containsValue(final B value) { 
-<span class="nc" id="L63">		return map.containsValue(value);</span>
+<span class="nc" id="L66">		return map.containsValue(value);</span>
 	}
 	
 	public Set&lt;Entry&lt;A, B&gt;&gt; entrySet() { 
-<span class="nc" id="L67">		return map.entrySet();</span>
+<span class="nc" id="L70">		return map.entrySet();</span>
 	}
 	
 	public boolean isEmpty() { 
-<span class="nc" id="L71">		return map.isEmpty();</span>
+<span class="nc" id="L74">		return map.isEmpty();</span>
 	}
 	
 	public void putAll(final Map&lt;? extends A, ? extends B&gt; m) { 
-<span class="nc" id="L75">		map.putAll(m);</span>
-<span class="nc" id="L76">	}</span>
+<span class="nc" id="L78">		map.putAll(m);</span>
+<span class="nc" id="L79">	}</span>
 	
 	public void clear() { 
-<span class="nc" id="L79">		map.clear();</span>
-<span class="nc" id="L80">	}</span>
+<span class="nc" id="L82">		map.clear();</span>
+<span class="nc" id="L83">	}</span>
 	//CHECKSTYLE:ON
 	
 }

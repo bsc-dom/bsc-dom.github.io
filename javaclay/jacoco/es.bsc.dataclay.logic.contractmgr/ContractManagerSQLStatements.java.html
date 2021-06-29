@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ContractManagerSQLStatements.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.contractmgr</a> &gt; <span class="el_source">ContractManagerSQLStatements.java</span></div><h1>ContractManagerSQLStatements.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.logic.contractmgr;
 
+import es.bsc.dataclay.logic.accountmgr.AccountMgrSQLStatements;
+import es.bsc.dataclay.logic.classmgr.ClassManagerSQLStatements;
+
 import java.util.ResourceBundle;
 
 /**
@@ -8,8 +11,6 @@ import java.util.ResourceBundle;
  */
 public final class ContractManagerSQLStatements {
 
-	/** Properties. */
-<span class="fc" id="L12">	private static ResourceBundle props = null;</span>
 
 	/**
 	 * Utility classes should have private constructor.
@@ -19,105 +20,121 @@ public final class ContractManagerSQLStatements {
 	}
 
 	/**
-	 * Init properties of the properties file
-	 */
-	static {
-<span class="pc bpc" id="L25" title="1 of 2 branches missed.">		if (props == null) {</span>
-<span class="fc" id="L26">			props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.contract_mgr_sql&quot;);</span>
-		}
-<span class="fc" id="L28">	}</span>
-
-	/**
 	 * This enumeration represent all possible SQL statements.
 	 */
-<span class="fc" id="L33">	public enum SqlStatements {</span>
+<span class="fc" id="L25">	public enum SqlStatements {</span>
 
 		/** Create. */
-<span class="fc" id="L36">		CREATE_TABLE_CONTRACT,</span>
+<span class="fc" id="L28">		CREATE_TABLE_CONTRACT,</span>
 
 		/** Create. */
-<span class="fc" id="L39">		CREATE_TABLE_IFACEINCONTRACT,</span>
+<span class="fc" id="L31">		CREATE_TABLE_IFACEINCONTRACT,</span>
 
 		/** Create. */
-<span class="fc" id="L42">		CREATE_TABLE_OPIMPLEMENTATIONS,</span>
+<span class="fc" id="L34">		CREATE_TABLE_OPIMPLEMENTATIONS,</span>
 
 		/** Drop. */
-<span class="fc" id="L45">		DROP_TABLE_CONTRACT,</span>
+<span class="fc" id="L37">		DROP_TABLE_CONTRACT,</span>
 
 		/** Drop. */
-<span class="fc" id="L48">		DROP_TABLE_IFACEINCONTRACT,</span>
+<span class="fc" id="L40">		DROP_TABLE_IFACEINCONTRACT,</span>
 
 		/** Drop. */
-<span class="fc" id="L51">		DROP_TABLE_OPIMPLEMENTATIONS,</span>
+<span class="fc" id="L43">		DROP_TABLE_OPIMPLEMENTATIONS,</span>
 
 		/** Insert. */
-<span class="fc" id="L54">		INSERT_CONTRACT,</span>
+<span class="fc" id="L46">		INSERT_CONTRACT,</span>
 
 		/** Insert. */
-<span class="fc" id="L57">		INSERT_IFACEINCONTRACT,</span>
+<span class="fc" id="L49">		INSERT_IFACEINCONTRACT,</span>
 
 		/** Insert. */
-<span class="fc" id="L60">		INSERT_OPIMPLEMENTATIONS,</span>
+<span class="fc" id="L52">		INSERT_OPIMPLEMENTATIONS,</span>
 
 		/** Select account. */
-<span class="fc" id="L63">		SELECT_CONTRACT,</span>
+<span class="fc" id="L55">		SELECT_CONTRACT,</span>
 
 		/** Select. */
-<span class="fc" id="L66">		SELECT_IFACEINCONTRACT,</span>
+<span class="fc" id="L58">		SELECT_IFACEINCONTRACT,</span>
 
 		/** Select. */
-<span class="fc" id="L69">		SELECT_OPIMPLEMENTATIONS,</span>
+<span class="fc" id="L61">		SELECT_OPIMPLEMENTATIONS,</span>
 
 		/** Delete. */
-<span class="fc" id="L72">		DELETE_CONTRACT,</span>
+<span class="fc" id="L64">		DELETE_CONTRACT,</span>
 
 		/** Delete. */
-<span class="fc" id="L75">		DELETE_IFACEINCONTRACT,</span>
+<span class="fc" id="L67">		DELETE_IFACEINCONTRACT,</span>
 
 		/** Delete. */
-<span class="fc" id="L78">		DELETE_OPIMPLEMENTATIONS,</span>
+<span class="fc" id="L70">		DELETE_OPIMPLEMENTATIONS,</span>
 
 		/** Update. */
-<span class="fc" id="L81">		UPDATE_CONTRACT_ADD_APPLICANT,</span>
+<span class="fc" id="L73">		UPDATE_CONTRACT_ADD_APPLICANT,</span>
 
 		/** Select. */
-<span class="fc" id="L84">		SELECT_ALL_CONTRACTS_OF_NAMESPACE,</span>
+<span class="fc" id="L76">		SELECT_ALL_CONTRACTS_OF_NAMESPACE,</span>
 
 		/** Select. */
-<span class="fc" id="L87">		SELECT_ALL_CONTRACTS_WITH_INTERFACE,</span>
+<span class="fc" id="L79">		SELECT_ALL_CONTRACTS_WITH_INTERFACE,</span>
 
 		/** Select. */
-<span class="fc" id="L90">		SELECT_ALL_OPIMPLS_WITH_IMPL,</span>
+<span class="fc" id="L82">		SELECT_ALL_OPIMPLS_WITH_IMPL,</span>
 
 		/** Select. */
-<span class="fc" id="L93">		SELECT_ALL_CONTRACTS_WITH_APPLICANT,</span>
+<span class="fc" id="L85">		SELECT_ALL_CONTRACTS_WITH_APPLICANT,</span>
 
 		/** Select. */
-<span class="fc" id="L96">		SELECT_ALL_CONTRACTS_WITH_PROVIDER,</span>
+<span class="fc" id="L88">		SELECT_ALL_CONTRACTS_WITH_PROVIDER,</span>
 
 		/** Select. */
-<span class="fc" id="L99">		SELECT_ALL_CONTRACTS_WITH_APPLICANT_AND_NAMESPACE;</span>
+<span class="fc" id="L91">		SELECT_ALL_CONTRACTS_WITH_APPLICANT_AND_NAMESPACE;</span>
 
 		/** SQL statement. */
 		private String sqlStatement;
 
+		/** Indicates statements are loaded in memory. */
+<span class="fc" id="L97">		private static boolean LOADED = false;</span>
+		/**
+		 * Unload statements.
+		 */
+		public static void unloadStatements() {
+<span class="nc" id="L102">			LOADED = false;</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			for (AccountMgrSQLStatements.SqlStatements statement : AccountMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="nc" id="L104">				statement.setSqlStatement(null);</span>
+			}
+<span class="nc" id="L106">		}</span>
+
+
 		/**
 		 * Init properties of the properties file
 		 */
-		private void init() {
-<span class="fc" id="L108">			final String sqlSt = props.getString(this.name());</span>
-<span class="fc" id="L109">			setSqlStatement(sqlSt);</span>
-<span class="fc" id="L110">		}</span>
+		public static void loadStatements() {
+<span class="fc" id="L113">			ResourceBundle props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.contract_mgr_sql&quot;);</span>
+
+<span class="fc bfc" id="L115" title="All 2 branches covered.">			for (ContractManagerSQLStatements.SqlStatements statement : ContractManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc" id="L116">				statement.init(props);</span>
+			}
+<span class="fc" id="L118">			LOADED = true;</span>
+<span class="fc" id="L119">		}</span>
+
+		/**
+		 * Init properties of the properties file
+		 */
+		private void init(ResourceBundle props) {
+<span class="fc" id="L125">			final String sqlSt = props.getString(this.name());</span>
+<span class="fc" id="L126">			setSqlStatement(sqlSt);</span>
+<span class="fc" id="L127">		}</span>
 
 		/**
 		 * Get the sqlStatement
 		 * @return the sqlStatement
 		 */
 		public String getSqlStatement() {
-<span class="fc bfc" id="L117" title="All 2 branches covered.">			if (sqlStatement == null) {</span>
-<span class="fc" id="L118">				init();</span>
+<span class="fc bfc" id="L134" title="All 2 branches covered.">			if (!LOADED) {</span>
+<span class="fc" id="L135">				loadStatements();</span>
 			}
-<span class="fc" id="L120">			return sqlStatement;</span>
+<span class="fc" id="L137">			return sqlStatement;</span>
 		}
 
 		/**
@@ -126,8 +143,8 @@ public final class ContractManagerSQLStatements {
 		 *            the sqlStatement
 		 */
 		public void setSqlStatement(final String newsqlStatement) {
-<span class="fc" id="L129">			sqlStatement = newsqlStatement;</span>
-<span class="fc" id="L130">		}</span>
+<span class="fc" id="L146">			sqlStatement = newsqlStatement;</span>
+<span class="fc" id="L147">		}</span>
 
 	}
 }

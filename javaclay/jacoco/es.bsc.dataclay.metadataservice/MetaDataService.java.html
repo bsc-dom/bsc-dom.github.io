@@ -14,6 +14,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import es.bsc.dataclay.util.management.metadataservice.*;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -41,45 +42,28 @@ import es.bsc.dataclay.util.ids.MetaClassID;
 import es.bsc.dataclay.util.ids.ObjectID;
 import es.bsc.dataclay.util.ids.StorageLocationID;
 import es.bsc.dataclay.util.management.AbstractManager;
-import es.bsc.dataclay.util.management.metadataservice.DataClayInstance;
-import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
-import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
-import es.bsc.dataclay.util.management.metadataservice.StorageLocation;
-import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.util.structs.MemoryCache;
 import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible to manage information related to an object (metaclassID of the object, backend in which is stored,
  * interface and contract used for creating the object...).
  */
 public final class MetaDataService extends AbstractManager {
-<span class="fc" id="L56">	private static final Logger logger = LogManager.getLogger(&quot;MetaDataService&quot;);</span>
+<span class="nc" id="L54">	private static final Logger logger = LogManager.getLogger(&quot;MetaDataService&quot;);</span>
 
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L59">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="nc" id="L57">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** Object cache. */
-	private final LruCache&lt;ObjectID, ObjectMetaData&gt; objectMDCache;
+	private final MemoryCache&lt;ObjectID, ObjectMetaData&gt; objectMDCache;
 
 	/** Federated objects cache. */
-	private final LruCache&lt;ObjectID, Set&lt;DataClayInstanceID&gt;&gt; federatedObjectsCache;
+	private final MemoryCache&lt;ObjectID, Set&lt;DataClayInstanceID&gt;&gt; federatedObjectsCache;
 
 	/** Object by Alias cache. */
-	private final LruCache&lt;String, ObjectMetaData&gt; objectMDCacheByAlias;
-
-	/** Cache for Storage Location mapping. */
-	private final ConcurrentHashMap&lt;StorageLocationID, StorageLocation&gt; currentStorageLocations;
-
-	/** Current Execution Environments mappings. */
-	private final ConcurrentHashMap&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; currentExecutionEnvironments;
-	private final ConcurrentHashMap&lt;String, ExecutionEnvironmentID&gt; currentJavaExecutionEnvironments;
-	private final ConcurrentHashMap&lt;String, ExecutionEnvironmentID&gt; currentPythonExecutionEnvironments;
-
-	/** External dataClay info cache. */
-	private final LruCache&lt;DataClayInstanceID, DataClayInstance&gt; externalDataClaysCache;
-
-	/** External dataClay IDs per host-port cache. */
-	private final LruCache&lt;Tuple&lt;String, Integer&gt;, DataClayInstanceID&gt; dataClaysPerHostPortCache;
+	private final MemoryCache&lt;String, ObjectMetaData&gt; objectMDCacheByAlias;
 
 	/** MetaDataService database. */
 	private final MetaDataServiceDB metadataDB;
@@ -87,29 +71,20 @@ public final class MetaDataService extends AbstractManager {
 	/**
 	 * Instantiates an MetaDataService that uses the Backend configuration provided.
 	 * 
-	 * @param managerName
-	 *            Manager/service name.
+	 * @param dataSource
+	 *            Data source.
 	 * @post Creates MetaDataService and initializes the backend.
 	 */
-	public MetaDataService(final BasicDataSource dataSource) {
-<span class="fc" id="L95">		super(dataSource);</span>
-<span class="fc" id="L96">		metadataDB = new MetaDataServiceDB(dataSource);</span>
-<span class="fc" id="L97">		metadataDB.createTables();</span>
+	public MetaDataService(final SQLiteDataSource dataSource) {
+<span class="nc" id="L79">		super(dataSource);</span>
+<span class="nc" id="L80">		metadataDB = new MetaDataServiceDB(dataSource);</span>
+<span class="nc" id="L81">		metadataDB.createTables();</span>
 
 		// Init caches
-<span class="fc" id="L100">		this.objectMDCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_METADATASERVICE_CACHE.getIntValue());</span>
-<span class="fc" id="L101">		this.objectMDCacheByAlias = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_METADATASERVICE_CACHE.getIntValue());</span>
-<span class="fc" id="L102">		this.externalDataClaysCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_METADATASERVICE_CACHE.getIntValue());</span>
-<span class="fc" id="L103">		this.dataClaysPerHostPortCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_METADATASERVICE_CACHE.getIntValue());</span>
-
-
-<span class="fc" id="L106">		this.currentStorageLocations = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="fc" id="L107">		this.currentExecutionEnvironments = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="fc" id="L108">		this.currentJavaExecutionEnvironments = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="fc" id="L109">		this.currentPythonExecutionEnvironments = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="fc" id="L110">		this.federatedObjectsCache = new LruCache&lt;&gt;(</span>
-<span class="fc" id="L111">				Configuration.Flags.MAX_ENTRIES_METADATASERVICE_CACHE.getIntValue());</span>
-<span class="fc" id="L112">	}</span>
+<span class="nc" id="L84">		this.objectMDCache = new MemoryCache&lt;&gt;();</span>
+<span class="nc" id="L85">		this.objectMDCacheByAlias = new MemoryCache&lt;&gt;();</span>
+<span class="nc" id="L86">		this.federatedObjectsCache = new MemoryCache&lt;&gt;();</span>
+<span class="nc" id="L87">	}</span>
 
 	/**
 	 * Checks whether an objects exists or not.
@@ -122,21 +97,23 @@ public final class MetaDataService extends AbstractManager {
 	 */
 	public boolean existsObject(final ObjectID objectID) {
 		// Check cache
-<span class="nc" id="L125">		ObjectMetaData objectMD = objectMDCache.get(objectID);</span>
-<span class="nc bnc" id="L126" title="All 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L100">		ObjectMetaData objectMD = objectMDCache.get(objectID);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// Query by example
-<span class="nc" id="L128">			objectMD = metadataDB.getByID(objectID);</span>
-<span class="nc bnc" id="L129" title="All 2 branches missed.">			if (objectMD != null) {</span>
+<span class="nc" id="L103">			objectMD = metadataDB.getByID(objectID);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">			if (objectMD != null) {</span>
 				// Update cache if necessary
-<span class="nc bnc" id="L131" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L132">					logger.debug(&quot;Updating cache of metadatas: {} -&gt; {}&quot;, objectID, objectMD);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L107">					logger.debug(&quot;Updating cache of metadatas: {} -&gt; {}&quot;, objectID, objectMD);</span>
 				}
-<span class="nc" id="L134">				objectMDCache.put(objectID, objectMD);</span>
-<span class="nc" id="L135">				final String alias = objectMD.getAlias();</span>
-<span class="nc" id="L136">				objectMDCacheByAlias.put(alias, objectMD);</span>
+<span class="nc" id="L109">				objectMDCache.put(objectID, objectMD);</span>
+<span class="nc" id="L110">				final String alias = objectMD.getAlias();</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">				if (alias != null) {</span>
+<span class="nc" id="L112">					objectMDCacheByAlias.put(alias, objectMD);</span>
+				}
 			}
 		}
-<span class="nc bnc" id="L139" title="All 2 branches missed.">		return (objectMD != null);</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">		return (objectMD != null);</span>
 	}
 
 	/**
@@ -150,22 +127,25 @@ public final class MetaDataService extends AbstractManager {
 	 *             ObjectNotRegisteredException: if the object is not registered.
 	 */
 	public Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getObjectBackends(final ObjectID objectID) {
+		//FIXME: modify move algorithm
+
 		// Query object info
-<span class="fc" id="L154">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="pc bpc" id="L155" title="1 of 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L133">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. Since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L159">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L138">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
 		// Prepare result
-<span class="fc" id="L162">		final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; objectMDbackends = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L141">		final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; objectMDbackends = new ConcurrentHashMap&lt;&gt;();</span>
 
-<span class="fc bfc" id="L164" title="All 2 branches covered.">		for (final ExecutionEnvironmentID curEntry : objectMD.getExecutionEnvironmentIDs()) {</span>
-<span class="fc" id="L165">			final ExecutionEnvironment backend = getExecutionEnvironment(curEntry);</span>
-<span class="fc" id="L166">			objectMDbackends.put(curEntry, backend);</span>
-<span class="fc" id="L167">		}</span>
-<span class="fc" id="L168">		return objectMDbackends;</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		for (final ExecutionEnvironmentID curEntry : objectMD.getExecutionEnvironmentIDs()) {</span>
+			//FIXME: modify move algorithm
+<span class="nc" id="L145">			final ExecutionEnvironment backend = null;</span>
+<span class="nc" id="L146">			objectMDbackends.put(curEntry, backend);</span>
+<span class="nc" id="L147">		}</span>
+<span class="nc" id="L148">		return objectMDbackends;</span>
 	}
 
 	/**
@@ -180,13 +160,13 @@ public final class MetaDataService extends AbstractManager {
 	 */
 	public MetaDataInfo getObjectMetaData(final ObjectID objectID) {
 		// Query object info
-<span class="nc" id="L183">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="nc bnc" id="L184" title="All 2 branches missed.">		if (objectMD == null) {</span>
-<span class="nc" id="L185">			return null; // do not send exception to avoid serializing it, critical path.</span>
+<span class="nc" id="L163">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L165">			return null; // do not send exception to avoid serializing it, critical path.</span>
 		}
 
-<span class="nc" id="L188">		final MetaDataInfo result = buildMetaDataInfo(objectMD);</span>
-<span class="nc" id="L189">		return result;</span>
+<span class="nc" id="L168">		final MetaDataInfo result = buildMetaDataInfo(objectMD);</span>
+<span class="nc" id="L169">		return result;</span>
 	}
 
 	/**
@@ -194,14 +174,12 @@ public final class MetaDataService extends AbstractManager {
 	 * @return ids of all registered objects
 	 */
 	public Set&lt;ObjectID&gt; getAllObjectIDsRegistered() {
-<span class="nc" id="L197">		return metadataDB.getAllObjectIDs();</span>
+<span class="nc" id="L177">		return metadataDB.getAllObjectIDs();</span>
 	}
 
 	/**
 	 * Get object ID from alias
-	 * 
-	 * @param metaClassID
-	 *            ID of the class of the object
+	 *
 	 * @param alias
 	 *            Alias of the object
 	 * @return the ID of the object if it is found and its metadata
@@ -210,28 +188,28 @@ public final class MetaDataService extends AbstractManager {
 	 *             ObjectNotRegisteredException: if the object is not registered
 	 */
 	public Tuple&lt;ObjectID, MetaDataInfo&gt; getObjectInfoFromAlias(final String alias) {
-<span class="nc" id="L213">		ObjectMetaData objectMD = objectMDCacheByAlias.get(alias);</span>
-<span class="nc bnc" id="L214" title="All 2 branches missed.">		if (objectMD != null) {</span>
-<span class="nc" id="L215">			final MetaDataInfo metadataInfo = buildMetaDataInfo(objectMD);</span>
-<span class="nc bnc" id="L216" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L217">				logger.debug(&quot;Get by alias: Obtained object &quot; + objectMD.getDataClayID() + &quot; from alias: &quot; + alias);</span>
+<span class="nc" id="L191">		ObjectMetaData objectMD = objectMDCacheByAlias.get(alias);</span>
+<span class="nc bnc" id="L192" title="All 2 branches missed.">		if (objectMD != null) {</span>
+<span class="nc" id="L193">			final MetaDataInfo metadataInfo = buildMetaDataInfo(objectMD);</span>
+<span class="nc bnc" id="L194" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L195">				logger.debug(&quot;Get by alias: Obtained object &quot; + objectMD.getDataClayID() + &quot; from alias: &quot; + alias);</span>
 			}
-<span class="nc" id="L219">			return new Tuple&lt;&gt;(objectMD.getDataClayID(), metadataInfo);</span>
+<span class="nc" id="L197">			return new Tuple&lt;&gt;(objectMD.getDataClayID(), metadataInfo);</span>
 		} else {
-<span class="nc bnc" id="L221" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L222">				logger.debug(&quot;Alias &quot; + alias + &quot; not found in cache.&quot;);</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L200">				logger.debug(&quot;Alias &quot; + alias + &quot; not found in cache.&quot;);</span>
 			}
 		}
-<span class="nc" id="L225">		objectMD = metadataDB.getByAlias(alias);</span>
-<span class="nc bnc" id="L226" title="All 2 branches missed.">		if (objectMD == null) {</span>
-<span class="nc" id="L227">			throw new ObjectNotRegisteredException(alias);</span>
+<span class="nc" id="L203">		objectMD = metadataDB.getByAlias(alias);</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L205">			throw new ObjectNotRegisteredException(alias);</span>
 		}
 
-<span class="nc" id="L230">		final MetaDataInfo metadataInfo = buildMetaDataInfo(objectMD);</span>
-<span class="nc bnc" id="L231" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L232">			logger.debug(&quot;Get by alias: Obtained object &quot; + objectMD.getDataClayID() + &quot; from alias: &quot; + alias);</span>
+<span class="nc" id="L208">		final MetaDataInfo metadataInfo = buildMetaDataInfo(objectMD);</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L210">			logger.debug(&quot;Get by alias: Obtained object &quot; + objectMD.getDataClayID() + &quot; from alias: &quot; + alias);</span>
 		}
-<span class="nc" id="L234">		return new Tuple&lt;&gt;(objectMD.getDataClayID(), metadataInfo);</span>
+<span class="nc" id="L212">		return new Tuple&lt;&gt;(objectMD.getDataClayID(), metadataInfo);</span>
 	}
 
 	/**
@@ -245,31 +223,31 @@ public final class MetaDataService extends AbstractManager {
 	 *             ObjectNotRegisteredException: if the object is not registered
 	 */
 	public ObjectID deleteAlias(final String alias) {
-<span class="nc" id="L248">		ObjectMetaData objectMD = objectMDCacheByAlias.remove(alias);</span>
-<span class="nc bnc" id="L249" title="All 2 branches missed.">		if (objectMD == null) {</span>
-<span class="nc bnc" id="L250" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L251">				logger.debug(&quot;Alias &quot; + alias + &quot; not found in cache.&quot;);</span>
+<span class="nc" id="L226">		ObjectMetaData objectMD = objectMDCacheByAlias.remove(alias);</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc bnc" id="L228" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L229">				logger.debug(&quot;Alias &quot; + alias + &quot; not found in cache.&quot;);</span>
 			}
 
-<span class="nc" id="L254">			objectMD = metadataDB.getByAlias(alias);</span>
+<span class="nc" id="L232">			objectMD = metadataDB.getByAlias(alias);</span>
 
-<span class="nc bnc" id="L256" title="All 2 branches missed.">			if (objectMD == null) {</span>
-<span class="nc" id="L257">				throw new ObjectNotRegisteredException(alias);</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">			if (objectMD == null) {</span>
+<span class="nc" id="L235">				throw new ObjectNotRegisteredException(alias);</span>
 			}
 		}
 
-<span class="nc" id="L261">		objectMD.setAlias(null);</span>
+<span class="nc" id="L239">		objectMD.setAlias(null);</span>
 
 		try {
-<span class="nc" id="L264">			metadataDB.updateAliasByID(objectMD.getDataClayID(), null);</span>
-<span class="nc" id="L265">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L242">			metadataDB.updateAliasByID(objectMD.getDataClayID(), null);</span>
+<span class="nc" id="L243">		} catch (final DbObjectNotExistException e) {</span>
 			// Ignore exception, maybe the object has been garbage collected
-<span class="nc" id="L267">		}</span>
+<span class="nc" id="L245">		}</span>
 
-<span class="nc bnc" id="L269" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L270">			logger.debug(&quot;Delete Alias: removed alias &quot; + alias + &quot; in object &quot; + objectMD.getDataClayID());</span>
+<span class="nc bnc" id="L247" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L248">			logger.debug(&quot;Delete Alias: removed alias &quot; + alias + &quot; in object &quot; + objectMD.getDataClayID());</span>
 		}
-<span class="nc" id="L272">		return objectMD.getDataClayID();</span>
+<span class="nc" id="L250">		return objectMD.getDataClayID();</span>
 	}
 
 	/**
@@ -280,14 +258,14 @@ public final class MetaDataService extends AbstractManager {
 	 * @return a map indexed by the object ids with their info
 	 */
 	public Map&lt;ObjectID, MetaDataInfo&gt; getObjectsOfSpecificClass(final MetaClassID classID) {
-<span class="fc" id="L283">		final Map&lt;ObjectID, MetaDataInfo&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L261">		final Map&lt;ObjectID, MetaDataInfo&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
 
-<span class="fc" id="L285">		final ArrayList&lt;ObjectMetaData&gt; objects = metadataDB.getByClass(classID);</span>
-<span class="fc bfc" id="L286" title="All 2 branches covered.">		for (final ObjectMetaData objectMD : objects) {</span>
-<span class="fc" id="L287">			final MetaDataInfo mdInfo = buildMetaDataInfo(objectMD);</span>
-<span class="fc" id="L288">			result.put(objectMD.getDataClayID(), mdInfo);</span>
-<span class="fc" id="L289">		}</span>
-<span class="fc" id="L290">		return result;</span>
+<span class="nc" id="L263">		final ArrayList&lt;ObjectMetaData&gt; objects = metadataDB.getByClass(classID);</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">		for (final ObjectMetaData objectMD : objects) {</span>
+<span class="nc" id="L265">			final MetaDataInfo mdInfo = buildMetaDataInfo(objectMD);</span>
+<span class="nc" id="L266">			result.put(objectMD.getDataClayID(), mdInfo);</span>
+<span class="nc" id="L267">		}</span>
+<span class="nc" id="L268">		return result;</span>
 	}
 
 	/**
@@ -303,8 +281,8 @@ public final class MetaDataService extends AbstractManager {
 	 *            IDs of the backeds where the object is stored (replicas)
 	 * @param isReadOnly
 	 *            whether the object is readonly or not
-	 * @param aliases
-	 *            aliases for the object
+	 * @param alias
+	 *            alias for the object
 	 * @param lang
 	 *            Object language
 	 * @param ownerID
@@ -319,47 +297,63 @@ public final class MetaDataService extends AbstractManager {
 			final String alias, final Langs lang, final AccountID ownerID)
 					throws ObjectAlreadyRegisteredException, AliasAlreadyInUseException {
 
-<span class="fc" id="L322">		ObjectID newObjectID = objectID;</span>
+<span class="nc" id="L300">		ObjectID newObjectID = objectID;</span>
 
-<span class="pc bpc" id="L324" title="1 of 2 branches missed.">		if (alias != null) {</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">		if (alias != null) {</span>
 			// Check there is no other object with same class and alias
 			try {
-<span class="nc" id="L327">				this.getObjectInfoFromAlias(alias);</span>
-<span class="nc" id="L328">				throw new AliasAlreadyInUseException(alias);</span>
-<span class="nc" id="L329">			} catch (final ObjectNotRegisteredException e) {</span>
+<span class="nc" id="L305">				this.getObjectInfoFromAlias(alias);</span>
+<span class="nc" id="L306">				throw new AliasAlreadyInUseException(alias);</span>
+<span class="nc" id="L307">			} catch (final ObjectNotRegisteredException e) {</span>
 				// it's ok, object not registered
 			}
 
-<span class="nc" id="L333">			newObjectID = DataClayRuntime.getObjectIDFromAlias(alias);</span>
+<span class="nc" id="L311">			newObjectID = DataClayRuntime.getObjectIDFromAlias(alias);</span>
 		}
 
+<span class="nc" id="L314">		ObjectMetaData objectMDInfo = this.getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">		if (objectMDInfo == null) {</span>
+<span class="nc" id="L316">			final ObjectMetaData objectMD = new ObjectMetaData(newObjectID, metaClassID, datasetIDofProvider, backendIDs,</span>
+					isReadOnly, alias, lang, ownerID);
 
-
-<span class="fc" id="L338">		final ObjectMetaData objectMD = new ObjectMetaData(newObjectID, metaClassID, datasetIDofProvider, backendIDs,</span>
-				isReadOnly, alias, lang, ownerID);
-
-<span class="pc bpc" id="L341" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L342">			logger.debug(&quot;Registering object &quot; + objectID + &quot; with alias: &quot; + alias + &quot; and language &quot; + lang + &quot;.&quot;);</span>
-		}
-
-		try {
-<span class="fc" id="L346">			metadataDB.store(objectMD);</span>
-<span class="fc" id="L347">		} catch (final DbObjectAlreadyExistException e) {</span>
-<span class="pc bpc" id="L348" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L349">				logger.debug(&quot;Object &quot; + objectID + &quot; already registered&quot;);</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L320">				logger.debug(&quot;Registering object &quot; + objectID + &quot; with alias: &quot; + alias + &quot; and language &quot; + lang + &quot;.&quot;);</span>
 			}
-<span class="fc" id="L351">			throw new ObjectAlreadyRegisteredException(objectID);</span>
-<span class="fc" id="L352">		}</span>
 
-<span class="fc" id="L354">		final ObjectID result = objectMD.getDataClayID(); // which now equals to objectID</span>
+			try {
+<span class="nc" id="L324">				metadataDB.store(objectMD);</span>
+<span class="nc" id="L325">			} catch (final DbObjectAlreadyExistException e) {</span>
+<span class="nc bnc" id="L326" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L327">					logger.debug(&quot;Object &quot; + objectID + &quot; already registered&quot;);</span>
+				}
+<span class="nc" id="L329">				throw new ObjectAlreadyRegisteredException(objectID);</span>
+<span class="nc" id="L330">			}</span>
 
-		// Update cache
-<span class="pc bpc" id="L357" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L358">			logger.debug(&quot;[==Register object==] Updating cache of metadatas: {} -&gt; {}&quot;, objectID, objectMD);</span>
+
+<span class="nc" id="L333">			final ObjectID result = objectMD.getDataClayID(); // which now equals to objectID</span>
+
+			// Update cache
+<span class="nc bnc" id="L336" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L337">				logger.debug(&quot;[==Register object==] Updating cache of metadatas: {} -&gt; {}&quot;, objectID, objectMD);</span>
+			}
+<span class="nc" id="L339">			objectMDCache.put(result, objectMD);</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">			if (alias != null) {</span>
+<span class="nc" id="L341">				objectMDCacheByAlias.put(alias, objectMD);</span>
+			}
+<span class="nc" id="L343">			return buildMetaDataInfo(objectMD);</span>
+		} else {
+			// object is already registered, check if backend ids are different
+			// new registration caused by a new replica
+<span class="nc" id="L347">			Set&lt;ExecutionEnvironmentID&gt; currentLocations = objectMDInfo.getExecutionEnvironmentIDs();</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">			if (currentLocations.containsAll(backendIDs)) {</span>
+<span class="nc" id="L349">				throw new ObjectAlreadyRegisteredException(objectID);</span>
+			} else {
+<span class="nc" id="L351">				logger.debug(&quot;[==Register object==] Updating locations of object {}, probably due to a new replica&quot;, objectID);</span>
+<span class="nc" id="L352">				currentLocations.addAll(backendIDs);</span>
+<span class="nc" id="L353">				metadataDB.updateLocationIDsByID(objectID, currentLocations);</span>
+			}
+<span class="nc" id="L355">			return buildMetaDataInfo(objectMDInfo);</span>
 		}
-<span class="fc" id="L360">		objectMDCache.put(result, objectMD);</span>
-<span class="fc" id="L361">		objectMDCacheByAlias.put(alias, objectMD);</span>
-<span class="fc" id="L362">		return buildMetaDataInfo(objectMD);</span>
 	}
 
 	/**
@@ -377,43 +371,45 @@ public final class MetaDataService extends AbstractManager {
 	 */
 	public void changeObjectID(final ObjectID oldObjectID, final ObjectID newObjectID)
 			throws ObjectNotRegisteredException, ObjectAlreadyRegisteredException {
-<span class="fc" id="L380">		ObjectMetaData objectMD = null;</span>
+<span class="nc" id="L374">		ObjectMetaData objectMD = null;</span>
 
 		// Query object info
-<span class="fc" id="L383">		objectMD = getObjectBasicMetaData(oldObjectID);</span>
-<span class="fc bfc" id="L384" title="All 2 branches covered.">		if (objectMD == null) {</span>
+<span class="nc" id="L377">		objectMD = getObjectBasicMetaData(oldObjectID);</span>
+<span class="nc bnc" id="L378" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="fc" id="L388">			throw new ObjectNotRegisteredException(oldObjectID);</span>
+<span class="nc" id="L382">			throw new ObjectNotRegisteredException(oldObjectID);</span>
 		}
 
 		// Store new one
-<span class="fc" id="L392">		objectMD.setDataClayID(newObjectID);</span>
+<span class="nc" id="L386">		objectMD.setDataClayID(newObjectID);</span>
 		try {
-<span class="fc" id="L394">			metadataDB.store(objectMD);</span>
-<span class="fc" id="L395">		} catch (final DbObjectAlreadyExistException e) {</span>
-<span class="fc" id="L396">			objectMD.setDataClayID(oldObjectID);</span>
-<span class="fc" id="L397">			throw new ObjectAlreadyRegisteredException(newObjectID);</span>
-<span class="fc" id="L398">		}</span>
+<span class="nc" id="L388">			metadataDB.store(objectMD);</span>
+<span class="nc" id="L389">		} catch (final DbObjectAlreadyExistException e) {</span>
+<span class="nc" id="L390">			objectMD.setDataClayID(oldObjectID);</span>
+<span class="nc" id="L391">			throw new ObjectAlreadyRegisteredException(newObjectID);</span>
+<span class="nc" id="L392">		}</span>
 
 		// Delete old object if new one was stored correctly
-<span class="fc" id="L401">		metadataDB.deleteByID(oldObjectID);</span>
+<span class="nc" id="L395">		metadataDB.deleteByID(oldObjectID);</span>
 
 		// Update in Cache
-<span class="pc bpc" id="L404" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L405">			logger.debug(&quot;[==Change objectID==] Removing from cache of metadatas: {}&quot;, oldObjectID);</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L399">			logger.debug(&quot;[==Change objectID==] Removing from cache of metadatas: {}&quot;, oldObjectID);</span>
 		}
-<span class="fc" id="L407">		objectMDCache.remove(oldObjectID);</span>
-<span class="pc bpc" id="L408" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L409">			logger.debug(&quot;[==Change objectID==] Adding to cache of metadatas: {} -&gt; {}&quot;, newObjectID, objectMD);</span>
+<span class="nc" id="L401">		objectMDCache.remove(oldObjectID);</span>
+<span class="nc bnc" id="L402" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L403">			logger.debug(&quot;[==Change objectID==] Adding to cache of metadatas: {} -&gt; {}&quot;, newObjectID, objectMD);</span>
 		}
-<span class="fc" id="L411">		objectMDCache.put(newObjectID, objectMD);</span>
+<span class="nc" id="L405">		objectMDCache.put(newObjectID, objectMD);</span>
 
 		// Since objectID is not Key for Alias cache, just update it
-<span class="fc" id="L414">		final String alias = objectMD.getAlias();</span>
-<span class="fc" id="L415">		objectMDCacheByAlias.put(alias, objectMD);</span>
-<span class="fc" id="L416">	}</span>
+<span class="nc" id="L408">		final String alias = objectMD.getAlias();</span>
+<span class="nc bnc" id="L409" title="All 2 branches missed.">		if (alias != null) {</span>
+<span class="nc" id="L410">			objectMDCacheByAlias.put(alias, objectMD);</span>
+		}
+<span class="nc" id="L412">	}</span>
 
 	/**
 	 * This operation allows to explicitly register an dataSetID replacement.
@@ -430,27 +426,29 @@ public final class MetaDataService extends AbstractManager {
 			throws ObjectNotRegisteredException {
 
 		// Query object info
-<span class="nc" id="L433">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="nc bnc" id="L434" title="All 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L429">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L438">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L434">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
 		// Update it
 		try {
-<span class="nc" id="L442">			metadataDB.updateDataSetIDByID(objectID, newDataSetID);</span>
-<span class="nc" id="L443">		} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L444">			throw new ObjectNotRegisteredException(objectID);</span>
-<span class="nc" id="L445">		}</span>
+<span class="nc" id="L438">			metadataDB.updateDataSetIDByID(objectID, newDataSetID);</span>
+<span class="nc" id="L439">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L440">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L441">		}</span>
 
 		// Update cache if necessary
-<span class="nc bnc" id="L448" title="All 2 branches missed.">		if (objectMDCache.containsKey(objectID)) {</span>
-<span class="nc" id="L449">			objectMDCache.get(objectID).setDataSetID(newDataSetID);</span>
-<span class="nc" id="L450">			final String alias = objectMD.getAlias();</span>
-<span class="nc" id="L451">			objectMDCacheByAlias.put(alias, objectMDCache.get(objectID));</span>
+<span class="nc bnc" id="L444" title="All 2 branches missed.">		if (objectMDCache.containsKey(objectID)) {</span>
+<span class="nc" id="L445">			objectMDCache.get(objectID).setDataSetID(newDataSetID);</span>
+<span class="nc" id="L446">			final String alias = objectMD.getAlias();</span>
+<span class="nc bnc" id="L447" title="All 2 branches missed.">			if (alias != null) {</span>
+<span class="nc" id="L448">				objectMDCacheByAlias.put(alias, objectMDCache.get(objectID));</span>
+			}
 		}
-<span class="nc" id="L453">	}</span>
+<span class="nc" id="L451">	}</span>
 
 	/**
 	 * Registers a set of versions, copying parts of the metadata from the original objects
@@ -468,92 +466,35 @@ public final class MetaDataService extends AbstractManager {
 	 */
 	public Map&lt;ObjectID, MetaDataInfo&gt; registerVersions(final Map&lt;ObjectID, ObjectID&gt; versionToOriginalMapping,
 			final ExecutionEnvironmentID backendID, final Langs lang) throws ObjectNotRegisteredException {
-<span class="nc" id="L471">		final Map&lt;ObjectID, MetaDataInfo&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L472" title="All 2 branches missed.">		for (final Entry&lt;ObjectID, ObjectID&gt; versionToOriginal : versionToOriginalMapping.entrySet()) {</span>
-<span class="nc" id="L473">			final ObjectID versionID = versionToOriginal.getKey();</span>
-<span class="nc" id="L474">			final ObjectID originalID = versionToOriginal.getValue();</span>
+<span class="nc" id="L469">		final Map&lt;ObjectID, MetaDataInfo&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L470" title="All 2 branches missed.">		for (final Entry&lt;ObjectID, ObjectID&gt; versionToOriginal : versionToOriginalMapping.entrySet()) {</span>
+<span class="nc" id="L471">			final ObjectID versionID = versionToOriginal.getKey();</span>
+<span class="nc" id="L472">			final ObjectID originalID = versionToOriginal.getValue();</span>
 
 			// Get metadata of the original object and put it in the result
-<span class="nc" id="L477">			final MetaDataInfo originalMD = getObjectMetaData(originalID);</span>
-<span class="nc" id="L478">			result.put(originalID, originalMD);</span>
+<span class="nc" id="L475">			final MetaDataInfo originalMD = getObjectMetaData(originalID);</span>
+<span class="nc" id="L476">			result.put(originalID, originalMD);</span>
 
 			// Register version metadata
-<span class="nc" id="L481">			final Set&lt;ExecutionEnvironmentID&gt; backends = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L482">			backends.add(backendID);</span>
-<span class="nc" id="L483">			final ObjectMetaData versionMD = new ObjectMetaData(versionID, originalMD.getMetaclassID(),</span>
-<span class="nc" id="L484">					originalMD.getDatasetID(), backends, false, null, lang, originalMD.getOwnerID());</span>
+<span class="nc" id="L479">			final Set&lt;ExecutionEnvironmentID&gt; backends = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L480">			backends.add(backendID);</span>
+<span class="nc" id="L481">			final ObjectMetaData versionMD = new ObjectMetaData(versionID, originalMD.getMetaclassID(),</span>
+<span class="nc" id="L482">					originalMD.getDatasetID(), backends, false, null, lang, originalMD.getOwnerID());</span>
 
-<span class="nc" id="L486">			metadataDB.store(versionMD);</span>
+<span class="nc" id="L484">			metadataDB.store(versionMD);</span>
 
 			// Store versionMD in the cache
-<span class="nc bnc" id="L489" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L490">				logger.debug(&quot;[==New version==] Adding version to cache of metadatas: {} -&gt; {}&quot;, versionID, versionMD);</span>
+<span class="nc bnc" id="L487" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L488">				logger.debug(&quot;[==New version==] Adding version to cache of metadatas: {} -&gt; {}&quot;, versionID, versionMD);</span>
 			}
-<span class="nc" id="L492">			objectMDCache.put(versionID, versionMD);</span>
-<span class="nc" id="L493">			final String alias = versionMD.getAlias();</span>
-<span class="nc" id="L494">			objectMDCacheByAlias.put(alias, versionMD);</span>
+<span class="nc" id="L490">			objectMDCache.put(versionID, versionMD);</span>
+<span class="nc" id="L491">			final String alias = versionMD.getAlias();</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">			if (alias != null) {</span>
+<span class="nc" id="L493">				objectMDCacheByAlias.put(alias, versionMD);</span>
+			}
 <span class="nc" id="L495">		}</span>
 <span class="nc" id="L496">		return result;</span>
 	}
-
-	/**
-	 * This operation registers a new replica of an object
-	 * 
-	 * @param objectID
-	 *            the object ID
-	 * @param newBackendID
-	 *            the location of the new replica
-	 * @throws Exception
-	 *             if an exception occurs: &lt;br&gt;
-	 *             ObjectNotRegisteredException: if object does not exist ExecutionEnvironmentNotExistException: if destination
-	 *             backend does not exist
-	 */
-	public void registerReplica(final ObjectID objectID, final ExecutionEnvironmentID newBackendID)
-			throws ObjectNotRegisteredException, ExecutionEnvironmentNotExistException {
-
-		// Verify dest. backend exists
-<span class="fc" id="L515">		final boolean backendExists = metadataDB.existsByID(newBackendID);</span>
-<span class="pc bpc" id="L516" title="1 of 2 branches missed.">		if (!backendExists) {</span>
-<span class="nc" id="L517">			throw new ExecutionEnvironmentNotExistException(newBackendID);</span>
-		}
-
-		// Query object info
-<span class="fc" id="L521">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="pc bpc" id="L522" title="1 of 2 branches missed.">		if (objectMD == null) {</span>
-			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
-			// path, it is returning
-			// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L526">			throw new ObjectNotRegisteredException(objectID);</span>
-		}
-		// CHECKSTYLE:OFF
-		// Check it is not present in destBackend
-<span class="pc bpc" id="L530" title="1 of 2 branches missed.">		if (objectMD.getExecutionEnvironmentIDs().contains(newBackendID)) {</span>
-			// We do nothing in this case, since we want to replicate all the possible
-			// objects, i.e. if we find a replica
-			// of a subobject in the backend, go to the next subobject instead of throwing
-			// exception.
-			// throw new ReplicaAlreadyRegisteredException(objectID, newBackendID);
-			// CHECKSTYLE:ON
-		} else {
-			// Migrate
-			try {
-<span class="fc" id="L540">				final Set&lt;ExecutionEnvironmentID&gt; newBackendIDs = new HashSet&lt;&gt;(objectMD.getExecutionEnvironmentIDs());</span>
-<span class="fc" id="L541">				newBackendIDs.add(newBackendID);</span>
-<span class="fc" id="L542">				metadataDB.updateForReplicaByID(objectID, newBackendIDs, true);</span>
-<span class="nc" id="L543">			} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L544">				throw new ObjectNotRegisteredException(objectID);</span>
-<span class="fc" id="L545">			}</span>
-
-			// Update cache if necessary
-<span class="pc bpc" id="L548" title="1 of 2 branches missed.">			if (objectMDCache.containsKey(objectID)) {</span>
-<span class="fc" id="L549">				objectMDCache.get(objectID).getExecutionEnvironmentIDs().add(newBackendID);</span>
-<span class="fc" id="L550">				objectMDCache.get(objectID).setReadOnly(true);</span>
-<span class="fc" id="L551">				final String alias = objectMD.getAlias();</span>
-<span class="fc" id="L552">				objectMDCacheByAlias.put(alias, objectMDCache.get(objectID));</span>
-			}
-		}
-
-<span class="fc" id="L556">	}</span>
 
 	/**
 	 * This operation unregisters an object with ID provided. This also unregisters all replicas and returns its locations.
@@ -566,38 +507,49 @@ public final class MetaDataService extends AbstractManager {
 	 */
 	public void unregisterObject(final ObjectID objectID) throws ObjectNotRegisteredException {
 
-<span class="pc bpc" id="L569" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L570">			logger.debug(&quot;Unregistering &quot; + objectID);</span>
+<span class="nc bnc" id="L510" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L511">			logger.debug(&quot;Unregistering &quot; + objectID);</span>
 		}
 
 		// Query object info
-<span class="fc" id="L574">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="fc bfc" id="L575" title="All 2 branches covered.">		if (objectMD == null) {</span>
+<span class="nc" id="L515">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L516" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="fc" id="L579">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L520">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
 		// Unregister object
-<span class="fc" id="L582">		metadataDB.deleteByID(objectID);</span>
+<span class="nc" id="L523">		metadataDB.deleteByID(objectID);</span>
 
 		// Update cache if necessary
-<span class="fc" id="L585">		objectMDCache.remove(objectID);</span>
-<span class="fc" id="L586">		final String alias = objectMD.getAlias();</span>
-<span class="fc" id="L587">		objectMDCacheByAlias.remove(alias);</span>
-<span class="fc" id="L588">	}</span>
+<span class="nc" id="L526">		objectMDCache.remove(objectID);</span>
+<span class="nc" id="L527">		final String alias = objectMD.getAlias();</span>
+<span class="nc" id="L528">		objectMDCacheByAlias.remove(alias);</span>
+<span class="nc" id="L529">	}</span>
 
 	/**
-	 * Checks that given dataset has no object.
-	 * 
-	 * @param datasetID
-	 *            the ID of the dataset to be checked
-	 * @return Whether the dataset is empty or not.
-	 * @throws Exception
-	 *             if an exception occurs.
+	 * This operation cleans DB after unregistering objects
+	 */
+	public void vacuumDB()  {
+<span class="nc bnc" id="L535" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L536">			logger.debug(&quot;Vacuum db &quot;);</span>
+		}
+<span class="nc" id="L538">		metadataDB.vacuum();</span>
+<span class="nc" id="L539">	}</span>
+
+
+	/**
+         * Checks that given dataset has no object.
+         *
+         * @param datasetID
+         *            the ID of the dataset to be checked
+         * @return Whether the dataset is empty or not.
+         * @throws Exception
+         *             if an exception occurs.
 	 */
 	public boolean checkDatasetIsEmpty(final DataSetID datasetID) {
-<span class="nc bnc" id="L600" title="All 2 branches missed.">		return !metadataDB.existsByDataSetID(datasetID);</span>
+<span class="nc bnc" id="L552" title="All 2 branches missed.">		return !metadataDB.existsByDataSetID(datasetID);</span>
 	}
 
 	/**
@@ -617,15 +569,15 @@ public final class MetaDataService extends AbstractManager {
 	public boolean checkObjectInSrcNotInDest(final ObjectID objectID, final ExecutionEnvironmentID srcBackend,
 			final ExecutionEnvironmentID destBackend) throws ObjectNotRegisteredException {
 		// Query object info
-<span class="fc" id="L620">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="pc bpc" id="L621" title="1 of 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L572">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L573" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L625">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L577">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
-<span class="fc" id="L627">		final Set&lt;ExecutionEnvironmentID&gt; backendIDs = objectMD.getExecutionEnvironmentIDs();</span>
-<span class="pc bpc" id="L628" title="2 of 4 branches missed.">		return backendIDs.contains(srcBackend) &amp;&amp; !backendIDs.contains(destBackend);</span>
+<span class="nc" id="L579">		final Set&lt;ExecutionEnvironmentID&gt; backendIDs = objectMD.getExecutionEnvironmentIDs();</span>
+<span class="nc bnc" id="L580" title="All 4 branches missed.">		return backendIDs.contains(srcBackend) &amp;&amp; !backendIDs.contains(destBackend);</span>
 	}
 
 	/**
@@ -646,54 +598,39 @@ public final class MetaDataService extends AbstractManager {
 			final ExecutionEnvironmentID destBackendID)
 					throws ObjectNotRegisteredException, ExecutionEnvironmentNotExistException {
 
-		// Verify dest. backend exists
-<span class="fc bfc" id="L650" title="All 2 branches covered.">		if (!currentExecutionEnvironments.containsKey(destBackendID)) {</span>
-<span class="fc" id="L651">			final ExecutionEnvironment backend = metadataDB.getByID(destBackendID);</span>
-<span class="fc bfc" id="L652" title="All 2 branches covered.">			if (backend == null) {</span>
-<span class="fc" id="L653">				throw new ExecutionEnvironmentNotExistException(destBackendID);</span>
-			}
-
-			// Update cache
-<span class="fc" id="L657">			currentExecutionEnvironments.put(destBackendID, backend);</span>
-<span class="pc bpc" id="L658" title="1 of 2 branches missed.">			if (backend.getLang() == Langs.LANG_JAVA) {</span>
-<span class="fc" id="L659">				currentJavaExecutionEnvironments.put(backend.getAddress(), backend.getDataClayID());</span>
-<span class="nc bnc" id="L660" title="All 2 branches missed.">			} else if (backend.getLang() == Langs.LANG_PYTHON) {</span>
-<span class="nc" id="L661">				currentPythonExecutionEnvironments.put(backend.getAddress(), backend.getDataClayID());</span>
-			}
-		}
 
 		// Query object info
-<span class="fc" id="L666">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="fc bfc" id="L667" title="All 2 branches covered.">		if (objectMD == null) {</span>
+<span class="nc" id="L603">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L604" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="fc" id="L671">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L608">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
-<span class="fc" id="L673">		final Set&lt;ExecutionEnvironmentID&gt; backendIDs = objectMD.getExecutionEnvironmentIDs();</span>
+<span class="nc" id="L610">		final Set&lt;ExecutionEnvironmentID&gt; backendIDs = objectMD.getExecutionEnvironmentIDs();</span>
 
 		// Check it is in srcBackend
-<span class="fc bfc" id="L676" title="All 2 branches covered.">		if (!backendIDs.contains(srcBackendID)) {</span>
-<span class="pc bpc" id="L677" title="1 of 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L678">				logger.debug(&quot;[==MOVE==] Migrating metadata FAILED of &quot; + objectID + &quot; from &quot; + srcBackendID + &quot; to &quot;</span>
+<span class="nc bnc" id="L613" title="All 2 branches missed.">		if (!backendIDs.contains(srcBackendID)) {</span>
+<span class="nc bnc" id="L614" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L615">				logger.debug(&quot;[==MOVE==] Migrating metadata FAILED of &quot; + objectID + &quot; from &quot; + srcBackendID + &quot; to &quot;</span>
 						+ destBackendID + &quot; due not registered in source.&quot;);
 			}
 
-<span class="fc" id="L682">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L619">			throw new ObjectNotRegisteredException(objectID);</span>
 		} else {
 			// Check it is not present in destBackend
-<span class="pc bpc" id="L685" title="1 of 2 branches missed.">			if (backendIDs.contains(destBackendID)) {</span>
-<span class="nc bnc" id="L686" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L687">					logger.debug(&quot;[==MOVE==] Migrating metadata FAILED of &quot; + objectID + &quot; from &quot; + srcBackendID</span>
+<span class="nc bnc" id="L622" title="All 2 branches missed.">			if (backendIDs.contains(destBackendID)) {</span>
+<span class="nc bnc" id="L623" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L624">					logger.debug(&quot;[==MOVE==] Migrating metadata FAILED of &quot; + objectID + &quot; from &quot; + srcBackendID</span>
 							+ &quot; to &quot; + destBackendID + &quot; due already registered in destination.&quot;);
 				}
 
-<span class="nc" id="L691">				throw new ObjectAlreadyRegisteredException(objectID);</span>
+<span class="nc" id="L628">				throw new ObjectAlreadyRegisteredException(objectID);</span>
 			} else {
-<span class="fc" id="L693">				migrateObjectToBackend(objectID, objectMD, srcBackendID, destBackendID);</span>
+<span class="nc" id="L630">				migrateObjectToBackend(objectID, objectMD, srcBackendID, destBackendID);</span>
 			}
 		}
-<span class="fc" id="L696">	}</span>
+<span class="nc" id="L633">	}</span>
 
 	/**
 	 * This operations removes the srcBackendID from the locations of the specified objects and adds the corresponding new
@@ -716,56 +653,26 @@ public final class MetaDataService extends AbstractManager {
 			final Map&lt;ExecutionEnvironmentID, Set&lt;ObjectID&gt;&gt; newObjBackends, final boolean unregisterBackend)
 					throws ExecutionEnvironmentNotExistException {
 
-		// Verify dest. backends exist
-<span class="fc bfc" id="L720" title="All 2 branches covered.">		for (final ExecutionEnvironmentID destBackendID : newObjBackends.keySet()) {</span>
-			// Verify dest. backend exists
-<span class="pc bpc" id="L722" title="1 of 2 branches missed.">			if (!currentExecutionEnvironments.containsKey(destBackendID)) {</span>
-<span class="fc" id="L723">				final ExecutionEnvironment backend = metadataDB.getByID(destBackendID);</span>
-<span class="fc bfc" id="L724" title="All 2 branches covered.">				if (backend == null) {</span>
-<span class="fc" id="L725">					throw new ExecutionEnvironmentNotExistException(destBackendID);</span>
-				}
-
-				// Update cache
-<span class="fc" id="L729">				currentExecutionEnvironments.put(destBackendID, backend);</span>
-<span class="pc bpc" id="L730" title="1 of 2 branches missed.">				if (backend.getLang() == Langs.LANG_JAVA) {</span>
-<span class="fc" id="L731">					currentJavaExecutionEnvironments.put(backend.getAddress(), backend.getDataClayID());</span>
-<span class="nc bnc" id="L732" title="All 2 branches missed.">				} else if (backend.getLang() == Langs.LANG_PYTHON) {</span>
-<span class="nc" id="L733">					currentPythonExecutionEnvironments.put(backend.getAddress(), backend.getDataClayID());</span>
-				}
-			}
-<span class="fc" id="L736">		}</span>
-
 		// Register migrations
-<span class="fc bfc" id="L739" title="All 2 branches covered.">		for (final Entry&lt;ExecutionEnvironmentID, Set&lt;ObjectID&gt;&gt; curEntry : newObjBackends.entrySet()) {</span>
-<span class="fc" id="L740">			final ExecutionEnvironmentID destBackendID = curEntry.getKey();</span>
+<span class="nc bnc" id="L657" title="All 2 branches missed.">		for (final Entry&lt;ExecutionEnvironmentID, Set&lt;ObjectID&gt;&gt; curEntry : newObjBackends.entrySet()) {</span>
+<span class="nc" id="L658">			final ExecutionEnvironmentID destBackendID = curEntry.getKey();</span>
 
 			// Query objects info
-<span class="fc bfc" id="L743" title="All 2 branches covered.">			for (final ObjectID objectID : curEntry.getValue()) {</span>
-<span class="fc" id="L744">				final ObjectMetaData curObjectMetaData = getObjectBasicMetaData(objectID);</span>
-<span class="pc bpc" id="L745" title="1 of 2 branches missed.">				if (curObjectMetaData == null) {</span>
+<span class="nc bnc" id="L661" title="All 2 branches missed.">			for (final ObjectID objectID : curEntry.getValue()) {</span>
+<span class="nc" id="L662">				final ObjectMetaData curObjectMetaData = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L663" title="All 2 branches missed.">				if (curObjectMetaData == null) {</span>
 					// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 					// path, it is returning
 					// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L749">					throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L667">					throw new ObjectNotRegisteredException(objectID);</span>
 				}
-<span class="fc" id="L751">				migrateObjectToBackend(objectID, curObjectMetaData, srcBackendID, destBackendID);</span>
-<span class="fc" id="L752">			}</span>
-<span class="fc" id="L753">		}</span>
+<span class="nc" id="L669">				migrateObjectToBackend(objectID, curObjectMetaData, srcBackendID, destBackendID);</span>
+<span class="nc" id="L670">			}</span>
+<span class="nc" id="L671">		}</span>
 
 		// Unregister backend if required
-<span class="pc bpc" id="L756" title="1 of 2 branches missed.">		if (unregisterBackend) {</span>
-			try {
-<span class="fc" id="L758">				metadataDB.deleteByID(srcBackendID);</span>
-
-				// Update cache
-<span class="fc" id="L761">				currentExecutionEnvironments.remove(srcBackendID);</span>
-
-<span class="fc" id="L763">				return true;</span>
-<span class="nc" id="L764">			} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L765">				throw new ExecutionEnvironmentNotExistException(srcBackendID);</span>
-			}
-		}
-<span class="nc" id="L768">		return false;</span>
+		//FIXME: if (unregisterBackend) {
+<span class="nc" id="L675">		return true;</span>
 	}
 
 	/**
@@ -779,31 +686,33 @@ public final class MetaDataService extends AbstractManager {
 	 */
 	public void setObjectReadOnly(final ObjectID objectID) throws ObjectNotRegisteredException {
 		// Query object info
-<span class="fc" id="L782">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="fc bfc" id="L783" title="All 2 branches covered.">		if (objectMD == null) {</span>
+<span class="nc" id="L689">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L690" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="fc" id="L787">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L694">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
-<span class="pc bpc" id="L789" title="1 of 2 branches missed.">		if (!objectMD.isReadOnly()) {</span>
+<span class="nc bnc" id="L696" title="All 2 branches missed.">		if (!objectMD.isReadOnly()) {</span>
 			// Update it
 			try {
-<span class="fc" id="L792">				metadataDB.updateReadOnlyByID(objectID, true);</span>
+<span class="nc" id="L699">				metadataDB.updateReadOnlyByID(objectID, true);</span>
 
-<span class="nc" id="L794">			} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L795">				throw new ObjectNotRegisteredException(objectID);</span>
-<span class="fc" id="L796">			}</span>
+<span class="nc" id="L701">			} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L702">				throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L703">			}</span>
 		}
 
 		// Update cache if necessary
-<span class="pc bpc" id="L800" title="1 of 2 branches missed.">		if (objectMDCache.containsKey(objectID)) {</span>
-<span class="fc" id="L801">			objectMDCache.get(objectID).setReadOnly(true);</span>
-<span class="fc" id="L802">			final String alias = objectMD.getAlias();</span>
-<span class="fc" id="L803">			objectMDCacheByAlias.put(alias, objectMDCache.get(objectID));</span>
+<span class="nc bnc" id="L707" title="All 2 branches missed.">		if (objectMDCache.containsKey(objectID)) {</span>
+<span class="nc" id="L708">			objectMDCache.get(objectID).setReadOnly(true);</span>
+<span class="nc" id="L709">			final String alias = objectMD.getAlias();</span>
+<span class="nc bnc" id="L710" title="All 2 branches missed.">			if (alias != null) {</span>
+<span class="nc" id="L711">				objectMDCacheByAlias.put(alias, objectMDCache.get(objectID));</span>
+			}
 		}
 
-<span class="fc" id="L806">	}</span>
+<span class="nc" id="L715">	}</span>
 
 	/**
 	 * This operation modifies the permissions of the object with ID provided to read-write
@@ -817,390 +726,38 @@ public final class MetaDataService extends AbstractManager {
 	 */
 	public void setObjectReadWrite(final ObjectID objectID) throws ObjectNotRegisteredException {
 		// Query object info
-<span class="fc" id="L820">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="pc bpc" id="L821" title="1 of 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L729">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L730" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L825">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L734">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
 		// WARNING: in 2.0 we assume that if an object has replicas it MUST be READ-ONLY
 		// (jmarti 13 Jun 2013)
-<span class="fc bfc" id="L829" title="All 2 branches covered.">		if (objectMD.getExecutionEnvironmentIDs().size() &gt; 1) {</span>
-<span class="fc" id="L830">			throw new ObjectHasReplicas(objectID);</span>
+<span class="nc bnc" id="L738" title="All 2 branches missed.">		if (objectMD.getExecutionEnvironmentIDs().size() &gt; 1) {</span>
+<span class="nc" id="L739">			throw new ObjectHasReplicas(objectID);</span>
 		} else {
-<span class="pc bpc" id="L832" title="1 of 2 branches missed.">			if (objectMD.isReadOnly()) {</span>
+<span class="nc bnc" id="L741" title="All 2 branches missed.">			if (objectMD.isReadOnly()) {</span>
 				// Update it
 				try {
-<span class="nc" id="L835">					metadataDB.updateReadOnlyByID(objectID, false);</span>
+<span class="nc" id="L744">					metadataDB.updateReadOnlyByID(objectID, false);</span>
 
-<span class="nc" id="L837">				} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L838">					throw new ObjectNotRegisteredException(objectID);</span>
-<span class="nc" id="L839">				}</span>
+<span class="nc" id="L746">				} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L747">					throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L748">				}</span>
 			}
 		}
 
 		// Update cache if necessary
-<span class="pc bpc" id="L844" title="1 of 2 branches missed.">		if (objectMDCache.containsKey(objectID)) {</span>
-<span class="fc" id="L845">			objectMDCache.get(objectID).setReadOnly(false);</span>
-<span class="fc" id="L846">			final String alias = objectMD.getAlias();</span>
-<span class="fc" id="L847">			objectMDCacheByAlias.put(alias, objectMDCache.get(objectID));</span>
-		}
-<span class="fc" id="L849">	}</span>
-
-	// =========== OPS FOR BACKEND MANAGEMENT ============ //
-
-	/**
-	 * This operation register the Storage Location with ID provided.
-	 * 
-	 * @param newStLoc
-	 *            Specifications of the Storage Location to register
-	 * @return The ID of the new Storage Location registered
-	 * @throws StorageLocationAlreadyExistsException
-	 *             if the storage location is already registered
-	 */
-	public StorageLocationID registerStorageLocation(final StorageLocation newStLoc)
-			throws StorageLocationAlreadyExistsException {
-		// Verify backend does not exist
-
-<span class="fc" id="L866">		final StorageLocation stLocation = metadataDB.getStorageLocationByName(newStLoc.getName());</span>
-
-<span class="pc bpc" id="L868" title="1 of 2 branches missed.">		if (stLocation != null) {</span>
-<span class="nc" id="L869">			throw new StorageLocationAlreadyExistsException(newStLoc);</span>
-		}
-<span class="pc bpc" id="L871" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L872">			logger.debug(&quot;Registering new backend: &quot; + newStLoc);</span>
-		}
-
-		// Store backend
-<span class="fc" id="L876">		metadataDB.store(newStLoc);</span>
-
-		// Update cache
-<span class="fc" id="L879">		currentStorageLocations.put(newStLoc.getDataClayID(), newStLoc);</span>
-<span class="fc" id="L880">		return newStLoc.getDataClayID();</span>
-	}
-
-	/**
-	 * Unregisters a storage location
-	 * 
-	 * @param stLocID
-	 *            id of the storage location to be unregistered
-	 */
-	public void unregisterStorageLocation(final StorageLocationID stLocID) {
-<span class="nc" id="L890">		metadataDB.deleteByID(stLocID);</span>
-<span class="nc" id="L891">	}</span>
-
-	/**
-	 * Updates host and port of a storage location
-	 * 
-	 * @param stLocID
-	 *            id of the storage location to be updated
-	 * @param newhost New host 
-	 * @param newport New port
-	 */
-	public void updateStorageLocation(final StorageLocationID stLocID, final String newhost, final Integer newport) {
-<span class="nc" id="L902">		metadataDB.updateStorageLocationByID(stLocID, newhost, newport);</span>
-<span class="nc" id="L903">	}</span>
-
-	/**
-	 * Updates host and port of a execution environment
-	 * 
-	 * @param id
-	 *            id of the execution environment to be updated
-	 * @param newhost New host 
-	 * @param newport New port
-	 */
-	public void updateExecutionEnvironment(final ExecutionEnvironmentID eeID, final String newhost, final Integer newport) {
-<span class="nc" id="L914">		metadataDB.updateExecutionEnvironmentByID(eeID, newhost, newport);</span>
-<span class="nc" id="L915">	}</span>
-
-	/**
-	 * This operation register the Execution Environment with ID provided.
-	 * 
-	 * @param newBackend
-	 *            Specifications of the Execution Environment to register
-	 * @return The ID of the new Execution Environment registered
-	 * @throws ExecutionEnvironmentAlreadyExistsException
-	 *             if the execution environment is already registered
-	 */
-	public ExecutionEnvironmentID registerExecutionEnvironment(final ExecutionEnvironment newBackend)
-			throws ExecutionEnvironmentAlreadyExistsException {
-		// Verify backend does not exist
-<span class="fc" id="L929">		final ExecutionEnvironment exeEnv = metadataDB.getByID(newBackend.getDataClayID());</span>
-
-<span class="pc bpc" id="L931" title="1 of 2 branches missed.">		if (exeEnv != null) {</span>
-<span class="nc" id="L932">			throw new ExecutionEnvironmentAlreadyExistsException(newBackend);</span>
-		}
-<span class="pc bpc" id="L934" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L935">			logger.debug(&quot;Registering new backend: &quot; + newBackend);</span>
-		}
-
-		// Store backend
-<span class="fc" id="L939">		metadataDB.store(newBackend);</span>
-
-		// Update cache
-<span class="fc" id="L942">		currentExecutionEnvironments.put(newBackend.getDataClayID(), newBackend);</span>
-<span class="pc bpc" id="L943" title="1 of 2 branches missed.">		if (newBackend.getLang() == Langs.LANG_JAVA) {</span>
-<span class="fc" id="L944">			currentJavaExecutionEnvironments.put(newBackend.getAddress(), newBackend.getDataClayID());</span>
-<span class="nc bnc" id="L945" title="All 2 branches missed.">		} else if (newBackend.getLang() == Langs.LANG_PYTHON) {</span>
-<span class="nc" id="L946">			currentPythonExecutionEnvironments.put(newBackend.getAddress(), newBackend.getDataClayID());</span>
-		}
-<span class="fc" id="L948">		return newBackend.getDataClayID();</span>
-	}
-
-	/**
-	 * Unregisters an execution environment
-	 * 
-	 * @param execEnvID
-	 *            id of the storage location to be unregistered
-	 */
-	public void unregisterExecutionEnvironment(final ExecutionEnvironmentID execEnvID) {
-<span class="nc" id="L958">		metadataDB.deleteByID(execEnvID);</span>
-<span class="nc" id="L959">	}</span>
-
-	/**
-	 * This operation queries a Storage Location by its name
-	 * 
-	 * @param stLocName
-	 *            Name of the Storage Location to get
-	 * @return The ID of the queried Storage Location
-	 * @throws Exception
-	 *             if an exception occurs: &lt;br&gt;
-	 *             StorageLocationNotExistException: if a storage location with the given name does not exist
-	 */
-	public StorageLocationID getStorageLocationID(final String stLocName) {
-
-<span class="nc bnc" id="L973" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L974">			logger.debug(&quot;Looking for Storage Location named: &quot; + stLocName);</span>
-		}
-
-		// Look up in the cache
-<span class="nc bnc" id="L978" title="All 2 branches missed.">		for (final Entry&lt;StorageLocationID, StorageLocation&gt; stLocEntry : currentStorageLocations.entrySet()) {</span>
-<span class="nc bnc" id="L979" title="All 2 branches missed.">			if (stLocEntry.getValue().getName().equals(stLocName)) {</span>
-<span class="nc" id="L980">				return stLocEntry.getKey();</span>
-			}
-<span class="nc" id="L982">		}</span>
-
-		// If it is not in the cache, query it
-<span class="nc" id="L985">		final StorageLocation res = metadataDB.getStorageLocationByName(stLocName);</span>
-<span class="nc bnc" id="L986" title="All 2 branches missed.">		if (res == null) {</span>
-<span class="nc" id="L987">			throw new StorageLocationNotExistException(stLocName);</span>
-		} else {
-			// Update cache
-<span class="nc" id="L990">			currentStorageLocations.put(res.getDataClayID(), res);</span>
-		}
-
-<span class="nc" id="L993">		return res.getDataClayID();</span>
-	}
-
-	/**
-	 * This operation retrieves the info of a storage location
-	 * 
-	 * @param storageLocationID
-	 *            ID of the storage location
-	 * @return the info of the storage location
-	 * @throws Exception
-	 *             if an exception occurs: &lt;br&gt;
-	 *             StorageLocationNotExistException: if the storage location does not exist
-	 */
-	public StorageLocation getStorageLocationInfo(final StorageLocationID storageLocationID) {
-<span class="nc" id="L1007">		final StorageLocation result = getStorageLocation(storageLocationID);</span>
-<span class="nc" id="L1008">		return result;</span>
-	}
-
-	/**
-	 * This operation retrieves the info of all the current registered storage locations.
-	 * 
-	 * @return info of the registered storage locations indexed by their IDs
-	 */
-	public Map&lt;StorageLocationID, StorageLocation&gt; getAllStorageLocationsInfo() {
-
-<span class="nc" id="L1018">		final List&lt;StorageLocation&gt; backends = metadataDB.getAllStorageLocations();</span>
-<span class="nc" id="L1019">		final Map&lt;StorageLocationID, StorageLocation&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L1020" title="All 2 branches missed.">		for (final StorageLocation backend : backends) {</span>
-<span class="nc" id="L1021">			result.put(backend.getDataClayID(), backend);</span>
-<span class="nc" id="L1022">		}</span>
-<span class="nc" id="L1023">		return result;</span>
-	}
-
-	/**
-	 * This operation retrieves the info of an execution environment
-	 * 
-	 * @param execEnvID
-	 *            ID of the execution environment to get its info
-	 * @return the info of the backend
-	 * @throws Exception
-	 *             if an exception occurs: &lt;br&gt;
-	 *             ExecutionEnvironmentNotExistException: if backend does not exist
-	 */
-	public ExecutionEnvironment getExecutionEnvironmentInfo(final ExecutionEnvironmentID execEnvID) {
-<span class="fc" id="L1037">		final ExecutionEnvironment result = getExecutionEnvironment(execEnvID);</span>
-<span class="fc" id="L1038">		return result;</span>
-	}
-
-	/**
-	 * This operation retrieves the info of all the current registered execution environments.
-	 * @param execEnvLang language
-	 * @return info of the registered execution environments indexed by their IDs
-	 */
-	public Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getAllExecutionEnvironmentsInfo(final Langs execEnvLang) {
-		final List&lt;ExecutionEnvironment&gt; execEnvs;
-<span class="nc bnc" id="L1048" title="All 4 branches missed.">		if (execEnvLang == Langs.LANG_NONE || execEnvLang == null) {</span>
-<span class="nc" id="L1049">			execEnvs = metadataDB.getAllExecutionEnvironments();</span>
-		} else {
-<span class="nc" id="L1051">			execEnvs = metadataDB.getAllExecutionEnvironmentsByLang(execEnvLang);</span>
-		}
-<span class="nc" id="L1053">		final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
-
-<span class="nc bnc" id="L1055" title="All 2 branches missed.">		for (final ExecutionEnvironment execEnv : execEnvs) {</span>
-<span class="nc bnc" id="L1056" title="All 2 branches missed.">			if (execEnv.getLang().equals(execEnvLang)) {</span>
-<span class="nc" id="L1057">				result.put(execEnv.getDataClayID(), execEnv);</span>
-			}
-<span class="nc" id="L1059">		}</span>
-<span class="nc" id="L1060">		return result;</span>
-	}
-
-	/**
-	 * Retrieves a random execution environment
-	 * 
-	 * @return the execution environment spec
-	 */
-	public Tuple&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getRandomExecutionEnvironmentInfo(
-			final Langs execEnvLang) {
-
-		// Get random backend from registered ones
-<span class="fc" id="L1072">		ExecutionEnvironmentID backendID = null;</span>
-<span class="pc bpc" id="L1073" title="1 of 2 branches missed.">		if (execEnvLang == Langs.LANG_JAVA) {</span>
-<span class="pc bpc" id="L1074" title="1 of 2 branches missed.">			if (!currentJavaExecutionEnvironments.isEmpty()) {</span>
-<span class="fc" id="L1075">				final int index = new Random().nextInt(currentJavaExecutionEnvironments.size());</span>
-<span class="fc" id="L1076">				backendID = (ExecutionEnvironmentID) currentJavaExecutionEnvironments.values().toArray()[index];</span>
-<span class="fc" id="L1077">			}</span>
-<span class="nc bnc" id="L1078" title="All 2 branches missed.">		} else if (execEnvLang == Langs.LANG_PYTHON) {</span>
-<span class="nc bnc" id="L1079" title="All 2 branches missed.">			if (!currentPythonExecutionEnvironments.isEmpty()) {</span>
-<span class="nc" id="L1080">				final int index = new Random().nextInt(currentPythonExecutionEnvironments.size());</span>
-<span class="nc" id="L1081">				backendID = (ExecutionEnvironmentID) currentPythonExecutionEnvironments.values().toArray()[index];</span>
+<span class="nc bnc" id="L753" title="All 2 branches missed.">		if (objectMDCache.containsKey(objectID)) {</span>
+<span class="nc" id="L754">			objectMDCache.get(objectID).setReadOnly(false);</span>
+<span class="nc" id="L755">			final String alias = objectMD.getAlias();</span>
+<span class="nc bnc" id="L756" title="All 2 branches missed.">			if (alias != null) {</span>
+<span class="nc" id="L757">				objectMDCacheByAlias.put(alias, objectMDCache.get(objectID));</span>
 			}
 		}
-<span class="pc bpc" id="L1084" title="1 of 2 branches missed.">		if (backendID == null) {</span>
-			final ExecutionEnvironment backend;
-<span class="nc" id="L1086">			final List&lt;ExecutionEnvironment&gt; backends = metadataDB.getAllExecutionEnvironmentsByLang(execEnvLang);</span>
-<span class="nc bnc" id="L1087" title="All 2 branches missed.">			if (backends.isEmpty()) {</span>
-<span class="nc" id="L1088">				throw new ExecutionEnvironmentNotExistException(execEnvLang);</span>
-			}
-<span class="nc" id="L1090">			final int index = new Random().nextInt(backends.size());</span>
-<span class="nc" id="L1091">			backend = backends.get(index);</span>
-
-			// Update cache
-<span class="nc bnc" id="L1094" title="All 2 branches missed.">			for (final ExecutionEnvironment curBackend : backends) {</span>
-<span class="nc" id="L1095">				currentExecutionEnvironments.put(curBackend.getDataClayID(), curBackend);</span>
-<span class="nc bnc" id="L1096" title="All 2 branches missed.">				if (execEnvLang == Langs.LANG_JAVA) {</span>
-<span class="nc" id="L1097">					currentJavaExecutionEnvironments.put(curBackend.getAddress(), curBackend.getDataClayID());</span>
-<span class="nc bnc" id="L1098" title="All 2 branches missed.">				} else if (execEnvLang == Langs.LANG_PYTHON) {</span>
-<span class="nc" id="L1099">					currentPythonExecutionEnvironments.put(curBackend.getAddress(), curBackend.getDataClayID());</span>
-				}
-<span class="nc" id="L1101">			}</span>
-
-<span class="nc" id="L1103">			return new Tuple&lt;&gt;(backend.getDataClayID(), backend);</span>
-		} else {
-<span class="fc" id="L1105">			return new Tuple&lt;&gt;(backendID, getExecutionEnvironmentInfo(backendID));</span>
-		}
-	}
-
-	// ===== OBEJCT FEDERATION OPS ======= //
-
-	/**
-	 * Register external dataclay
-	 * @param dataClay instance to register
-	 */
-	public void registerExternalDataclay(final DataClayInstance dataClay) {
-		try {
-
-<span class="fc" id="L1118">			metadataDB.insertDataClayInstance(dataClay);</span>
-
-			// update cache 
-<span class="fc" id="L1121">			final DataClayInstance dClayInfo = metadataDB.getDataClayInfo(dataClay.getDcID());</span>
-<span class="fc" id="L1122">			externalDataClaysCache.put(dataClay.getDcID(), dClayInfo);</span>
-
-<span class="fc bfc" id="L1124" title="All 2 branches covered.">			for (int i = 0; i &lt; dClayInfo.getHosts().length; ++i) { </span>
-<span class="fc" id="L1125">				final String host = dClayInfo.getHosts()[i];</span>
-<span class="fc" id="L1126">				final Integer port = dClayInfo.getPorts()[i];</span>
-<span class="fc" id="L1127">				final Tuple&lt;String, Integer&gt; key = new Tuple&lt;&gt;(host, port);</span>
-<span class="fc" id="L1128">				final DataClayInstanceID id = dataClaysPerHostPortCache.get(key);</span>
-<span class="pc bpc" id="L1129" title="1 of 2 branches missed.">				if (id == null) {</span>
-<span class="fc" id="L1130">					dataClaysPerHostPortCache.put(key, dataClay.getDcID());</span>
-				}
-			}
-<span class="nc" id="L1133">		} catch (final DbObjectAlreadyExistException ex1) {</span>
-<span class="nc bnc" id="L1134" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1135">				logger.debug(&quot;External dataClay {} already registered&quot;, dataClay);</span>
-			}
-<span class="nc" id="L1137">			return;</span>
-<span class="fc" id="L1138">		}</span>
-<span class="fc" id="L1139">	}</span>
-
-	/**
-	 * Unregister external dataClay address
-	 * @param host Host
-	 * @param port Port
-	 */
-	public void unregisterExternalDataClayAddress(final String host, final Integer port) {
-		try {
-
-<span class="nc" id="L1149">			metadataDB.deleteDataClayInstance(host, port);</span>
-<span class="nc" id="L1150">		} catch (final Exception ex1) {</span>
-<span class="nc bnc" id="L1151" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1152">				logger.debug(&quot;External dataClay at {}:{} already unregistered: &quot;, host, port, ex1);</span>
-			}
-<span class="nc" id="L1154">			return;</span>
-<span class="nc" id="L1155">		}</span>
-<span class="nc" id="L1156">	}</span>
-
-	/**
-	 * Retrieves information about an external dataClay instance identified by provided id
-	 * 
-	 * @param extDataClayID
-	 *            id of the external dataClay instance
-	 * @return info of external dataClay instance
-	 * @throws ExternalDataClayNotRegisteredException
-	 *             if no info about dataClay instance is registered
-	 */
-	public DataClayInstance getExternalDataClayInfo(final DataClayInstanceID extDataClayID)
-			throws ExternalDataClayNotRegisteredException {
-
-<span class="nc" id="L1170">		DataClayInstance dClayInfo = externalDataClaysCache.get(extDataClayID);</span>
-<span class="nc bnc" id="L1171" title="All 2 branches missed.">		if (dClayInfo == null) {</span>
-<span class="nc" id="L1172">			dClayInfo = metadataDB.getDataClayInfo(extDataClayID);</span>
-<span class="nc bnc" id="L1173" title="All 2 branches missed.">			if (dClayInfo == null) {</span>
-<span class="nc" id="L1174">				throw new ExternalDataClayNotRegisteredException(extDataClayID);</span>
-			}
-<span class="nc" id="L1176">			externalDataClaysCache.put(extDataClayID, dClayInfo);</span>
-		}
-<span class="nc" id="L1178">		return dClayInfo;</span>
-	}
-
-	/**
-	 * Retrieves id of an external dataClay instance identified by host and port
-	 * 
-	 * @param host host 
-	 * @param port port
-	 * @return id of external dataClay instance
-	 * @throws ExternalDataClayNotRegisteredException
-	 *             if no info about dataClay instance is registered
-	 */
-	public DataClayInstanceID getExternalDataClayID(final String host, final int port)
-			throws ExternalDataClayNotRegisteredException {
-
-<span class="nc" id="L1193">		final Tuple&lt;String, Integer&gt; key = new Tuple&lt;&gt;(host, port);</span>
-<span class="nc" id="L1194">		DataClayInstanceID id = dataClaysPerHostPortCache.get(key);</span>
-<span class="nc bnc" id="L1195" title="All 2 branches missed.">		if (id == null) {</span>
-<span class="nc" id="L1196">			id = metadataDB.getDataClayID(host, port);</span>
-<span class="nc bnc" id="L1197" title="All 2 branches missed.">			if (id == null) {</span>
-<span class="nc" id="L1198">				throw new ExternalDataClayNotRegisteredException(host, port);</span>
-			}
-<span class="nc" id="L1200">			dataClaysPerHostPortCache.put(key, id);</span>
-		}
-<span class="nc" id="L1202">		return id;</span>
-	}
+<span class="nc" id="L760">	}</span>
 
 	/**
 	 * Registers an object to be federated with an external dataClay identified with the given ID
@@ -1213,37 +770,32 @@ public final class MetaDataService extends AbstractManager {
 	 *         true otherwise.
 	 */
 	public boolean federateObjectWith(final ObjectID objectID, final DataClayInstanceID dataClayID) {
-<span class="nc" id="L1216">		Set&lt;DataClayInstanceID&gt; dcIDs = federatedObjectsCache.get(objectID);</span>
-<span class="nc bnc" id="L1217" title="All 2 branches missed.">		if (dcIDs != null) {</span>
-<span class="nc bnc" id="L1218" title="All 2 branches missed.">			if (dcIDs.contains(dataClayID)) {</span>
-<span class="nc" id="L1219">				return false;</span>
+<span class="nc" id="L773">		Set&lt;DataClayInstanceID&gt; dcIDs = federatedObjectsCache.get(objectID);</span>
+<span class="nc bnc" id="L774" title="All 2 branches missed.">		if (dcIDs != null) {</span>
+<span class="nc bnc" id="L775" title="All 2 branches missed.">			if (dcIDs.contains(dataClayID)) {</span>
+<span class="nc" id="L776">				return false;</span>
 			}
 		}
 
 		// Check object exists
-<span class="nc" id="L1224">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="nc bnc" id="L1225" title="All 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L781">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L782" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L1229">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L786">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
 
-		// Get external dataClay info
-<span class="nc" id="L1233">		final DataClayInstance di = getExternalDataClayInfo(dataClayID);</span>
-<span class="nc bnc" id="L1234" title="All 2 branches missed.">		if (di == null) {</span>
-<span class="nc" id="L1235">			return false;</span>
+<span class="nc bnc" id="L789" title="All 2 branches missed.">		if (!metadataDB.insertFederatedObject(objectID, dataClayID)) {</span>
+<span class="nc" id="L790">			return false;</span>
 		}
-<span class="nc bnc" id="L1237" title="All 2 branches missed.">		if (!metadataDB.insertFederatedObject(objectID, dataClayID)) {</span>
-<span class="nc" id="L1238">			return false;</span>
+<span class="nc" id="L792">		dcIDs = federatedObjectsCache.get(objectID);</span>
+<span class="nc bnc" id="L793" title="All 2 branches missed.">		if (dcIDs == null) {</span>
+<span class="nc" id="L794">			dcIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L795">			federatedObjectsCache.put(objectID, dcIDs);</span>
 		}
-<span class="nc" id="L1240">		dcIDs = federatedObjectsCache.get(objectID);</span>
-<span class="nc bnc" id="L1241" title="All 2 branches missed.">		if (dcIDs == null) {</span>
-<span class="nc" id="L1242">			dcIDs = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L1243">			federatedObjectsCache.put(objectID, dcIDs);</span>
-		}
-<span class="nc" id="L1245">		dcIDs.add(dataClayID);</span>
-<span class="nc" id="L1246">		return true;</span>
+<span class="nc" id="L797">		dcIDs.add(dataClayID);</span>
+<span class="nc" id="L798">		return true;</span>
 	}
 
 	/**
@@ -1258,28 +810,22 @@ public final class MetaDataService extends AbstractManager {
 	public boolean unfederateObjectWith(final ObjectID objectID, final DataClayInstanceID dataClayID) {
 
 		// Check object exists
-<span class="nc" id="L1261">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
-<span class="nc bnc" id="L1262" title="All 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L813">		final ObjectMetaData objectMD = getObjectBasicMetaData(objectID);</span>
+<span class="nc bnc" id="L814" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// TODO: Need new design for this. since getObjectBasicMetadata is in critical
 			// path, it is returning
 			// null instead of exception to avoid penalty for serializing an exception.
-<span class="nc" id="L1266">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L818">			throw new ObjectNotRegisteredException(objectID);</span>
 		}
 
-		// Get external dataClay info
-<span class="nc" id="L1270">		final DataClayInstance di = getExternalDataClayInfo(dataClayID);</span>
-<span class="nc bnc" id="L1271" title="All 2 branches missed.">		if (di == null) {</span>
-<span class="nc" id="L1272">			return false;</span>
-		}
-
-<span class="nc bnc" id="L1275" title="All 2 branches missed.">		if (!metadataDB.deleteFederatedObject(objectID, dataClayID)) {</span>
+<span class="nc bnc" id="L821" title="All 2 branches missed.">		if (!metadataDB.deleteFederatedObject(objectID, dataClayID)) {</span>
 			// object already unfederated
-<span class="nc" id="L1277">			return false;</span>
+<span class="nc" id="L823">			return false;</span>
 		}
 
-<span class="nc" id="L1280">		federatedObjectsCache.remove(objectID);</span>
+<span class="nc" id="L826">		federatedObjectsCache.remove(objectID);</span>
 
-<span class="nc" id="L1282">		return true;</span>
+<span class="nc" id="L828">		return true;</span>
 	}
 
 	/**
@@ -1292,22 +838,22 @@ public final class MetaDataService extends AbstractManager {
 	 * @return true if the object is federated. false otherwise.
 	 */
 	public boolean checkIsFederatedWith(final ObjectID objectID, final DataClayInstanceID dataClayID) {
-<span class="nc" id="L1295">		Set&lt;DataClayInstanceID&gt; dcIDs = federatedObjectsCache.get(objectID);</span>
-<span class="nc bnc" id="L1296" title="All 2 branches missed.">		if (dcIDs != null) {</span>
-<span class="nc bnc" id="L1297" title="All 2 branches missed.">			if (dcIDs.contains(dataClayID)) {</span>
-<span class="nc" id="L1298">				return true;</span>
+<span class="nc" id="L841">		Set&lt;DataClayInstanceID&gt; dcIDs = federatedObjectsCache.get(objectID);</span>
+<span class="nc bnc" id="L842" title="All 2 branches missed.">		if (dcIDs != null) {</span>
+<span class="nc bnc" id="L843" title="All 2 branches missed.">			if (dcIDs.contains(dataClayID)) {</span>
+<span class="nc" id="L844">				return true;</span>
 			}
 		}
-<span class="nc" id="L1301">		final boolean result = metadataDB.existsFederatedObjectWithDC(objectID, dataClayID);</span>
-<span class="nc bnc" id="L1302" title="All 2 branches missed.">		if (result) {</span>
-<span class="nc" id="L1303">			dcIDs = federatedObjectsCache.get(objectID);</span>
-<span class="nc bnc" id="L1304" title="All 2 branches missed.">			if (dcIDs == null) {</span>
-<span class="nc" id="L1305">				dcIDs = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L1306">				federatedObjectsCache.put(objectID, dcIDs);</span>
+<span class="nc" id="L847">		final boolean result = metadataDB.existsFederatedObjectWithDC(objectID, dataClayID);</span>
+<span class="nc bnc" id="L848" title="All 2 branches missed.">		if (result) {</span>
+<span class="nc" id="L849">			dcIDs = federatedObjectsCache.get(objectID);</span>
+<span class="nc bnc" id="L850" title="All 2 branches missed.">			if (dcIDs == null) {</span>
+<span class="nc" id="L851">				dcIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L852">				federatedObjectsCache.put(objectID, dcIDs);</span>
 			}
-<span class="nc" id="L1308">			dcIDs.add(dataClayID);</span>
+<span class="nc" id="L854">			dcIDs.add(dataClayID);</span>
 		}
-<span class="nc" id="L1310">		return result;</span>
+<span class="nc" id="L856">		return result;</span>
 	}
 
 	/**
@@ -1316,15 +862,7 @@ public final class MetaDataService extends AbstractManager {
 	 * @return dataClay IDs the object is federated with
 	 */
 	public Set&lt;DataClayInstanceID&gt; getDataClaysOurObjectIsFederatedWith(final ObjectID objectID) {
-<span class="nc" id="L1319">		return metadataDB.getDataClaysOurObjectIsFederatedWith(objectID);</span>
-	}
-
-	/**
-	 * Get all dataClays current dataClay has objects federated with
-	 * @return dataClay IDs current dataClay has objects federated with
-	 */
-	public Set&lt;DataClayInstanceID&gt; getAllExternalDataClays() {
-<span class="nc" id="L1327">		return metadataDB.getAllExternalDataClays();</span>
+<span class="nc" id="L865">		return metadataDB.getDataClaysOurObjectIsFederatedWith(objectID);</span>
 	}
 
 	/**
@@ -1336,11 +874,8 @@ public final class MetaDataService extends AbstractManager {
 	 *            id of the external source dataClay
 	 */
 	public void registerExternalObject(final ObjectID objectID, final DataClayInstanceID dataClayID) {
-		// Check external dataClay is registered
-<span class="nc" id="L1340">		getExternalDataClayInfo(dataClayID);</span>
-
-<span class="nc" id="L1342">		metadataDB.insertExternalObject(objectID, dataClayID, false);</span>
-<span class="nc" id="L1343">	}</span>
+<span class="nc" id="L877">		metadataDB.insertExternalObject(objectID, dataClayID, false);</span>
+<span class="nc" id="L878">	}</span>
 
 	/**
 	 * Unregisters an object that is federated from an external dataClay instance.
@@ -1349,8 +884,8 @@ public final class MetaDataService extends AbstractManager {
 	 *            ID of the federated object in the external dataClay
 	 */
 	public void unregisterExternalObject(final ObjectID objectID) {
-<span class="nc" id="L1352">		metadataDB.deleteExternalObject(objectID);</span>
-<span class="nc" id="L1353">	}</span>
+<span class="nc" id="L887">		metadataDB.deleteExternalObject(objectID);</span>
+<span class="nc" id="L888">	}</span>
 
 	/**
 	 * Checks if the object is actually a federated object
@@ -1360,8 +895,8 @@ public final class MetaDataService extends AbstractManager {
 	 * @return TRUE if object is external.
 	 */
 	public boolean existsExternalObject(final ObjectID objectID) {
-<span class="nc bnc" id="L1363" title="All 2 branches missed.">		return metadataDB.existsExternalObject(objectID, true) </span>
-<span class="nc bnc" id="L1364" title="All 2 branches missed.">				|| metadataDB.existsExternalObject(objectID, false);</span>
+<span class="nc bnc" id="L898" title="All 2 branches missed.">		return metadataDB.existsExternalObject(objectID, true) </span>
+<span class="nc bnc" id="L899" title="All 2 branches missed.">				|| metadataDB.existsExternalObject(objectID, false);</span>
 	}
 
 	/**
@@ -1372,7 +907,7 @@ public final class MetaDataService extends AbstractManager {
 	 * @return TRUE if object is external.
 	 */
 	public boolean externalObjectIsRegistered(final ObjectID objectID) {
-<span class="nc" id="L1375">		return metadataDB.existsExternalObject(objectID, false);</span>
+<span class="nc" id="L910">		return metadataDB.existsExternalObject(objectID, false);</span>
 	}
 
 	/**
@@ -1383,7 +918,7 @@ public final class MetaDataService extends AbstractManager {
 	 * @return TRUE if object is external.
 	 */
 	public boolean externalObjectIsUnregistered(final ObjectID objectID) {
-<span class="nc" id="L1386">		return metadataDB.existsExternalObject(objectID, true);</span>
+<span class="nc" id="L921">		return metadataDB.existsExternalObject(objectID, true);</span>
 	}
 
 	/**
@@ -1395,8 +930,8 @@ public final class MetaDataService extends AbstractManager {
 	 *             if object does not exist
 	 */
 	public void markExternalObjectAsUnregistered(final ObjectID objectID) { 
-<span class="nc" id="L1398">		this.metadataDB.updateUnregisteredFlagExternalObject(objectID, true);</span>
-<span class="nc" id="L1399">	}</span>
+<span class="nc" id="L933">		this.metadataDB.updateUnregisteredFlagExternalObject(objectID, true);</span>
+<span class="nc" id="L934">	}</span>
 
 	/**
 	 * Update external object to be marked as registered 
@@ -1407,15 +942,15 @@ public final class MetaDataService extends AbstractManager {
 	 *             if object does not exist
 	 */
 	public void markExternalObjectAsRegistered(final ObjectID objectID) { 
-<span class="nc" id="L1410">		this.metadataDB.updateUnregisteredFlagExternalObject(objectID, false);</span>
-<span class="nc" id="L1411">	}</span>
+<span class="nc" id="L945">		this.metadataDB.updateUnregisteredFlagExternalObject(objectID, false);</span>
+<span class="nc" id="L946">	}</span>
 
 	/**
 	 * Get unregistered external objects.
 	 * @return id of external objects unregistered
 	 */
 	public Set&lt;ObjectID&gt; getUnregisteredExternalObjects() {
-<span class="nc" id="L1418">		return metadataDB.getUnregisteredExternalObjects();</span>
+<span class="nc" id="L953">		return metadataDB.getUnregisteredExternalObjects();</span>
 	}
 
 	/**
@@ -1426,7 +961,7 @@ public final class MetaDataService extends AbstractManager {
 	 * @return info of the external source dataClay
 	 */
 	public DataClayInstanceID getExternalSourceDataClayOfObject(final ObjectID objectID) {
-<span class="nc" id="L1429">		return metadataDB.getExternalDataClayOfObject(objectID);</span>
+<span class="nc" id="L964">		return metadataDB.getExternalDataClayOfObject(objectID);</span>
 	}
 
 	/**
@@ -1437,7 +972,7 @@ public final class MetaDataService extends AbstractManager {
 	 * @return all the objects federated/belonging to dataClay with ID provided.
 	 */
 	public Set&lt;ObjectID&gt; getObjectsFederatedWithDataClay(final DataClayInstanceID extDataClayInstanceID) {
-<span class="nc" id="L1440">		return metadataDB.getObjectsFederatedWithDataClay(extDataClayInstanceID);</span>
+<span class="nc" id="L975">		return metadataDB.getObjectsFederatedWithDataClay(extDataClayInstanceID);</span>
 	}
 
 	// ========= PRIVATE FUNCTIONS ========= //
@@ -1450,16 +985,15 @@ public final class MetaDataService extends AbstractManager {
 	 * @return MetaDataInfo representation of the given object metadata
 	 */
 	private MetaDataInfo buildMetaDataInfo(final ObjectMetaData objectMD) {
-<span class="fc" id="L1453">		final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; objectMDlocations = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L1454" title="All 2 branches covered.">		for (final ExecutionEnvironmentID curLocID : objectMD.getExecutionEnvironmentIDs()) {</span>
-<span class="fc" id="L1455">			final ExecutionEnvironment loc = getExecutionEnvironment(curLocID);</span>
-<span class="fc" id="L1456">			objectMDlocations.put(curLocID, loc);</span>
-<span class="fc" id="L1457">		}</span>
-<span class="fc" id="L1458">		final MetaDataInfo result = new MetaDataInfo(objectMD.getDataClayID(), objectMD.getDataSetID(),</span>
-<span class="fc" id="L1459">				objectMD.getMetaClassID(), objectMD.isReadOnly(), objectMDlocations, objectMD.getAlias(),</span>
-<span class="fc" id="L1460">				objectMD.getOwnerID());</span>
+<span class="nc" id="L988">		final Set&lt;ExecutionEnvironmentID&gt; objectMDlocations = ConcurrentHashMap.newKeySet();</span>
+<span class="nc bnc" id="L989" title="All 2 branches missed.">		for (final ExecutionEnvironmentID curLocID : objectMD.getExecutionEnvironmentIDs()) {</span>
+<span class="nc" id="L990">			objectMDlocations.add(curLocID);</span>
+<span class="nc" id="L991">		}</span>
+<span class="nc" id="L992">		final MetaDataInfo result = new MetaDataInfo(objectMD.getDataClayID(), objectMD.getDataSetID(),</span>
+<span class="nc" id="L993">				objectMD.getMetaClassID(), objectMD.isReadOnly(), objectMDlocations, objectMD.getAlias(),</span>
+<span class="nc" id="L994">				objectMD.getOwnerID());</span>
 
-<span class="fc" id="L1462">		return result;</span>
+<span class="nc" id="L996">		return result;</span>
 	}
 
 	/**
@@ -1472,29 +1006,31 @@ public final class MetaDataService extends AbstractManager {
 	 *             if the object is not registered
 	 */
 	private ObjectMetaData getObjectBasicMetaData(final ObjectID objectID) {
-<span class="pc bpc" id="L1475" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1476">			logger.debug(&quot;Retrieval of ObjectBasicMetaData for {}&quot;, objectID);</span>
+<span class="nc bnc" id="L1009" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1010">			logger.debug(&quot;Retrieval of ObjectBasicMetaData for {}&quot;, objectID);</span>
 		}
 
-<span class="fc" id="L1479">		ObjectMetaData objectMD = objectMDCache.get(objectID);</span>
-<span class="pc bpc" id="L1480" title="1 of 2 branches missed.">		if (objectMD == null) {</span>
+<span class="nc" id="L1013">		ObjectMetaData objectMD = objectMDCache.get(objectID);</span>
+<span class="nc bnc" id="L1014" title="All 2 branches missed.">		if (objectMD == null) {</span>
 			// Query by example
-<span class="fc" id="L1482">			objectMD = metadataDB.getByID(objectID);</span>
-<span class="fc bfc" id="L1483" title="All 2 branches covered.">			if (objectMD != null) {</span>
+<span class="nc" id="L1016">			objectMD = metadataDB.getByID(objectID);</span>
+<span class="nc bnc" id="L1017" title="All 2 branches missed.">			if (objectMD != null) {</span>
 				// Update cache if necessary
-<span class="pc bpc" id="L1485" title="1 of 2 branches missed.">				if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1486">					logger.debug(&quot;[==Get metadata==] Adding version to cache of metadatas: {} -&gt; {}&quot;, objectID, objectMD);</span>
+<span class="nc bnc" id="L1019" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1020">					logger.debug(&quot;[==Get metadata==] Adding version to cache of metadatas: {} -&gt; {}&quot;, objectID, objectMD);</span>
 				}
-<span class="fc" id="L1488">				objectMDCache.put(objectID, objectMD);</span>
-<span class="fc" id="L1489">				final String alias = objectMD.getAlias();</span>
-<span class="fc" id="L1490">				objectMDCacheByAlias.put(alias, objectMD);</span>
-<span class="fc" id="L1491">			} else {</span>
-<span class="fc" id="L1492">				return null; // do not send exception to avoid serializing it, critical path.</span>
+<span class="nc" id="L1022">				objectMDCache.put(objectID, objectMD);</span>
+<span class="nc" id="L1023">				final String alias = objectMD.getAlias();</span>
+<span class="nc bnc" id="L1024" title="All 2 branches missed.">				if (alias != null) {</span>
+<span class="nc" id="L1025">					objectMDCacheByAlias.put(alias, objectMD);</span>
+				}
+<span class="nc" id="L1027">			} else {</span>
+<span class="nc" id="L1028">				return null; // do not send exception to avoid serializing it, critical path.</span>
 			}
 
 		} else { 
-<span class="nc bnc" id="L1496" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1497">				logger.debug(&quot;Found metadata {} in cache for {}&quot;, objectMD, objectID);</span>
+<span class="nc bnc" id="L1032" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1033">				logger.debug(&quot;Found metadata {} in cache for {}&quot;, objectMD, objectID);</span>
 			}
 		}
 
@@ -1505,64 +1041,10 @@ public final class MetaDataService extends AbstractManager {
 		 * Tuple&lt;&gt;(objectMD.getMetaClassID(), alias), objectMD); } } else { throw new ObjectNotRegisteredException(objectID); }
 		 * } }
 		 */
-<span class="fc" id="L1508">		return objectMD;</span>
+<span class="nc" id="L1044">		return objectMD;</span>
 	}
 
-	/**
-	 * Return the storage location specification identified by the provided ID
-	 * 
-	 * @param stLocID
-	 *            ID of the storage location
-	 * @return the storage location info
-	 * @throws StorageLocationNotExistException:
-	 *             if the storage location does not exist
-	 */
-	private StorageLocation getStorageLocation(final StorageLocationID stLocID) {
 
-		// Check it from Cache
-<span class="nc" id="L1523">		StorageLocation storageLocation = currentStorageLocations.get(stLocID);</span>
-<span class="nc bnc" id="L1524" title="All 2 branches missed.">		if (storageLocation == null) {</span>
-<span class="nc" id="L1525">			storageLocation = metadataDB.getByID(stLocID);</span>
-<span class="nc bnc" id="L1526" title="All 2 branches missed.">			if (storageLocation == null) {</span>
-<span class="nc" id="L1527">				throw new StorageLocationNotExistException(stLocID);</span>
-			}
-		}
-
-		// Update cache
-<span class="nc" id="L1532">		currentStorageLocations.put(stLocID, storageLocation);</span>
-
-<span class="nc" id="L1534">		return storageLocation;</span>
-	}
-
-	/**
-	 * Return the execution environment specification identified by the provided ID
-	 * 
-	 * @param execEnvID
-	 *            ID of the execution environment
-	 * @return the execution environment info
-	 * @throws ExecutionEnvironmentNotExistException
-	 *             if the execution environment does not exist
-	 */
-	private ExecutionEnvironment getExecutionEnvironment(final ExecutionEnvironmentID execEnvID) {
-		// Check it from Cache
-<span class="fc" id="L1548">		ExecutionEnvironment execEnv = currentExecutionEnvironments.get(execEnvID);</span>
-<span class="fc bfc" id="L1549" title="All 2 branches covered.">		if (execEnv == null) {</span>
-<span class="fc" id="L1550">			execEnv = metadataDB.getByID(execEnvID);</span>
-<span class="pc bpc" id="L1551" title="1 of 2 branches missed.">			if (execEnv == null) {</span>
-<span class="nc" id="L1552">				throw new ExecutionEnvironmentNotExistException(execEnvID);</span>
-			}
-		}
-
-		// Update cache
-<span class="fc" id="L1557">		currentExecutionEnvironments.put(execEnvID, execEnv);</span>
-<span class="pc bpc" id="L1558" title="1 of 2 branches missed.">		if (execEnv.getLang() == Langs.LANG_JAVA) {</span>
-<span class="fc" id="L1559">			currentJavaExecutionEnvironments.put(execEnv.getAddress(), execEnvID);</span>
-<span class="nc bnc" id="L1560" title="All 2 branches missed.">		} else if (execEnv.getLang() == Langs.LANG_PYTHON) {</span>
-<span class="nc" id="L1561">			currentPythonExecutionEnvironments.put(execEnv.getAddress(), execEnvID);</span>
-		}
-
-<span class="fc" id="L1564">		return execEnv;</span>
-	}
 
 	/**
 	 * Migrate an object with ID and MetaData provided from the source backend specified to the destination backend specified.
@@ -1582,55 +1064,48 @@ public final class MetaDataService extends AbstractManager {
 			final ExecutionEnvironmentID srcBackendID, final ExecutionEnvironmentID destBackendID)
 					throws ObjectNotRegisteredException {
 
-<span class="pc bpc" id="L1585" title="1 of 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L1586">			logger.debug(</span>
+<span class="nc bnc" id="L1067" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L1068">			logger.debug(</span>
 					&quot;[==MOVE==] Migrating metadata of &quot; + objectID + &quot; from &quot; + srcBackendID + &quot; to &quot; + destBackendID);
 		}
 
 		// Copy metadata
-<span class="fc" id="L1591">		final Set&lt;ExecutionEnvironmentID&gt; newBackendIDs = new HashSet&lt;&gt;(objectMD.getExecutionEnvironmentIDs());</span>
-<span class="fc" id="L1592">		newBackendIDs.remove(srcBackendID);</span>
-<span class="fc" id="L1593">		newBackendIDs.add(destBackendID);</span>
+<span class="nc" id="L1073">		final Set&lt;ExecutionEnvironmentID&gt; newBackendIDs = new HashSet&lt;&gt;(objectMD.getExecutionEnvironmentIDs());</span>
+<span class="nc" id="L1074">		newBackendIDs.remove(srcBackendID);</span>
+<span class="nc" id="L1075">		newBackendIDs.add(destBackendID);</span>
 
 		// Update db
 		try {
-<span class="fc" id="L1597">			metadataDB.updateLocationIDsByID(objectID, newBackendIDs);</span>
-<span class="nc" id="L1598">		} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L1599">			throw new ObjectNotRegisteredException(objectID);</span>
-<span class="fc" id="L1600">		}</span>
+<span class="nc" id="L1079">			metadataDB.updateLocationIDsByID(objectID, newBackendIDs);</span>
+<span class="nc" id="L1080">		} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L1081">			throw new ObjectNotRegisteredException(objectID);</span>
+<span class="nc" id="L1082">		}</span>
 
 		// Update real metadata
-<span class="fc" id="L1603">		objectMD.getExecutionEnvironmentIDs().add(destBackendID);</span>
-<span class="fc" id="L1604">		objectMD.getExecutionEnvironmentIDs().remove(srcBackendID);</span>
+<span class="nc" id="L1085">		objectMD.getExecutionEnvironmentIDs().add(destBackendID);</span>
+<span class="nc" id="L1086">		objectMD.getExecutionEnvironmentIDs().remove(srcBackendID);</span>
 
 		// Update cache
-<span class="fc" id="L1607">		final ObjectID theobjectID = objectID;</span>
-<span class="pc bpc" id="L1608" title="1 of 2 branches missed.">		if (objectMDCache.containsKey(theobjectID)) {</span>
-<span class="fc" id="L1609">			objectMDCache.get(theobjectID).getExecutionEnvironmentIDs().remove(srcBackendID);</span>
-<span class="fc" id="L1610">			objectMDCache.get(theobjectID).getExecutionEnvironmentIDs().add(destBackendID);</span>
-<span class="fc" id="L1611">			String alias = objectMD.getAlias();</span>
-<span class="fc" id="L1612">			objectMDCacheByAlias.put(alias, objectMDCache.get(theobjectID));</span>
+<span class="nc" id="L1089">		final ObjectID theobjectID = objectID;</span>
+<span class="nc bnc" id="L1090" title="All 2 branches missed.">		if (objectMDCache.containsKey(theobjectID)) {</span>
+<span class="nc" id="L1091">			objectMDCache.get(theobjectID).getExecutionEnvironmentIDs().remove(srcBackendID);</span>
+<span class="nc" id="L1092">			objectMDCache.get(theobjectID).getExecutionEnvironmentIDs().add(destBackendID);</span>
+<span class="nc" id="L1093">			String alias = objectMD.getAlias();</span>
+<span class="nc bnc" id="L1094" title="All 2 branches missed.">			if (alias != null) {</span>
+<span class="nc" id="L1095">				objectMDCacheByAlias.put(alias, objectMDCache.get(theobjectID));</span>
+			}
 		}
-<span class="fc" id="L1614">	}</span>
+<span class="nc" id="L1098">	}</span>
 
 	// ====== Getters for testing purposes ====== //
-
-	/**
-	 * Get the MetaDataService::backendCache
-	 * 
-	 * @return the Backend Cache
-	 */
-	public Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getBackendCache() {
-<span class="fc" id="L1624">		return this.currentExecutionEnvironments;</span>
-	}
 
 	/**
 	 * Get the MetaDataService::objectMDCache
 	 * 
 	 * @return the Object MetaData Cache
 	 */
-	public LruCache&lt;ObjectID, ObjectMetaData&gt; getObjectCache() {
-<span class="nc" id="L1633">		return this.objectMDCache;</span>
+	public MemoryCache&lt;ObjectID, ObjectMetaData&gt; getObjectCache() {
+<span class="nc" id="L1108">		return this.objectMDCache;</span>
 	}
 
 	// ====== OTHER ======= //
@@ -1641,24 +1116,20 @@ public final class MetaDataService extends AbstractManager {
 	 * @return The db handler reference of this manager.
 	 */
 	public MetaDataServiceDB getDbHandler() {
-<span class="fc" id="L1644">		return this.metadataDB;</span>
+<span class="nc" id="L1119">		return this.metadataDB;</span>
 	}
 
 	/**
 	 * Close DbHandler
 	 */
 	public void closeDbHandler() {
-<span class="nc" id="L1651">		this.metadataDB.close();</span>
-<span class="nc" id="L1652">	}</span>
+<span class="nc" id="L1126">		this.metadataDB.close();</span>
+<span class="nc" id="L1127">	}</span>
 
 	@Override
 	public void cleanCaches() {
-<span class="nc" id="L1656">		objectMDCache.clear();</span>
-<span class="nc" id="L1657">		objectMDCacheByAlias.clear();</span>
-<span class="nc" id="L1658">		currentStorageLocations.clear();</span>
-<span class="nc" id="L1659">		currentExecutionEnvironments.clear();</span>
-<span class="nc" id="L1660">		currentJavaExecutionEnvironments.clear();</span>
-<span class="nc" id="L1661">		currentPythonExecutionEnvironments.clear();</span>
-<span class="nc" id="L1662">	}</span>
+<span class="nc" id="L1131">		objectMDCache.clear();</span>
+<span class="nc" id="L1132">		objectMDCacheByAlias.clear();</span>
+<span class="nc" id="L1133">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -20,12 +20,14 @@ import es.bsc.dataclay.api.DataClayException;
 import es.bsc.dataclay.commonruntime.ClientRuntime;
 import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
 import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.ExecutionEnvironmentID;
 import es.bsc.dataclay.util.ids.MetaClassID;
 import es.bsc.dataclay.util.ids.ObjectID;
 import es.bsc.dataclay.util.ids.SessionID;
 import es.bsc.dataclay.util.info.VersionInfo;
 import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
 import es.bsc.dataclay.util.structs.Triple;
+import es.bsc.dataclay.util.structs.Tuple;
 
 /**
  * This class intends to offer a basic API based on Severo Ochoa project needs.
@@ -33,13 +35,9 @@ import es.bsc.dataclay.util.structs.Triple;
  * @author jmarti
  */
 public final class StorageItf {
-	/** Indicates if debug is enabled. */
-<span class="nc" id="L37">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
-	/** Mapping from version &quot;ObjectID&quot; to the original object of its version sequence. */
-	private static Map&lt;ObjectID, VersionInfo&gt; versions;
-	/** UserClientLib for the session. */
-	private static ClientRuntime commonLib;
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L40">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/**
 	 * @brief Forbidden constructor
@@ -50,17 +48,12 @@ public final class StorageItf {
 
 	public static void init(final String configFilePath) throws StorageException {
 		try {
-<span class="nc" id="L53">			DataClay.setSessionFile(configFilePath);</span>
-<span class="nc" id="L54">			DataClay.init();</span>
-<span class="nc" id="L55">		} catch (final DataClayException ex) {</span>
-<span class="nc" id="L56">			throw new StorageException(ex.getLocalizedMessage());</span>
-<span class="nc" id="L57">		}</span>
-
-		// Init versions mappings --specific for COMPSs
-<span class="nc" id="L60">		versions = new ConcurrentHashMap&lt;&gt;();</span>
-
-<span class="nc" id="L62">		commonLib = DataClay.getCommonLib();</span>
-<span class="nc" id="L63">	}</span>
+<span class="nc" id="L51">			DataClay.setSessionFile(configFilePath);</span>
+<span class="nc" id="L52">			DataClay.init();</span>
+<span class="nc" id="L53">		} catch (final DataClayException ex) {</span>
+<span class="nc" id="L54">			throw new StorageException(ex.getLocalizedMessage());</span>
+<span class="nc" id="L55">		}</span>
+<span class="nc" id="L56">	}</span>
 
 	/**
 	 * @brief Create a new replica of the given object.
@@ -72,16 +65,16 @@ public final class StorageItf {
 	 *             if an exception occurs
 	 */
 	public static void newReplica(final String objectIDstr, final String destHost) throws StorageException {
-<span class="nc bnc" id="L75" title="All 2 branches missed.">		if (Configuration.Flags.STORAGEITF_IGNORE_REPLICATION.getBooleanValue()) {</span>
-<span class="nc" id="L76">			System.out.println(&quot;[DATACLAY] WARNING: newReplica requests are ignored&quot;);</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (Configuration.Flags.STORAGEITF_IGNORE_REPLICATION.getBooleanValue()) {</span>
+<span class="nc" id="L69">			System.out.println(&quot;[DATACLAY] WARNING: newReplica requests are ignored&quot;);</span>
 		} else {
 			try {
-<span class="nc" id="L79">				DataClay.newReplica(objectIDstr, destHost);</span>
-<span class="nc" id="L80">			} catch (final DataClayException e) {</span>
-<span class="nc" id="L81">				throw new StorageException(e);</span>
-<span class="nc" id="L82">			}</span>
+<span class="nc" id="L72">				DataClay.newReplica(objectIDstr, destHost);</span>
+<span class="nc" id="L73">			} catch (final DataClayException e) {</span>
+<span class="nc" id="L74">				throw new StorageException(e);</span>
+<span class="nc" id="L75">			}</span>
 		}
-<span class="nc" id="L84">		return;</span>
+<span class="nc" id="L77">		return;</span>
 	}
 
 	/**
@@ -100,91 +93,27 @@ public final class StorageItf {
 	public static String newVersion(final String objectIDstr, final boolean preserveSource, final String optDestHost) throws StorageException {
 		// TODO preserveSource is currently ignored, but we could take advantage of it (jmarti 15-09-2017)
 		try {
-<span class="nc" id="L103">			final Map&lt;BackendID, Backend&gt; backendsByID = DataClay.getBackends();</span>
-<span class="nc" id="L104">			Map&lt;BackendID, Backend&gt; backendsByIDMatchLang = null;</span>
+<span class="nc" id="L96">			ClientRuntime commonLib = DataClay.getCommonLib();</span>
 			// Check object language to select destination backends
 
-<span class="nc" id="L107">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = DataClay.string2IDandHintID(objectIDstr);</span>
-<span class="nc" id="L108">			final ObjectID originalObjectID = ids.getFirst();</span>
-<span class="nc" id="L109">			final BackendID originalHint = ids.getSecond();</span>
-<span class="nc" id="L110">			final MetaClassID originalClassID = ids.getThird();</span>
-<span class="nc" id="L111">			BackendID bkID = null;</span>
-<span class="nc bnc" id="L112" title="All 2 branches missed.">			if (originalHint == null) {</span>
-<span class="nc" id="L113">				bkID = commonLib.getLocation(originalObjectID);</span>
-			} else {
-<span class="nc" id="L115">				bkID = originalHint;</span>
-			}
-			final Map&lt;String, Set&lt;BackendID&gt;&gt; backendsByHostname;
-<span class="nc" id="L118">			final Langs lang = backendsByID.get(bkID).getLang();</span>
-<span class="nc bnc" id="L119" title="All 2 branches missed.">			if (lang.equals(Langs.LANG_JAVA)) {</span>
-<span class="nc" id="L120">				backendsByHostname = DataClay.getJBackendsByHostname();</span>
-<span class="nc" id="L121">				backendsByIDMatchLang = DataClay.getJBackends();</span>
-<span class="nc bnc" id="L122" title="All 2 branches missed.">			} else if (lang.equals(Langs.LANG_PYTHON)) {</span>
-<span class="nc" id="L123">				backendsByHostname = DataClay.getPyBackendsByHostname();</span>
-<span class="nc" id="L124">				backendsByIDMatchLang = DataClay.getPyBackends();</span>
-			} else {
-<span class="nc" id="L126">				throw new StorageException(&quot;Invalid language of object&quot;);</span>
-			}
-<span class="nc" id="L128">			BackendID destBackendID = null;</span>
-<span class="nc" id="L129">			Set&lt;BackendID&gt; possibleDestBackends = null;</span>
-<span class="nc bnc" id="L130" title="All 2 branches missed.">			if (optDestHost != null) {</span>
-<span class="nc" id="L131">				possibleDestBackends = backendsByHostname.get(optDestHost);</span>
-			} else {
-<span class="nc" id="L133">				System.out.println(&quot;[DATACLAY] Warning newVersion : optDestHost is not specified, choosing host randomly&quot;);</span>
-			}
-<span class="nc bnc" id="L135" title="All 2 branches missed.">			if (possibleDestBackends == null) {</span>
-<span class="nc" id="L136">				destBackendID = getRandom(backendsByIDMatchLang.keySet());</span>
-<span class="nc" id="L137">				System.out.println(&quot;[DATACLAY] Target location chosen randomly: &quot; + backendsByIDMatchLang.get(destBackendID).getName());</span>
-			} else {
-<span class="nc" id="L139">				destBackendID = getRandom(possibleDestBackends);</span>
+<span class="nc" id="L99">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = DataClay.string2IDandHintID(objectIDstr);</span>
+<span class="nc" id="L100">			final ObjectID originalObjectID = ids.getFirst();</span>
+<span class="nc" id="L101">			final BackendID originalHint = ids.getSecond();</span>
+<span class="nc" id="L102">			final MetaClassID originalClassID = ids.getThird();</span>
+
+<span class="nc" id="L104">			Tuple&lt;ObjectID, BackendID&gt; result = commonLib.newVersion(originalObjectID,</span>
+					(ExecutionEnvironmentID) originalHint, originalClassID, null, null, optDestHost);
+<span class="nc" id="L106">			ObjectID versionOID = result.getFirst();</span>
+<span class="nc" id="L107">			BackendID destBackendID = result.getSecond();</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L109">				System.out.println(&quot;[DATACLAY] Object &quot; + originalObjectID + &quot; versioned in &quot; + destBackendID);</span>
+				// System.out.println(&quot;[DATACLAY] Current versions &quot; + versions.toString());
 			}
 
-<span class="nc" id="L142">			final VersionInfo versionInfo = commonLib.newVersion(originalObjectID, originalClassID, originalHint, destBackendID);</span>
-<span class="nc bnc" id="L143" title="All 2 branches missed.">			if (versionInfo == null) {</span>
-<span class="nc" id="L144">				throw new StorageException(&quot;Cannot create version of object &quot; + originalObjectID + &quot; in &quot; + destBackendID</span>
-<span class="nc" id="L145">						+ &quot; with session &quot; + commonLib.getSessionID());</span>
-
-			}
-<span class="nc" id="L148">			final ObjectID versionOID = versionInfo.getVersionOID();</span>
-<span class="nc" id="L149">			final ObjectID previousVersionOID = versionInfo.getVersionsMapping().get(versionOID);</span>
-<span class="nc" id="L150">			boolean alreadyVersioned = false;</span>
-<span class="nc bnc" id="L151" title="All 2 branches missed.">			if (!versions.containsKey(previousVersionOID)) {</span>
-				// No previous version of the same original object exists, add it to the versions list
-<span class="nc" id="L153">				versions.put(versionOID, versionInfo);</span>
-			} else {
-				// Update the version info to map from the last version to the original object
-<span class="nc" id="L156">				alreadyVersioned = true;</span>
-<span class="nc" id="L157">				final Map&lt;ObjectID, ObjectID&gt; oldVersionToOriginal = versions.get(previousVersionOID).getVersionsMapping();</span>
-<span class="nc" id="L158">				final LinkedHashMap&lt;ObjectID, ObjectID&gt; newVersionToOriginal = new LinkedHashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L159" title="All 2 branches missed.">				for (final Entry&lt;ObjectID, ObjectID&gt; newToPrevious : versionInfo.getVersionsMapping().entrySet()) {</span>
-<span class="nc" id="L160">					final ObjectID previousOID = newToPrevious.getValue();</span>
-<span class="nc bnc" id="L161" title="All 2 branches missed.">					if (oldVersionToOriginal.containsKey(previousOID)) {</span>
-<span class="nc" id="L162">						newVersionToOriginal.put(newToPrevious.getKey(), oldVersionToOriginal.get(previousOID));</span>
-					} else {
-<span class="nc" id="L164">						newVersionToOriginal.put(newToPrevious.getKey(), previousOID);</span>
-					}
-<span class="nc" id="L166">				}</span>
-<span class="nc" id="L167">				final VersionInfo newVersionInfo = new VersionInfo();</span>
-<span class="nc" id="L168">				newVersionInfo.setVersionOID(versionOID);</span>
-<span class="nc" id="L169">				newVersionInfo.setVersionsMapping(newVersionToOriginal);</span>
-<span class="nc" id="L170">				final Map&lt;ObjectID, MetaDataInfo&gt; originalMD = versions.get(previousVersionOID).getOriginalMD();</span>
-<span class="nc" id="L171">				newVersionInfo.setOriginalMD(originalMD);</span>
-<span class="nc" id="L172">				versions.put(versionOID, newVersionInfo);</span>
-				// Here we remove the previous version info, since COMPSs will always consolidate the last one.
-<span class="nc" id="L174">				versions.remove(previousVersionOID);</span>
-			}
-
-<span class="nc bnc" id="L177" title="All 2 branches missed.">			if (alreadyVersioned) {</span>
-<span class="nc" id="L178">				System.out.println(&quot;[DATACLAY] Object &quot; + originalObjectID + &quot; already versioned in &quot; + destBackendID);</span>
-			} else {
-<span class="nc" id="L180">				System.out.println(&quot;[DATACLAY] Object &quot; + originalObjectID + &quot; versioned in &quot; + destBackendID);</span>
-			}
-			// System.out.println(&quot;[DATACLAY] Current versions &quot; + versions.toString());
-
-<span class="nc" id="L184">			return DataClay.ids2String(versionOID, destBackendID, originalClassID);</span>
-<span class="nc" id="L185">		} catch (final Exception ex) {</span>
-<span class="nc" id="L186">			ex.printStackTrace();</span>
-<span class="nc" id="L187">			throw new StorageException(ex);</span>
+<span class="nc" id="L113">			return DataClay.ids2String(versionOID, destBackendID, originalClassID);</span>
+<span class="nc" id="L114">		} catch (final Exception ex) {</span>
+<span class="nc" id="L115">			ex.printStackTrace();</span>
+<span class="nc" id="L116">			throw new StorageException(ex);</span>
 		}
 	}
 
@@ -197,51 +126,17 @@ public final class StorageItf {
 	 */
 	public static void consolidateVersion(final String finalVersionIDstr) throws StorageException {
 		try {
-<span class="nc" id="L200">			final ObjectID versionOID = DataClay.string2IDandHintID(finalVersionIDstr).getFirst();</span>
-
-<span class="nc" id="L202">			final VersionInfo versionInfo = versions.get(versionOID);</span>
-<span class="nc bnc" id="L203" title="All 2 branches missed.">			if (versionInfo == null) {</span>
-<span class="nc" id="L204">				throw new StorageException(&quot;There is no version with ID &quot; + versionOID);</span>
-			}
-<span class="nc" id="L206">			commonLib.consolidateVersion(versionInfo);</span>
-<span class="nc" id="L207">			versions.remove(versionOID);</span>
-
-<span class="nc" id="L209">			System.out.println(&quot;[DATACLAY] Consolidated version &quot; + versionOID);</span>
+<span class="nc" id="L129">			final Triple&lt;ObjectID, BackendID, MetaClassID&gt; ids = DataClay.string2IDandHintID(finalVersionIDstr);</span>
+<span class="nc" id="L130">			final ObjectID versionOID = ids.getFirst();</span>
+<span class="nc" id="L131">			final BackendID versionHint = ids.getSecond();</span>
+<span class="nc" id="L132">			DataClay.getCommonLib().consolidateVersion(versionOID, (ExecutionEnvironmentID) versionHint);</span>
+<span class="nc" id="L133">			System.out.println(&quot;[DATACLAY] Consolidated version &quot; + versionOID);</span>
 			// System.out.println(&quot;[DATACLAY] Current versions &quot; + versions.toString());
 
-<span class="nc" id="L212">		} catch (final Exception ex) {</span>
-<span class="nc" id="L213">			throw new StorageException(ex);</span>
-<span class="nc" id="L214">		}</span>
-<span class="nc" id="L215">	}</span>
-
-	/**
-	 * @brief Returns all the current versions. This method is only used for testing.
-	 * @return For each version, returns the mapping to the original object and subobjects.
-	 * @throws StorageException
-	 *             if an exception occurs
-	 */
-	public static Map&lt;ObjectID, VersionInfo&gt; getVersions() throws StorageException {
-<span class="nc" id="L224">		return versions;</span>
-	}
-
-	/**
-	 * @brief Retrieves a random backend from the given set of backends.
-	 * @param possibleBackends
-	 *            set of backends.
-	 * @return
-	 * @return the randomly selected backend.
-	 */
-	private static &lt;T&gt; T getRandom(final Collection&lt;T&gt; possibleObjects) {
-<span class="nc" id="L235">		final int position = new Random().nextInt(possibleObjects.size());</span>
-<span class="nc" id="L236">		int i = 0;</span>
-<span class="nc bnc" id="L237" title="All 2 branches missed.">		for (final T id : possibleObjects) {</span>
-<span class="nc bnc" id="L238" title="All 2 branches missed.">			if (i == position) {</span>
-<span class="nc" id="L239">				return id;</span>
-			}
-<span class="nc" id="L241">			i++;</span>
-<span class="nc" id="L242">		}</span>
-<span class="nc" id="L243">		return null;</span>
-	}
+<span class="nc" id="L136">		} catch (final Exception ex) {</span>
+<span class="nc" id="L137">			throw new StorageException(ex);</span>
+<span class="nc" id="L138">		}</span>
+<span class="nc" id="L139">	}</span>
 
 	/**
 	 * @brief If the object is accessible, initializes an instance of a stub with the given objectID.
@@ -253,9 +148,9 @@ public final class StorageItf {
 	 */
 	public static Object getByID(final String objectIDstr) throws StorageException {
 		try {
-<span class="nc" id="L256">			return DataClay.getByID(objectIDstr);</span>
-<span class="nc" id="L257">		} catch (final Exception e) {</span>
-<span class="nc" id="L258">			throw new StorageException(e);</span>
+<span class="nc" id="L151">			return DataClay.getByID(objectIDstr);</span>
+<span class="nc" id="L152">		} catch (final Exception e) {</span>
+<span class="nc" id="L153">			throw new StorageException(e);</span>
 		}
 	}
 
@@ -269,9 +164,9 @@ public final class StorageItf {
 	 */
 	public static String getLocation(final String objectIDstr) throws StorageException {
 		try {
-<span class="nc" id="L272">			return DataClay.getLocation(objectIDstr);</span>
-<span class="nc" id="L273">		} catch (final Exception e) {</span>
-<span class="nc" id="L274">			throw new StorageException(e);</span>
+<span class="nc" id="L167">			return DataClay.getLocation(objectIDstr);</span>
+<span class="nc" id="L168">		} catch (final Exception e) {</span>
+<span class="nc" id="L169">			throw new StorageException(e);</span>
 		}
 	}
 
@@ -286,16 +181,16 @@ public final class StorageItf {
 	public static List&lt;String&gt; getLocations(final String objectIDstr) throws StorageException {
 		try {
 			final List&lt;String&gt; result;
-<span class="nc bnc" id="L289" title="All 2 branches missed.">			if (Configuration.Flags.STORAGEITF_IGNORE_REPLICATION.getBooleanValue()) {</span>
-<span class="nc" id="L290">				final String st = DataClay.getLocation(objectIDstr);</span>
-<span class="nc" id="L291">				result = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L292">				result.add(st);</span>
-<span class="nc" id="L293">			} else {</span>
-<span class="nc" id="L294">				result = DataClay.getLocations(objectIDstr);</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">			if (Configuration.Flags.STORAGEITF_IGNORE_REPLICATION.getBooleanValue()) {</span>
+<span class="nc" id="L185">				final String st = DataClay.getLocation(objectIDstr);</span>
+<span class="nc" id="L186">				result = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L187">				result.add(st);</span>
+<span class="nc" id="L188">			} else {</span>
+<span class="nc" id="L189">				result = DataClay.getLocations(objectIDstr);</span>
 			}
-<span class="nc" id="L296">			return result;</span>
-<span class="nc" id="L297">		} catch (final Exception e) {</span>
-<span class="nc" id="L298">			throw new StorageException(e);</span>
+<span class="nc" id="L191">			return result;</span>
+<span class="nc" id="L192">		} catch (final Exception e) {</span>
+<span class="nc" id="L193">			throw new StorageException(e);</span>
 		}
 	}
 
@@ -304,7 +199,7 @@ public final class StorageItf {
 	 * @return sessionID
 	 */
 	public static SessionID getSessionID() {
-<span class="nc" id="L307">		return DataClay.getSessionID();</span>
+<span class="nc" id="L202">		return DataClay.getSessionID();</span>
 	}
 
 	/**
@@ -315,8 +210,6 @@ public final class StorageItf {
 	 *            method to be executed
 	 * @param params
 	 *            parameters for the operation.
-	 * @param destHost
-	 *            destination host where the method has to be executed.
 	 * @param callback
 	 *            callback handler to communicate the result when the execution finishes.
 	 * @return an id of the executed request that will receive the callback handler with the corresponding response
@@ -326,9 +219,9 @@ public final class StorageItf {
 	public static String executeTask(final String objectIDstr, final java.lang.reflect.Method method, final Object[] params, final CallbackHandler callback)
 			throws StorageException {
 		try {
-<span class="nc" id="L329">			return DataClay.executeTask(objectIDstr, method, params, callback);</span>
-<span class="nc" id="L330">		} catch (final Exception e) {</span>
-<span class="nc" id="L331">			throw new StorageException(e);</span>
+<span class="nc" id="L222">			return DataClay.executeTask(objectIDstr, method, params, callback);</span>
+<span class="nc" id="L223">		} catch (final Exception e) {</span>
+<span class="nc" id="L224">			throw new StorageException(e);</span>
 		}
 	}
 
@@ -351,9 +244,9 @@ public final class StorageItf {
 	public static String executeTask(final String objectIDstr, final String operationSignature, final Object[] params,
 			final String destHost, final CallbackHandler callback) throws StorageException {
 		try {
-<span class="nc" id="L354">			return DataClay.executeTask(objectIDstr, operationSignature, params, callback);</span>
-<span class="nc" id="L355">		} catch (final Exception e) {</span>
-<span class="nc" id="L356">			throw new StorageException(e);</span>
+<span class="nc" id="L247">			return DataClay.executeTask(objectIDstr, operationSignature, params, callback);</span>
+<span class="nc" id="L248">		} catch (final Exception e) {</span>
+<span class="nc" id="L249">			throw new StorageException(e);</span>
 		}
 	}
 
@@ -368,9 +261,9 @@ public final class StorageItf {
 	 */
 	public static Object getResult(final CallbackEvent callbackEvent) throws StorageException {
 		try {
-<span class="nc" id="L371">			return DataClay.getResult(callbackEvent);</span>
-<span class="nc" id="L372">		} catch (final Exception e) {</span>
-<span class="nc" id="L373">			throw new StorageException(e);</span>
+<span class="nc" id="L264">			return DataClay.getResult(callbackEvent);</span>
+<span class="nc" id="L265">		} catch (final Exception e) {</span>
+<span class="nc" id="L266">			throw new StorageException(e);</span>
 		}
 	}
 
@@ -381,10 +274,10 @@ public final class StorageItf {
 	 */
 	public static void finish() throws StorageException {
 		try {
-<span class="nc" id="L384">			DataClay.finish();</span>
-<span class="nc" id="L385">		} catch (final Exception e) {</span>
-<span class="nc" id="L386">			throw new StorageException(e);</span>
-<span class="nc" id="L387">		}</span>
-<span class="nc" id="L388">	}</span>
+<span class="nc" id="L277">			DataClay.finish();</span>
+<span class="nc" id="L278">		} catch (final Exception e) {</span>
+<span class="nc" id="L279">			throw new StorageException(e);</span>
+<span class="nc" id="L280">		}</span>
+<span class="nc" id="L281">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NamespaceManagerSQLStatements.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.namespacemgr</a> &gt; <span class="el_source">NamespaceManagerSQLStatements.java</span></div><h1>NamespaceManagerSQLStatements.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.logic.namespacemgr;
 
+import es.bsc.dataclay.logic.accountmgr.AccountMgrSQLStatements;
+import es.bsc.dataclay.logic.logicmetadata.LogicMetadataSQLStatements;
+
 import java.util.ResourceBundle;
 
 /**
@@ -8,8 +11,7 @@ import java.util.ResourceBundle;
  */
 public final class NamespaceManagerSQLStatements {
 
-	/** Properties. */
-<span class="fc" id="L12">	private static ResourceBundle props = null;</span>
+
 
 	/**
 	 * Utility classes should have private constructor.
@@ -19,115 +21,131 @@ public final class NamespaceManagerSQLStatements {
 	}
 
 	/**
-	 * Init properties of the properties file
-	 */
-	static {
-<span class="pc bpc" id="L25" title="1 of 2 branches missed.">		if (props == null) {</span>
-<span class="fc" id="L26">			props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.namespace_mgr_sql&quot;);</span>
-		}
-<span class="fc" id="L28">	}</span>
-
-	/**
 	 * This enumeration represent all possible SQL statements.
 	 */
-<span class="fc" id="L33">	public enum SqlStatements {</span>
+<span class="fc" id="L26">	public enum SqlStatements {</span>
 
 		/** Create. */
-<span class="fc" id="L36">		CREATE_TABLE_IMPORTEDIFACE,</span>
+<span class="fc" id="L29">		CREATE_TABLE_IMPORTEDIFACE,</span>
 		
 		/** Create. */
-<span class="fc" id="L39">		CREATE_TABLE_NAMESPACE,</span>
+<span class="fc" id="L32">		CREATE_TABLE_NAMESPACE,</span>
 		
 		/** Drop. */
-<span class="fc" id="L42">		DROP_TABLE_IMPORTEDIFACE,</span>
+<span class="fc" id="L35">		DROP_TABLE_IMPORTEDIFACE,</span>
 
 		/** Drop. */
-<span class="fc" id="L45">		DROP_TABLE_NAMESPACE,</span>
+<span class="fc" id="L38">		DROP_TABLE_NAMESPACE,</span>
 		
 		/** Insert. */
-<span class="fc" id="L48">		INSERT_IMPORTEDIFACE,</span>
+<span class="fc" id="L41">		INSERT_IMPORTEDIFACE,</span>
 
 		/** Insert. */
-<span class="fc" id="L51">		INSERT_NAMESPACE,</span>
+<span class="fc" id="L44">		INSERT_NAMESPACE,</span>
 
 		/** Select. */
-<span class="fc" id="L54">		SELECT_IMPORTEDIFACE,</span>
+<span class="fc" id="L47">		SELECT_IMPORTEDIFACE,</span>
 
 		/** Select. */
-<span class="fc" id="L57">		SELECT_NAMESPACE,</span>
+<span class="fc" id="L50">		SELECT_NAMESPACE,</span>
 		
 		/** Select. */
-<span class="fc" id="L60">		SELECT_NAMESPACES_NAMES,</span>
+<span class="fc" id="L53">		SELECT_NAMESPACES_NAMES,</span>
 		
 		/** Delete. */
-<span class="fc" id="L63">		DELETE_IMPORTEDIFACE,</span>
+<span class="fc" id="L56">		DELETE_IMPORTEDIFACE,</span>
 
 		/** Delete. */
-<span class="fc" id="L66">		DELETE_NAMESPACE,</span>
+<span class="fc" id="L59">		DELETE_NAMESPACE,</span>
 		
 		/** Select. */
-<span class="fc" id="L69">		SELECT_NAMESPACE_BY_NAME,</span>
+<span class="fc" id="L62">		SELECT_NAMESPACE_BY_NAME,</span>
 
 		/** Select. */
-<span class="fc" id="L72">		UPDATE_NAMESPACE_ADD_IMPORTEDIFACE, </span>
+<span class="fc" id="L65">		UPDATE_NAMESPACE_ADD_IMPORTEDIFACE, </span>
 		
 		/** Select. */
-<span class="fc" id="L75">		UPDATE_NAMESPACE_REMOVE_IMPORTEDIFACE, </span>
+<span class="fc" id="L68">		UPDATE_NAMESPACE_REMOVE_IMPORTEDIFACE, </span>
 		
 		/** Select. */
-<span class="fc" id="L78">		SELECT_ALL_NAMESPACES_OF_ACCOUNT,</span>
+<span class="fc" id="L71">		SELECT_ALL_NAMESPACES_OF_ACCOUNT,</span>
 		
 		/** Select. */
-<span class="fc" id="L81">		SELECT_ALL_NAMESPACES_IMPORT_IFACE,</span>
+<span class="fc" id="L74">		SELECT_ALL_NAMESPACES_IMPORT_IFACE,</span>
 		
 		/** Select. */
-<span class="fc" id="L84">		SELECT_ALL_NAMESPACES_OF_ACCOUNT_AND_ID,</span>
+<span class="fc" id="L77">		SELECT_ALL_NAMESPACES_OF_ACCOUNT_AND_ID,</span>
 		
 		/** Update. */
-<span class="fc" id="L87">		UPDATE_IMPORTEDIFACE_ADD_PROPERTY, </span>
+<span class="fc" id="L80">		UPDATE_IMPORTEDIFACE_ADD_PROPERTY, </span>
 		
 		/** Update. */
-<span class="fc" id="L90">		UPDATE_IMPORTEDIFACE_ADD_OPERATION, </span>
+<span class="fc" id="L83">		UPDATE_IMPORTEDIFACE_ADD_OPERATION, </span>
 		
 		/** Update. */
-<span class="fc" id="L93">		UPDATE_IMPORTEDIFACE_ADD_IMPLEMENTATION, </span>
+<span class="fc" id="L86">		UPDATE_IMPORTEDIFACE_ADD_IMPLEMENTATION, </span>
 		
 		/** Update. */
-<span class="fc" id="L96">		UPDATE_IMPORTEDIFACE_ADD_SUBCLASS, </span>
+<span class="fc" id="L89">		UPDATE_IMPORTEDIFACE_ADD_SUBCLASS, </span>
 		
 		/** Update. */
-<span class="fc" id="L99">		UPDATE_IMPORTEDIFACE_REMOVE_PROPERTY, </span>
+<span class="fc" id="L92">		UPDATE_IMPORTEDIFACE_REMOVE_PROPERTY, </span>
 		
 		/** Update. */
-<span class="fc" id="L102">		UPDATE_IMPORTEDIFACE_REMOVE_OPERATION, </span>
+<span class="fc" id="L95">		UPDATE_IMPORTEDIFACE_REMOVE_OPERATION, </span>
 		
 		/** Update. */
-<span class="fc" id="L105">		UPDATE_IMPORTEDIFACE_REMOVE_IMPLEMENTATION, </span>
+<span class="fc" id="L98">		UPDATE_IMPORTEDIFACE_REMOVE_IMPLEMENTATION, </span>
 		
 		/** Update. */
-<span class="fc" id="L108">		UPDATE_IMPORTEDIFACE_REMOVE_SUBCLASS, </span>
+<span class="fc" id="L101">		UPDATE_IMPORTEDIFACE_REMOVE_SUBCLASS, </span>
 		;
 
 		/** SQL statement. */
 		private String sqlStatement;
 
+		/** Indicates statements are loaded in memory. */
+<span class="fc" id="L108">		private static boolean LOADED = false;</span>
+		/**
+		 * Unload statements.
+		 */
+		public static void unloadStatements() {
+<span class="nc" id="L113">			LOADED = false;</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">			for (AccountMgrSQLStatements.SqlStatements statement : AccountMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="nc" id="L115">				statement.setSqlStatement(null);</span>
+			}
+<span class="nc" id="L117">		}</span>
+
+
 		/**
 		 * Init properties of the properties file
 		 */
-		private void init() {
-<span class="fc" id="L118">			final String sqlSt = props.getString(this.name());</span>
-<span class="fc" id="L119">			setSqlStatement(sqlSt);</span>
-<span class="fc" id="L120">		}</span>
+		public static void loadStatements() {
+<span class="fc" id="L124">			ResourceBundle props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.namespace_mgr_sql&quot;);</span>
+
+<span class="fc bfc" id="L126" title="All 2 branches covered.">			for (NamespaceManagerSQLStatements.SqlStatements statement : NamespaceManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc" id="L127">				statement.init(props);</span>
+			}
+<span class="fc" id="L129">			LOADED = true;</span>
+<span class="fc" id="L130">		}</span>
+
+		/**
+		 * Init properties of the properties file
+		 */
+		private void init(ResourceBundle props) {
+<span class="fc" id="L136">			final String sqlSt = props.getString(this.name());</span>
+<span class="fc" id="L137">			setSqlStatement(sqlSt);</span>
+<span class="fc" id="L138">		}</span>
 
 		/**
 		 * Get the sqlStatement
 		 * @return the sqlStatement
 		 */
 		public String getSqlStatement() {
-<span class="fc bfc" id="L127" title="All 2 branches covered.">			if (sqlStatement == null) {</span>
-<span class="fc" id="L128">				init();</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">			if (!LOADED) {</span>
+<span class="fc" id="L146">				loadStatements();</span>
 			}
-<span class="fc" id="L130">			return sqlStatement;</span>
+<span class="fc" id="L148">			return sqlStatement;</span>
 		}
 
 		/**
@@ -136,8 +154,8 @@ public final class NamespaceManagerSQLStatements {
 		 *            the sqlStatement
 		 */
 		public void setSqlStatement(final String newsqlStatement) {
-<span class="fc" id="L139">			sqlStatement = newsqlStatement;</span>
-<span class="fc" id="L140">		}</span>
+<span class="fc" id="L157">			sqlStatement = newsqlStatement;</span>
+<span class="fc" id="L158">		}</span>
 
 	}
 }

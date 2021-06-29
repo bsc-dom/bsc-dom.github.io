@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SessionManagerSQLStatements.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.sessionmgr</a> &gt; <span class="el_source">SessionManagerSQLStatements.java</span></div><h1>SessionManagerSQLStatements.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.logic.sessionmgr;
 
+import es.bsc.dataclay.logic.accountmgr.AccountMgrSQLStatements;
+import es.bsc.dataclay.logic.notificationmgr.NotificationMgrSQLStatements;
+
 import java.util.ResourceBundle;
 
 /**
@@ -8,8 +11,6 @@ import java.util.ResourceBundle;
  */
 public final class SessionManagerSQLStatements {
 
-	/** Properties. */
-<span class="fc" id="L12">	private static ResourceBundle props = null;</span>
 
 	/**
 	 * Utility classes should have private constructor.
@@ -19,159 +20,176 @@ public final class SessionManagerSQLStatements {
 	}
 
 	/**
-	 * Init properties of the properties file
-	 */
-	static {
-<span class="pc bpc" id="L25" title="1 of 2 branches missed.">		if (props == null) {</span>
-<span class="fc" id="L26">			props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.session_mgr_sql&quot;);</span>
-		}
-<span class="fc" id="L28">	}</span>
-
-	/**
 	 * This enumeration represent all possible SQL statements.
 	 */
-<span class="fc" id="L33">	public enum SqlStatements {</span>
+<span class="fc" id="L25">	public enum SqlStatements {</span>
 
 		/** Create. */
-<span class="fc" id="L36">		CREATE_TABLE_SESSIONCONTRACT,</span>
+<span class="fc" id="L28">		CREATE_TABLE_SESSIONCONTRACT,</span>
 		
 		/** Create. */
-<span class="fc" id="L39">		CREATE_TABLE_SESSIONINTERFACE,</span>
+<span class="fc" id="L31">		CREATE_TABLE_SESSIONINTERFACE,</span>
 		
 		/** Create. */
-<span class="fc" id="L42">		CREATE_TABLE_SESSIONPROPERTY,</span>
+<span class="fc" id="L34">		CREATE_TABLE_SESSIONPROPERTY,</span>
 		
 		/** Create. */
-<span class="fc" id="L45">		CREATE_TABLE_SESSIONOPERATION,</span>
+<span class="fc" id="L37">		CREATE_TABLE_SESSIONOPERATION,</span>
 		
 		/** Create. */
-<span class="fc" id="L48">		CREATE_TABLE_SESSIONIMPLEMENTATION,</span>
+<span class="fc" id="L40">		CREATE_TABLE_SESSIONIMPLEMENTATION,</span>
 		
 		/** Create. */
-<span class="fc" id="L51">		CREATE_TABLE_SESSIONDATACONTRACT,</span>
+<span class="fc" id="L43">		CREATE_TABLE_SESSIONDATACONTRACT,</span>
 		
 		/** Create. */
-<span class="fc" id="L54">		CREATE_TABLE_SESSIONINFO,</span>
+<span class="fc" id="L46">		CREATE_TABLE_SESSIONINFO,</span>
 
 		/** Drop table. */
-<span class="fc" id="L57">		DROP_TABLE_SESSIONCONTRACT,</span>
+<span class="fc" id="L49">		DROP_TABLE_SESSIONCONTRACT,</span>
 		
 		/** Drop table. */
-<span class="fc" id="L60">		DROP_TABLE_SESSIONINTERFACE,</span>
+<span class="fc" id="L52">		DROP_TABLE_SESSIONINTERFACE,</span>
 
 		/** Drop table. */
-<span class="fc" id="L63">		DROP_TABLE_SESSIONPROPERTY,</span>
+<span class="fc" id="L55">		DROP_TABLE_SESSIONPROPERTY,</span>
 		
 		/** Drop table. */
-<span class="fc" id="L66">		DROP_TABLE_SESSIONOPERATION,</span>
+<span class="fc" id="L58">		DROP_TABLE_SESSIONOPERATION,</span>
 		
 		/** Drop table. */
-<span class="fc" id="L69">		DROP_TABLE_SESSIONIMPLEMENTATION,</span>
+<span class="fc" id="L61">		DROP_TABLE_SESSIONIMPLEMENTATION,</span>
 		
 		/** Drop table. */
-<span class="fc" id="L72">		DROP_TABLE_SESSIONDATACONTRACT,</span>
+<span class="fc" id="L64">		DROP_TABLE_SESSIONDATACONTRACT,</span>
 		
 		/** Drop table. */
-<span class="fc" id="L75">		DROP_TABLE_SESSIONINFO,</span>
+<span class="fc" id="L67">		DROP_TABLE_SESSIONINFO,</span>
 		
 		/** Insert. */
-<span class="fc" id="L78">		INSERT_SESSIONCONTRACT,</span>
+<span class="fc" id="L70">		INSERT_SESSIONCONTRACT,</span>
 
 		/** Insert. */
-<span class="fc" id="L81">		INSERT_SESSIONINTERFACE,</span>
+<span class="fc" id="L73">		INSERT_SESSIONINTERFACE,</span>
 		
 		/** Insert. */
-<span class="fc" id="L84">		INSERT_SESSIONPROPERTY,</span>
+<span class="fc" id="L76">		INSERT_SESSIONPROPERTY,</span>
 		
 		/** Insert. */
-<span class="fc" id="L87">		INSERT_SESSIONOPERATION,</span>
+<span class="fc" id="L79">		INSERT_SESSIONOPERATION,</span>
 		
 		/** Insert. */
-<span class="fc" id="L90">		INSERT_SESSIONIMPLEMENTATION,</span>
+<span class="fc" id="L82">		INSERT_SESSIONIMPLEMENTATION,</span>
 		
 		/** Insert. */
-<span class="fc" id="L93">		INSERT_SESSIONDATACONTRACT,</span>
+<span class="fc" id="L85">		INSERT_SESSIONDATACONTRACT,</span>
 		
 		/** Insert. */
-<span class="fc" id="L96">		INSERT_SESSIONINFO,</span>
+<span class="fc" id="L88">		INSERT_SESSIONINFO,</span>
 		
 		/** Select. */
-<span class="fc" id="L99">		SELECT_SESSIONCONTRACT,</span>
+<span class="fc" id="L91">		SELECT_SESSIONCONTRACT,</span>
 
 		/** Select. */
-<span class="fc" id="L102">		SELECT_SESSIONINTERFACE, </span>
+<span class="fc" id="L94">		SELECT_SESSIONINTERFACE, </span>
 		
 		/** Select. */
-<span class="fc" id="L105">		SELECT_SESSIONPROPERTY,</span>
+<span class="fc" id="L97">		SELECT_SESSIONPROPERTY,</span>
 		
 		/** Select. */
-<span class="fc" id="L108">		SELECT_SESSIONOPERATION, </span>
+<span class="fc" id="L100">		SELECT_SESSIONOPERATION, </span>
 		
 		/** Select. */
-<span class="fc" id="L111">		SELECT_SESSIONIMPLEMENTATION, </span>
+<span class="fc" id="L103">		SELECT_SESSIONIMPLEMENTATION, </span>
 		
 		/** Select. */
-<span class="fc" id="L114">		SELECT_SESSIONDATACONTRACT, </span>
+<span class="fc" id="L106">		SELECT_SESSIONDATACONTRACT, </span>
 		
 		/** Select. */
-<span class="fc" id="L117">		SELECT_SESSIONINFO, </span>
+<span class="fc" id="L109">		SELECT_SESSIONINFO, </span>
 		
 		/** Delete. */
-<span class="fc" id="L120">		DELETE_SESSIONCONTRACT,</span>
+<span class="fc" id="L112">		DELETE_SESSIONCONTRACT,</span>
 		
 		/** Delete. */
-<span class="fc" id="L123">		DELETE_SESSIONINTERFACE,</span>
+<span class="fc" id="L115">		DELETE_SESSIONINTERFACE,</span>
 		
 		/** Delete. */
-<span class="fc" id="L126">		DELETE_SESSIONPROPERTY,</span>
+<span class="fc" id="L118">		DELETE_SESSIONPROPERTY,</span>
 		
 		/** Delete. */
-<span class="fc" id="L129">		DELETE_SESSIONOPERATION,</span>
+<span class="fc" id="L121">		DELETE_SESSIONOPERATION,</span>
 		
 		/** Delete. */
-<span class="fc" id="L132">		DELETE_SESSIONIMPLEMENTATION,</span>
+<span class="fc" id="L124">		DELETE_SESSIONIMPLEMENTATION,</span>
 		
 		/** Delete. */
-<span class="fc" id="L135">		DELETE_SESSIONDATACONTRACT,</span>
+<span class="fc" id="L127">		DELETE_SESSIONDATACONTRACT,</span>
 		
 		/** Delete. */
-<span class="fc" id="L138">		DELETE_SESSIONINFO,</span>
+<span class="fc" id="L130">		DELETE_SESSIONINFO,</span>
 		
 		/** Select. */
-<span class="fc" id="L141">		SELECT_SESSIONS_OF_ACCOUNT,</span>
+<span class="fc" id="L133">		SELECT_SESSIONS_OF_ACCOUNT,</span>
 		
 		/** Create external dataClay sessions. */
-<span class="fc" id="L144">		CREATE_TABLE_EXT_SESSIONINFO,</span>
+<span class="fc" id="L136">		CREATE_TABLE_EXT_SESSIONINFO,</span>
 		
 		/** Insert external dataClay session. */
-<span class="fc" id="L147">		INSERT_EXT_SESSION,</span>
+<span class="fc" id="L139">		INSERT_EXT_SESSION,</span>
 		
 		/** Select external dataClay session. */
-<span class="fc" id="L150">		SELECT_EXT_SESSION,</span>
+<span class="fc" id="L142">		SELECT_EXT_SESSION,</span>
 		
 		/** Delete external dataClay session. */
-<span class="fc" id="L153">		DELETE_EXT_SESSION;</span>
+<span class="fc" id="L145">		DELETE_EXT_SESSION;</span>
 
 		/** SQL statement. */
 		private String sqlStatement;
 
+
+		/** Indicates statements are loaded in memory. */
+<span class="fc" id="L152">		private static boolean LOADED = false;</span>
+		/**
+		 * Unload statements.
+		 */
+		public static void unloadStatements() {
+<span class="nc" id="L157">			LOADED = false;</span>
+<span class="nc bnc" id="L158" title="All 2 branches missed.">			for (AccountMgrSQLStatements.SqlStatements statement : AccountMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="nc" id="L159">				statement.setSqlStatement(null);</span>
+			}
+<span class="nc" id="L161">		}</span>
+
+
 		/**
 		 * Init properties of the properties file
 		 */
-		private void init() {
-<span class="fc" id="L162">			final String sqlSt = props.getString(this.name());</span>
-<span class="fc" id="L163">			setSqlStatement(sqlSt);</span>
-<span class="fc" id="L164">		}</span>
+		public static void loadStatements() {
+<span class="fc" id="L168">			ResourceBundle props = ResourceBundle.getBundle(&quot;es.bsc.dataclay.properties.session_mgr_sql&quot;);</span>
+
+<span class="fc bfc" id="L170" title="All 2 branches covered.">			for (SessionManagerSQLStatements.SqlStatements statement : SessionManagerSQLStatements.SqlStatements.values()) {</span>
+<span class="fc" id="L171">				statement.init(props);</span>
+			}
+<span class="fc" id="L173">			LOADED = true;</span>
+<span class="fc" id="L174">		}</span>
+
+		/**
+		 * Init properties of the properties file
+		 */
+		private void init(ResourceBundle props) {
+<span class="fc" id="L180">			final String sqlSt = props.getString(this.name());</span>
+<span class="fc" id="L181">			setSqlStatement(sqlSt);</span>
+<span class="fc" id="L182">		}</span>
 
 		/**
 		 * Get the sqlStatement
 		 * @return the sqlStatement
 		 */
 		public String getSqlStatement() {
-<span class="fc bfc" id="L171" title="All 2 branches covered.">			if (sqlStatement == null) {</span>
-<span class="fc" id="L172">				init();</span>
+<span class="fc bfc" id="L189" title="All 2 branches covered.">			if (!LOADED) {</span>
+<span class="fc" id="L190">				loadStatements();</span>
 			}
-<span class="fc" id="L174">			return sqlStatement;</span>
+<span class="fc" id="L192">			return sqlStatement;</span>
 		}
 
 		/**
@@ -180,8 +198,8 @@ public final class SessionManagerSQLStatements {
 		 *            the sqlStatement
 		 */
 		public void setSqlStatement(final String newsqlStatement) {
-<span class="fc" id="L183">			sqlStatement = newsqlStatement;</span>
-<span class="fc" id="L184">		}</span>
+<span class="fc" id="L201">			sqlStatement = newsqlStatement;</span>
+<span class="fc" id="L202">		}</span>
 
 	}
 }

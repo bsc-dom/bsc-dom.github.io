@@ -3,6 +3,8 @@ package es.bsc.dataclay.serialization.buffer;
 
 import com.google.protobuf.ByteString;
 
+import java.nio.ByteBuffer;
+
 /**
  * This class is a wrapper to a byte array. Used for serialization of messages that need to deal with DataClayByteBuffer.
  */
@@ -16,31 +18,31 @@ public final class DataClayByteArray {
 	 * @param thebyteString
 	 *            The byte array
 	 */
-<span class="nc" id="L19">	public DataClayByteArray(final ByteString thebyteString) {</span>
-<span class="nc" id="L20">		this.setByteString(thebyteString);</span>
-<span class="nc" id="L21">	}</span>
+<span class="nc" id="L21">	public DataClayByteArray(final ByteString thebyteString) {</span>
+<span class="nc" id="L22">		this.setByteString(thebyteString);</span>
+<span class="nc" id="L23">	}</span>
 
 	/**
 	 * Constructor
 	 * @param theByteArray
 	 *            The byte array
 	 */
-<span class="nc" id="L28">	public DataClayByteArray(final byte[] theByteArray) {</span>
-<span class="nc" id="L29">		this.setByteString(ByteString.copyFrom(theByteArray));</span>
-<span class="nc" id="L30">	}</span>
+<span class="nc" id="L30">	public DataClayByteArray(final byte[] theByteArray) {</span>
+<span class="nc" id="L31">		this.setByteString(ByteString.copyFrom(theByteArray));</span>
+<span class="nc" id="L32">	}</span>
 
 	/**
 	 * @return the byteArray
 	 */
-	public byte[] getByteArray() {
-<span class="nc" id="L36">		return byteString.toByteArray();</span>
+	public ByteBuffer getByteArray() {
+<span class="nc" id="L38">		return byteString.asReadOnlyByteBuffer();</span>
 	}
 
 	/**
 	 * @return the byteString
 	 */
 	public ByteString getByteString() {
-<span class="nc" id="L43">		return byteString;</span>
+<span class="nc" id="L45">		return byteString;</span>
 	}
 
 	/**
@@ -48,13 +50,13 @@ public final class DataClayByteArray {
 	 *            the byteString to set
 	 */
 	public void setByteString(final ByteString thebyteString) {
-<span class="nc" id="L51">		this.byteString = thebyteString;</span>
-<span class="nc" id="L52">	}</span>
+<span class="nc" id="L53">		this.byteString = thebyteString;</span>
+<span class="nc" id="L54">	}</span>
 	
 	public String toString() { 
-<span class="nc" id="L55">		StringBuilder strb = new StringBuilder();</span>
-<span class="nc" id="L56">		strb.append(&quot;[ lenght = &quot; + this.byteString.size() + &quot;, values = &quot; + this.byteString.toStringUtf8() + &quot;]&quot;);</span>
-<span class="nc" id="L57">		return strb.toString();</span>
+<span class="nc" id="L57">		StringBuilder strb = new StringBuilder();</span>
+<span class="nc" id="L58">		strb.append(&quot;[ lenght = &quot; + this.byteString.size() + &quot;, values = &quot; + this.byteString.toStringUtf8() + &quot;]&quot;);</span>
+<span class="nc" id="L59">		return strb.toString();</span>
 	}
 
 }

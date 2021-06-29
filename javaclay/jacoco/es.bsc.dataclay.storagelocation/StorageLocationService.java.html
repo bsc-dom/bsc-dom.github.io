@@ -48,7 +48,7 @@ public final class StorageLocationService {
 	private DataServiceRuntime runtime;
 	
 	/** Associated execution environment IDs. */
-<span class="nc" id="L51">	private final Set&lt;ExecutionEnvironmentID&gt; associatedExecutionEnvironmentIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L51">	private final Set&lt;ExecutionEnvironmentID&gt; associatedExecutionEnvironmentIDs = ConcurrentHashMap.newKeySet();</span>
 
 	/**
 	 * Constructor
@@ -110,14 +110,15 @@ public final class StorageLocationService {
 	 *            Bytes of the object
 	 */
 	public void store(final ExecutionEnvironmentID eeID, final ObjectID objectID, final byte[] bytes) {
-<span class="nc bnc" id="L113" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L114">			LOGGER.debug(&quot;[StorageLocation] Storing object {} into {} &quot;, objectID, eeID);</span>
+
+<span class="nc bnc" id="L114" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L115">			LOGGER.debug(&quot;[StorageLocation] Storing object {} into {} &quot;, objectID, eeID);</span>
 		}
-<span class="nc" id="L116">		getDBHandler(eeID).store(objectID, bytes);</span>
-<span class="nc bnc" id="L117" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L118">			this.diskGC.addToQueueReferenceCounting(eeID, objectID, bytes, false, true);</span>
+<span class="nc" id="L117">		getDBHandler(eeID).store(objectID, bytes);</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L119">			this.diskGC.addToQueueReferenceCounting(eeID, objectID, bytes, false, true);</span>
 		}
-<span class="nc" id="L120">	}</span>
+<span class="nc" id="L121">	}</span>
 
 	/**
 	 * Get from DB
@@ -129,14 +130,13 @@ public final class StorageLocationService {
 	 * @return Bytes of object
 	 */
 	public byte[] get(final ExecutionEnvironmentID eeID, final ObjectID objectID) {
-<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L133">			LOGGER.debug(&quot;[StorageLocation] Getting object {} from {} &quot;, objectID, eeID);</span>
+<span class="nc bnc" id="L133" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L134">				LOGGER.debug(&quot;[StorageLocation] Getting object {} from {} &quot;, objectID, eeID);</span>
 		}
-<span class="nc" id="L135">		final byte[] bytes = getDBHandler(eeID).get(objectID);</span>
-<span class="nc bnc" id="L136" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L137">			this.diskGC.addToQueueReferenceCounting(eeID, objectID, bytes, true, false);</span>
+<span class="nc" id="L136">		final byte[] bytes = getDBHandler(eeID).get(objectID);</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L138">			this.diskGC.addToQueueReferenceCounting(eeID, objectID, bytes, true, false);</span>
 		}
-
 <span class="nc" id="L140">		return bytes;</span>
 	}
 
@@ -201,19 +201,32 @@ public final class StorageLocationService {
 <span class="nc" id="L201">	}</span>
 
 	/**
+	 * Vacuum database.
+	 *
+	 * @param eeID
+	 *            ID of the EE to vacuum
+	 */
+	public void vacuum(final ExecutionEnvironmentID eeID) {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L211">			LOGGER.debug(&quot;[StorageLocation] Vacuum database {}&quot;, eeID);</span>
+		}
+<span class="nc" id="L213">		getDBHandler(eeID).vacuum();</span>
+<span class="nc" id="L214">	}</span>
+
+	/**
 	 * Update counters of references.
 	 * 
 	 * @param updateCounterRefs
 	 *            Update counter of references.
 	 */
 	public void updateRefs(final Map&lt;ObjectID, Integer&gt; updateCounterRefs) {
-<span class="nc bnc" id="L210" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L211">			LOGGER.debug(&quot;[StorageLocation] Updating references with &quot; + updateCounterRefs.toString());</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L224">			LOGGER.debug(&quot;[StorageLocation] Updating references with &quot; + updateCounterRefs.toString());</span>
 		}
-<span class="nc bnc" id="L213" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L214">			this.diskGC.updateRefs(updateCounterRefs);</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L227">			this.diskGC.updateRefs(updateCounterRefs);</span>
 		}
-<span class="nc" id="L216">	}</span>
+<span class="nc" id="L229">	}</span>
 
 	/**
 	 * Get DbHandler. Used for testing purposes.
@@ -223,7 +236,7 @@ public final class StorageLocationService {
 	 * @return DbHandler.
 	 */
 	public DBHandler getDbHandler(final ExecutionEnvironmentID eeID) {
-<span class="nc" id="L226">		return getDBHandler(eeID);</span>
+<span class="nc" id="L239">		return getDBHandler(eeID);</span>
 	}
 
 	/**
@@ -233,8 +246,8 @@ public final class StorageLocationService {
 	 *            ID to associate
 	 */
 	public void associateExecutionEnvironment(final ExecutionEnvironmentID executionEnvironmentID) {
-<span class="nc" id="L236">		this.associatedExecutionEnvironmentIDs.add(executionEnvironmentID);</span>
-<span class="nc" id="L237">	}</span>
+<span class="nc" id="L249">		this.associatedExecutionEnvironmentIDs.add(executionEnvironmentID);</span>
+<span class="nc" id="L250">	}</span>
 
 	/**
 	 * Get associated execution environments id to this SL
@@ -242,17 +255,17 @@ public final class StorageLocationService {
 	 * @return associated execution environments
 	 */
 	public Set&lt;ExecutionEnvironmentID&gt; getAssociateExecutionEnvironments() {
-<span class="nc" id="L245">		return this.associatedExecutionEnvironmentIDs;</span>
+<span class="nc" id="L258">		return this.associatedExecutionEnvironmentIDs;</span>
 	}
 
 	/**
 	 * Close DbHandler
 	 */
 	public void closeDbHandler(final ExecutionEnvironmentID eeID) {
-<span class="nc bnc" id="L252" title="All 2 branches missed.">		if (!getDBHandler(eeID).isClosed()) {</span>
-<span class="nc" id="L253">			getDBHandler(eeID).close();</span>
+<span class="nc bnc" id="L265" title="All 2 branches missed.">		if (!getDBHandler(eeID).isClosed()) {</span>
+<span class="nc" id="L266">			getDBHandler(eeID).close();</span>
 		}
-<span class="nc" id="L255">	}</span>
+<span class="nc" id="L268">	}</span>
 
 	/**
 	 * Shutdown storage location
@@ -262,10 +275,10 @@ public final class StorageLocationService {
 		// closed
 		// before
 		// EE. TODO: check what happens if we close Java SL and Python EE still available and doing things.
-<span class="nc bnc" id="L265" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L266">			this.diskGC.shutDown();</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L279">			this.diskGC.shutDown();</span>
 		}
-<span class="nc" id="L268">	}</span>
+<span class="nc" id="L281">	}</span>
 
 	/**
 	 * Return number of references pointing to object.
@@ -275,10 +288,30 @@ public final class StorageLocationService {
 	 * @return Number of references pointing to object
 	 */
 	public int getNumReferencesTo(final ObjectID objectID) {
-<span class="nc bnc" id="L278" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
-<span class="nc" id="L279">			return this.diskGC.getNumReferencesTo(objectID);</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		if (Configuration.Flags.GLOBAL_GC_ENABLED.getBooleanValue()) {</span>
+<span class="nc" id="L292">			return this.diskGC.getNumReferencesTo(objectID);</span>
 		}
-<span class="nc" id="L281">		return 0;</span>
+<span class="nc" id="L294">		return 0;</span>
+	}
+
+	/**
+	 * Return number of objects in current SL and associated EEs
+	 * @return Number of objects in current SL and associated EEs
+	 */
+	public int getNumObjects() {
+<span class="nc" id="L302">		LOGGER.debug(&quot;Getting number of objects in current SL&quot;);</span>
+<span class="nc" id="L303">		int numObjs = 0;</span>
+<span class="nc bnc" id="L304" title="All 2 branches missed.">		for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : getAssociateExecutionEnvironments()) {</span>
+			//final DataServiceAPI dsAPI = runtime.getRemoteDSAPI(associatedExecutionEnvironmentID);
+			//int numObjsInEE = dsAPI.getNumObjectsInEE();
+			//LOGGER.debug(&quot;Obtained number of objects in EE {} = {}&quot;, associatedExecutionEnvironmentID, numObjsInEE);
+<span class="nc" id="L308">			int numObjsInSL = this.getDbHandler(associatedExecutionEnvironmentID).count();</span>
+<span class="nc" id="L309">			LOGGER.debug(&quot;Obtained number of objects in SL {} = {}&quot;, associatedExecutionEnvironmentID, numObjsInSL);</span>
+			//numObjs += (numObjsInSL - numObjsInEE);
+<span class="nc" id="L311">			numObjs += numObjsInSL;</span>
+<span class="nc" id="L312">		}</span>
+<span class="nc" id="L313">		LOGGER.debug(&quot;Found {} objects&quot;, numObjs);</span>
+<span class="nc" id="L314">		return numObjs;</span>
 	}
 
 	/**
@@ -287,21 +320,30 @@ public final class StorageLocationService {
 	 * @return TRUE if the object either exists in SL disk or in EE memory.
 	 */
 	public boolean exists(final ObjectID objectID) {
-				
-<span class="nc bnc" id="L291" title="All 2 branches missed.">		for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : getAssociateExecutionEnvironments()) {</span>
+<span class="nc" id="L323">		LOGGER.debug(&quot;Checking if object {} exists&quot;, objectID);</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">		for (final ExecutionEnvironmentID associatedExecutionEnvironmentID : getAssociateExecutionEnvironments()) {</span>
 			
 			// Check if object exists in disk
-<span class="nc bnc" id="L294" title="All 2 branches missed.">			if (this.getDbHandler(associatedExecutionEnvironmentID).exists(objectID)) { </span>
-<span class="nc" id="L295">				return true;</span>
+<span class="nc bnc" id="L327" title="All 2 branches missed.">			if (this.getDbHandler(associatedExecutionEnvironmentID).exists(objectID)) {</span>
+<span class="nc" id="L328">				LOGGER.debug(&quot;Object {} exists in SL&quot;, objectID);</span>
+<span class="nc" id="L329">				return true;</span>
 			}
 
 			// Check if object exists in EE memory
-<span class="nc" id="L299">			final DataServiceAPI dsAPI = runtime.getRemoteExecutionEnvironmentForDS(associatedExecutionEnvironmentID);</span>
-<span class="nc bnc" id="L300" title="All 2 branches missed.">			if (dsAPI.existsInEE(objectID)) { </span>
-<span class="nc" id="L301">				return true;</span>
+<span class="nc" id="L333">			final DataServiceAPI dsAPI = runtime.getRemoteDSAPI(associatedExecutionEnvironmentID);</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">			if (dsAPI.exists(objectID)) {</span>
+<span class="nc" id="L335">				LOGGER.debug(&quot;Object {} exists in EE {}&quot;, objectID, associatedExecutionEnvironmentID);</span>
+<span class="nc" id="L336">				return true;</span>
 			}
-<span class="nc" id="L303">		}</span>
-<span class="nc" id="L304">		return false;</span>
+
+			// Check if object was send to disk while checking memory
+<span class="nc bnc" id="L340" title="All 2 branches missed.">			if (this.getDbHandler(associatedExecutionEnvironmentID).exists(objectID)) {</span>
+<span class="nc" id="L341">				LOGGER.debug(&quot;Object {} exists in SL&quot;, objectID);</span>
+<span class="nc" id="L342">				return true;</span>
+			}
+<span class="nc" id="L344">		}</span>
+<span class="nc" id="L345">		LOGGER.debug(&quot;Object {} does not exist&quot;, objectID);</span>
+<span class="nc" id="L346">		return false;</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -12,9 +12,12 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import es.bsc.dataclay.DataClayObject;
 import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.communication.grpc.Utils;
 import es.bsc.dataclay.serialization.buffer.DataClayByteArray;
 import es.bsc.dataclay.serialization.buffer.DataClayByteBuffer;
 import es.bsc.dataclay.serialization.buffer.HeapNettyBuffer;
@@ -31,7 +34,7 @@ import es.bsc.dataclay.util.ids.ObjectID;
 public final class SerializationLibUtils {
 
 	/** Indicates if debug is enabled. */
-<span class="nc" id="L34">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="nc" id="L37">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/**
 	 * Utility classes should have private constructor.
@@ -45,7 +48,7 @@ public final class SerializationLibUtils {
 	 * @return New byte buffer
 	 */
 	public static DataClayByteBuffer newByteBuffer() {
-<span class="nc" id="L48">		return new HeapNettyBuffer();</span>
+<span class="nc" id="L51">		return new HeapNettyBuffer();</span>
 
 	}
 
@@ -56,7 +59,7 @@ public final class SerializationLibUtils {
 	 * @return Byte buffer to read bytes.
 	 */
 	public static DataClayByteBuffer newByteBuffer(final DataClayByteArray byteArray) {
-<span class="nc" id="L59">		return new HeapNettyBuffer(byteArray.getByteArray());</span>
+<span class="nc" id="L62">		return new HeapNettyBuffer(byteArray.getByteArray());</span>
 
 	}
 
@@ -68,80 +71,79 @@ public final class SerializationLibUtils {
 	 *            Hint for associations without hint (for MakePersistent)
 	 * @param numRefsPointingToObj
 	 *            Number of references pointing to object.
+	 * @param thealias Alias of the object or null if none
+	 * @param origObjectID Original object id in case of new version
+	 * @param rootLocation root location of the object
+	 * @param theoriginLocation origin location of the object in case of replica
+	 * @param thereplicaLocations IDs of locations this object was replicated to
+	 * @param theisReadOnly indicates if object is read only
 	 * @return MetaData created.
 	 */
 	public static DataClayObjectMetaData createMetaData(
 			final IdentityHashMap&lt;Object, Integer&gt; curSerObjs,
 			final ExecutionEnvironmentID hintForMissing,
-			final int numRefsPointingToObj) {
+			final int numRefsPointingToObj, final ObjectID origObjectID,
+			final ExecutionEnvironmentID rootLocation,
+			final ExecutionEnvironmentID theoriginLocation,
+			final Set&lt;ExecutionEnvironmentID&gt; thereplicaLocations,
+			final String thealias, final boolean theisReadOnly) {
 
 		// Prepare metaData structures
-<span class="nc" id="L79">		final Map&lt;Integer, ObjectID&gt; tagsToOids = new HashMap&lt;&gt;();</span>
-<span class="nc" id="L80">		final Map&lt;Integer, MetaClassID&gt; tagsToClassIDs = new HashMap&lt;&gt;();</span>
-<span class="nc" id="L81">		final Map&lt;Integer, ExecutionEnvironmentID&gt; tagsToHint = new HashMap&lt;&gt;();</span>
-<span class="nc" id="L82">		final Map&lt;Integer, DataClayInstanceID&gt; tagsToDataClayIDs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L92">		final Map&lt;Integer, ObjectID&gt; tagsToOids = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L93">		final Map&lt;Integer, MetaClassID&gt; tagsToClassIDs = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L94">		final Map&lt;Integer, ExecutionEnvironmentID&gt; tagsToHint = new HashMap&lt;&gt;();</span>
 
-<span class="nc bnc" id="L84" title="All 2 branches missed.">		for (final Entry&lt;Object, Integer&gt; foundObj : curSerObjs.entrySet()) {</span>
-<span class="nc bnc" id="L85" title="All 2 branches missed.">			if (foundObj.getKey() instanceof DataClayObject) {</span>
-<span class="nc" id="L86">				final DataClayObject obj = (DataClayObject) foundObj.getKey();</span>
-<span class="nc" id="L87">				final Integer tag = foundObj.getValue();</span>
-<span class="nc" id="L88">				final MetaClassID classID = obj.getMetaClassID();</span>
-<span class="nc" id="L89">				final ObjectID objectID = obj.getObjectID();</span>
-<span class="nc" id="L90">				final ExecutionEnvironmentID hint = (ExecutionEnvironmentID) obj.getHint();</span>
-<span class="nc" id="L91">				final DataClayInstanceID externalDataClayID = obj.getExternalDataClayID();</span>
+<span class="nc bnc" id="L96" title="All 2 branches missed.">		for (final Entry&lt;Object, Integer&gt; foundObj : curSerObjs.entrySet()) {</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">			if (foundObj.getKey() instanceof DataClayObject) {</span>
+<span class="nc" id="L98">				final DataClayObject obj = (DataClayObject) foundObj.getKey();</span>
+<span class="nc" id="L99">				final Integer tag = foundObj.getValue();</span>
+<span class="nc" id="L100">				final MetaClassID classID = obj.getMetaClassID();</span>
+<span class="nc" id="L101">				final ObjectID objectID = obj.getObjectID();</span>
+<span class="nc" id="L102">				final ExecutionEnvironmentID hint = (ExecutionEnvironmentID) obj.getHint();</span>
 
-<span class="nc" id="L93">				tagsToOids.put(tag, objectID);</span>
-<span class="nc" id="L94">				tagsToClassIDs.put(tag, classID);</span>
-<span class="nc bnc" id="L95" title="All 2 branches missed.">				if (hint != null) {</span>
-<span class="nc bnc" id="L96" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L97">						DataClayObject.getLib();</span>
-<span class="nc" id="L98">						DataClayRuntime.LOGGER.debug(&quot;[==Hint==] Setting hint &quot; + hint</span>
+<span class="nc" id="L104">				tagsToOids.put(tag, objectID);</span>
+<span class="nc" id="L105">				tagsToClassIDs.put(tag, classID);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">				if (hint != null) {</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L108">						DataClayObject.getLib();</span>
+<span class="nc" id="L109">						DataClayRuntime.LOGGER.debug(&quot;[==Hint==] Setting hint &quot; + hint</span>
 								+ &quot; association for tag &quot; + tag);
 					}
-<span class="nc" id="L101">					tagsToHint.put(tag, hint);</span>
+<span class="nc" id="L112">					tagsToHint.put(tag, hint);</span>
 				} else {
-<span class="nc bnc" id="L103" title="All 2 branches missed.">					if (hintForMissing != null) {</span>
-<span class="nc bnc" id="L104" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L105">							DataClayObject.getLib();</span>
-<span class="nc" id="L106">							DataClayRuntime.LOGGER.debug(&quot;[==Hint==] Setting hint &quot; + hintForMissing</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">					if (hintForMissing != null) {</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L116">							DataClayObject.getLib();</span>
+<span class="nc" id="L117">							DataClayRuntime.LOGGER.debug(&quot;[==Hint==] Setting hint &quot; + hintForMissing</span>
 									+ &quot; association for tag &quot; + tag);
 						}
-<span class="nc" id="L109">						tagsToHint.put(tag, hintForMissing);</span>
+<span class="nc" id="L120">						tagsToHint.put(tag, hintForMissing);</span>
 					}
-				}
-
-<span class="nc bnc" id="L113" title="All 2 branches missed.">				if (externalDataClayID != null) {</span>
-<span class="nc bnc" id="L114" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L115">						DataClayObject.getLib();</span>
-<span class="nc" id="L116">						DataClayRuntime.LOGGER.debug(&quot;[==Ext dcID==] Setting dcID &quot; +</span>
-								externalDataClayID
-								+ &quot; association for tag &quot; + tag);
-					}
-<span class="nc" id="L120">					tagsToDataClayIDs.put(tag, externalDataClayID);</span>
 				}
 			}
 
-<span class="nc" id="L124">		}</span>
-<span class="nc" id="L125">		final DataClayObjectMetaData objData = new DataClayObjectMetaData(tagsToOids,</span>
-				tagsToClassIDs, tagsToHint, tagsToDataClayIDs, numRefsPointingToObj);
-<span class="nc" id="L127">		return objData;</span>
+<span class="nc" id="L125">		}</span>
+<span class="nc" id="L126">		final DataClayObjectMetaData objData = new DataClayObjectMetaData(thealias, theisReadOnly,</span>
+				tagsToOids, tagsToClassIDs, tagsToHint, numRefsPointingToObj,
+				origObjectID, rootLocation, theoriginLocation, thereplicaLocations);
+<span class="nc" id="L129">		return objData;</span>
 	}
 
 	public static byte[] serializeBinary(Object o) throws IOException {
 		final byte[] res;
-<span class="nc" id="L132">		final ByteArrayOutputStream bos = new ByteArrayOutputStream();</span>
+<span class="nc" id="L134">		final ByteArrayOutputStream bos = new ByteArrayOutputStream();</span>
 
-<span class="nc" id="L134">		try (ObjectOutput out = new ObjectOutputStream(bos)) {</span>
-<span class="nc" id="L135">			out.writeObject(o);</span>
-<span class="nc" id="L136">			out.flush();</span>
-<span class="nc" id="L137">		} catch (Exception e) {</span>
-<span class="nc" id="L138">			throw e;</span>
+<span class="nc" id="L136">		try (ObjectOutput out = new ObjectOutputStream(bos)) {</span>
+<span class="nc" id="L137">			out.writeObject(o);</span>
+<span class="nc" id="L138">			out.flush();</span>
+<span class="nc" id="L139">		} catch (Exception e) {</span>
+<span class="nc" id="L140">			throw e;</span>
 		} finally {
-<span class="nc" id="L140">			res = bos.toByteArray();</span>
-<span class="nc" id="L141">			bos.close();</span>
+<span class="nc" id="L142">			res = bos.toByteArray();</span>
+<span class="nc" id="L143">			bos.close();</span>
 		}
 
-<span class="nc" id="L144">		return res;</span>
+<span class="nc" id="L146">		return res;</span>
 	}
 
 	/**
@@ -153,10 +155,10 @@ public final class SerializationLibUtils {
 	 *
 	 */
 	public static Object deserializeBinary(byte[] data) throws Exception {
-<span class="nc" id="L156">		try (ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInput in = new ObjectInputStream(bis)) {</span>
-<span class="nc" id="L157">			return in.readObject();</span>
-<span class="nc" id="L158">		} catch (Exception e) {</span>
-<span class="nc" id="L159">			throw e;</span>
+<span class="nc" id="L158">		try (ByteArrayInputStream bis = new ByteArrayInputStream(data); ObjectInput in = new ObjectInputStream(bis)) {</span>
+<span class="nc" id="L159">			return in.readObject();</span>
+<span class="nc" id="L160">		} catch (Exception e) {</span>
+<span class="nc" id="L161">			throw e;</span>
 		}
 	}
 }

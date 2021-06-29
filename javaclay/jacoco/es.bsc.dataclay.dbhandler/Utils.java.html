@@ -1,35 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Utils.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dbhandler</a> &gt; <span class="el_source">Utils.java</span></div><h1>Utils.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.dbhandler;
+import org.apache.commons.codec.DecoderException;
+import org.apache.commons.codec.binary.Hex;
+
+import java.nio.charset.StandardCharsets;
 
 // CHECKSTYLE:OFF
-<span class="nc" id="L5">public class Utils {</span>
+<span class="nc" id="L9">public class Utils {</span>
 
-<span class="nc" id="L7">	final protected static char[] hexArray = &quot;0123456789ABCDEF&quot;.toCharArray();</span>
+<span class="nc" id="L11">	final protected static char[] hexArray = &quot;0123456789ABCDEF&quot;.toCharArray();</span>
 
-	public static String bytesToHex(final byte[] bytes) {
-<span class="nc" id="L10">		final char[] hexChars = new char[bytes.length * 2];</span>
-<span class="nc bnc" id="L11" title="All 2 branches missed.">		for (int j = 0; j &lt; bytes.length; j++) {</span>
-<span class="nc" id="L12">			final int v = bytes[j] &amp; 0xFF;</span>
-<span class="nc" id="L13">			hexChars[j * 2] = hexArray[v &gt;&gt;&gt; 4];</span>
-<span class="nc" id="L14">			hexChars[j * 2 + 1] = hexArray[v &amp; 0x0F];</span>
-		}
-<span class="nc" id="L16">		return new String(hexChars);</span>
+	public static String bytesToHex(byte[] bytes) {
+<span class="nc" id="L14">		char[] result = Hex.encodeHex(bytes);</span>
+<span class="nc" id="L15">		return new String(result);</span>
+	}
+
+	public static String unhex(String hex) throws DecoderException {
+<span class="nc" id="L19">		return new String(Hex.decodeHex(hex));</span>
 	}
 
 	/**
 	 * Convert Hexadecimal string to byte array
-	 * @param s
+	 * @param hex
 	 *            String
 	 * @return Bytes
 	 */
-	public static byte[] hexStringToByteArray(final String s) {
-<span class="nc" id="L26">		final int len = s.length();</span>
-<span class="nc" id="L27">		final byte[] data = new byte[len / 2];</span>
-<span class="nc bnc" id="L28" title="All 2 branches missed.">		for (int i = 0; i &lt; len; i += 2) {</span>
-<span class="nc" id="L29">			data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) &lt;&lt; 4)</span>
-<span class="nc" id="L30">					+ Character.digit(s.charAt(i + 1), 16));</span>
-		}
-<span class="nc" id="L32">		return data;</span>
+	public static byte[] hexStringToByteArray(final String hex) throws DecoderException {
+<span class="nc" id="L29">		String unhex = unhex(hex);</span>
+<span class="nc" id="L30">		return unhex.getBytes(StandardCharsets.UTF_8);</span>
 	}
 
 }

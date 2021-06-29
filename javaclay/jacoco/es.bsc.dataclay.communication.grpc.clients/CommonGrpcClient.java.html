@@ -3,6 +3,7 @@ package es.bsc.dataclay.communication.grpc.clients;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -22,20 +23,20 @@ public final class CommonGrpcClient {
 	private final Logger logger;
 
 	/** Indicates if debug is enabled. */
-<span class="nc" id="L25">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="nc" id="L26">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** Origin host name. */
 	private final String originHostName;
 
 	/** Logic Module clients. */
-<span class="nc" id="L31">	private final Map&lt;String, LogicModuleGrpcClient&gt; allLMclients = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L32">	private final Map&lt;String, LogicModuleGrpcClient&gt; allLMclients = new ConcurrentHashMap&lt;&gt;();</span>
 
 	/** DataService clients. */
-<span class="nc" id="L34">	private final Map&lt;String, DataServiceGrpcClient&gt; allDSclients = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L35">	private final Map&lt;String, DataServiceGrpcClient&gt; allDSclients = new ConcurrentHashMap&lt;&gt;();</span>
 
 	/** Custom header key. */
-<span class="nc" id="L37">	public static final Metadata.Key&lt;String&gt; SERVICE_ALIAS_HEADER_KEY =</span>
-<span class="nc" id="L38">		      Metadata.Key.of(&quot;service-alias&quot;, Metadata.ASCII_STRING_MARSHALLER);</span>
+<span class="nc" id="L38">	public static final Metadata.Key&lt;String&gt; SERVICE_ALIAS_HEADER_KEY =</span>
+<span class="nc" id="L39">		      Metadata.Key.of(&quot;service-alias&quot;, Metadata.ASCII_STRING_MARSHALLER);</span>
 	
 	/**
 	 * Constructor.
@@ -44,10 +45,10 @@ public final class CommonGrpcClient {
 	 * @throws InterruptedException
 	 *             If connection was interrupted
 	 */
-<span class="nc" id="L47">	public CommonGrpcClient(final String hostName) throws InterruptedException {</span>
-<span class="nc" id="L48">		originHostName = hostName;</span>
-<span class="nc" id="L49">		logger = LogManager.getLogger(&quot;grpc.client.common.&quot; + originHostName);</span>
-<span class="nc" id="L50">	}</span>
+<span class="nc" id="L48">	public CommonGrpcClient(final String hostName) throws InterruptedException {</span>
+<span class="nc" id="L49">		originHostName = hostName;</span>
+<span class="nc" id="L50">		logger = LogManager.getLogger(&quot;grpc.client.common.&quot; + originHostName);</span>
+<span class="nc" id="L51">	}</span>
 
 	/**
 	 * Get a Netty Logic Module API
@@ -62,18 +63,18 @@ public final class CommonGrpcClient {
 	public LogicModuleAPI getLogicModuleAPI(final String targetIP,
 			final int targetPort)
 			throws InterruptedException {
-<span class="nc" id="L65">		final String completeAddr = targetIP + targetPort;</span>
-<span class="nc" id="L66">		LogicModuleGrpcClient client = allLMclients.get(completeAddr);</span>
-<span class="nc bnc" id="L67" title="All 2 branches missed.">		if (client == null) {</span>
-<span class="nc" id="L68">			client = new LogicModuleGrpcClient(targetIP, targetPort);</span>
-<span class="nc" id="L69">			allLMclients.put(completeAddr, client);</span>
+<span class="nc" id="L66">		final String completeAddr = targetIP + targetPort;</span>
+<span class="nc" id="L67">		LogicModuleGrpcClient client = allLMclients.get(completeAddr);</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">		if (client == null) {</span>
+<span class="nc" id="L69">			client = new LogicModuleGrpcClient(targetIP, targetPort);</span>
+<span class="nc" id="L70">			allLMclients.put(completeAddr, client);</span>
 			try {
-<span class="nc" id="L71">				client.checkAlive();</span>
-<span class="nc" id="L72">			} catch (final Exception ex) {</span>
-<span class="nc" id="L73">				throw new InterruptedException(&quot;Unable to connect to LogicModule&quot;);</span>
-<span class="nc" id="L74">			}</span>
+<span class="nc" id="L72">				client.checkAlive();</span>
+<span class="nc" id="L73">			} catch (final Exception ex) {</span>
+<span class="nc" id="L74">				throw new InterruptedException(&quot;Unable to connect to LogicModule&quot;);</span>
+<span class="nc" id="L75">			}</span>
 		}
-<span class="nc" id="L76">		return client;</span>
+<span class="nc" id="L77">		return client;</span>
 	}
 
 	/**
@@ -89,13 +90,13 @@ public final class CommonGrpcClient {
 	public DataServiceAPI getDataServiceAPI(final String targetIP,
 			final int targetPort)
 			throws InterruptedException {
-<span class="nc" id="L92">		final String completeAddr = targetIP + targetPort;</span>
-<span class="nc" id="L93">		DataServiceGrpcClient client = allDSclients.get(completeAddr);</span>
-<span class="nc bnc" id="L94" title="All 2 branches missed.">		if (client == null) {</span>
-<span class="nc" id="L95">			client = new DataServiceGrpcClient(this.originHostName, targetIP, targetPort);</span>
-<span class="nc" id="L96">			allDSclients.put(completeAddr, client);</span>
+<span class="nc" id="L93">		final String completeAddr = targetIP + targetPort;</span>
+<span class="nc" id="L94">		DataServiceGrpcClient client = allDSclients.get(completeAddr);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">		if (client == null) {</span>
+<span class="nc" id="L96">			client = new DataServiceGrpcClient(this.originHostName, targetIP, targetPort);</span>
+<span class="nc" id="L97">			allDSclients.put(completeAddr, client);</span>
 		}
-<span class="nc" id="L98">		return client;</span>
+<span class="nc" id="L99">		return client;</span>
 	}
 
 	/**
@@ -103,45 +104,45 @@ public final class CommonGrpcClient {
 	 */
 	public void finishClientConnections() {
 		try {
-<span class="nc bnc" id="L106" title="All 2 branches missed.">			for (final LogicModuleGrpcClient client : allLMclients.values()) {</span>
-<span class="nc" id="L107">				client.shutdown();</span>
-<span class="nc" id="L108">			}</span>
-<span class="nc bnc" id="L109" title="All 2 branches missed.">			for (final DataServiceGrpcClient client : allDSclients.values()) {</span>
-<span class="nc" id="L110">				client.shutdown();</span>
-<span class="nc" id="L111">			}</span>
-<span class="nc" id="L112">		} catch (final Exception ex) {</span>
-<span class="nc" id="L113">			logger.debug(&quot;finishClientconnections error&quot;, ex);</span>
-<span class="nc" id="L114">		}</span>
-<span class="nc" id="L115">	}</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">			for (final LogicModuleGrpcClient client : allLMclients.values()) {</span>
+<span class="nc" id="L108">				client.shutdown();</span>
+<span class="nc" id="L109">			}</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">			for (final DataServiceGrpcClient client : allDSclients.values()) {</span>
+<span class="nc" id="L111">				client.shutdown();</span>
+<span class="nc" id="L112">			}</span>
+<span class="nc" id="L113">		} catch (final Exception ex) {</span>
+<span class="nc" id="L114">			logger.debug(&quot;finishClientconnections error&quot;, ex);</span>
+<span class="nc" id="L115">		}</span>
+<span class="nc" id="L116">	}</span>
 
 	/**
 	 * Wait to process all async requests.
 	 */
 	public void waitAndProcessAllAsyncRequests() {
 		try {
-<span class="nc bnc" id="L122" title="All 2 branches missed.">			for (final LogicModuleGrpcClient client : allLMclients.values()) {</span>
-<span class="nc" id="L123">				client.waitAndProcessAllAsyncRequests();</span>
-<span class="nc" id="L124">			}</span>
-<span class="nc bnc" id="L125" title="All 2 branches missed.">			for (final DataServiceGrpcClient client : allDSclients.values()) {</span>
-<span class="nc" id="L126">				client.waitAndProcessAllAsyncRequests();</span>
-<span class="nc" id="L127">			}</span>
-<span class="nc" id="L128">		} catch (final Exception ex) {</span>
-<span class="nc" id="L129">			logger.debug(&quot;waitAndProcessAllAsyncRequests error&quot;, ex);</span>
-<span class="nc" id="L130">		}</span>
-<span class="nc" id="L131">	}</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">			for (final LogicModuleGrpcClient client : allLMclients.values()) {</span>
+<span class="nc" id="L124">				client.waitAndProcessAllAsyncRequests();</span>
+<span class="nc" id="L125">			}</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">			for (final DataServiceGrpcClient client : allDSclients.values()) {</span>
+<span class="nc" id="L127">				client.waitAndProcessAllAsyncRequests();</span>
+<span class="nc" id="L128">			}</span>
+<span class="nc" id="L129">		} catch (final Exception ex) {</span>
+<span class="nc" id="L130">			logger.debug(&quot;waitAndProcessAllAsyncRequests error&quot;, ex);</span>
+<span class="nc" id="L131">		}</span>
+<span class="nc" id="L132">	}</span>
 
 	/**
 	 * Wait to process all pending objects.
 	 */
 	public void registerPendingObjects() {
 		try {
-<span class="nc bnc" id="L138" title="All 2 branches missed.">			for (final DataServiceGrpcClient client : allDSclients.values()) {</span>
-<span class="nc" id="L139">				client.registerPendingObjects();</span>
-<span class="nc" id="L140">			}</span>
-<span class="nc" id="L141">		} catch (final Exception ex) {</span>
-<span class="nc" id="L142">			logger.debug(&quot;registerPendingObjects error&quot;, ex);</span>
-<span class="nc" id="L143">		}</span>
-<span class="nc" id="L144">	}</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">			for (final DataServiceGrpcClient client : allDSclients.values()) {</span>
+<span class="nc" id="L140">				client.registerPendingObjects();</span>
+<span class="nc" id="L141">			}</span>
+<span class="nc" id="L142">		} catch (final Exception ex) {</span>
+<span class="nc" id="L143">			logger.debug(&quot;registerPendingObjects error&quot;, ex);</span>
+<span class="nc" id="L144">		}</span>
+<span class="nc" id="L145">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

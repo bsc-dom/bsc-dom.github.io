@@ -19,6 +19,7 @@ import es.bsc.dataclay.util.events.message.EventMessage;
 import es.bsc.dataclay.util.ids.ECAID;
 import es.bsc.dataclay.util.ids.EventMessageID;
 import es.bsc.dataclay.util.yaml.CommonYAML;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * LogicModule data base.
@@ -26,70 +27,75 @@ import es.bsc.dataclay.util.yaml.CommonYAML;
 public final class NotificationManagerDB {
 
 	/** Data source. */
-	private final BasicDataSource dataSource;
+	private final SQLiteDataSource dataSource;
 
 	/**
 	 * NotificationManagerDB constructor.
-	 * 
-	 * @param managerName
-	 *            Name of the LM service managing.
+	 *
 	 */
-<span class="nc" id="L37">	public NotificationManagerDB(final BasicDataSource dataSource) {</span>
-<span class="nc" id="L38">		this.dataSource = dataSource;</span>
-<span class="nc" id="L39">	}</span>
+<span class="nc" id="L36">	public NotificationManagerDB(final SQLiteDataSource dataSource) {</span>
+<span class="nc" id="L37">		this.dataSource = dataSource;</span>
+<span class="nc" id="L38">	}</span>
 
 	/**
 	 * Create tables of MDS.
 	 */
 	public void createTables() {
-<span class="nc" id="L45">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L47">			conn = dataSource.getConnection();</span>
-<span class="nc bnc" id="L48" title="All 2 branches missed.">			for (final NotificationMgrSQLStatements.SqlStatements stmt : NotificationMgrSQLStatements.SqlStatements.values()) {</span>
-<span class="nc bnc" id="L49" title="All 2 branches missed.">				if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
-<span class="nc" id="L50">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
-<span class="nc" id="L51">					updateStatement.execute();</span>
-				}
-			}
-<span class="nc" id="L54">		} catch (final SQLException e) {</span>
-<span class="nc" id="L55">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L44">		synchronized (dataSource) {</span>
+
+<span class="nc" id="L46">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L58" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L59">					conn.close();</span>
+<span class="nc" id="L48">				conn = dataSource.getConnection();</span>
+<span class="nc bnc" id="L49" title="All 2 branches missed.">				for (final NotificationMgrSQLStatements.SqlStatements stmt : NotificationMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="nc bnc" id="L50" title="All 2 branches missed.">					if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
+<span class="nc" id="L51">						final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="nc" id="L52">						updateStatement.execute();</span>
+<span class="nc" id="L53">						updateStatement.close();</span>
+					}
 				}
-<span class="nc" id="L61">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L62">				ex1.printStackTrace();</span>
-<span class="nc" id="L63">			}</span>
-		}
-<span class="nc" id="L65">	}</span>
+<span class="nc" id="L56">			} catch (final SQLException e) {</span>
+<span class="nc" id="L57">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L60" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L61">						conn.close();</span>
+					}
+<span class="nc" id="L63">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L64">					ex1.printStackTrace();</span>
+<span class="nc" id="L65">				}</span>
+			}
+<span class="nc" id="L67">		}</span>
+<span class="nc" id="L68">	}</span>
 
 	/**
 	 * Delete the tables of MDS. Just the other way around of createTables --much simpler.
 	 */
 	public void dropTables() {
+<span class="nc" id="L74">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L72">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L74">			conn = dataSource.getConnection();</span>
-<span class="nc bnc" id="L75" title="All 2 branches missed.">			for (final NotificationMgrSQLStatements.SqlStatements stmt : NotificationMgrSQLStatements.SqlStatements.values()) {</span>
-<span class="nc bnc" id="L76" title="All 2 branches missed.">				if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
-<span class="nc" id="L77">					final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
-<span class="nc" id="L78">					updateStatement.execute();</span>
-				}
-			}
-<span class="nc" id="L81">		} catch (final SQLException e) {</span>
-<span class="nc" id="L82">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L76">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L85" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L86">					conn.close();</span>
+<span class="nc" id="L78">				conn = dataSource.getConnection();</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">				for (final NotificationMgrSQLStatements.SqlStatements stmt : NotificationMgrSQLStatements.SqlStatements.values()) {</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">					if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
+<span class="nc" id="L81">						final PreparedStatement updateStatement = conn.prepareStatement(stmt.getSqlStatement());</span>
+<span class="nc" id="L82">						updateStatement.execute();</span>
+<span class="nc" id="L83">						updateStatement.close();</span>
+					}
 				}
-<span class="nc" id="L88">			} catch (final SQLException ex1) {</span>
-<span class="nc" id="L89">				ex1.printStackTrace();</span>
-<span class="nc" id="L90">			}</span>
-		}
-<span class="nc" id="L92">	}</span>
+<span class="nc" id="L86">			} catch (final SQLException e) {</span>
+<span class="nc" id="L87">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L90" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L91">						conn.close();</span>
+					}
+<span class="nc" id="L93">				} catch (final SQLException ex1) {</span>
+<span class="nc" id="L94">					ex1.printStackTrace();</span>
+<span class="nc" id="L95">				}</span>
+			}
+<span class="nc" id="L97">		}</span>
+<span class="nc" id="L98">	}</span>
 
 	/**
 	 * Store a EventListenerImpl into database
@@ -97,34 +103,37 @@ public final class NotificationManagerDB {
 	 *            EventListenerImpl
 	 */
 	public void store(final ECA eventListenerImpl) {
-		// Serialize
-<span class="nc" id="L101">		final String strYaml = CommonYAML.getYamlObject().dump(eventListenerImpl);</span>
-<span class="nc" id="L102">		final byte[] bytes = strYaml.getBytes();</span>
-<span class="nc" id="L103">		final ECAID id = eventListenerImpl.getId();</span>
-<span class="nc" id="L104">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L106">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L107">			final PreparedStatement insertStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.INSERT_ECA.getSqlStatement());</span>
+<span class="nc" id="L106">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L109">			insertStatement.setObject(1, id.getId());</span>
-			// CHECKSTYLE:OFF
-<span class="nc" id="L111">			insertStatement.setBytes(2, bytes);</span>
-			// CHECKSTYLE:ON
-<span class="nc" id="L113">			insertStatement.executeUpdate();</span>
-
-<span class="nc" id="L115">		} catch (final Exception e) {</span>
-<span class="nc" id="L116">			e.printStackTrace();</span>
-<span class="nc" id="L117">			throw new EventListenerAlreadyRegisteredException(id);</span>
-		} finally {
+			// Serialize
+<span class="nc" id="L109">			final String strYaml = CommonYAML.getYamlObject().dump(eventListenerImpl);</span>
+<span class="nc" id="L110">			final byte[] bytes = strYaml.getBytes();</span>
+<span class="nc" id="L111">			final ECAID id = eventListenerImpl.getId();</span>
+<span class="nc" id="L112">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L120" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L121">					conn.close();</span>
-				}
-<span class="nc" id="L123">			} catch (final SQLException e) {</span>
+<span class="nc" id="L114">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L115">				final PreparedStatement insertStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.INSERT_ECA.getSqlStatement());</span>
+
+<span class="nc" id="L117">				insertStatement.setObject(1, id.getId());</span>
+				// CHECKSTYLE:OFF
+<span class="nc" id="L119">				insertStatement.setBytes(2, bytes);</span>
+				// CHECKSTYLE:ON
+<span class="nc" id="L121">				insertStatement.executeUpdate();</span>
+<span class="nc" id="L122">				insertStatement.close();</span>
+<span class="nc" id="L123">			} catch (final Exception e) {</span>
 <span class="nc" id="L124">				e.printStackTrace();</span>
-<span class="nc" id="L125">			}</span>
-		}
-<span class="nc" id="L127">	}</span>
+<span class="nc" id="L125">				throw new EventListenerAlreadyRegisteredException(id);</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L128" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L129">						conn.close();</span>
+					}
+<span class="nc" id="L131">				} catch (final SQLException e) {</span>
+<span class="nc" id="L132">					e.printStackTrace();</span>
+<span class="nc" id="L133">				}</span>
+			}
+<span class="nc" id="L135">		}</span>
+<span class="nc" id="L136">	}</span>
 
 	/**
 	 * Store a EventMessage into database
@@ -133,36 +142,39 @@ public final class NotificationManagerDB {
 	 */
 	public void store(final EventMessage eventMessage) {
 		// CHECKSTYLE:OFF
+<span class="nc" id="L145">		synchronized (dataSource) {</span>
 
-		// Serialize
-<span class="nc" id="L138">		final String strYaml = CommonYAML.getYamlObject().dump(eventMessage);</span>
-<span class="nc" id="L139">		final byte[] bytes = strYaml.getBytes();</span>
+			// Serialize
+<span class="nc" id="L148">			final String strYaml = CommonYAML.getYamlObject().dump(eventMessage);</span>
+<span class="nc" id="L149">			final byte[] bytes = strYaml.getBytes();</span>
 
-<span class="nc" id="L141">		final EventMessageID id = eventMessage.getId();</span>
-<span class="nc" id="L142">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L144">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L145">			final PreparedStatement insertStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.INSERT_MESSAGE.getSqlStatement());</span>
-
-<span class="nc" id="L147">			insertStatement.setObject(1, id.getId());</span>
-			// CHECKSTYLE:OFF
-<span class="nc" id="L149">			insertStatement.setBytes(2, bytes);</span>
-			// CHECKSTYLE:ON
-<span class="nc" id="L151">			insertStatement.executeUpdate();</span>
-
-<span class="nc" id="L153">		} catch (final Exception e) {</span>
-<span class="nc" id="L154">			throw new EventMessageAlreadyStoredException(id);</span>
-		} finally {
+<span class="nc" id="L151">			final EventMessageID id = eventMessage.getId();</span>
+<span class="nc" id="L152">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L157" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L158">					conn.close();</span>
-				}
-<span class="nc" id="L160">			} catch (final SQLException e) {</span>
-<span class="nc" id="L161">				e.printStackTrace();</span>
-<span class="nc" id="L162">			}</span>
-		}
-		// CHECKSTYLE:ON
-<span class="nc" id="L165">	}</span>
+<span class="nc" id="L154">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L155">				final PreparedStatement insertStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.INSERT_MESSAGE.getSqlStatement());</span>
+
+<span class="nc" id="L157">				insertStatement.setObject(1, id.getId());</span>
+				// CHECKSTYLE:OFF
+<span class="nc" id="L159">				insertStatement.setBytes(2, bytes);</span>
+				// CHECKSTYLE:ON
+<span class="nc" id="L161">				insertStatement.executeUpdate();</span>
+<span class="nc" id="L162">				insertStatement.close();</span>
+
+<span class="nc" id="L164">			} catch (final Exception e) {</span>
+<span class="nc" id="L165">				throw new EventMessageAlreadyStoredException(id);</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L169">						conn.close();</span>
+					}
+<span class="nc" id="L171">				} catch (final SQLException e) {</span>
+<span class="nc" id="L172">					e.printStackTrace();</span>
+<span class="nc" id="L173">				}</span>
+			}
+			// CHECKSTYLE:ON
+<span class="nc" id="L176">		}</span>
+<span class="nc" id="L177">	}</span>
 
 	/**
 	 * Delete event message identified by ID provided
@@ -170,25 +182,30 @@ public final class NotificationManagerDB {
 	 *            ID of the event message
 	 */
 	public void deleteByID(final EventMessageID eventMessageID) {
-<span class="nc" id="L173">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L175">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L176">			final PreparedStatement deleteStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.DELETE_MESSAGE.getSqlStatement());</span>
+<span class="nc" id="L185">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L178">			deleteStatement.setObject(1, eventMessageID.getId());</span>
-<span class="nc" id="L179">			deleteStatement.executeUpdate();</span>
-<span class="nc" id="L180">		} catch (final SQLException e) {</span>
-<span class="nc" id="L181">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L187">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L184" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L185">					conn.close();</span>
-				}
-<span class="nc" id="L187">			} catch (final SQLException e) {</span>
-<span class="nc" id="L188">				e.printStackTrace();</span>
-<span class="nc" id="L189">			}</span>
-		}
-<span class="nc" id="L191">	}</span>
+<span class="nc" id="L189">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L190">				final PreparedStatement deleteStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.DELETE_MESSAGE.getSqlStatement());</span>
+
+<span class="nc" id="L192">				deleteStatement.setObject(1, eventMessageID.getId());</span>
+<span class="nc" id="L193">				deleteStatement.executeUpdate();</span>
+<span class="nc" id="L194">				deleteStatement.close();</span>
+
+<span class="nc" id="L196">			} catch (final SQLException e) {</span>
+<span class="nc" id="L197">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L200" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L201">						conn.close();</span>
+					}
+<span class="nc" id="L203">				} catch (final SQLException e) {</span>
+<span class="nc" id="L204">					e.printStackTrace();</span>
+<span class="nc" id="L205">				}</span>
+			}
+<span class="nc" id="L207">		}</span>
+<span class="nc" id="L208">	}</span>
 
 	/**
 	 * Update eventListener
@@ -196,32 +213,37 @@ public final class NotificationManagerDB {
 	 *            Event Listener with new values.
 	 */
 	public void updateByIDEventListener(final ECA newEventListener) {
-		// CHECKSTYLE:OFF
-		// Serialize
-<span class="nc" id="L201">		final String strYaml = CommonYAML.getYamlObject().dump(newEventListener);</span>
-<span class="nc" id="L202">		final byte[] bytes = strYaml.getBytes();</span>
-<span class="nc" id="L203">		final ECAID id = newEventListener.getId();</span>
-<span class="nc" id="L204">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L206">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L207">			final PreparedStatement updateStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.UPDATE_ECA.getSqlStatement());</span>
+<span class="nc" id="L216">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L209">			updateStatement.setBytes(1, bytes);</span>
-<span class="nc" id="L210">			updateStatement.setObject(2, id.getId());</span>
-<span class="nc" id="L211">			updateStatement.executeUpdate();</span>
-<span class="nc" id="L212">		} catch (final SQLException e) {</span>
-<span class="nc" id="L213">			throw new EventListenerNotRegisteredException(id);</span>
-		} finally {
+			// CHECKSTYLE:OFF
+			// Serialize
+<span class="nc" id="L220">			final String strYaml = CommonYAML.getYamlObject().dump(newEventListener);</span>
+<span class="nc" id="L221">			final byte[] bytes = strYaml.getBytes();</span>
+<span class="nc" id="L222">			final ECAID id = newEventListener.getId();</span>
+<span class="nc" id="L223">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L216" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L217">					conn.close();</span>
-				}
-<span class="nc" id="L219">			} catch (final SQLException e) {</span>
-<span class="nc" id="L220">				e.printStackTrace();</span>
-<span class="nc" id="L221">			}</span>
-		}
-		// CHECKSTYLE:ON
-<span class="nc" id="L224">	}</span>
+<span class="nc" id="L225">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L226">				final PreparedStatement updateStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.UPDATE_ECA.getSqlStatement());</span>
+
+<span class="nc" id="L228">				updateStatement.setBytes(1, bytes);</span>
+<span class="nc" id="L229">				updateStatement.setObject(2, id.getId());</span>
+<span class="nc" id="L230">				updateStatement.executeUpdate();</span>
+<span class="nc" id="L231">				updateStatement.close();</span>
+
+<span class="nc" id="L233">			} catch (final SQLException e) {</span>
+<span class="nc" id="L234">				throw new EventListenerNotRegisteredException(id);</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L237" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L238">						conn.close();</span>
+					}
+<span class="nc" id="L240">				} catch (final SQLException e) {</span>
+<span class="nc" id="L241">					e.printStackTrace();</span>
+<span class="nc" id="L242">				}</span>
+			}
+			// CHECKSTYLE:ON
+<span class="nc" id="L245">		}</span>
+<span class="nc" id="L246">	}</span>
 
 	/**
 	 * Update event message
@@ -229,71 +251,73 @@ public final class NotificationManagerDB {
 	 *            event message with new values.
 	 */
 	public void updateByIDEventMessage(final EventMessage newEventMessage) {
-		// CHECKSTYLE:OFF
+<span class="nc" id="L254">		synchronized (dataSource) {</span>
 
-		// Serialize
-<span class="nc" id="L235">		final String strYaml = CommonYAML.getYamlObject().dump(newEventMessage);</span>
-<span class="nc" id="L236">		final byte[] bytes = strYaml.getBytes();</span>
-<span class="nc" id="L237">		final EventMessageID id = newEventMessage.getId();</span>
-<span class="nc" id="L238">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L240">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L241">			final PreparedStatement updateStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.UPDATE_MESSAGE.getSqlStatement());</span>
-
-<span class="nc" id="L243">			updateStatement.setBytes(1, bytes);</span>
-<span class="nc" id="L244">			updateStatement.setObject(2, id.getId());</span>
-<span class="nc" id="L245">			updateStatement.executeUpdate();</span>
-<span class="nc" id="L246">		} catch (final SQLException e) {</span>
-<span class="nc" id="L247">			throw new EventMessageNotRegisteredException(id);</span>
-		} finally {
+			// Serialize
+<span class="nc" id="L257">			final String strYaml = CommonYAML.getYamlObject().dump(newEventMessage);</span>
+<span class="nc" id="L258">			final byte[] bytes = strYaml.getBytes();</span>
+<span class="nc" id="L259">			final EventMessageID id = newEventMessage.getId();</span>
+<span class="nc" id="L260">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L250" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L251">					conn.close();</span>
-				}
-<span class="nc" id="L253">			} catch (final SQLException e) {</span>
-<span class="nc" id="L254">				e.printStackTrace();</span>
-<span class="nc" id="L255">			}</span>
-		}
-		// CHECKSTYLE:ON
-<span class="nc" id="L258">	}</span>
+<span class="nc" id="L262">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L263">				final PreparedStatement updateStatement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.UPDATE_MESSAGE.getSqlStatement());</span>
+
+<span class="nc" id="L265">				updateStatement.setBytes(1, bytes);</span>
+<span class="nc" id="L266">				updateStatement.setObject(2, id.getId());</span>
+<span class="nc" id="L267">				updateStatement.executeUpdate();</span>
+<span class="nc" id="L268">				updateStatement.close();</span>
+
+<span class="nc" id="L270">			} catch (final SQLException e) {</span>
+<span class="nc" id="L271">				throw new EventMessageNotRegisteredException(id);</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L274" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L275">						conn.close();</span>
+					}
+<span class="nc" id="L277">				} catch (final SQLException e) {</span>
+<span class="nc" id="L278">					e.printStackTrace();</span>
+<span class="nc" id="L279">				}</span>
+			}
+			// CHECKSTYLE:ON
+<span class="nc" id="L282">		}</span>
+<span class="nc" id="L283">	}</span>
 
 	/**
 	 * Get all Event listeners
 	 * @return The Event listeners
 	 */
 	public List&lt;ECA&gt; getAllEventListeners() {
+<span class="nc" id="L290">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L266">		ResultSet rs = null;</span>
-<span class="nc" id="L267">		Connection conn = null;</span>
-<span class="nc" id="L268">		final List&lt;ECA&gt; resultList = new ArrayList&lt;&gt;();</span>
-		try {
-<span class="nc" id="L270">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L271">			final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_ECAS.getSqlStatement());</span>
-<span class="nc" id="L272">			rs = statement.executeQuery();</span>
-
-<span class="nc bnc" id="L274" title="All 2 branches missed.">			while (rs.next()) {</span>
-<span class="nc" id="L275">				final byte[] bytes = rs.getBytes(2);</span>
-<span class="nc" id="L276">				final String strYaml = new String(bytes);</span>
-<span class="nc" id="L277">				final ECA eventListener = (ECA) CommonYAML.getYamlObject().load(strYaml);</span>
-<span class="nc" id="L278">				resultList.add(eventListener);</span>
-<span class="nc" id="L279">			}</span>
-
-<span class="nc" id="L281">		} catch (final SQLException e) {</span>
-<span class="nc" id="L282">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L292">			ResultSet rs = null;</span>
+<span class="nc" id="L293">			Connection conn = null;</span>
+<span class="nc" id="L294">			final List&lt;ECA&gt; resultList = new ArrayList&lt;&gt;();</span>
 			try {
-<span class="nc bnc" id="L285" title="All 2 branches missed.">				if (rs != null) {</span>
-<span class="nc" id="L286">					rs.close();</span>
-				}
-<span class="nc bnc" id="L288" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L289">					conn.close();</span>
-				}
-<span class="nc" id="L291">			} catch (final SQLException e) {</span>
-<span class="nc" id="L292">				e.printStackTrace();</span>
-<span class="nc" id="L293">			}</span>
-		}
+<span class="nc" id="L296">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L297">				final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_ECAS.getSqlStatement());</span>
+<span class="nc" id="L298">				rs = statement.executeQuery();</span>
 
-<span class="nc" id="L296">		return resultList;</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">				while (rs.next()) {</span>
+<span class="nc" id="L301">					final byte[] bytes = rs.getBytes(2);</span>
+<span class="nc" id="L302">					final String strYaml = new String(bytes);</span>
+<span class="nc" id="L303">					final ECA eventListener = (ECA) CommonYAML.getYamlObject().load(strYaml);</span>
+<span class="nc" id="L304">					resultList.add(eventListener);</span>
+<span class="nc" id="L305">				}</span>
+<span class="nc" id="L306">				statement.close();</span>
+<span class="nc" id="L307">			} catch (final SQLException e) {</span>
+<span class="nc" id="L308">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L311" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L312">						conn.close();</span>
+					}
+<span class="nc" id="L314">				} catch (final SQLException e) {</span>
+<span class="nc" id="L315">					e.printStackTrace();</span>
+<span class="nc" id="L316">				}</span>
+			}
+
+<span class="nc" id="L319">			return resultList;</span>
+		}
 	}
 
 	/**
@@ -301,38 +325,39 @@ public final class NotificationManagerDB {
 	 * @return The Event Messages
 	 */
 	public List&lt;EventMessage&gt; getAllEventMessages() {
-<span class="nc" id="L304">		ResultSet rs = null;</span>
-<span class="nc" id="L305">		final List&lt;EventMessage&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L306">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L308">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L309">			final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_MESSAGES.getSqlStatement());</span>
+<span class="nc" id="L328">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L311">			rs = statement.executeQuery();</span>
-
-<span class="nc bnc" id="L313" title="All 2 branches missed.">			while (rs.next()) {</span>
-<span class="nc" id="L314">				final byte[] bytes = rs.getBytes(2);</span>
-
-<span class="nc" id="L316">				final String strYaml = new String(bytes);</span>
-<span class="nc" id="L317">				final EventMessage eventMsg = (EventMessage) CommonYAML.getYamlObject().load(strYaml);</span>
-<span class="nc" id="L318">				resultList.add(eventMsg);</span>
-<span class="nc" id="L319">			}</span>
-
-<span class="nc" id="L321">		} catch (final SQLException e) {</span>
-<span class="nc" id="L322">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L330">			ResultSet rs = null;</span>
+<span class="nc" id="L331">			final List&lt;EventMessage&gt; resultList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L332">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L325" title="All 2 branches missed.">				if (rs != null) {</span>
-<span class="nc" id="L326">					rs.close();</span>
-				}
-<span class="nc bnc" id="L328" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L329">					conn.close();</span>
-				}
-<span class="nc" id="L331">			} catch (final SQLException e) {</span>
-<span class="nc" id="L332">				e.printStackTrace();</span>
-<span class="nc" id="L333">			}</span>
+<span class="nc" id="L334">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L335">				final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_MESSAGES.getSqlStatement());</span>
+
+<span class="nc" id="L337">				rs = statement.executeQuery();</span>
+
+<span class="nc bnc" id="L339" title="All 2 branches missed.">				while (rs.next()) {</span>
+<span class="nc" id="L340">					final byte[] bytes = rs.getBytes(2);</span>
+
+<span class="nc" id="L342">					final String strYaml = new String(bytes);</span>
+<span class="nc" id="L343">					final EventMessage eventMsg = (EventMessage) CommonYAML.getYamlObject().load(strYaml);</span>
+<span class="nc" id="L344">					resultList.add(eventMsg);</span>
+<span class="nc" id="L345">				}</span>
+<span class="nc" id="L346">				statement.close();</span>
+
+<span class="nc" id="L348">			} catch (final SQLException e) {</span>
+<span class="nc" id="L349">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L352" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L353">						conn.close();</span>
+					}
+<span class="nc" id="L355">				} catch (final SQLException e) {</span>
+<span class="nc" id="L356">					e.printStackTrace();</span>
+<span class="nc" id="L357">				}</span>
+			}
+<span class="nc" id="L359">			return resultList;</span>
 		}
-<span class="nc" id="L335">		return resultList;</span>
 	}
 
 	/**
@@ -342,38 +367,39 @@ public final class NotificationManagerDB {
 	 * @return The Event Message
 	 */
 	public List&lt;EventMessage&gt; getSomeEventMessages(final int limit) {
-<span class="nc" id="L345">		ResultSet rs = null;</span>
-<span class="nc" id="L346">		final List&lt;EventMessage&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L347">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L349">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L350">			final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_MESSAGES_LIMITED.getSqlStatement());</span>
+<span class="nc" id="L370">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L352">			statement.setInt(1, limit);</span>
-<span class="nc" id="L353">			rs = statement.executeQuery();</span>
-
-<span class="nc bnc" id="L355" title="All 2 branches missed.">			while (rs.next()) {</span>
-<span class="nc" id="L356">				final byte[] bytes = rs.getBytes(2);</span>
-<span class="nc" id="L357">				final String strYaml = new String(bytes);</span>
-<span class="nc" id="L358">				final EventMessage eventMsg = (EventMessage) CommonYAML.getYamlObject().load(strYaml);</span>
-<span class="nc" id="L359">				resultList.add(eventMsg);</span>
-<span class="nc" id="L360">			}</span>
-
-<span class="nc" id="L362">		} catch (final SQLException e) {</span>
-<span class="nc" id="L363">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L372">			ResultSet rs = null;</span>
+<span class="nc" id="L373">			final List&lt;EventMessage&gt; resultList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L374">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L366" title="All 2 branches missed.">				if (rs != null) {</span>
-<span class="nc" id="L367">					rs.close();</span>
-				}
-<span class="nc bnc" id="L369" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L370">					conn.close();</span>
-				}
-<span class="nc" id="L372">			} catch (final SQLException e) {</span>
-<span class="nc" id="L373">				e.printStackTrace();</span>
-<span class="nc" id="L374">			}</span>
+<span class="nc" id="L376">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L377">				final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_MESSAGES_LIMITED.getSqlStatement());</span>
+
+<span class="nc" id="L379">				statement.setInt(1, limit);</span>
+<span class="nc" id="L380">				rs = statement.executeQuery();</span>
+
+<span class="nc bnc" id="L382" title="All 2 branches missed.">				while (rs.next()) {</span>
+<span class="nc" id="L383">					final byte[] bytes = rs.getBytes(2);</span>
+<span class="nc" id="L384">					final String strYaml = new String(bytes);</span>
+<span class="nc" id="L385">					final EventMessage eventMsg = (EventMessage) CommonYAML.getYamlObject().load(strYaml);</span>
+<span class="nc" id="L386">					resultList.add(eventMsg);</span>
+<span class="nc" id="L387">				}</span>
+<span class="nc" id="L388">				statement.close();</span>
+
+<span class="nc" id="L390">			} catch (final SQLException e) {</span>
+<span class="nc" id="L391">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L394" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L395">						conn.close();</span>
+					}
+<span class="nc" id="L397">				} catch (final SQLException e) {</span>
+<span class="nc" id="L398">					e.printStackTrace();</span>
+<span class="nc" id="L399">				}</span>
+			}
+<span class="nc" id="L401">			return resultList;</span>
 		}
-<span class="nc" id="L376">		return resultList;</span>
 	}
 
 	/**
@@ -383,39 +409,40 @@ public final class NotificationManagerDB {
 	 * @return The Event listeners
 	 */
 	public List&lt;ECA&gt; getSomeEventListeners(final int limit) {
-<span class="nc" id="L386">		ResultSet rs = null;</span>
-<span class="nc" id="L387">		final List&lt;ECA&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L388">		Connection conn = null;</span>
-		try {
-<span class="nc" id="L390">			conn = dataSource.getConnection();</span>
-<span class="nc" id="L391">			final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_ECAS.getSqlStatement());</span>
+<span class="nc" id="L412">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L393">			statement.setInt(1, limit);</span>
-<span class="nc" id="L394">			rs = statement.executeQuery();</span>
-
-<span class="nc bnc" id="L396" title="All 2 branches missed.">			while (rs.next()) {</span>
-<span class="nc" id="L397">				final byte[] bytes = rs.getBytes(2);</span>
-<span class="nc" id="L398">				final String strYaml = new String(bytes);</span>
-<span class="nc" id="L399">				final ECA eventListener = (ECA) CommonYAML.getYamlObject().load(strYaml);</span>
-<span class="nc" id="L400">				resultList.add(eventListener);</span>
-<span class="nc" id="L401">			}</span>
-
-<span class="nc" id="L403">		} catch (final SQLException e) {</span>
-<span class="nc" id="L404">			e.printStackTrace();</span>
-		} finally {
+<span class="nc" id="L414">			ResultSet rs = null;</span>
+<span class="nc" id="L415">			final List&lt;ECA&gt; resultList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L416">			Connection conn = null;</span>
 			try {
-<span class="nc bnc" id="L407" title="All 2 branches missed.">				if (rs != null) {</span>
-<span class="nc" id="L408">					rs.close();</span>
-				}
-<span class="nc bnc" id="L410" title="All 2 branches missed.">				if (conn != null) {</span>
-<span class="nc" id="L411">					conn.close();</span>
-				}
-<span class="nc" id="L413">			} catch (final SQLException e) {</span>
-<span class="nc" id="L414">				e.printStackTrace();</span>
-<span class="nc" id="L415">			}</span>
-		}
+<span class="nc" id="L418">				conn = dataSource.getConnection();</span>
+<span class="nc" id="L419">				final PreparedStatement statement = conn.prepareStatement(NotificationMgrSQLStatements.SqlStatements.SELECT_ALL_ECAS.getSqlStatement());</span>
 
-<span class="nc" id="L418">		return resultList;</span>
+<span class="nc" id="L421">				statement.setInt(1, limit);</span>
+<span class="nc" id="L422">				rs = statement.executeQuery();</span>
+
+<span class="nc bnc" id="L424" title="All 2 branches missed.">				while (rs.next()) {</span>
+<span class="nc" id="L425">					final byte[] bytes = rs.getBytes(2);</span>
+<span class="nc" id="L426">					final String strYaml = new String(bytes);</span>
+<span class="nc" id="L427">					final ECA eventListener = (ECA) CommonYAML.getYamlObject().load(strYaml);</span>
+<span class="nc" id="L428">					resultList.add(eventListener);</span>
+<span class="nc" id="L429">				}</span>
+<span class="nc" id="L430">				statement.close();</span>
+
+<span class="nc" id="L432">			} catch (final SQLException e) {</span>
+<span class="nc" id="L433">				e.printStackTrace();</span>
+			} finally {
+				try {
+<span class="nc bnc" id="L436" title="All 2 branches missed.">					if (conn != null) {</span>
+<span class="nc" id="L437">						conn.close();</span>
+					}
+<span class="nc" id="L439">				} catch (final SQLException e) {</span>
+<span class="nc" id="L440">					e.printStackTrace();</span>
+<span class="nc" id="L441">				}</span>
+			}
+
+<span class="nc" id="L444">			return resultList;</span>
+		}
 	}
 
 	/**
@@ -423,11 +450,11 @@ public final class NotificationManagerDB {
 	 */
 	public void close() {
 		try {
-<span class="nc" id="L426">			dataSource.close();</span>
-<span class="nc" id="L427">		}catch(Exception e) {</span>
+<span class="nc" id="L453">			dataSource.close();</span>
+<span class="nc" id="L454">		}catch(Exception e) {</span>
 			// TODO
-<span class="nc" id="L429">			e.printStackTrace();</span>
-<span class="nc" id="L430">		}</span>
-<span class="nc" id="L431">	}</span>
+<span class="nc" id="L456">			e.printStackTrace();</span>
+<span class="nc" id="L457">		}</span>
+<span class="nc" id="L458">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -25,7 +25,8 @@ import es.bsc.dataclay.util.ids.ObjectID;
 import es.bsc.dataclay.util.ids.OperationID;
 import es.bsc.dataclay.util.ids.SessionID;
 import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
-import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.util.structs.MemoryCache;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * Class responsible to handle events and notifications.
@@ -33,7 +34,7 @@ import es.bsc.dataclay.util.structs.LruCache;
 public final class NotificationManager {
 
 	/** Logger. */
-<span class="nc" id="L36">	private static final Logger logger = LogManager.getLogger(&quot;managers.NotificationManager&quot;);</span>
+<span class="nc" id="L37">	private static final Logger logger = LogManager.getLogger(&quot;managers.NotificationManager&quot;);</span>
 
 	/** Waiting time during shutdown for checking notifications. */
 	private static final int WAITING_TIME_CLOSE_NOTIFICATION = 500;
@@ -60,33 +61,30 @@ public final class NotificationManager {
 	private final Timer timer;
 
 	/** Cache of sessions. */
-<span class="nc" id="L63">	private final LruCache&lt;AccountID, SessionID&gt; cacheOfSessions = new LruCache&lt;&gt;(</span>
-<span class="nc" id="L64">			Configuration.Flags.MAX_ENTRIES_NOTIFICATION_MANAGER_SESSION_CACHE.getIntValue());</span>
+<span class="nc" id="L64">	private final MemoryCache&lt;AccountID, SessionID&gt; cacheOfSessions = new MemoryCache&lt;&gt;();</span>
 
 	/**
 	 * Constructor
-	 * @param managerName
-	 *            Manager/service name.
 	 * @param thelogicModule
 	 *            Reference to logic module for executing actions
 	 */
-<span class="nc" id="L73">	public NotificationManager(final LogicModule thelogicModule, final BasicDataSource dataSource) {</span>
-<span class="nc" id="L74">		this.logicModule = thelogicModule;</span>
-<span class="nc" id="L75">		this.notificationDB = new NotificationManagerDB(dataSource);</span>
-<span class="nc" id="L76">		notificationDB.createTables();</span>
-<span class="nc" id="L77">		this.events = new NotificationManagerPriorityQueue&lt;&gt;(</span>
-<span class="nc" id="L78">				Configuration.Flags.MAX_ENTRIES_NOTIFICATION_MANAGER_MSG_QUEUE.getIntValue(),</span>
+<span class="nc" id="L71">	public NotificationManager(final LogicModule thelogicModule, final SQLiteDataSource dataSource) {</span>
+<span class="nc" id="L72">		this.logicModule = thelogicModule;</span>
+<span class="nc" id="L73">		this.notificationDB = new NotificationManagerDB(dataSource);</span>
+<span class="nc" id="L74">		notificationDB.createTables();</span>
+<span class="nc" id="L75">		this.events = new NotificationManagerPriorityQueue&lt;&gt;(</span>
+<span class="nc" id="L76">				Configuration.Flags.MAX_ENTRIES_NOTIFICATION_MANAGER_MSG_QUEUE.getIntValue(),</span>
 				notificationDB);
-<span class="nc" id="L80">		final Notifier notifier = new Notifier();</span>
-<span class="nc" id="L81">		timer = new Timer(); // Instantiate Timer Object</span>
-<span class="nc" id="L82">		execService = Executors.newScheduledThreadPool(1);</span>
+<span class="nc" id="L78">		final Notifier notifier = new Notifier();</span>
+<span class="nc" id="L79">		timer = new Timer(); // Instantiate Timer Object</span>
+<span class="nc" id="L80">		execService = Executors.newScheduledThreadPool(1);</span>
 
 		// Create Repetitively task for every 1 secs
-<span class="nc" id="L85">		timer.schedule(notifier, 0, Configuration.Flags.NOTIFICATION_MANAGER_INTERVAL.getLongValue());</span>
+<span class="nc" id="L83">		timer.schedule(notifier, 0, Configuration.Flags.NOTIFICATION_MANAGER_INTERVAL.getLongValue());</span>
 
-<span class="nc" id="L87">		this.isShuttingDown = false;</span>
+<span class="nc" id="L85">		this.isShuttingDown = false;</span>
 
-<span class="nc" id="L89">	}</span>
+<span class="nc" id="L87">	}</span>
 
 	/**
 	 * Register a new event listener.
@@ -95,10 +93,10 @@ public final class NotificationManager {
 	 */
 	public void registerEventListenerImpl(final ECA newEventListenerImpl) {
 		// Add to database
-<span class="nc" id="L98">		this.notificationDB.store(newEventListenerImpl);</span>
+<span class="nc" id="L96">		this.notificationDB.store(newEventListenerImpl);</span>
 
-<span class="nc" id="L100">		logger.debug(&quot;Registered event listener {}&quot;, newEventListenerImpl);</span>
-<span class="nc" id="L101">	}</span>
+<span class="nc" id="L98">		logger.debug(&quot;Registered event listener {}&quot;, newEventListenerImpl);</span>
+<span class="nc" id="L99">	}</span>
 
 	/**
 	 * New event arrived. Add to queue.
@@ -109,25 +107,25 @@ public final class NotificationManager {
 
 		// == FAULT-TOLERANCE behaviour == //
 		// Add it to disk
-<span class="nc" id="L112">		newEvent.setEventState(EventState.QUEUED);</span>
-<span class="nc" id="L113">		this.notificationDB.store(newEvent);</span>
+<span class="nc" id="L110">		newEvent.setEventState(EventState.QUEUED);</span>
+<span class="nc" id="L111">		this.notificationDB.store(newEvent);</span>
 
 		// =============================== //
-<span class="nc" id="L116">		logger.info(&quot;Event arrived: {}&quot;, newEvent);</span>
+<span class="nc" id="L114">		logger.info(&quot;Event arrived: {}&quot;, newEvent);</span>
 
 		// Add to queue
-<span class="nc" id="L119">		this.events.add(newEvent);</span>
+<span class="nc" id="L117">		this.events.add(newEvent);</span>
 
-<span class="nc" id="L121">		logger.debug(&quot;Event added to queue (#{} elements in queue)&quot;,</span>
-<span class="nc" id="L122">				this.events.size());</span>
-<span class="nc" id="L123">	}</span>
+<span class="nc" id="L119">		logger.debug(&quot;Event added to queue (#{} elements in queue)&quot;,</span>
+<span class="nc" id="L120">				this.events.size());</span>
+<span class="nc" id="L121">	}</span>
 
 	/**
 	 * Get the NotificationManager::notificationDB
 	 * @return the notificationDB
 	 */
 	public NotificationManagerDB getNotificationDB() {
-<span class="nc" id="L130">		return notificationDB;</span>
+<span class="nc" id="L128">		return notificationDB;</span>
 	}
 
 	/**
@@ -136,18 +134,18 @@ public final class NotificationManager {
 	 *            the notificationDB to set
 	 */
 	public void setNotificationDB(final NotificationManagerDB newnotificationDB) {
-<span class="nc bnc" id="L139" title="All 2 branches missed.">		if (newnotificationDB == null) {</span>
-<span class="nc" id="L140">			throw new IllegalArgumentException(&quot;notificationDB cannot be null&quot;);</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		if (newnotificationDB == null) {</span>
+<span class="nc" id="L138">			throw new IllegalArgumentException(&quot;notificationDB cannot be null&quot;);</span>
 		}
-<span class="nc" id="L142">		this.notificationDB = newnotificationDB;</span>
-<span class="nc" id="L143">	}</span>
+<span class="nc" id="L140">		this.notificationDB = newnotificationDB;</span>
+<span class="nc" id="L141">	}</span>
 
 	/**
 	 * Get the NotificationManager::events
 	 * @return the events
 	 */
 	public Queue&lt;EventMessage&gt; getEvents() {
-<span class="nc" id="L150">		return events;</span>
+<span class="nc" id="L148">		return events;</span>
 	}
 
 	/**
@@ -156,81 +154,81 @@ public final class NotificationManager {
 	 *            Id of the account
 	 */
 	public void removeSessionInCache(final AccountID accountID) {
-<span class="nc" id="L159">		this.cacheOfSessions.remove(accountID);</span>
-<span class="nc" id="L160">	}</span>
+<span class="nc" id="L157">		this.cacheOfSessions.remove(accountID);</span>
+<span class="nc" id="L158">	}</span>
 
 	/**
 	 * Shutdown execution service.
 	 */
 	public void closeManager() {
-<span class="nc" id="L166">		this.isShuttingDown = true;</span>
-<span class="nc bnc" id="L167" title="All 2 branches missed.">		while (isProcessingEvent) {</span>
+<span class="nc" id="L164">		this.isShuttingDown = true;</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">		while (isProcessingEvent) {</span>
 			try {
-<span class="nc" id="L169">				Thread.sleep(WAITING_TIME_CLOSE_NOTIFICATION);</span>
-<span class="nc" id="L170">			} catch (final InterruptedException e) {</span>
-<span class="nc" id="L171">				e.printStackTrace();</span>
-<span class="nc" id="L172">			}</span>
+<span class="nc" id="L167">				Thread.sleep(WAITING_TIME_CLOSE_NOTIFICATION);</span>
+<span class="nc" id="L168">			} catch (final InterruptedException e) {</span>
+<span class="nc" id="L169">				e.printStackTrace();</span>
+<span class="nc" id="L170">			}</span>
 		}
 
 		// Process all in queue
 
-<span class="nc" id="L177">		this.execService.shutdown();</span>
+<span class="nc" id="L175">		this.execService.shutdown();</span>
 		try {
-<span class="nc" id="L179">			this.execService.awaitTermination(1, TimeUnit.SECONDS);</span>
-<span class="nc" id="L180">		} catch (final InterruptedException e) {</span>
-<span class="nc" id="L181">			e.printStackTrace();</span>
-<span class="nc" id="L182">		}</span>
-<span class="nc" id="L183">		this.timer.cancel();</span>
-<span class="nc" id="L184">	}</span>
+<span class="nc" id="L177">			this.execService.awaitTermination(1, TimeUnit.SECONDS);</span>
+<span class="nc" id="L178">		} catch (final InterruptedException e) {</span>
+<span class="nc" id="L179">			e.printStackTrace();</span>
+<span class="nc" id="L180">		}</span>
+<span class="nc" id="L181">		this.timer.cancel();</span>
+<span class="nc" id="L182">	}</span>
 
 	/**
 	 * Class that read from queue and run proper actions.
 	 */
-<span class="nc" id="L189">	private class Notifier extends TimerTask {</span>
+<span class="nc" id="L187">	private class Notifier extends TimerTask {</span>
 
 		@Override
 		public void run() {
-<span class="nc bnc" id="L193" title="All 4 branches missed.">			if (isShuttingDown || isProcessingEvent) {</span>
-<span class="nc" id="L194">				return;</span>
+<span class="nc bnc" id="L191" title="All 4 branches missed.">			if (isShuttingDown || isProcessingEvent) {</span>
+<span class="nc" id="L192">				return;</span>
 			}
 
-<span class="nc" id="L197">			isProcessingEvent = true;</span>
+<span class="nc" id="L195">			isProcessingEvent = true;</span>
 
 			try {
 				// Get event
-<span class="nc" id="L201">				final EventMessage message = events.poll();</span>
-<span class="nc bnc" id="L202" title="All 2 branches missed.">				if (message != null) {</span>
+<span class="nc" id="L199">				final EventMessage message = events.poll();</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">				if (message != null) {</span>
 
-<span class="nc" id="L204">					logger.debug(&quot;Processing event: {}&quot;, message);</span>
+<span class="nc" id="L202">					logger.debug(&quot;Processing event: {}&quot;, message);</span>
 					// Check which conditions are accomplished
 
 					// WARNING: modify getAllListeners to receive a 'subset' of listeners in case there is not enough
 					// memory heap. For now, since we do not have this problem, leave it like that.
 					// Having a cache does not solve anything since we must check 'all' event listeners and therefore
 					// a certain number of misses in cache is guaranteed.
-<span class="nc" id="L211">					final List&lt;ECA&gt; listeners = notificationDB.getAllEventListeners();</span>
+<span class="nc" id="L209">					final List&lt;ECA&gt; listeners = notificationDB.getAllEventListeners();</span>
 
 					// Update event listeners target
 					// Get ALL target conditions registered and check if message accomplishes EACH one.
-<span class="nc bnc" id="L215" title="All 2 branches missed.">					for (final ECA eventListener : listeners) {</span>
-<span class="nc" id="L216">						logger.debug(&quot;Checking listener: {}&quot;, eventListener);</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">					for (final ECA eventListener : listeners) {</span>
+<span class="nc" id="L214">						logger.debug(&quot;Checking listener: {}&quot;, eventListener);</span>
 
 						// Check if message accomplishes event type to execute event
-<span class="nc" id="L219">						final boolean eventTypeOK = eventListener.checkIsEventType(message);</span>
-<span class="nc" id="L220">						logger.debug(&quot;Event type is: {}&quot;, eventTypeOK);</span>
+<span class="nc" id="L217">						final boolean eventTypeOK = eventListener.checkIsEventType(message);</span>
+<span class="nc" id="L218">						logger.debug(&quot;Event type is: {}&quot;, eventTypeOK);</span>
 
-<span class="nc bnc" id="L222" title="All 2 branches missed.">						if (eventTypeOK) {</span>
-<span class="nc" id="L223">							final SerializedParametersOrReturn params = message.getParams();</span>
-<span class="nc" id="L224">							final Map&lt;ObjectID, MetaDataInfo&gt; objectsInfo = logicModule.getObjectsMetaDataInfoOfClassForNM(eventListener.getTargetClass());</span>
-<span class="nc" id="L225">							boolean firstExecutionOfFilterMethod = true;</span>
-<span class="nc" id="L226">							boolean filterMethodResult = true;</span>
-<span class="nc bnc" id="L227" title="All 2 branches missed.">							for (final ObjectID targetOID : objectsInfo.keySet()) {</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">						if (eventTypeOK) {</span>
+<span class="nc" id="L221">							final SerializedParametersOrReturn params = message.getParams();</span>
+<span class="nc" id="L222">							final Map&lt;ObjectID, MetaDataInfo&gt; objectsInfo = logicModule.getObjectsMetaDataInfoOfClassForNM(eventListener.getTargetClass());</span>
+<span class="nc" id="L223">							boolean firstExecutionOfFilterMethod = true;</span>
+<span class="nc" id="L224">							boolean filterMethodResult = true;</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">							for (final ObjectID targetOID : objectsInfo.keySet()) {</span>
 
 								// === START SESSION AS OWNER OF THE OBJECT === //
 								// Get owner's
-<span class="nc" id="L231">								final AccountID ownerID = logicModule.getOwner(targetOID);</span>
-<span class="nc" id="L232">								SessionID sessionOfOwnerID = cacheOfSessions.get(ownerID);</span>
-<span class="nc bnc" id="L233" title="All 2 branches missed.">								if (sessionOfOwnerID == null) {</span>
+<span class="nc" id="L229">								final AccountID ownerID = logicModule.getOwner(targetOID);</span>
+<span class="nc" id="L230">								SessionID sessionOfOwnerID = cacheOfSessions.get(ownerID);</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">								if (sessionOfOwnerID == null) {</span>
 									// TODO: IMPORTANT: data set of store is randomly selected
 									// As defined, we should set the dataset of store as the same of
 									// the target object BUT if we do that we would have to implement
@@ -241,55 +239,55 @@ public final class NotificationManager {
 									// could
 									// be to specify which dataset to use in makePersistent call.
 
-<span class="nc" id="L244">									sessionOfOwnerID = logicModule.initializeSessionAsOwnerOfObject(ownerID);</span>
-<span class="nc" id="L245">									cacheOfSessions.put(ownerID, sessionOfOwnerID);</span>
+<span class="nc" id="L242">									sessionOfOwnerID = logicModule.initializeSessionAsOwnerOfObject(ownerID);</span>
+<span class="nc" id="L243">									cacheOfSessions.put(ownerID, sessionOfOwnerID);</span>
 								}
 
 								// TODO: WARNING: filter method is being executed as the owner of the object, and only once,
 								// should it be like that?
-<span class="nc bnc" id="L250" title="All 4 branches missed.">								if (firstExecutionOfFilterMethod &amp;&amp; eventListener.getFilterMethod() != null) {</span>
-<span class="nc" id="L251">									logger.debug(&quot;Executing filterMethod {}&quot;, message);</span>
-<span class="nc" id="L252">									final OperationID opID = eventListener.getFilterMethod();</span>
+<span class="nc bnc" id="L248" title="All 4 branches missed.">								if (firstExecutionOfFilterMethod &amp;&amp; eventListener.getFilterMethod() != null) {</span>
+<span class="nc" id="L249">									logger.debug(&quot;Executing filterMethod {}&quot;, message);</span>
+<span class="nc" id="L250">									final OperationID opID = eventListener.getFilterMethod();</span>
 
 									try {
-<span class="nc" id="L255">										filterMethodResult = logicModule.executeFilterMethod(targetOID,</span>
+<span class="nc" id="L253">										filterMethodResult = logicModule.executeFilterMethod(targetOID,</span>
 												sessionOfOwnerID, params, opID);
-<span class="nc" id="L257">										firstExecutionOfFilterMethod = false;</span>
-<span class="nc bnc" id="L258" title="All 2 branches missed.">										if (!filterMethodResult) { // WARNING: Workaround while it cannot be executed as static</span>
+<span class="nc" id="L255">										firstExecutionOfFilterMethod = false;</span>
+<span class="nc bnc" id="L256" title="All 2 branches missed.">										if (!filterMethodResult) { // WARNING: Workaround while it cannot be executed as static</span>
 																	// method.
-<span class="nc" id="L260">											break;</span>
+<span class="nc" id="L258">											break;</span>
 										}
-<span class="nc" id="L262">									} catch (final Exception e) {</span>
-<span class="nc" id="L263">										logger.error(&quot;Error executing filterMethod&quot;, e);</span>
-<span class="nc" id="L264">									}</span>
+<span class="nc" id="L260">									} catch (final Exception e) {</span>
+<span class="nc" id="L261">										logger.error(&quot;Error executing filterMethod&quot;, e);</span>
+<span class="nc" id="L262">									}</span>
 								}
-<span class="nc bnc" id="L266" title="All 2 branches missed.">								if (filterMethodResult) {</span>
-<span class="nc" id="L267">									logger.debug(&quot;Executing action: {}&quot;, message);</span>
-<span class="nc" id="L268">									final OperationID opID = eventListener.getAction();</span>
+<span class="nc bnc" id="L264" title="All 2 branches missed.">								if (filterMethodResult) {</span>
+<span class="nc" id="L265">									logger.debug(&quot;Executing action: {}&quot;, message);</span>
+<span class="nc" id="L266">									final OperationID opID = eventListener.getAction();</span>
 									// Update database message (FAULT-TOLERANCE BEHAVIOUR)
-<span class="nc" id="L270">									message.setEventState(EventState.EXECUTING);</span>
-<span class="nc" id="L271">									notificationDB.updateByIDEventMessage(message);</span>
+<span class="nc" id="L268">									message.setEventState(EventState.EXECUTING);</span>
+<span class="nc" id="L269">									notificationDB.updateByIDEventMessage(message);</span>
 
-<span class="nc" id="L273">									execService.execute(new WorkerThread(targetOID, message, opID, sessionOfOwnerID));</span>
+<span class="nc" id="L271">									execService.execute(new WorkerThread(targetOID, message, opID, sessionOfOwnerID));</span>
 								}
-<span class="nc" id="L275">							}</span>
+<span class="nc" id="L273">							}</span>
 						}
-<span class="nc" id="L277">					}</span>
+<span class="nc" id="L275">					}</span>
 
 					// Removes event from Database if success
-<span class="nc" id="L280">					notificationDB.deleteByID(message.getId());</span>
+<span class="nc" id="L278">					notificationDB.deleteByID(message.getId());</span>
 
 					// Fill queue
-<span class="nc" id="L283">					events.fillQueueFromDB();</span>
-<span class="nc" id="L284">				} else {</span>
-<span class="nc" id="L285">					logger.debug(&quot;Empty queue&quot;);</span>
+<span class="nc" id="L281">					events.fillQueueFromDB();</span>
+<span class="nc" id="L282">				} else {</span>
+<span class="nc" id="L283">					logger.debug(&quot;Empty queue&quot;);</span>
 				}
-<span class="nc" id="L287">			} catch (final Throwable e) {</span>
-<span class="nc" id="L288">				logger.error(&quot;Exception during timer&quot;, e);</span>
+<span class="nc" id="L285">			} catch (final Throwable e) {</span>
+<span class="nc" id="L286">				logger.error(&quot;Exception during timer&quot;, e);</span>
 			} finally {
-<span class="nc" id="L290">				isProcessingEvent = false;</span>
+<span class="nc" id="L288">				isProcessingEvent = false;</span>
 			}
-<span class="nc" id="L292">		}</span>
+<span class="nc" id="L290">		}</span>
 
 		/**
 		 * Class that implements a WorkerThread to execute notifications / actions.
@@ -317,25 +315,25 @@ public final class NotificationManager {
 			 *            ID of the session of the owner of the target object
 			 */
 			WorkerThread(final ObjectID newtargetOID, final EventMessage neweventMessage,
-<span class="nc" id="L320">					final OperationID newopID, final SessionID sessionOfOwnerID) {</span>
-<span class="nc" id="L321">				targetOID = newtargetOID;</span>
-<span class="nc" id="L322">				message = neweventMessage;</span>
-<span class="nc" id="L323">				opID = newopID;</span>
-<span class="nc" id="L324">				sessionID = sessionOfOwnerID;</span>
-<span class="nc" id="L325">			}</span>
+<span class="nc" id="L318">					final OperationID newopID, final SessionID sessionOfOwnerID) {</span>
+<span class="nc" id="L319">				targetOID = newtargetOID;</span>
+<span class="nc" id="L320">				message = neweventMessage;</span>
+<span class="nc" id="L321">				opID = newopID;</span>
+<span class="nc" id="L322">				sessionID = sessionOfOwnerID;</span>
+<span class="nc" id="L323">			}</span>
 
 			@Override
 			public void run() {
 
-<span class="nc" id="L330">				logicModule.executeNotificationAction(</span>
+<span class="nc" id="L328">				logicModule.executeNotificationAction(</span>
 						targetOID,
 						sessionID,
-<span class="nc" id="L333">						message.getParams(), opID);</span>
-<span class="nc" id="L334">			}</span>
+<span class="nc" id="L331">						message.getParams(), opID);</span>
+<span class="nc" id="L332">			}</span>
 
 			@Override
 			public String toString() {
-<span class="nc" id="L338">				return &quot;OID:&quot; + targetOID + &quot; reacts to event:&quot; + message.getEventType() + &quot; executing:&quot; + opID;</span>
+<span class="nc" id="L336">				return &quot;OID:&quot; + targetOID + &quot; reacts to event:&quot; + message.getEventType() + &quot; executing:&quot; + opID;</span>
 			}
 		}
 

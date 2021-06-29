@@ -149,40 +149,41 @@ import es.bsc.dataclay.util.management.interfacemgr.Interface;
 
 <span class="nc" id="L150">			Util.finishOut(&quot;Registered data model in namespace: &quot; + namespaceName);</span>
 <span class="nc" id="L151">		} catch (final Exception ex) {</span>
-<span class="nc" id="L152">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
-<span class="nc" id="L153">		}</span>
-<span class="nc" id="L154">		System.exit(0); // Call this to finish logging threads</span>
-<span class="nc" id="L155">	}</span>
+<span class="nc" id="L152">			ex.printStackTrace();</span>
+<span class="nc" id="L153">			Util.finishErr(&quot;Exception caught. Check your account and credentials.&quot;, ERRCODE.ERROR);</span>
+<span class="nc" id="L154">		}</span>
+<span class="nc" id="L155">		System.exit(0); // Call this to finish logging threads</span>
+<span class="nc" id="L156">	}</span>
 
 	private static Set&lt;String&gt; getAllClassPaths(final String classPath) {
-<span class="nc" id="L158">		final Set&lt;String&gt; result = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L159">		final Stack&lt;File&gt; stack = new Stack&lt;&gt;();</span>
-<span class="nc" id="L160">		File curFile = new File(classPath);</span>
-<span class="nc" id="L161">		final String classPathAbsolute = curFile.getAbsolutePath();</span>
-<span class="nc" id="L162">		updateStackResult(curFile, stack, result, classPathAbsolute);</span>
-<span class="nc bnc" id="L163" title="All 2 branches missed.">		while (!stack.isEmpty()) {</span>
-<span class="nc" id="L164">			curFile = stack.pop();</span>
-<span class="nc" id="L165">			updateStackResult(curFile, stack, result, classPathAbsolute);</span>
+<span class="nc" id="L159">		final Set&lt;String&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L160">		final Stack&lt;File&gt; stack = new Stack&lt;&gt;();</span>
+<span class="nc" id="L161">		File curFile = new File(classPath);</span>
+<span class="nc" id="L162">		final String classPathAbsolute = curFile.getAbsolutePath();</span>
+<span class="nc" id="L163">		updateStackResult(curFile, stack, result, classPathAbsolute);</span>
+<span class="nc bnc" id="L164" title="All 2 branches missed.">		while (!stack.isEmpty()) {</span>
+<span class="nc" id="L165">			curFile = stack.pop();</span>
+<span class="nc" id="L166">			updateStackResult(curFile, stack, result, classPathAbsolute);</span>
 		}
-<span class="nc" id="L167">		return result;</span>
+<span class="nc" id="L168">		return result;</span>
 	}
 
 	private static void updateStackResult(final File curFile, final Stack&lt;File&gt; stack, final Set&lt;String&gt; result,
 			final String classPathAbsolute) {
 		final File[] contents;
-<span class="nc bnc" id="L173" title="All 2 branches missed.">		if (curFile.isDirectory()) {</span>
-<span class="nc" id="L174">			contents = curFile.listFiles();</span>
-<span class="nc" id="L175">			stack.addAll(Arrays.asList(contents));</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">		if (curFile.isDirectory()) {</span>
+<span class="nc" id="L175">			contents = curFile.listFiles();</span>
+<span class="nc" id="L176">			stack.addAll(Arrays.asList(contents));</span>
 		} else {
-<span class="nc" id="L177">			final String filename = curFile.getName();</span>
-<span class="nc bnc" id="L178" title="All 2 branches missed.">			if (filename.endsWith(&quot;.class&quot;)) {</span>
-<span class="nc" id="L179">				final String curFileAbsPath = curFile.getAbsolutePath();</span>
-<span class="nc" id="L180">				final String classPath = curFileAbsPath.substring(classPathAbsolute.length() + 1);</span>
-<span class="nc" id="L181">				final String fixedClassPath = classPath.substring(0, classPath.length() - &quot;.class&quot;.length());</span>
-<span class="nc" id="L182">				final String className = fixedClassPath.replace('/', '.').replace('\\', '.');</span>
-<span class="nc" id="L183">				result.add(className);</span>
+<span class="nc" id="L178">			final String filename = curFile.getName();</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">			if (filename.endsWith(&quot;.class&quot;)) {</span>
+<span class="nc" id="L180">				final String curFileAbsPath = curFile.getAbsolutePath();</span>
+<span class="nc" id="L181">				final String classPath = curFileAbsPath.substring(classPathAbsolute.length() + 1);</span>
+<span class="nc" id="L182">				final String fixedClassPath = classPath.substring(0, classPath.length() - &quot;.class&quot;.length());</span>
+<span class="nc" id="L183">				final String className = fixedClassPath.replace('/', '.').replace('\\', '.');</span>
+<span class="nc" id="L184">				result.add(className);</span>
 			}
 		}
-<span class="nc" id="L186">	}</span>
+<span class="nc" id="L187">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

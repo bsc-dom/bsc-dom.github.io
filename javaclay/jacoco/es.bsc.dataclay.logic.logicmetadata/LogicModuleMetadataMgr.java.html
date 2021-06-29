@@ -1,0 +1,550 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogicModuleMetadataMgr.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.logic.logicmetadata</a> &gt; <span class="el_source">LogicModuleMetadataMgr.java</span></div><h1>LogicModuleMetadataMgr.java</h1><pre class="source lang-java linenums">
+/**
+ * @file MetaDataService.java
+ * @date May 21, 2013
+ */
+package es.bsc.dataclay.logic.logicmetadata;
+
+import es.bsc.dataclay.commonruntime.DataClayRuntime;
+import es.bsc.dataclay.communication.grpc.messages.common.CommonMessages.Langs;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectAlreadyExistException;
+import es.bsc.dataclay.exceptions.dbhandler.DbObjectNotExistException;
+import es.bsc.dataclay.exceptions.metadataservice.*;
+import es.bsc.dataclay.logic.LogicModule;
+import es.bsc.dataclay.metadataservice.MetaDataServiceDB;
+import es.bsc.dataclay.metadataservice.ObjectMetaData;
+import es.bsc.dataclay.util.Configuration;
+import es.bsc.dataclay.util.ids.*;
+import es.bsc.dataclay.util.management.AbstractManager;
+import es.bsc.dataclay.util.management.metadataservice.DataClayInstance;
+import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
+import es.bsc.dataclay.util.management.metadataservice.MetaDataInfo;
+import es.bsc.dataclay.util.management.metadataservice.StorageLocation;
+import es.bsc.dataclay.util.structs.MemoryCache;
+import es.bsc.dataclay.util.structs.Tuple;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ *
+ */
+public final class LogicModuleMetadataMgr extends AbstractManager {
+<span class="nc" id="L37">	private static final Logger logger = LogManager.getLogger(&quot;LogicModuleMetadataMgr&quot;);</span>
+
+	/** Indicates if debug is enabled. */
+<span class="nc" id="L40">	protected static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+
+	/** LogicMetadataDB database. */
+	private final LogicMetadataDB metadataDB;
+
+	/** Cache for Storage Location mapping. */
+	private final ConcurrentHashMap&lt;StorageLocationID, StorageLocation&gt; currentStorageLocations;
+
+	/** Current Execution Environments mappings. */
+	private final ConcurrentHashMap&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; currentExecutionEnvironments;
+	private final ConcurrentHashMap&lt;String, ExecutionEnvironmentID&gt; currentJavaExecutionEnvironments;
+	private final ConcurrentHashMap&lt;String, ExecutionEnvironmentID&gt; currentPythonExecutionEnvironments;
+
+	/** External dataClay info cache. */
+	private final MemoryCache&lt;DataClayInstanceID, DataClayInstance&gt; externalDataClaysCache;
+
+	/** External dataClay IDs per host-port cache. */
+	private final MemoryCache&lt;Tuple&lt;String, Integer&gt;, DataClayInstanceID&gt; dataClaysPerHostPortCache;
+
+
+	/**
+	 * Instantiates an MetaDataService that uses the Backend configuration provided.
+	 *
+	 * @param dataSource
+	 *            Data source.
+	 * @post Creates MetaDataService and initializes the backend.
+	 */
+	public LogicModuleMetadataMgr(final SQLiteDataSource dataSource) {
+<span class="nc" id="L68">		super(dataSource);</span>
+<span class="nc" id="L69">		metadataDB = new LogicMetadataDB(dataSource);</span>
+<span class="nc" id="L70">		metadataDB.createTables();</span>
+
+<span class="nc" id="L72">		this.externalDataClaysCache = new MemoryCache&lt;&gt;();</span>
+<span class="nc" id="L73">		this.dataClaysPerHostPortCache = new MemoryCache&lt;&gt;();</span>
+
+<span class="nc" id="L75">		this.currentStorageLocations = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L76">		this.currentExecutionEnvironments = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L77">		this.currentJavaExecutionEnvironments = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L78">		this.currentPythonExecutionEnvironments = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L79">	}</span>
+
+	/**
+	 * This operation register the Storage Location with ID provided.
+	 * 
+	 * @param newStLoc
+	 *            Specifications of the Storage Location to register
+	 * @return The ID of the new Storage Location registered
+	 * @throws StorageLocationAlreadyExistsException
+	 *             if the storage location is already registered
+	 */
+	public StorageLocationID registerStorageLocation(final StorageLocation newStLoc)
+			throws StorageLocationAlreadyExistsException {
+		// Verify backend does not exist
+
+<span class="nc" id="L94">		final StorageLocation stLocation = metadataDB.getStorageLocationByName(newStLoc.getName());</span>
+
+<span class="nc bnc" id="L96" title="All 2 branches missed.">		if (stLocation != null) {</span>
+<span class="nc" id="L97">			throw new StorageLocationAlreadyExistsException(newStLoc);</span>
+		}
+<span class="nc bnc" id="L99" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L100">			logger.debug(&quot;Registering new backend: &quot; + newStLoc);</span>
+		}
+
+		// Store backend
+<span class="nc" id="L104">		metadataDB.store(newStLoc);</span>
+
+		// Update cache
+<span class="nc" id="L107">		currentStorageLocations.put(newStLoc.getDataClayID(), newStLoc);</span>
+<span class="nc" id="L108">		return newStLoc.getDataClayID();</span>
+	}
+
+	/**
+	 * Unregisters a storage location
+	 * 
+	 * @param stLocID
+	 *            id of the storage location to be unregistered
+	 */
+	public void unregisterStorageLocation(final StorageLocationID stLocID) {
+<span class="nc" id="L118">		metadataDB.deleteByID(stLocID);</span>
+<span class="nc" id="L119">	}</span>
+
+	/**
+	 * Updates host and port of a storage location
+	 * 
+	 * @param stLocID
+	 *            id of the storage location to be updated
+	 * @param newhost New host 
+	 * @param newport New port
+	 */
+	public void updateStorageLocation(final StorageLocationID stLocID, final String newhost, final Integer newport) {
+<span class="nc" id="L130">		metadataDB.updateStorageLocationByID(stLocID, newhost, newport);</span>
+<span class="nc" id="L131">	}</span>
+
+	/**
+	 * Updates host and port of a execution environment
+	 * 
+	 * @param eeID
+	 *            id of the execution environment to be updated
+	 * @param newhost New host 
+	 * @param newport New port
+	 */
+	public void updateExecutionEnvironment(final ExecutionEnvironmentID eeID, final String newhost, final Integer newport) {
+<span class="nc" id="L142">		metadataDB.updateExecutionEnvironmentByID(eeID, newhost, newport);</span>
+<span class="nc" id="L143">	}</span>
+
+	/**
+	 * This operation register the Execution Environment with ID provided.
+	 * 
+	 * @param newBackend
+	 *            Specifications of the Execution Environment to register
+	 * @return The ID of the new Execution Environment registered
+	 * @throws ExecutionEnvironmentAlreadyExistsException
+	 *             if the execution environment is already registered
+	 */
+	public ExecutionEnvironmentID registerExecutionEnvironment(final ExecutionEnvironment newBackend)
+			throws ExecutionEnvironmentAlreadyExistsException {
+		// Verify backend does not exist
+<span class="nc" id="L157">		final ExecutionEnvironment exeEnv = metadataDB.getByID(newBackend.getDataClayID());</span>
+
+<span class="nc bnc" id="L159" title="All 2 branches missed.">		if (exeEnv != null) {</span>
+<span class="nc" id="L160">			throw new ExecutionEnvironmentAlreadyExistsException(newBackend);</span>
+		}
+<span class="nc bnc" id="L162" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L163">			logger.debug(&quot;Registering new backend: &quot; + newBackend);</span>
+		}
+
+		// Store backend
+<span class="nc" id="L167">		metadataDB.store(newBackend);</span>
+
+		// Update cache
+<span class="nc" id="L170">		currentExecutionEnvironments.put(newBackend.getDataClayID(), newBackend);</span>
+<span class="nc bnc" id="L171" title="All 2 branches missed.">		if (newBackend.getLang() == Langs.LANG_JAVA) {</span>
+<span class="nc" id="L172">			currentJavaExecutionEnvironments.put(newBackend.getAddress(), newBackend.getDataClayID());</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">		} else if (newBackend.getLang() == Langs.LANG_PYTHON) {</span>
+<span class="nc" id="L174">			currentPythonExecutionEnvironments.put(newBackend.getAddress(), newBackend.getDataClayID());</span>
+		}
+<span class="nc" id="L176">		return newBackend.getDataClayID();</span>
+	}
+
+	/**
+	 * Unregisters an execution environment
+	 * 
+	 * @param execEnvID
+	 *            id of the storage location to be unregistered
+	 */
+	public void unregisterExecutionEnvironment(final ExecutionEnvironmentID execEnvID) {
+<span class="nc" id="L186">		metadataDB.deleteByID(execEnvID);</span>
+<span class="nc" id="L187">	}</span>
+
+	/**
+	 * This operation queries a Storage Location by its name
+	 * 
+	 * @param stLocName
+	 *            Name of the Storage Location to get
+	 * @return The ID of the queried Storage Location
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             StorageLocationNotExistException: if a storage location with the given name does not exist
+	 */
+	public StorageLocationID getStorageLocationID(final String stLocName) {
+
+<span class="nc bnc" id="L201" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L202">			logger.debug(&quot;Looking for Storage Location named: &quot; + stLocName);</span>
+		}
+
+		// Look up in the cache
+<span class="nc bnc" id="L206" title="All 2 branches missed.">		for (final Entry&lt;StorageLocationID, StorageLocation&gt; stLocEntry : currentStorageLocations.entrySet()) {</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">			if (stLocEntry.getValue().getName().equals(stLocName)) {</span>
+<span class="nc" id="L208">				return stLocEntry.getKey();</span>
+			}
+<span class="nc" id="L210">		}</span>
+
+		// If it is not in the cache, query it
+<span class="nc" id="L213">		final StorageLocation res = metadataDB.getStorageLocationByName(stLocName);</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">		if (res == null) {</span>
+<span class="nc" id="L215">			throw new StorageLocationNotExistException(stLocName);</span>
+		} else {
+			// Update cache
+<span class="nc" id="L218">			currentStorageLocations.put(res.getDataClayID(), res);</span>
+		}
+
+<span class="nc" id="L221">		return res.getDataClayID();</span>
+	}
+
+	/**
+	 * This operation retrieves the info of a storage location
+	 * 
+	 * @param storageLocationID
+	 *            ID of the storage location
+	 * @return the info of the storage location
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             StorageLocationNotExistException: if the storage location does not exist
+	 */
+	public StorageLocation getStorageLocationInfo(final StorageLocationID storageLocationID) {
+<span class="nc" id="L235">		final StorageLocation result = getStorageLocation(storageLocationID);</span>
+<span class="nc" id="L236">		return result;</span>
+	}
+
+	/**
+	 * This operation retrieves the info of all the current registered storage locations.
+	 * 
+	 * @return info of the registered storage locations indexed by their IDs
+	 */
+	public Map&lt;StorageLocationID, StorageLocation&gt; getAllStorageLocationsInfo() {
+
+<span class="nc" id="L246">		final List&lt;StorageLocation&gt; backends = metadataDB.getAllStorageLocations();</span>
+<span class="nc" id="L247">		final Map&lt;StorageLocationID, StorageLocation&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">		for (final StorageLocation backend : backends) {</span>
+<span class="nc" id="L249">			result.put(backend.getDataClayID(), backend);</span>
+<span class="nc" id="L250">		}</span>
+<span class="nc" id="L251">		return result;</span>
+	}
+
+	/**
+	 * This operation retrieves the info of an execution environment
+	 * 
+	 * @param execEnvID
+	 *            ID of the execution environment to get its info
+	 * @return the info of the backend
+	 * @throws Exception
+	 *             if an exception occurs: &lt;br&gt;
+	 *             ExecutionEnvironmentNotExistException: if backend does not exist
+	 */
+	public ExecutionEnvironment getExecutionEnvironmentInfo(final ExecutionEnvironmentID execEnvID) {
+<span class="nc" id="L265">		final ExecutionEnvironment result = getExecutionEnvironment(execEnvID);</span>
+<span class="nc" id="L266">		return result;</span>
+	}
+
+	/**
+	 * This operation retrieves the info of all the current registered execution environments.
+	 * @param execEnvLang language
+	 * @return info of the registered execution environments indexed by their IDs
+	 */
+	public Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getAllExecutionEnvironmentsInfo(final Langs execEnvLang) {
+		final List&lt;ExecutionEnvironment&gt; execEnvs;
+<span class="nc bnc" id="L276" title="All 4 branches missed.">		if (execEnvLang == Langs.LANG_NONE || execEnvLang == null) {</span>
+<span class="nc" id="L277">			execEnvs = metadataDB.getAllExecutionEnvironments();</span>
+		} else {
+<span class="nc" id="L279">			execEnvs = metadataDB.getAllExecutionEnvironmentsByLang(execEnvLang);</span>
+		}
+<span class="nc" id="L281">		final Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; result = new ConcurrentHashMap&lt;&gt;();</span>
+
+<span class="nc bnc" id="L283" title="All 2 branches missed.">		for (final ExecutionEnvironment execEnv : execEnvs) {</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">			if (execEnv.getLang().equals(execEnvLang)) {</span>
+<span class="nc" id="L285">				result.put(execEnv.getDataClayID(), execEnv);</span>
+			}
+<span class="nc" id="L287">		}</span>
+<span class="nc" id="L288">		return result;</span>
+	}
+
+	/**
+	 * Retrieves a random execution environment
+	 * 
+	 * @return the execution environment spec
+	 */
+	public Tuple&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getRandomExecutionEnvironmentInfo(
+			final Langs execEnvLang) {
+
+		// Get random backend from registered ones
+<span class="nc" id="L300">		ExecutionEnvironmentID backendID = null;</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">		if (execEnvLang == Langs.LANG_JAVA) {</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">			if (!currentJavaExecutionEnvironments.isEmpty()) {</span>
+<span class="nc" id="L303">				final int index = new Random().nextInt(currentJavaExecutionEnvironments.size());</span>
+<span class="nc" id="L304">				backendID = (ExecutionEnvironmentID) currentJavaExecutionEnvironments.values().toArray()[index];</span>
+<span class="nc" id="L305">			}</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">		} else if (execEnvLang == Langs.LANG_PYTHON) {</span>
+<span class="nc bnc" id="L307" title="All 2 branches missed.">			if (!currentPythonExecutionEnvironments.isEmpty()) {</span>
+<span class="nc" id="L308">				final int index = new Random().nextInt(currentPythonExecutionEnvironments.size());</span>
+<span class="nc" id="L309">				backendID = (ExecutionEnvironmentID) currentPythonExecutionEnvironments.values().toArray()[index];</span>
+			}
+		}
+<span class="nc bnc" id="L312" title="All 2 branches missed.">		if (backendID == null) {</span>
+			final ExecutionEnvironment backend;
+<span class="nc" id="L314">			final List&lt;ExecutionEnvironment&gt; backends = metadataDB.getAllExecutionEnvironmentsByLang(execEnvLang);</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">			if (backends.isEmpty()) {</span>
+<span class="nc" id="L316">				throw new ExecutionEnvironmentNotExistException(execEnvLang);</span>
+			}
+<span class="nc" id="L318">			final int index = new Random().nextInt(backends.size());</span>
+<span class="nc" id="L319">			backend = backends.get(index);</span>
+
+			// Update cache
+<span class="nc bnc" id="L322" title="All 2 branches missed.">			for (final ExecutionEnvironment curBackend : backends) {</span>
+<span class="nc" id="L323">				currentExecutionEnvironments.put(curBackend.getDataClayID(), curBackend);</span>
+<span class="nc bnc" id="L324" title="All 2 branches missed.">				if (execEnvLang == Langs.LANG_JAVA) {</span>
+<span class="nc" id="L325">					currentJavaExecutionEnvironments.put(curBackend.getAddress(), curBackend.getDataClayID());</span>
+<span class="nc bnc" id="L326" title="All 2 branches missed.">				} else if (execEnvLang == Langs.LANG_PYTHON) {</span>
+<span class="nc" id="L327">					currentPythonExecutionEnvironments.put(curBackend.getAddress(), curBackend.getDataClayID());</span>
+				}
+<span class="nc" id="L329">			}</span>
+
+<span class="nc" id="L331">			return new Tuple&lt;&gt;(backend.getDataClayID(), backend);</span>
+		} else {
+<span class="nc" id="L333">			return new Tuple&lt;&gt;(backendID, getExecutionEnvironmentInfo(backendID));</span>
+		}
+	}
+
+	// ===== OBEJCT FEDERATION OPS ======= //
+
+	/**
+	 * Register external dataclay
+	 * @param dataClay instance to register
+	 */
+	public void registerExternalDataclay(final DataClayInstance dataClay) {
+		try {
+
+<span class="nc" id="L346">			metadataDB.insertDataClayInstance(dataClay);</span>
+
+			// update cache 
+<span class="nc" id="L349">			final DataClayInstance dClayInfo = metadataDB.getDataClayInfo(dataClay.getDcID());</span>
+<span class="nc" id="L350">			externalDataClaysCache.put(dataClay.getDcID(), dClayInfo);</span>
+
+<span class="nc bnc" id="L352" title="All 2 branches missed.">			for (int i = 0; i &lt; dClayInfo.getHosts().size(); ++i) {</span>
+<span class="nc" id="L353">				final String host = dClayInfo.getHosts().get(i);</span>
+<span class="nc" id="L354">				final Integer port = dClayInfo.getPorts().get(i);</span>
+<span class="nc" id="L355">				final Tuple&lt;String, Integer&gt; key = new Tuple&lt;&gt;(host, port);</span>
+<span class="nc" id="L356">				final DataClayInstanceID id = dataClaysPerHostPortCache.get(key);</span>
+<span class="nc bnc" id="L357" title="All 2 branches missed.">				if (id == null) {</span>
+<span class="nc" id="L358">					dataClaysPerHostPortCache.put(key, dataClay.getDcID());</span>
+				}
+			}
+<span class="nc" id="L361">		} catch (final DbObjectAlreadyExistException ex1) {</span>
+<span class="nc bnc" id="L362" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L363">				logger.debug(&quot;External dataClay {} already registered&quot;, dataClay);</span>
+			}
+<span class="nc" id="L365">			return;</span>
+<span class="nc" id="L366">		}</span>
+<span class="nc" id="L367">	}</span>
+
+	/**
+	 * Unregister external dataClay address
+	 * @param host Host
+	 * @param port Port
+	 */
+	public void unregisterExternalDataClayAddress(final String host, final Integer port) {
+		try {
+
+<span class="nc" id="L377">			metadataDB.deleteDataClayInstance(host, port);</span>
+<span class="nc" id="L378">		} catch (final Exception ex1) {</span>
+<span class="nc bnc" id="L379" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L380">				logger.debug(&quot;External dataClay at {}:{} already unregistered: &quot;, host, port, ex1);</span>
+			}
+<span class="nc" id="L382">			return;</span>
+<span class="nc" id="L383">		}</span>
+<span class="nc" id="L384">	}</span>
+
+	/**
+	 * Retrieves information about an external dataClay instance identified by provided id
+	 * 
+	 * @param extDataClayID
+	 *            id of the external dataClay instance
+	 * @return info of external dataClay instance
+	 * @throws ExternalDataClayNotRegisteredException
+	 *             if no info about dataClay instance is registered
+	 */
+	public DataClayInstance getExternalDataClayInfo(final DataClayInstanceID extDataClayID)
+			throws ExternalDataClayNotRegisteredException {
+
+<span class="nc" id="L398">		DataClayInstance dClayInfo = externalDataClaysCache.get(extDataClayID);</span>
+<span class="nc bnc" id="L399" title="All 2 branches missed.">		if (dClayInfo == null) {</span>
+<span class="nc" id="L400">			dClayInfo = metadataDB.getDataClayInfo(extDataClayID);</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">			if (dClayInfo == null) {</span>
+<span class="nc" id="L402">				throw new ExternalDataClayNotRegisteredException(extDataClayID);</span>
+			}
+<span class="nc" id="L404">			externalDataClaysCache.put(extDataClayID, dClayInfo);</span>
+		}
+<span class="nc" id="L406">		return dClayInfo;</span>
+	}
+
+	/**
+	 * Retrieves id of an external dataClay instance identified by host and port
+	 * 
+	 * @param host host 
+	 * @param port port
+	 * @return id of external dataClay instance
+	 * @throws ExternalDataClayNotRegisteredException
+	 *             if no info about dataClay instance is registered
+	 */
+	public DataClayInstanceID getExternalDataClayID(final String host, final int port)
+			throws ExternalDataClayNotRegisteredException {
+
+<span class="nc" id="L421">		final Tuple&lt;String, Integer&gt; key = new Tuple&lt;&gt;(host, port);</span>
+<span class="nc" id="L422">		DataClayInstanceID id = dataClaysPerHostPortCache.get(key);</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">		if (id == null) {</span>
+<span class="nc" id="L424">			id = metadataDB.getDataClayID(host, port);</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">			if (id == null) {</span>
+<span class="nc" id="L426">				throw new ExternalDataClayNotRegisteredException(host, port);</span>
+			}
+<span class="nc" id="L428">			dataClaysPerHostPortCache.put(key, id);</span>
+		}
+<span class="nc" id="L430">		return id;</span>
+	}
+
+
+	/**
+	 * Get all dataClays current dataClay has objects federated with
+	 * @return dataClay IDs current dataClay has objects federated with
+	 */
+	public Set&lt;DataClayInstanceID&gt; getAllExternalDataClays() {
+<span class="nc" id="L439">		return metadataDB.getAllExternalDataClays();</span>
+	}
+
+
+	/**
+	 * Return the storage location specification identified by the provided ID
+	 * 
+	 * @param stLocID
+	 *            ID of the storage location
+	 * @return the storage location info
+	 * @throws StorageLocationNotExistException:
+	 *             if the storage location does not exist
+	 */
+	private StorageLocation getStorageLocation(final StorageLocationID stLocID) {
+
+		// Check it from Cache
+<span class="nc" id="L455">		StorageLocation storageLocation = currentStorageLocations.get(stLocID);</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">		if (storageLocation == null) {</span>
+<span class="nc" id="L457">			storageLocation = metadataDB.getByID(stLocID);</span>
+<span class="nc bnc" id="L458" title="All 2 branches missed.">			if (storageLocation == null) {</span>
+<span class="nc" id="L459">				throw new StorageLocationNotExistException(stLocID);</span>
+			}
+		}
+
+		// Update cache
+<span class="nc" id="L464">		currentStorageLocations.put(stLocID, storageLocation);</span>
+
+<span class="nc" id="L466">		return storageLocation;</span>
+	}
+
+	/**
+	 * Return the execution environment specification identified by the provided ID
+	 * 
+	 * @param execEnvID
+	 *            ID of the execution environment
+	 * @return the execution environment info
+	 * @throws ExecutionEnvironmentNotExistException
+	 *             if the execution environment does not exist
+	 */
+	private ExecutionEnvironment getExecutionEnvironment(final ExecutionEnvironmentID execEnvID) {
+		// Check it from Cache
+<span class="nc" id="L480">		ExecutionEnvironment execEnv = currentExecutionEnvironments.get(execEnvID);</span>
+<span class="nc bnc" id="L481" title="All 2 branches missed.">		if (execEnv == null) {</span>
+<span class="nc" id="L482">			execEnv = metadataDB.getByID(execEnvID);</span>
+<span class="nc bnc" id="L483" title="All 2 branches missed.">			if (execEnv == null) {</span>
+<span class="nc" id="L484">				throw new ExecutionEnvironmentNotExistException(execEnvID);</span>
+			}
+		}
+
+		// Update cache
+<span class="nc" id="L489">		currentExecutionEnvironments.put(execEnvID, execEnv);</span>
+<span class="nc bnc" id="L490" title="All 2 branches missed.">		if (execEnv.getLang() == Langs.LANG_JAVA) {</span>
+<span class="nc" id="L491">			currentJavaExecutionEnvironments.put(execEnv.getAddress(), execEnvID);</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">		} else if (execEnv.getLang() == Langs.LANG_PYTHON) {</span>
+<span class="nc" id="L493">			currentPythonExecutionEnvironments.put(execEnv.getAddress(), execEnvID);</span>
+		}
+
+<span class="nc" id="L496">		return execEnv;</span>
+	}
+
+	/**
+	 * Store into database
+	 * @param logicmoduleIDs
+	 *            logic module ids
+	 */
+	public void registerLogicModule(final LogicMetadataIDs logicmoduleIDs) {
+<span class="nc" id="L505">		metadataDB.store(logicmoduleIDs);</span>
+<span class="nc" id="L506">	}</span>
+
+	/**
+	 * Check if there is a LogicModule
+	 * @return TRUE if exists. FALSE otherwise
+	 */
+	public boolean existsMetaData() {
+<span class="nc" id="L513">		return metadataDB.existsMetaData();</span>
+	}
+
+	/**
+	 * Get LogicModule metadata by ID
+	 * @return The LogicModule metadata
+	 */
+	public LogicMetadataIDs getLogicMetadata() {
+<span class="nc" id="L521">		return metadataDB.getLogicMetadata();</span>
+	}
+	// ====== Getters for testing purposes ====== //
+
+	/**
+	 * Get the MetaDataService::backendCache
+	 * 
+	 * @return the Backend Cache
+	 */
+	public Map&lt;ExecutionEnvironmentID, ExecutionEnvironment&gt; getBackendCache() {
+<span class="nc" id="L531">		return this.currentExecutionEnvironments;</span>
+	}
+
+
+	/**
+	 * Close DbHandler
+	 */
+	public void closeDbHandler() {
+<span class="nc" id="L539">		this.metadataDB.close();</span>
+<span class="nc" id="L540">	}</span>
+
+	@Override
+	public void cleanCaches() {
+<span class="nc" id="L544">		currentStorageLocations.clear();</span>
+<span class="nc" id="L545">		currentExecutionEnvironments.clear();</span>
+<span class="nc" id="L546">		currentJavaExecutionEnvironments.clear();</span>
+<span class="nc" id="L547">		currentPythonExecutionEnvironments.clear();</span>
+<span class="nc" id="L548">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

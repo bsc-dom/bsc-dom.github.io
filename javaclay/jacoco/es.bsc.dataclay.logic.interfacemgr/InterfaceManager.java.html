@@ -24,7 +24,8 @@ import es.bsc.dataclay.util.ids.OperationID;
 import es.bsc.dataclay.util.ids.PropertyID;
 import es.bsc.dataclay.util.management.AbstractManager;
 import es.bsc.dataclay.util.management.interfacemgr.Interface;
-import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.util.structs.MemoryCache;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible to manage interfaces: add, remove and modify.
@@ -33,29 +34,26 @@ import es.bsc.dataclay.util.structs.LruCache;
 public final class InterfaceManager extends AbstractManager {
 
 	/** Logger. */
-<span class="fc" id="L36">	private static final Logger logger = LogManager.getLogger(&quot;managers.InterfaceManager&quot;);</span>
+<span class="fc" id="L37">	private static final Logger logger = LogManager.getLogger(&quot;managers.InterfaceManager&quot;);</span>
 
 	/** DbHandler for the management of Database. */
 	private final InterfaceManagerDB interfaceDB;
 
 	/** Interface cache . */
-	private final LruCache&lt;InterfaceID, Interface&gt; interfaceCache;
+	private final MemoryCache&lt;InterfaceID, Interface&gt; interfaceCache;
 
 	/**
 	 * Instantiates an Interface Manager that uses the Interface DB in the provided path.
-	 * @param managerName
-	 *            Manager/service name.
 	 * @post Creates an Interface manager with the provided db path.
 	 */
-	public InterfaceManager(final BasicDataSource dataSource) {
-<span class="fc" id="L51">		super(dataSource);</span>
-<span class="fc" id="L52">		this.interfaceDB = new InterfaceManagerDB(dataSource);</span>
-<span class="fc" id="L53">		this.interfaceDB.createTables();</span>
+	public InterfaceManager(final SQLiteDataSource dataSource) {
+<span class="fc" id="L50">		super(dataSource);</span>
+<span class="fc" id="L51">		this.interfaceDB = new InterfaceManagerDB(dataSource);</span>
+<span class="fc" id="L52">		this.interfaceDB.createTables();</span>
 
 		// Init cache
-<span class="fc" id="L56">		this.interfaceCache = new LruCache&lt;&gt;(</span>
-<span class="fc" id="L57">				Configuration.Flags.MAX_ENTRIES_INTERFACE_MANAGER_CACHE.getIntValue());</span>
-<span class="fc" id="L58">	}</span>
+<span class="fc" id="L55">		this.interfaceCache = new MemoryCache&lt;&gt;();</span>
+<span class="fc" id="L56">	}</span>
 
 	/**
 	 * This operation allows to register a new interface
@@ -67,15 +65,15 @@ public final class InterfaceManager extends AbstractManager {
 	 */
 	public InterfaceID newInterface(final Interface newInterface) {
 
-<span class="fc" id="L70">		final InterfaceID ifaceID = new InterfaceID();</span>
-<span class="fc" id="L71">		newInterface.setDataClayID(ifaceID);</span>
+<span class="fc" id="L68">		final InterfaceID ifaceID = new InterfaceID();</span>
+<span class="fc" id="L69">		newInterface.setDataClayID(ifaceID);</span>
 		// Register it into the database
-<span class="fc" id="L73">		interfaceDB.store(newInterface);</span>
+<span class="fc" id="L71">		interfaceDB.store(newInterface);</span>
 
 		// Update cache
-<span class="fc" id="L76">		this.interfaceCache.put(newInterface.getDataClayID(), newInterface);</span>
+<span class="fc" id="L74">		this.interfaceCache.put(newInterface.getDataClayID(), newInterface);</span>
 
-<span class="fc" id="L78">		return newInterface.getDataClayID();</span>
+<span class="fc" id="L76">		return newInterface.getDataClayID();</span>
 	}
 
 	/**
@@ -90,18 +88,18 @@ public final class InterfaceManager extends AbstractManager {
 	 *             InterfaceNotExistsException: if the interface does not exist
 	 */
 	public void removeInterface(final NamespaceID namespaceID, final InterfaceID interfaceID) {
-<span class="fc" id="L93">		final Interface curInterface = interfaceDB.getInterfaceByID(interfaceID);</span>
+<span class="fc" id="L91">		final Interface curInterface = interfaceDB.getInterfaceByID(interfaceID);</span>
 
-<span class="pc bpc" id="L95" title="1 of 4 branches missed.">		if (curInterface == null || !curInterface.getNamespaceID().equals(namespaceID)) {</span>
-<span class="fc" id="L96">			throw new InterfaceNotExistsException(interfaceID);</span>
+<span class="pc bpc" id="L93" title="1 of 4 branches missed.">		if (curInterface == null || !curInterface.getNamespaceID().equals(namespaceID)) {</span>
+<span class="fc" id="L94">			throw new InterfaceNotExistsException(interfaceID);</span>
 		} else {
 			// Remove the interface from the database
-<span class="fc" id="L99">			interfaceDB.deleteInterface(curInterface.getDataClayID());</span>
+<span class="fc" id="L97">			interfaceDB.deleteInterface(curInterface.getDataClayID());</span>
 
 			// Update cache
-<span class="fc" id="L102">			this.interfaceCache.remove(interfaceID);</span>
+<span class="fc" id="L100">			this.interfaceCache.remove(interfaceID);</span>
 		}
-<span class="fc" id="L104">	}</span>
+<span class="fc" id="L102">	}</span>
 
 	// ============= OPERATIONS FOR CHECKING ================= //
 
@@ -121,29 +119,29 @@ public final class InterfaceManager extends AbstractManager {
 	public boolean checkPropertiesAndOperationsInAnyOfInterfaces(final Set&lt;InterfaceID&gt; interfacesIDs,
 			final Set&lt;OperationID&gt; operationsIDs, final Set&lt;PropertyID&gt; propertiesIDs) {
 
-<span class="nc" id="L124">		final HashSet&lt;OperationID&gt; totalOperationsIDs = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L125">		final HashSet&lt;PropertyID&gt; totalPropertiesIDs = new HashSet&lt;&gt;();</span>
-<span class="nc bnc" id="L126" title="All 2 branches missed.">		for (final InterfaceID curInterfaceID : interfacesIDs) {</span>
+<span class="nc" id="L122">		final HashSet&lt;OperationID&gt; totalOperationsIDs = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L123">		final HashSet&lt;PropertyID&gt; totalPropertiesIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">		for (final InterfaceID curInterfaceID : interfacesIDs) {</span>
 			// Try looking for interface in cache
-<span class="nc" id="L128">			Interface curInterface = interfaceCache.get(curInterfaceID);</span>
-<span class="nc bnc" id="L129" title="All 2 branches missed.">			if (curInterface == null) {</span>
+<span class="nc" id="L126">			Interface curInterface = interfaceCache.get(curInterfaceID);</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">			if (curInterface == null) {</span>
 				// Query in db
-<span class="nc" id="L131">				curInterface = interfaceDB.getInterfaceByID(curInterfaceID);</span>
-<span class="nc bnc" id="L132" title="All 2 branches missed.">				if (curInterface == null) {</span>
-<span class="nc" id="L133">					throw new InterfaceNotExistsException(curInterfaceID);</span>
+<span class="nc" id="L129">				curInterface = interfaceDB.getInterfaceByID(curInterfaceID);</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">				if (curInterface == null) {</span>
+<span class="nc" id="L131">					throw new InterfaceNotExistsException(curInterfaceID);</span>
 				} else {
 					// Update cache
-<span class="nc" id="L136">					this.interfaceCache.put(curInterfaceID, curInterface);</span>
+<span class="nc" id="L134">					this.interfaceCache.put(curInterfaceID, curInterface);</span>
 				}
 			}
 
-<span class="nc" id="L140">			totalOperationsIDs.addAll(curInterface.getOperationsIDs());</span>
-<span class="nc" id="L141">			totalPropertiesIDs.addAll(curInterface.getPropertiesIDs());</span>
-<span class="nc bnc" id="L142" title="All 4 branches missed.">			if (totalOperationsIDs.containsAll(operationsIDs) &amp;&amp; totalPropertiesIDs.containsAll(propertiesIDs)) {</span>
-<span class="nc" id="L143">				return true;</span>
+<span class="nc" id="L138">			totalOperationsIDs.addAll(curInterface.getOperationsIDs());</span>
+<span class="nc" id="L139">			totalPropertiesIDs.addAll(curInterface.getPropertiesIDs());</span>
+<span class="nc bnc" id="L140" title="All 4 branches missed.">			if (totalOperationsIDs.containsAll(operationsIDs) &amp;&amp; totalPropertiesIDs.containsAll(propertiesIDs)) {</span>
+<span class="nc" id="L141">				return true;</span>
 			}
-<span class="nc" id="L145">		}</span>
-<span class="nc" id="L146">		return false;</span>
+<span class="nc" id="L143">		}</span>
+<span class="nc" id="L144">		return false;</span>
 	}
 
 	// ============ ESPECIAL OPS ============ //
@@ -160,20 +158,20 @@ public final class InterfaceManager extends AbstractManager {
 	 */
 	public HashSet&lt;InterfaceID&gt; getInterfacesOfClass(final NamespaceID namespaceID, final MetaClassID metaClassID) {
 
-<span class="fc" id="L163">		final List&lt;Interface&gt; interfaces = interfaceDB.getInterfacesOfClass(namespaceID, metaClassID);</span>
+<span class="fc" id="L161">		final List&lt;Interface&gt; interfaces = interfaceDB.getInterfacesOfClass(namespaceID, metaClassID);</span>
 
 		// Init resulting list
-<span class="fc" id="L166">		final HashSet&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
-<span class="fc bfc" id="L167" title="All 2 branches covered.">		for (final Interface curInterface : interfaces) {</span>
-<span class="fc" id="L168">			final InterfaceID interfaceID = curInterface.getDataClayID();</span>
-<span class="fc" id="L169">			result.add(interfaceID);</span>
+<span class="fc" id="L164">		final HashSet&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L165" title="All 2 branches covered.">		for (final Interface curInterface : interfaces) {</span>
+<span class="fc" id="L166">			final InterfaceID interfaceID = curInterface.getDataClayID();</span>
+<span class="fc" id="L167">			result.add(interfaceID);</span>
 
 			// Update cache
-<span class="pc bpc" id="L172" title="1 of 2 branches missed.">			if (!this.interfaceCache.containsKey(interfaceID)) {</span>
-<span class="fc" id="L173">				this.interfaceCache.put(interfaceID, curInterface);</span>
+<span class="pc bpc" id="L170" title="1 of 2 branches missed.">			if (!this.interfaceCache.containsKey(interfaceID)) {</span>
+<span class="fc" id="L171">				this.interfaceCache.put(interfaceID, curInterface);</span>
 			}
-<span class="fc" id="L175">		}</span>
-<span class="fc" id="L176">		return result;</span>
+<span class="fc" id="L173">		}</span>
+<span class="fc" id="L174">		return result;</span>
 	}
 
 	/**
@@ -191,24 +189,24 @@ public final class InterfaceManager extends AbstractManager {
 	public HashSet&lt;InterfaceID&gt; getInterfacesAccessingOperation(final NamespaceID namespaceID, final MetaClassID metaClassID,
 			final OperationID operationID) {
 
-<span class="fc" id="L194">		final List&lt;Interface&gt; interfaces = interfaceDB.getInterfacesOfClass(namespaceID, metaClassID);</span>
+<span class="fc" id="L192">		final List&lt;Interface&gt; interfaces = interfaceDB.getInterfacesOfClass(namespaceID, metaClassID);</span>
 
 		// Init resulting list
-<span class="fc" id="L197">		final HashSet&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
-<span class="fc bfc" id="L198" title="All 2 branches covered.">		for (final Interface curInterface : interfaces) {</span>
+<span class="fc" id="L195">		final HashSet&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L196" title="All 2 branches covered.">		for (final Interface curInterface : interfaces) {</span>
 			// Check which interfaces access the provided operation
-<span class="fc" id="L200">			final Set&lt;OperationID&gt; curInterfaceOps = curInterface.getOperationsIDs();</span>
-<span class="pc bpc" id="L201" title="1 of 2 branches missed.">			if (curInterfaceOps.contains(operationID)) {</span>
-<span class="fc" id="L202">				final InterfaceID interfaceID = curInterface.getDataClayID();</span>
-<span class="fc" id="L203">				result.add(interfaceID);</span>
+<span class="fc" id="L198">			final Set&lt;OperationID&gt; curInterfaceOps = curInterface.getOperationsIDs();</span>
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">			if (curInterfaceOps.contains(operationID)) {</span>
+<span class="fc" id="L200">				final InterfaceID interfaceID = curInterface.getDataClayID();</span>
+<span class="fc" id="L201">				result.add(interfaceID);</span>
 
 				// Update cache
-<span class="pc bpc" id="L206" title="1 of 2 branches missed.">				if (!this.interfaceCache.containsKey(interfaceID)) {</span>
-<span class="fc" id="L207">					this.interfaceCache.put(interfaceID, curInterface);</span>
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">				if (!this.interfaceCache.containsKey(interfaceID)) {</span>
+<span class="fc" id="L205">					this.interfaceCache.put(interfaceID, curInterface);</span>
 				}
 			}
-<span class="fc" id="L210">		}</span>
-<span class="fc" id="L211">		return result;</span>
+<span class="fc" id="L208">		}</span>
+<span class="fc" id="L209">		return result;</span>
 	}
 
 	/**
@@ -223,27 +221,27 @@ public final class InterfaceManager extends AbstractManager {
 	 */
 	public Set&lt;InterfaceID&gt; getSubsetInterfacesOfClasses(final Set&lt;InterfaceID&gt; interfacesIDs,
 			final Set&lt;MetaClassID&gt; metaClassesIDs) {
-<span class="fc" id="L226">		final Set&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
-<span class="fc bfc" id="L227" title="All 2 branches covered.">		for (final InterfaceID curInterfaceID : interfacesIDs) {</span>
+<span class="fc" id="L224">		final Set&lt;InterfaceID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">		for (final InterfaceID curInterfaceID : interfacesIDs) {</span>
 			// Get the current interface
 			// Try looking for interface in cache
-<span class="fc" id="L230">			Interface curInterface = interfaceCache.get(curInterfaceID);</span>
-<span class="fc bfc" id="L231" title="All 2 branches covered.">			if (curInterface == null) {</span>
+<span class="fc" id="L228">			Interface curInterface = interfaceCache.get(curInterfaceID);</span>
+<span class="fc bfc" id="L229" title="All 2 branches covered.">			if (curInterface == null) {</span>
 				// Query in db
-<span class="fc" id="L233">				curInterface = interfaceDB.getInterfaceByID(curInterfaceID);</span>
+<span class="fc" id="L231">				curInterface = interfaceDB.getInterfaceByID(curInterfaceID);</span>
 			}
-<span class="pc bpc" id="L235" title="1 of 2 branches missed.">			if (curInterface != null) {</span>
-<span class="fc bfc" id="L236" title="All 2 branches covered.">				if (metaClassesIDs.contains(curInterface.getMetaClassID())) {</span>
-<span class="fc" id="L237">					result.add(curInterfaceID);</span>
+<span class="pc bpc" id="L233" title="1 of 2 branches missed.">			if (curInterface != null) {</span>
+<span class="fc bfc" id="L234" title="All 2 branches covered.">				if (metaClassesIDs.contains(curInterface.getMetaClassID())) {</span>
+<span class="fc" id="L235">					result.add(curInterfaceID);</span>
 
 					// Update cache
-<span class="fc bfc" id="L240" title="All 2 branches covered.">					if (!this.interfaceCache.containsKey(curInterfaceID)) {</span>
-<span class="fc" id="L241">						this.interfaceCache.put(curInterfaceID, curInterface);</span>
+<span class="fc bfc" id="L238" title="All 2 branches covered.">					if (!this.interfaceCache.containsKey(curInterfaceID)) {</span>
+<span class="fc" id="L239">						this.interfaceCache.put(curInterfaceID, curInterface);</span>
 					}
 				}
 			}
-<span class="fc" id="L245">		}</span>
-<span class="fc" id="L246">		return result;</span>
+<span class="fc" id="L243">		}</span>
+<span class="fc" id="L244">		return result;</span>
 	}
 
 	// =============== OPS FOR RETRIEVING INFO ============== //
@@ -259,18 +257,18 @@ public final class InterfaceManager extends AbstractManager {
 	 */
 	public MetaClassID getMetaClassOfInterface(final InterfaceID interfaceID) {
 		// Try looking for interface in cache
-<span class="fc" id="L262">		Interface curInterface = interfaceCache.get(interfaceID);</span>
-<span class="pc bpc" id="L263" title="1 of 2 branches missed.">		if (curInterface == null) {</span>
+<span class="fc" id="L260">		Interface curInterface = interfaceCache.get(interfaceID);</span>
+<span class="pc bpc" id="L261" title="1 of 2 branches missed.">		if (curInterface == null) {</span>
 			// Query in db
-<span class="fc" id="L265">			curInterface = interfaceDB.getInterfaceByID(interfaceID);</span>
-<span class="pc bpc" id="L266" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
-<span class="nc" id="L267">				throw new InterfaceNotExistsException(interfaceID);</span>
+<span class="fc" id="L263">			curInterface = interfaceDB.getInterfaceByID(interfaceID);</span>
+<span class="pc bpc" id="L264" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
+<span class="nc" id="L265">				throw new InterfaceNotExistsException(interfaceID);</span>
 			} else {
 				// Update cache
-<span class="fc" id="L270">				this.interfaceCache.put(interfaceID, curInterface);</span>
+<span class="fc" id="L268">				this.interfaceCache.put(interfaceID, curInterface);</span>
 			}
 		}
-<span class="fc" id="L273">		return curInterface.getMetaClassID();</span>
+<span class="fc" id="L271">		return curInterface.getMetaClassID();</span>
 	}
 
 	/**
@@ -286,33 +284,33 @@ public final class InterfaceManager extends AbstractManager {
 	 */
 	public Map&lt;InterfaceID, Interface&gt; getInterfacesOfNamespaceInfo(final NamespaceID namespaceID,
 			final Set&lt;InterfaceID&gt; interfacesIDs) {
-<span class="fc" id="L289">		final Map&lt;InterfaceID, Interface&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L287">		final Map&lt;InterfaceID, Interface&gt; result = new HashMap&lt;&gt;();</span>
 
-<span class="fc bfc" id="L291" title="All 2 branches covered.">		for (final InterfaceID ifaceID : interfacesIDs) {</span>
+<span class="fc bfc" id="L289" title="All 2 branches covered.">		for (final InterfaceID ifaceID : interfacesIDs) {</span>
 			// Get the current interface
 			// Try looking for interface in cache
-<span class="fc" id="L294">			Interface curInterface = interfaceCache.get(ifaceID);</span>
-<span class="pc bpc" id="L295" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
+<span class="fc" id="L292">			Interface curInterface = interfaceCache.get(ifaceID);</span>
+<span class="pc bpc" id="L293" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
 				// Query in db
-<span class="fc" id="L297">				curInterface = interfaceDB.getInterfaceByID(ifaceID);</span>
+<span class="fc" id="L295">				curInterface = interfaceDB.getInterfaceByID(ifaceID);</span>
 			}
 
-<span class="pc bpc" id="L300" title="2 of 4 branches missed.">			if (curInterface == null || !curInterface.getNamespaceID().equals(namespaceID)) {</span>
-<span class="nc" id="L301">				logger.error(&quot;About to launch InterfaceNotExistsException for InterfaceID {}. &quot;</span>
+<span class="pc bpc" id="L298" title="2 of 4 branches missed.">			if (curInterface == null || !curInterface.getNamespaceID().equals(namespaceID)) {</span>
+<span class="nc" id="L299">				logger.error(&quot;About to launch InterfaceNotExistsException for InterfaceID {}. &quot;</span>
 						+ &quot;Current interface {} (namespace {})&quot;,
-<span class="nc" id="L303">						curInterface.getDataClayID(), namespaceID);</span>
-<span class="nc" id="L304">				throw new InterfaceNotExistsException(ifaceID);</span>
+<span class="nc" id="L301">						curInterface.getDataClayID(), namespaceID);</span>
+<span class="nc" id="L302">				throw new InterfaceNotExistsException(ifaceID);</span>
 			}
 
 			// Update cache
-<span class="pc bpc" id="L308" title="1 of 2 branches missed.">			if (!this.interfaceCache.containsKey(ifaceID)) {</span>
-<span class="fc" id="L309">				this.interfaceCache.put(ifaceID, curInterface);</span>
+<span class="pc bpc" id="L306" title="1 of 2 branches missed.">			if (!this.interfaceCache.containsKey(ifaceID)) {</span>
+<span class="fc" id="L307">				this.interfaceCache.put(ifaceID, curInterface);</span>
 			}
 
-<span class="fc" id="L312">			result.put(ifaceID, curInterface);</span>
-<span class="fc" id="L313">		}</span>
+<span class="fc" id="L310">			result.put(ifaceID, curInterface);</span>
+<span class="fc" id="L311">		}</span>
 
-<span class="fc" id="L315">		return result;</span>
+<span class="fc" id="L313">		return result;</span>
 	}
 
 	/**
@@ -325,15 +323,15 @@ public final class InterfaceManager extends AbstractManager {
 	 *             InterfaceNotExistsException: if the interface does not exist
 	 */
 	public Map&lt;InterfaceID, Interface&gt; getInterfacesInfo(final Set&lt;InterfaceID&gt; interfacesIDs) {
-<span class="fc" id="L328">		final Map&lt;InterfaceID, Interface&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L326">		final Map&lt;InterfaceID, Interface&gt; result = new HashMap&lt;&gt;();</span>
 
-<span class="fc bfc" id="L330" title="All 2 branches covered.">		for (final InterfaceID ifaceID : interfacesIDs) {</span>
+<span class="fc bfc" id="L328" title="All 2 branches covered.">		for (final InterfaceID ifaceID : interfacesIDs) {</span>
 			// Get the current interface
 			// Try looking for interface in cache
-<span class="fc" id="L333">			final Interface curInterface = getInterfaceInfo(ifaceID);</span>
-<span class="fc" id="L334">			result.put(ifaceID, curInterface);</span>
-<span class="fc" id="L335">		}</span>
-<span class="fc" id="L336">		return result;</span>
+<span class="fc" id="L331">			final Interface curInterface = getInterfaceInfo(ifaceID);</span>
+<span class="fc" id="L332">			result.put(ifaceID, curInterface);</span>
+<span class="fc" id="L333">		}</span>
+<span class="fc" id="L334">		return result;</span>
 	}
 
 	/**
@@ -348,19 +346,19 @@ public final class InterfaceManager extends AbstractManager {
 	public Interface getInterfaceInfo(final InterfaceID ifaceID) {
 		// Get the current interface
 		// Try looking for interface in cache
-<span class="fc" id="L351">		Interface curInterface = interfaceCache.get(ifaceID);</span>
-<span class="pc bpc" id="L352" title="1 of 2 branches missed.">		if (curInterface == null) {</span>
+<span class="fc" id="L349">		Interface curInterface = interfaceCache.get(ifaceID);</span>
+<span class="pc bpc" id="L350" title="1 of 2 branches missed.">		if (curInterface == null) {</span>
 			// Query in db
-<span class="fc" id="L354">			curInterface = interfaceDB.getInterfaceByID(ifaceID);</span>
-<span class="pc bpc" id="L355" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
-<span class="nc" id="L356">				throw new InterfaceNotExistsException(ifaceID);</span>
+<span class="fc" id="L352">			curInterface = interfaceDB.getInterfaceByID(ifaceID);</span>
+<span class="pc bpc" id="L353" title="1 of 2 branches missed.">			if (curInterface == null) {</span>
+<span class="nc" id="L354">				throw new InterfaceNotExistsException(ifaceID);</span>
 			} else {
 				// Update cache
-<span class="fc" id="L359">				this.interfaceCache.put(ifaceID, curInterface);</span>
+<span class="fc" id="L357">				this.interfaceCache.put(ifaceID, curInterface);</span>
 			}
 		}
 
-<span class="fc" id="L363">		return curInterface;</span>
+<span class="fc" id="L361">		return curInterface;</span>
 
 	}
 
@@ -380,9 +378,9 @@ public final class InterfaceManager extends AbstractManager {
 	 */
 	public InterfaceID getInterfaceID(final String providerAccount, final String namespace, final String classname,
 			final Set&lt;String&gt; propertiesInIface, final Set&lt;String&gt; operationsSignatureInIface) {
-<span class="nc" id="L383">		final Interface result = interfaceDB.getInterfaceByNames(providerAccount, namespace, classname, propertiesInIface,</span>
+<span class="nc" id="L381">		final Interface result = interfaceDB.getInterfaceByNames(providerAccount, namespace, classname, propertiesInIface,</span>
 				operationsSignatureInIface);
-<span class="nc" id="L385">		return result.getDataClayID();</span>
+<span class="nc" id="L383">		return result.getDataClayID();</span>
 	}
 
 	/**
@@ -401,9 +399,9 @@ public final class InterfaceManager extends AbstractManager {
 	 */
 	public boolean existsInterface(final String providerAccount, final String namespace, final String classname,
 			final Set&lt;String&gt; propertiesInIface, final Set&lt;String&gt; operationsSignatureInIface) {
-<span class="nc" id="L404">		final Interface result = interfaceDB.getInterfaceByNames(providerAccount, namespace, classname, propertiesInIface,</span>
+<span class="nc" id="L402">		final Interface result = interfaceDB.getInterfaceByNames(providerAccount, namespace, classname, propertiesInIface,</span>
 				operationsSignatureInIface);
-<span class="nc bnc" id="L406" title="All 2 branches missed.">		return result != null;</span>
+<span class="nc bnc" id="L404" title="All 2 branches missed.">		return result != null;</span>
 	}
 
 	// ======== OTHER ======= //
@@ -413,13 +411,13 @@ public final class InterfaceManager extends AbstractManager {
 	 * @return The db handler reference of this manager.
 	 */
 	public InterfaceManagerDB getDbHandler() {
-<span class="fc" id="L416">		return interfaceDB;</span>
+<span class="fc" id="L414">		return interfaceDB;</span>
 	}
 
 	@Override
 	public void cleanCaches() {
-<span class="nc" id="L421">		this.interfaceCache.clear();</span>
-<span class="nc" id="L422">	}</span>
+<span class="nc" id="L419">		this.interfaceCache.clear();</span>
+<span class="nc" id="L420">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

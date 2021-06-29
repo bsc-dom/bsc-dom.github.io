@@ -21,13 +21,13 @@ import es.bsc.dataclay.util.Configuration;
 	 * @return The new LogicModule instance
 	 * @throws InterruptedException When the actual LogicModule subtype instantiation fails
 	 */
-	public static LogicModule&lt;?&gt; initLogicModule(final String name, final String hostName, 
+	public static LogicModule initLogicModule(final String name, final String hostName,
 			final int port, final boolean inMemory, 
 			final String theexposedIPForClient) throws InterruptedException {
 <span class="nc" id="L27">		final DBHandlerType type = (DBHandlerType)Configuration.Flags.DB_HANDLER_TYPE_FOR_LOGICMODULE.getValue();</span>
 <span class="nc bnc" id="L28" title="All 2 branches missed.">		switch(type) {</span>
 		case SQLITE:
-<span class="nc" id="L30">			return new SQLiteLogicModule(name, hostName, port, true, theexposedIPForClient);</span>
+<span class="nc" id="L30">			return new LogicModule(name, hostName, port, inMemory, theexposedIPForClient);</span>
 		default:
 <span class="nc" id="L32">			throw new IllegalArgumentException(&quot;LogicModule type &quot; + type + &quot; not supported&quot;);</span>
 		}

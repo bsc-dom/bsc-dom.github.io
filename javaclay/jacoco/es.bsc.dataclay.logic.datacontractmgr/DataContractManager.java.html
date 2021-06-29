@@ -20,6 +20,7 @@ import es.bsc.dataclay.util.ids.DataContractID;
 import es.bsc.dataclay.util.ids.DataSetID;
 import es.bsc.dataclay.util.management.AbstractManager;
 import es.bsc.dataclay.util.management.datacontractmgr.DataContract;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible to manage datacontracts: add, remove and modify.
@@ -38,12 +39,12 @@ public final class DataContractManager extends AbstractManager {
 	 *            Manager/service name.
 	 * @post Creates an DataContract manager and hash initializes the backend.
 	 */
-	public DataContractManager(final BasicDataSource dataSource) {
-<span class="fc" id="L42">		super(dataSource);</span>
+	public DataContractManager(final SQLiteDataSource dataSource) {
+<span class="fc" id="L43">		super(dataSource);</span>
 
-<span class="fc" id="L44">		this.datacontractDB = new DataContractManagerDB(dataSource);</span>
-<span class="fc" id="L45">		this.datacontractDB.createTables();</span>
-<span class="fc" id="L46">	}</span>
+<span class="fc" id="L45">		this.datacontractDB = new DataContractManagerDB(dataSource);</span>
+<span class="fc" id="L46">		this.datacontractDB.createTables();</span>
+<span class="fc" id="L47">	}</span>
 
 	/**
 	 * Method that creates a new private datacontract with the provided information.
@@ -56,20 +57,20 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public DataContractID newPrivateDataContract(final DataContract newDataContract) throws ParseException {
 
-<span class="fc" id="L59">		final DataSetID datasetIDofProvider = newDataContract.getProviderDataSetID();</span>
-<span class="fc bfc" id="L60" title="All 2 branches covered.">		if (newDataContract.isPublicAvailable()) {</span>
-<span class="pc bpc" id="L61" title="1 of 2 branches missed.">			for (final AccountID applicantAccountID : newDataContract.getApplicantsAccountsIDs()) {</span>
+<span class="fc" id="L60">		final DataSetID datasetIDofProvider = newDataContract.getProviderDataSetID();</span>
+<span class="fc bfc" id="L61" title="All 2 branches covered.">		if (newDataContract.isPublicAvailable()) {</span>
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">			for (final AccountID applicantAccountID : newDataContract.getApplicantsAccountsIDs()) {</span>
 				// Check user has no contract with the same provider
-<span class="pc bpc" id="L63" title="1 of 2 branches missed.">				if (checkIfApplicantAlreadyHasAContractWithProviderInternal(applicantAccountID, datasetIDofProvider)) {</span>
-<span class="fc" id="L64">					throw new AccountAlreadyHasADataContractWithProvider(applicantAccountID, datasetIDofProvider);</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">				if (checkIfApplicantAlreadyHasAContractWithProviderInternal(applicantAccountID, datasetIDofProvider)) {</span>
+<span class="fc" id="L65">					throw new AccountAlreadyHasADataContractWithProvider(applicantAccountID, datasetIDofProvider);</span>
 				}
-<span class="nc" id="L66">			}</span>
+<span class="nc" id="L67">			}</span>
 		}
 
 		// Register it into the database
-<span class="fc" id="L70">		datacontractDB.store(newDataContract);</span>
+<span class="fc" id="L71">		datacontractDB.store(newDataContract);</span>
 
-<span class="fc" id="L72">		return newDataContract.getDataClayID();</span>
+<span class="fc" id="L73">		return newDataContract.getDataClayID();</span>
 	}
 
 	/**
@@ -84,12 +85,12 @@ public final class DataContractManager extends AbstractManager {
 	public DataContractID newPublicDataContract(final DataContract newDataContract) throws ParseException {
 
 		// Register it into the database
-<span class="fc" id="L87">		datacontractDB.store(newDataContract);</span>
+<span class="fc" id="L88">		datacontractDB.store(newDataContract);</span>
 
 		// Update cache
-<span class="fc" id="L90">		final DataContractID datacontractID = newDataContract.getDataClayID();</span>
+<span class="fc" id="L91">		final DataContractID datacontractID = newDataContract.getDataClayID();</span>
 
-<span class="fc" id="L92">		return datacontractID;</span>
+<span class="fc" id="L93">		return datacontractID;</span>
 	}
 
 	/**
@@ -112,44 +113,44 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public void registerToPublicDataContract(final AccountID applicantAccountID, final DataContractID datacontractID) {
 		// look for the datacontract
-<span class="fc" id="L115">		final DataContract datacontract = datacontractDB.getDataContractByID(datacontractID);</span>
+<span class="fc" id="L116">		final DataContract datacontract = datacontractDB.getDataContractByID(datacontractID);</span>
 
 		// check datacontract exists
-<span class="pc bpc" id="L118" title="1 of 2 branches missed.">		if (datacontract == null) {</span>
-<span class="nc" id="L119">			throw new DataContractNotExistException(datacontractID);</span>
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">		if (datacontract == null) {</span>
+<span class="nc" id="L120">			throw new DataContractNotExistException(datacontractID);</span>
 		} else {
 			// check it is public
-<span class="pc bpc" id="L122" title="1 of 2 branches missed.">			if (!datacontract.isPublicAvailable()) {</span>
-<span class="nc" id="L123">				throw new DataContractNotPublicException(datacontractID);</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">			if (!datacontract.isPublicAvailable()) {</span>
+<span class="nc" id="L124">				throw new DataContractNotPublicException(datacontractID);</span>
 			} else {
 				// check it is active
-<span class="pc bpc" id="L126" title="1 of 2 branches missed.">				if (!datacontract.isActive()) {</span>
-<span class="nc" id="L127">					throw new DataContractNotActiveException(datacontractID);</span>
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">				if (!datacontract.isActive()) {</span>
+<span class="nc" id="L128">					throw new DataContractNotActiveException(datacontractID);</span>
 				} else {
-<span class="fc" id="L129">					final DataSetID datasetIDofProvider = datacontract.getProviderDataSetID();</span>
+<span class="fc" id="L130">					final DataSetID datasetIDofProvider = datacontract.getProviderDataSetID();</span>
 					// Check user has no contract with the same provider
-<span class="fc bfc" id="L131" title="All 2 branches covered.">					if (checkIfApplicantAlreadyHasAContractWithProviderInternal(applicantAccountID,</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">					if (checkIfApplicantAlreadyHasAContractWithProviderInternal(applicantAccountID,</span>
 							datasetIDofProvider)) {
-<span class="fc" id="L133">						throw new AccountAlreadyHasADataContractWithProvider(applicantAccountID, datasetIDofProvider);</span>
+<span class="fc" id="L134">						throw new AccountAlreadyHasADataContractWithProvider(applicantAccountID, datasetIDofProvider);</span>
 					}
 
 					// get its applicants
-<span class="fc" id="L137">					final Set&lt;AccountID&gt; applicantsAccountsIDs = datacontract.getApplicantsAccountsIDs();</span>
-<span class="fc" id="L138">					applicantsAccountsIDs.add(applicantAccountID);</span>
+<span class="fc" id="L138">					final Set&lt;AccountID&gt; applicantsAccountsIDs = datacontract.getApplicantsAccountsIDs();</span>
+<span class="fc" id="L139">					applicantsAccountsIDs.add(applicantAccountID);</span>
 
 					// update the modified part of the datacontract
-<span class="fc" id="L141">					datacontract.setApplicantsAccountsIDs(applicantsAccountsIDs);</span>
+<span class="fc" id="L142">					datacontract.setApplicantsAccountsIDs(applicantsAccountsIDs);</span>
 					try {
-<span class="fc" id="L143">						datacontractDB.updateDataContractsAddApplicant(datacontractID, applicantAccountID);</span>
+<span class="fc" id="L144">						datacontractDB.updateDataContractsAddApplicant(datacontractID, applicantAccountID);</span>
 
-<span class="nc" id="L145">					} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L146">						throw new DataContractNotExistException(datacontractID);</span>
+<span class="nc" id="L146">					} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L147">						throw new DataContractNotExistException(datacontractID);</span>
 
-<span class="fc" id="L148">					}</span>
+<span class="fc" id="L149">					}</span>
 				}
 			}
 		}
-<span class="fc" id="L152">	}</span>
+<span class="fc" id="L153">	}</span>
 
 	// ============= OPERATIONS FOR CHECKING ================= //
 
@@ -166,8 +167,8 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public boolean checkDataSetHasNoDataContracts(final DataSetID datasetID) {
 		// query the datacontract by using a prototype
-<span class="fc" id="L169">		final List&lt;DataContract&gt; datacontractsInDataSet = datacontractDB.getDataContractsOfDataSet(datasetID);</span>
-<span class="fc" id="L170">		return datacontractsInDataSet.isEmpty();</span>
+<span class="fc" id="L170">		final List&lt;DataContract&gt; datacontractsInDataSet = datacontractDB.getDataContractsOfDataSet(datasetID);</span>
+<span class="fc" id="L171">		return datacontractsInDataSet.isEmpty();</span>
 	}
 
 	// =============== OPS FOR RETRIEVING INFO ============== //
@@ -187,16 +188,16 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public Map&lt;DataContractID, DataContract&gt; getInfoOfSomeActiveDataContractsForAccountWithProviders(
 			final AccountID applicantAccountID, final Set&lt;DataSetID&gt; dataSetsIDs) {
-<span class="fc" id="L190">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L191" title="All 2 branches covered.">		for (final DataSetID dataSetID : dataSetsIDs) {</span>
-<span class="fc" id="L192">			final DataContract curInfo = getDataContractInfoOfApplicantWithProviderInternal(applicantAccountID,</span>
+<span class="fc" id="L191">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">		for (final DataSetID dataSetID : dataSetsIDs) {</span>
+<span class="fc" id="L193">			final DataContract curInfo = getDataContractInfoOfApplicantWithProviderInternal(applicantAccountID,</span>
 					dataSetID);
-<span class="pc bpc" id="L194" title="1 of 2 branches missed.">			if (!curInfo.isActive()) {</span>
-<span class="nc" id="L195">				throw new DataContractNotActiveException(curInfo.getDataClayID());</span>
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">			if (!curInfo.isActive()) {</span>
+<span class="nc" id="L196">				throw new DataContractNotActiveException(curInfo.getDataClayID());</span>
 			}
-<span class="fc" id="L197">			result.put(curInfo.getDataClayID(), curInfo);</span>
-<span class="fc" id="L198">		}</span>
-<span class="fc" id="L199">		return result;</span>
+<span class="fc" id="L198">			result.put(curInfo.getDataClayID(), curInfo);</span>
+<span class="fc" id="L199">		}</span>
+<span class="fc" id="L200">		return result;</span>
 	}
 
 	/**
@@ -211,12 +212,12 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public Map&lt;DataContractID, DataContract&gt; getDataContractIDsOfProvider(final DataSetID datasetIDofProvider) {
 
-<span class="fc" id="L214">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getDataContractsOfDataSet(datasetIDofProvider);</span>
-<span class="fc" id="L215">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L216" title="All 2 branches covered.">		for (final DataContract contract : datacontracts) {</span>
-<span class="fc" id="L217">			result.put(contract.getDataClayID(), contract);</span>
-<span class="fc" id="L218">		}</span>
-<span class="fc" id="L219">		return result;</span>
+<span class="fc" id="L215">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getDataContractsOfDataSet(datasetIDofProvider);</span>
+<span class="fc" id="L216">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L217" title="All 2 branches covered.">		for (final DataContract contract : datacontracts) {</span>
+<span class="fc" id="L218">			result.put(contract.getDataClayID(), contract);</span>
+<span class="fc" id="L219">		}</span>
+<span class="fc" id="L220">		return result;</span>
 	}
 
 	/**
@@ -231,13 +232,13 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public DataContractID getPublicDataContractIDOfProvider(final DataSetID datasetIDofProvider) {
 
-<span class="nc" id="L234">		DataContractID result = null;</span>
-<span class="nc" id="L235">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getDataContractsOfDataSet(datasetIDofProvider);</span>
-<span class="nc bnc" id="L236" title="All 2 branches missed.">		if (!datacontracts.isEmpty()) {</span>
-<span class="nc" id="L237">			final DataContract datacontract = datacontracts.iterator().next();</span>
-<span class="nc" id="L238">			result = datacontract.getDataClayID();</span>
+<span class="nc" id="L235">		DataContractID result = null;</span>
+<span class="nc" id="L236">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getDataContractsOfDataSet(datasetIDofProvider);</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">		if (!datacontracts.isEmpty()) {</span>
+<span class="nc" id="L238">			final DataContract datacontract = datacontracts.iterator().next();</span>
+<span class="nc" id="L239">			result = datacontract.getDataClayID();</span>
 		}
-<span class="nc" id="L240">		return result;</span>
+<span class="nc" id="L241">		return result;</span>
 	}
 
 	/**
@@ -251,13 +252,13 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public Map&lt;DataContractID, DataContract&gt; getDataContractIDsOfApplicant(final AccountID applicantAccountID) {
 
-<span class="fc" id="L254">		List&lt;DataContract&gt; datacontracts = datacontractDB.getDataContractsWithApplicant(applicantAccountID);</span>
+<span class="fc" id="L255">		List&lt;DataContract&gt; datacontracts = datacontractDB.getDataContractsWithApplicant(applicantAccountID);</span>
 
-<span class="fc" id="L256">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L257" title="All 2 branches covered.">		for (final DataContract contract : datacontracts) {</span>
-<span class="fc" id="L258">			result.put(contract.getDataClayID(), contract);</span>
-<span class="fc" id="L259">		}</span>
-<span class="fc" id="L260">		return result;</span>
+<span class="fc" id="L257">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L258" title="All 2 branches covered.">		for (final DataContract contract : datacontracts) {</span>
+<span class="fc" id="L259">			result.put(contract.getDataClayID(), contract);</span>
+<span class="fc" id="L260">		}</span>
+<span class="fc" id="L261">		return result;</span>
 	}
 
 	/**
@@ -275,7 +276,7 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	public DataContract getDataContractInfoOfApplicantWithProvider(final AccountID applicantAccountID,
 			final DataSetID datasetIDofProvider) {
-<span class="fc" id="L278">		return getDataContractInfoOfApplicantWithProviderInternal(applicantAccountID, datasetIDofProvider);</span>
+<span class="fc" id="L279">		return getDataContractInfoOfApplicantWithProviderInternal(applicantAccountID, datasetIDofProvider);</span>
 	}
 
 	// ============= OTHER =========== //
@@ -293,17 +294,17 @@ public final class DataContractManager extends AbstractManager {
 	private DataContract getDataContractInfoOfApplicantWithProviderInternal(final AccountID applicantAccountID,
 			final DataSetID datasetIDofProvider) {
 
-<span class="fc" id="L296">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getContractsWithApplicantAndDataSet(applicantAccountID,</span>
+<span class="fc" id="L297">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getContractsWithApplicantAndDataSet(applicantAccountID,</span>
 				datasetIDofProvider);
-<span class="fc bfc" id="L298" title="All 2 branches covered.">		if (datacontracts.isEmpty()) {</span>
-<span class="fc" id="L299">			throw new AccountHasNoDataContractWithProvider(applicantAccountID, datasetIDofProvider);</span>
+<span class="fc bfc" id="L299" title="All 2 branches covered.">		if (datacontracts.isEmpty()) {</span>
+<span class="fc" id="L300">			throw new AccountHasNoDataContractWithProvider(applicantAccountID, datasetIDofProvider);</span>
 		}
-<span class="fc" id="L301">		final DataContractID datacontractID = datacontracts.get(0).getDataClayID();</span>
-<span class="fc" id="L302">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L303" title="All 2 branches covered.">		for (final DataContract contract : datacontracts) {</span>
-<span class="fc" id="L304">			result.put(contract.getDataClayID(), contract);</span>
-<span class="fc" id="L305">		}</span>
-<span class="fc" id="L306">		return result.get(datacontractID);</span>
+<span class="fc" id="L302">		final DataContractID datacontractID = datacontracts.get(0).getDataClayID();</span>
+<span class="fc" id="L303">		final Map&lt;DataContractID, DataContract&gt; result = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L304" title="All 2 branches covered.">		for (final DataContract contract : datacontracts) {</span>
+<span class="fc" id="L305">			result.put(contract.getDataClayID(), contract);</span>
+<span class="fc" id="L306">		}</span>
+<span class="fc" id="L307">		return result.get(datacontractID);</span>
 	}
 
 	/**
@@ -318,9 +319,9 @@ public final class DataContractManager extends AbstractManager {
 	 */
 	private boolean checkIfApplicantAlreadyHasAContractWithProviderInternal(final AccountID applicantAccountID,
 			final DataSetID datasetIDofProvider) {
-<span class="fc" id="L321">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getContractsWithApplicantAndDataSet(applicantAccountID,</span>
+<span class="fc" id="L322">		final List&lt;DataContract&gt; datacontracts = datacontractDB.getContractsWithApplicantAndDataSet(applicantAccountID,</span>
 				datasetIDofProvider);
-<span class="fc bfc" id="L323" title="All 2 branches covered.">		return !datacontracts.isEmpty();</span>
+<span class="fc bfc" id="L324" title="All 2 branches covered.">		return !datacontracts.isEmpty();</span>
 	}
 
 	/**
@@ -329,13 +330,13 @@ public final class DataContractManager extends AbstractManager {
 	 * @return The db handler reference of this manager.
 	 */
 	public DataContractManagerDB getDbHandler() {
-<span class="fc" id="L332">		return datacontractDB;</span>
+<span class="fc" id="L333">		return datacontractDB;</span>
 	}
 
 	@Override
 	public void cleanCaches() {
 
-<span class="nc" id="L338">	}</span>
+<span class="nc" id="L339">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

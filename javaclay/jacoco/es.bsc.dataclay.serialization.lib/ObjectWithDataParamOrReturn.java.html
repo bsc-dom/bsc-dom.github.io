@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ObjectWithDataParamOrReturn.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.serialization.lib</a> &gt; <span class="el_source">ObjectWithDataParamOrReturn.java</span></div><h1>ObjectWithDataParamOrReturn.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.serialization.lib;
 
+import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.ListIterator;
 import java.util.Map;
@@ -37,20 +38,20 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	/**
 	 * For yaml serialization.
 	 */
-<span class="nc" id="L40">	public ObjectWithDataParamOrReturn() {</span>
+<span class="nc" id="L41">	public ObjectWithDataParamOrReturn() {</span>
 
-<span class="nc" id="L42">	}</span>
+<span class="nc" id="L43">	}</span>
 
 	/**
 	 * Constructor
 	 * @param thedataClayObject
 	 *            The Object
 	 */
-<span class="nc" id="L49">	public ObjectWithDataParamOrReturn(final DataClayObject thedataClayObject) {</span>
-<span class="nc" id="L50">		this.dataClayObject = thedataClayObject;</span>
-<span class="nc" id="L51">		this.objectID = this.dataClayObject.getObjectID();</span>
-<span class="nc" id="L52">		this.classID = this.dataClayObject.getMetaClassID();</span>
-<span class="nc" id="L53">	}</span>
+<span class="nc" id="L50">	public ObjectWithDataParamOrReturn(final DataClayObject thedataClayObject) {</span>
+<span class="nc" id="L51">		this.dataClayObject = thedataClayObject;</span>
+<span class="nc" id="L52">		this.objectID = this.dataClayObject.getObjectID();</span>
+<span class="nc" id="L53">		this.classID = this.dataClayObject.getMetaClassID();</span>
+<span class="nc" id="L54">	}</span>
 
 	/**
 	 * Constructor
@@ -66,12 +67,12 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	public ObjectWithDataParamOrReturn(final ObjectID theObjectID,
 			final MetaClassID theclassID,
 			final DataClayObjectMetaData themetadata,
-<span class="nc" id="L69">			final DataClayByteArray thebytes) {</span>
-<span class="nc" id="L70">		this.serializedBytes = thebytes;</span>
-<span class="nc" id="L71">		this.objectID = theObjectID;</span>
-<span class="nc" id="L72">		this.classID = theclassID;</span>
-<span class="nc" id="L73">		this.metaData = themetadata;</span>
-<span class="nc" id="L74">	}</span>
+<span class="nc" id="L70">			final DataClayByteArray thebytes) {</span>
+<span class="nc" id="L71">		this.serializedBytes = thebytes;</span>
+<span class="nc" id="L72">		this.objectID = theObjectID;</span>
+<span class="nc" id="L73">		this.classID = theclassID;</span>
+<span class="nc" id="L74">		this.metaData = themetadata;</span>
+<span class="nc" id="L75">	}</span>
 
 	@Override
 	public void serialize(final DataClayByteBuffer dcBuffer,
@@ -82,27 +83,31 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 		// FORMAT: [ METADATA | DATA ]
 
 		// Serialize object values
-<span class="nc" id="L85">		dataClayObject.serialize(dcBuffer, ignoreUserTypes, null, curSerializedObjs, pendingObjs, referenceCounting);</span>
+<span class="nc" id="L86">		dataClayObject.serialize(dcBuffer, ignoreUserTypes, null, curSerializedObjs, pendingObjs, referenceCounting);</span>
 
 		// Prepare metaData structures
-<span class="nc" id="L88">		setMetaData(SerializationLibUtils.createMetaData(curSerializedObjs, null, 0));</span>
+<span class="nc" id="L89">		setMetaData(SerializationLibUtils.createMetaData(curSerializedObjs,</span>
+<span class="nc" id="L90">				null, 0, dataClayObject.getOriginalObjectID(),</span>
+<span class="nc" id="L91">				dataClayObject.getRootLocation(),</span>
+<span class="nc" id="L92">				dataClayObject.getOriginLocation(), dataClayObject.getReplicaLocations(),</span>
+<span class="nc" id="L93">				dataClayObject.getAlias(), dataClayObject.isReadOnly()));</span>
 
-<span class="nc" id="L90">	}</span>
+<span class="nc" id="L95">	}</span>
 
 	@Override
 	public void deserialize(final DataClayByteBuffer dcBuffer,
 			final Map&lt;MetaClassID, byte[]&gt; ifaceBitMaps,
 			final DataClayObjectMetaData metadata,
 			final Map&lt;Integer, Object&gt; curDeserializedJavaObjs) {
-<span class="nc" id="L97">		dataClayObject.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
-<span class="nc" id="L98">	}</span>
+<span class="nc" id="L102">		dataClayObject.deserialize(dcBuffer, ifaceBitMaps, metadata, curDeserializedJavaObjs);</span>
+<span class="nc" id="L103">	}</span>
 
 	/**
 	 * Get object ID
 	 * @return Object ID
 	 */
 	public ObjectID getObjectID() {
-<span class="nc" id="L105">		return objectID;</span>
+<span class="nc" id="L110">		return objectID;</span>
 	}
 
 	/**
@@ -110,14 +115,14 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	 * @return DataClayObject
 	 */
 	public DataClayObject getDataClayObject() {
-<span class="nc" id="L113">		return dataClayObject;</span>
+<span class="nc" id="L118">		return dataClayObject;</span>
 	}
 
 	/**
 	 * @return the serializedBytes
 	 */
 	public DataClayByteArray getSerializedBytes() {
-<span class="nc" id="L120">		return serializedBytes;</span>
+<span class="nc" id="L125">		return serializedBytes;</span>
 	}
 
 	/**
@@ -125,21 +130,21 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	 *            the serializedBytes to set
 	 */
 	public void setSerializedBytes(final DataClayByteArray theserializedBytes) {
-<span class="nc" id="L128">		this.serializedBytes = theserializedBytes;</span>
-<span class="nc" id="L129">	}</span>
+<span class="nc" id="L133">		this.serializedBytes = theserializedBytes;</span>
+<span class="nc" id="L134">	}</span>
 
 	/**
 	 * @return the classID
 	 */
 	public MetaClassID getClassID() {
-<span class="nc" id="L135">		return classID;</span>
+<span class="nc" id="L140">		return classID;</span>
 	}
 
 	/**
 	 * @return the metaData
 	 */
 	public DataClayObjectMetaData getMetaData() {
-<span class="nc" id="L142">		return metaData;</span>
+<span class="nc" id="L147">		return metaData;</span>
 	}
 
 	/**
@@ -147,8 +152,8 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	 *            the metaData to set
 	 */
 	public void setMetaData(final DataClayObjectMetaData themetaData) {
-<span class="nc" id="L150">		this.metaData = themetaData;</span>
-<span class="nc" id="L151">	}</span>
+<span class="nc" id="L155">		this.metaData = themetaData;</span>
+<span class="nc" id="L156">	}</span>
 
 	/**
 	 * Set object ID
@@ -156,8 +161,8 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	 *            Object ID
 	 */
 	public void setObjectID(final ObjectID newObjectID) {
-<span class="nc" id="L159">		this.objectID = newObjectID;</span>
-<span class="nc" id="L160">	}</span>
+<span class="nc" id="L164">		this.objectID = newObjectID;</span>
+<span class="nc" id="L165">	}</span>
 
 	/**
 	 * Set dataClayObject
@@ -165,8 +170,8 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	 *            the dataClayObject to set
 	 */
 	public void setDataClayObject(final DataClayObject newdataClayObject) {
-<span class="nc" id="L168">		this.dataClayObject = newdataClayObject;</span>
-<span class="nc" id="L169">	}</span>
+<span class="nc" id="L173">		this.dataClayObject = newdataClayObject;</span>
+<span class="nc" id="L174">	}</span>
 
 	/**
 	 * Set classID
@@ -174,16 +179,22 @@ public final class ObjectWithDataParamOrReturn implements DataClaySerializable {
 	 *            the classID to set
 	 */
 	public void setClassID(final MetaClassID newclassID) {
-<span class="nc" id="L177">		this.classID = newclassID;</span>
-<span class="nc" id="L178">	}</span>
+<span class="nc" id="L182">		this.classID = newclassID;</span>
+<span class="nc" id="L183">	}</span>
 	
 	public String toString() { 
-<span class="nc" id="L181">		StringBuilder strb = new StringBuilder();</span>
-<span class="nc" id="L182">		strb.append(&quot;OBJECTID = &quot; + objectID + &quot;\n&quot;);</span>
-<span class="nc" id="L183">		strb.append(&quot;CLASSID = &quot; + classID + &quot;\n&quot;);</span>
-<span class="nc" id="L184">		strb.append(&quot;METADATA = &quot; + metaData + &quot;\n&quot;);</span>
-<span class="nc" id="L185">		strb.append(&quot;DATA = &quot; + serializedBytes + &quot;\n&quot;);</span>
-<span class="nc" id="L186">		return strb.toString();</span>
+<span class="nc" id="L186">		StringBuilder strb = new StringBuilder();</span>
+<span class="nc" id="L187">		strb.append(&quot;{&quot;);</span>
+<span class="nc" id="L188">		strb.append(&quot;	OBJECTID : &quot; + objectID + &quot;\n&quot;);</span>
+<span class="nc" id="L189">		strb.append(&quot;	CLASSID : &quot; + classID + &quot;\n&quot;);</span>
+<span class="nc" id="L190">		strb.append(&quot;	DATA : &quot; + Arrays.toString(serializedBytes.getByteString().toByteArray()) + &quot;\n&quot;);</span>
+<span class="nc" id="L191">		strb.append(&quot;	METADATA : &quot; + metaData + &quot;\n&quot;);</span>
+<span class="nc" id="L192">		strb.append(&quot;}&quot;);</span>
+<span class="nc" id="L193">		return strb.toString();</span>
+	}
+
+	public int hashCode() {
+<span class="nc" id="L197">		return this.objectID.hashCode();</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

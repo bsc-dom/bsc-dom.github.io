@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import es.bsc.dataclay.dbhandler.sql.DataServiceDBSQLStatements;
+import es.bsc.dataclay.logic.server.LogicModuleSrv;
+import es.bsc.dataclay.util.management.metadataservice.ExternalExecutionEnvironment;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,66 +35,74 @@ import es.bsc.dataclay.util.ids.StorageLocationID;
 import es.bsc.dataclay.util.management.metadataservice.DataClayInstance;
 import es.bsc.dataclay.util.management.metadataservice.ExecutionEnvironment;
 import es.bsc.dataclay.util.management.metadataservice.StorageLocation;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
+import org.sqlite.SQLiteErrorCode;
 
 /**
  * MetaData data base.
  */
 public final class MetaDataServiceDB {
-<span class="fc" id="L40">	private static final Logger logger = LogManager.getLogger(&quot;MetaDataService.db&quot;);</span>
+<span class="nc" id="L45">	private static final Logger logger = LogManager.getLogger(&quot;MetaDataService.db&quot;);</span>
 
 	/** Data source. */
-	private final BasicDataSource dataSource;
+	private final SQLiteDataSource dataSource;
 
 	/**
 	 * MetaDataServiceDB constructor.
 	 * 
-	 * @param managerName
-	 *            Name of the LM service managing.
+	 * @param dataSource data source
 	 */
-<span class="fc" id="L51">	public MetaDataServiceDB(final BasicDataSource dataSource) {</span>
-<span class="fc" id="L52">		this.dataSource = dataSource;</span>
-<span class="fc" id="L53">	}</span>
+<span class="nc" id="L55">	public MetaDataServiceDB(final SQLiteDataSource dataSource) {</span>
+<span class="nc" id="L56">		this.dataSource = dataSource;</span>
+<span class="nc" id="L57">	}</span>
 
 	/**
 	 * Create tables of MDS.
 	 */
 	public void createTables() {
-<span class="fc" id="L59">		Connection conn = null;</span>
-		try {
-<span class="fc" id="L61">			conn = getConnection();</span>
-<span class="fc bfc" id="L62" title="All 2 branches covered.">			for (final SqlStatements stmt : SqlStatements.values()) {</span>
-<span class="fc bfc" id="L63" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
-<span class="fc" id="L64">					try (PreparedStatement ps = conn.prepareStatement(stmt.getSqlStatement())) {</span>
-<span class="fc" id="L65">						ps.execute();</span>
+<span class="nc" id="L63">		synchronized (dataSource) {</span>
+
+<span class="nc" id="L65">			Connection conn = null;</span>
+			try {
+<span class="nc" id="L67">				conn = getConnection();</span>
+<span class="nc bnc" id="L68" title="All 2 branches missed.">				for (final SqlStatements stmt : SqlStatements.values()) {</span>
+<span class="nc bnc" id="L69" title="All 2 branches missed.">					if (stmt.name().startsWith(&quot;CREATE_TABLE&quot;)) {</span>
+<span class="nc" id="L70">						try (PreparedStatement ps = conn.prepareStatement(stmt.getSqlStatement())) {</span>
+<span class="nc" id="L71">							ps.execute();</span>
+						}
 					}
 				}
+<span class="nc" id="L75">			} catch (final SQLException e) {</span>
+<span class="nc" id="L76">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+			} finally {
+<span class="nc" id="L78">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L69">		} catch (final Exception e) {</span>
-<span class="nc" id="L70">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L72">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L74">	}</span>
+<span class="nc" id="L80">		}</span>
+<span class="nc" id="L81">	}</span>
 
 	/**
 	 * Delete the tables of MDS. Just the other way around of createTables --much simpler.
 	 */
 	public void dropTables() {
-<span class="fc" id="L80">		final Connection conn = getConnection();</span>
-		try {
-<span class="fc bfc" id="L82" title="All 2 branches covered.">			for (final SqlStatements stmt : SqlStatements.values()) {</span>
-<span class="fc bfc" id="L83" title="All 2 branches covered.">				if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
-<span class="fc" id="L84">					try (PreparedStatement ps = conn.prepareStatement(stmt.getSqlStatement())) {</span>
-<span class="fc" id="L85">						ps.execute();</span>
+<span class="nc" id="L87">		synchronized (dataSource) {</span>
+
+<span class="nc" id="L89">			final Connection conn = getConnection();</span>
+			try {
+<span class="nc bnc" id="L91" title="All 2 branches missed.">				for (final SqlStatements stmt : SqlStatements.values()) {</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">					if (stmt.name().startsWith(&quot;DROP_TABLE&quot;)) {</span>
+<span class="nc" id="L93">						try (PreparedStatement ps = conn.prepareStatement(stmt.getSqlStatement())) {</span>
+<span class="nc" id="L94">							ps.execute();</span>
+						}
 					}
 				}
+
+<span class="nc" id="L99">			} catch (final SQLException e) {</span>
+<span class="nc" id="L100">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+			} finally {
+<span class="nc" id="L102">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L89">		} catch (final Exception e) {</span>
-<span class="nc" id="L90">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L92">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L94">	}</span>
+<span class="nc" id="L104">		}</span>
+<span class="nc" id="L105">	}</span>
 
 	/**
 	 * Store ObjectMetaData into database
@@ -100,92 +111,47 @@ public final class MetaDataServiceDB {
 	 *            ObjectMetaData
 	 */
 	public void store(final ObjectMetaData objectMD) {
-<span class="fc" id="L103">		final Connection conn = getConnection();</span>
-<span class="fc" id="L104">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_METADATA.getSqlStatement())) {</span>
-<span class="fc" id="L105">			ps.setObject(1, objectMD.getDataClayID().getId());</span>
-<span class="fc" id="L106">			ps.setObject(2, objectMD.getMetaClassID().getId());</span>
-<span class="fc" id="L107">			ps.setObject(3, objectMD.getDataSetID().getId());</span>
-<span class="fc" id="L108">			final UUID[] theArray = new UUID[objectMD.getExecutionEnvironmentIDs().size()];</span>
-<span class="fc" id="L109">			int i = 0;</span>
-<span class="fc bfc" id="L110" title="All 2 branches covered.">			for (final ExecutionEnvironmentID locID : objectMD.getExecutionEnvironmentIDs()) {</span>
-<span class="fc" id="L111">				theArray[i] = locID.getId();</span>
-<span class="fc" id="L112">				i++;</span>
-<span class="fc" id="L113">			}</span>
-<span class="fc" id="L114">			Array sqlArray = ps.getConnection().createArrayOf(&quot;uuid&quot;, theArray);</span>
-<span class="fc" id="L115">			ps.setArray(4, sqlArray);</span>
-<span class="fc" id="L116">			ps.setBoolean(5, objectMD.isReadOnly());</span>
-<span class="pc bpc" id="L117" title="1 of 2 branches missed.">			if (objectMD.getAlias() != null) {</span>
-<span class="nc" id="L118">				ps.setString(6, objectMD.getAlias());</span>
+<span class="nc" id="L114">		synchronized (dataSource) {</span>
+
+<span class="nc" id="L116">			final Connection conn = getConnection();</span>
+<span class="nc" id="L117">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L118">				ps.setObject(1, objectMD.getDataClayID().getId());</span>
+<span class="nc" id="L119">				ps.setObject(2, objectMD.getMetaClassID().getId());</span>
+<span class="nc" id="L120">				ps.setObject(3, objectMD.getDataSetID().getId());</span>
+<span class="nc" id="L121">				final UUID[] theArray = new UUID[objectMD.getExecutionEnvironmentIDs().size()];</span>
+<span class="nc" id="L122">				int i = 0;</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">				for (final ExecutionEnvironmentID locID : objectMD.getExecutionEnvironmentIDs()) {</span>
+<span class="nc" id="L124">					theArray[i] = locID.getId();</span>
+<span class="nc" id="L125">					i++;</span>
+<span class="nc" id="L126">				}</span>
+<span class="nc" id="L127">				Array sqlArray = ps.getConnection().createArrayOf(&quot;uuid&quot;, theArray);</span>
+<span class="nc" id="L128">				ps.setArray(4, sqlArray);</span>
+<span class="nc" id="L129">				ps.setBoolean(5, objectMD.isReadOnly());</span>
+<span class="nc bnc" id="L130" title="All 2 branches missed.">				if (objectMD.getAlias() != null) {</span>
+<span class="nc" id="L131">					ps.setString(6, objectMD.getAlias());</span>
+				}
+<span class="nc" id="L133">				ps.setInt(7, objectMD.getLang().getNumber());</span>
+<span class="nc" id="L134">				ps.setObject(8, objectMD.getOwnerID().getId());</span>
+
+				try {
+<span class="nc" id="L137">					ps.executeUpdate();</span>
+<span class="nc" id="L138">				} catch (final SQLException e) {</span>
+					/* A primary key constraint is violated */
+<span class="nc bnc" id="L140" title="All 2 branches missed.">					if (e.getErrorCode() == SQLiteErrorCode.SQLITE_CONSTRAINT.code) {</span>
+<span class="nc" id="L141">						throw new DbObjectAlreadyExistException(objectMD.getDataClayID());</span>
+					} else {
+<span class="nc" id="L143">						LogicModuleSrv.doExit(e.getErrorCode());</span>
+					}
+<span class="nc" id="L145">				}</span>
+<span class="nc" id="L146">			} catch (final DbObjectAlreadyExistException dbe) {</span>
+<span class="nc" id="L147">				throw dbe;</span>
+<span class="nc" id="L148">			} catch (final SQLException e) {</span>
+<span class="nc" id="L149">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+			} finally {
+<span class="nc" id="L151">				closeConnection(conn);</span>
 			}
-<span class="fc" id="L120">			ps.setInt(7, objectMD.getLang().getNumber());</span>
-<span class="fc" id="L121">			ps.setObject(8, objectMD.getOwnerID().getId());</span>
-
-			try {
-<span class="fc" id="L124">				ps.executeUpdate();</span>
-<span class="fc" id="L125">			} catch (final SQLException e) {</span>
-				/* A primary key constraint is violated */
-				// TODO add also sqlite message
-				// if (e.getMessage().startsWith(PostgresHandlerConf.DUPLICATE_ERROR_PREFIX_MSG)) {
-<span class="fc" id="L129">				throw new DbObjectAlreadyExistException(objectMD.getDataClayID());</span>
-				// }
-<span class="fc" id="L131">			}</span>
-<span class="fc" id="L132">		} catch (final DbObjectAlreadyExistException dbe) {</span>
-<span class="fc" id="L133">			throw dbe;</span>
-<span class="nc" id="L134">		} catch (final Exception e) {</span>
-<span class="nc" id="L135">			e.printStackTrace();</span>
-<span class="nc" id="L136">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L138">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L140">	}</span>
-
-	/**
-	 * Store a Storage Location into database
-	 * 
-	 * @param stLoc
-	 *            Storage Location
-	 */
-	public void store(final StorageLocation stLoc) {
-<span class="fc" id="L149">		final Connection conn = getConnection();</span>
-<span class="fc" id="L150">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_STORAGE_LOCATION.getSqlStatement())) {</span>
-
-<span class="fc" id="L152">			ps.setObject(1, stLoc.getDataClayID().getId());</span>
-<span class="fc" id="L153">			ps.setString(2, stLoc.getHostname());</span>
-<span class="fc" id="L154">			ps.setString(3, stLoc.getName());</span>
-<span class="fc" id="L155">			ps.setInt(4, stLoc.getStorageTCPPort());</span>
-
-<span class="fc" id="L157">			ps.executeUpdate();</span>
-<span class="nc" id="L158">		} catch (final Exception e) {</span>
-<span class="nc" id="L159">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L161">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L163">	}</span>
-
-	/**
-	 * Store a ExecutionEnvironment into database
-	 * 
-	 * @param exeEnv
-	 *            Execution Environment
-	 */
-	public void store(final ExecutionEnvironment exeEnv) {
-<span class="fc" id="L172">		final Connection conn = getConnection();</span>
-<span class="fc" id="L173">		try (PreparedStatement ps = conn</span>
-<span class="fc" id="L174">				.prepareStatement(SqlStatements.INSERT_EXECUTION_ENVIRONMENT.getSqlStatement())) {</span>
-
-<span class="fc" id="L176">			ps.setObject(1, exeEnv.getDataClayID().getId());</span>
-<span class="fc" id="L177">			ps.setString(2, exeEnv.getHostname());</span>
-<span class="fc" id="L178">			ps.setString(3, exeEnv.getName());</span>
-<span class="fc" id="L179">			ps.setInt(4, exeEnv.getLang().getNumber());</span>
-<span class="fc" id="L180">			ps.setInt(5, exeEnv.getPort());</span>
-
-<span class="fc" id="L182">			ps.executeUpdate();</span>
-<span class="nc" id="L183">		} catch (final Exception e) {</span>
-<span class="nc" id="L184">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L186">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L188">	}</span>
+<span class="nc" id="L153">		}</span>
+<span class="nc" id="L154">	}</span>
 
 	/**
 	 * Get object metadata by ID
@@ -195,21 +161,26 @@ public final class MetaDataServiceDB {
 	 * @return The ObjectMetaData or null if it does not exist
 	 */
 	public ObjectMetaData getByID(final ObjectID objectID) {
-<span class="fc" id="L198">		final Connection conn = getConnection();</span>
-<span class="fc" id="L199">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_METADATA.getSqlStatement())) {</span>
-<span class="fc" id="L200">			ps.setObject(1, objectID.getId());</span>
-<span class="fc" id="L201">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="fc bfc" id="L202" title="All 2 branches covered.">				if (rs.next()) {</span>
-<span class="fc" id="L203">					return deserializeObjectMetaData(rs);</span>
-				} else {
-<span class="fc" id="L205">					return null;</span>
-				}
-<span class="pc bpc" id="L207" title="1 of 2 branches missed.">			}</span>
+<span class="nc" id="L164">		synchronized (dataSource) {</span>
 
-<span class="pc bpc" id="L209" title="1 of 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L210">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L212">			closeConnection(conn);</span>
+<span class="nc" id="L166">			final Connection conn = getConnection();</span>
+<span class="nc" id="L167">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L168">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L169">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">					if (rs.next()) {</span>
+<span class="nc" id="L171">						return deserializeObjectMetaData(rs);</span>
+					} else {
+<span class="nc" id="L173">						return null;</span>
+					}
+<span class="nc bnc" id="L175" title="All 2 branches missed.">				}</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">			} catch (final SQLException e) {</span>
+<span class="nc" id="L177">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L178">				return null;</span>
+<span class="nc" id="L179">			} catch (final Exception e) {</span>
+<span class="nc" id="L180">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L182">				closeConnection(conn);</span>
+			}
 		}
 	}
 	
@@ -219,73 +190,26 @@ public final class MetaDataServiceDB {
 	 * @return The id of all objects registered
 	 */
 	public Set&lt;ObjectID&gt; getAllObjectIDs() {
-<span class="nc" id="L222">		final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L223">		final Connection conn = getConnection();</span>
-<span class="nc" id="L224">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_ALL_OIDS.getSqlStatement())) {</span>
-<span class="nc" id="L225">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L226" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L227">					final ObjectID objectID = new ObjectID((UUID) rs.getObject(&quot;oid&quot;));</span>
-<span class="nc" id="L228">					result.add(objectID);</span>
-<span class="nc" id="L229">				}</span>
+<span class="nc" id="L193">		synchronized (dataSource) {</span>
+
+<span class="nc" id="L195">			final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L196">			final Connection conn = getConnection();</span>
+<span class="nc" id="L197">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_ALL_OIDS.getSqlStatement())) {</span>
+<span class="nc" id="L198">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">					while (rs.next()) {</span>
+<span class="nc" id="L200">						final ObjectID objectID = new ObjectID((UUID) rs.getObject(&quot;oid&quot;));</span>
+<span class="nc" id="L201">						result.add(objectID);</span>
+<span class="nc" id="L202">					}</span>
+				}
+<span class="nc" id="L204">				return result;</span>
+<span class="nc" id="L205">			} catch (final SQLException e) {</span>
+<span class="nc" id="L206">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L207">				return null;</span>
+<span class="nc" id="L208">			} catch (final Exception e) {</span>
+<span class="nc" id="L209">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L211">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L231">			return result;</span>
-<span class="nc" id="L232">		} catch (final Exception e) {</span>
-<span class="nc" id="L233">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L235">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get StorageLocation by ID
-	 * 
-	 * @param storageLocationID
-	 *            ID of the object
-	 * @return The StorageLocation or null if it does not exist
-	 */
-	public StorageLocation getByID(final StorageLocationID storageLocationID) {
-<span class="fc" id="L247">		final Connection conn = getConnection();</span>
-<span class="fc" id="L248">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_STORAGE_LOCATION.getSqlStatement())) {</span>
-<span class="fc" id="L249">			ps.setObject(1, storageLocationID.getId());</span>
-<span class="fc" id="L250">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="pc bpc" id="L251" title="1 of 2 branches missed.">				if (rs.next()) {</span>
-<span class="fc" id="L252">					return deserializeStorageLocation(rs);</span>
-				} else {
-<span class="nc" id="L254">					return null;</span>
-				}
-<span class="pc bpc" id="L256" title="1 of 2 branches missed.">			}</span>
-<span class="pc bpc" id="L257" title="1 of 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L258">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L260">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get ExecutionEnvironment by ID
-	 * 
-	 * @param executionEnvironmentID
-	 *            ID of the object
-	 * @return The ExecutionEnvironment or null if it does not exist
-	 */
-	public ExecutionEnvironment getByID(final ExecutionEnvironmentID executionEnvironmentID) {
-<span class="fc" id="L272">		final Connection conn = getConnection();</span>
-<span class="fc" id="L273">		try (PreparedStatement ps = conn</span>
-<span class="fc" id="L274">				.prepareStatement(SqlStatements.SELECT_EXECUTION_ENVIRONMENT.getSqlStatement())) {</span>
-
-<span class="fc" id="L276">			ps.setObject(1, executionEnvironmentID.getId());</span>
-<span class="fc" id="L277">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="fc bfc" id="L278" title="All 2 branches covered.">				if (rs.next()) {</span>
-<span class="fc" id="L279">					return deserializeExecutionEnvironment(rs);</span>
-				} else {
-<span class="fc" id="L281">					return null;</span>
-				}
-<span class="pc bpc" id="L283" title="1 of 2 branches missed.">			}</span>
-
-<span class="pc bpc" id="L285" title="1 of 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L286">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L288">			closeConnection(conn);</span>
 		}
 	}
 
@@ -297,70 +221,25 @@ public final class MetaDataServiceDB {
 	 * @return TRUE if exists. FALSE otherwise
 	 */
 	public boolean existsByID(final ObjectID objectID) {
-<span class="fc" id="L300">		final Connection conn = getConnection();</span>
-<span class="fc" id="L301">		try (PreparedStatement existsStatement = conn</span>
-<span class="fc" id="L302">				.prepareStatement(SqlStatements.EXISTS_METADATA_BY_ID.getSqlStatement())) {</span>
+<span class="nc" id="L224">		synchronized (dataSource) {</span>
 
-<span class="fc" id="L304">			existsStatement.setObject(1, objectID.getId());</span>
-<span class="fc" id="L305">			try (ResultSet rs = existsStatement.executeQuery()) {</span>
-<span class="fc" id="L306">				rs.next();</span>
-<span class="fc" id="L307">				return rs.getBoolean(1);</span>
+<span class="nc" id="L226">			final Connection conn = getConnection();</span>
+<span class="nc" id="L227">			try (PreparedStatement existsStatement = conn</span>
+<span class="nc" id="L228">					.prepareStatement(SqlStatements.EXISTS_METADATA_BY_ID.getSqlStatement())) {</span>
+
+<span class="nc" id="L230">				existsStatement.setObject(1, objectID.getId());</span>
+<span class="nc" id="L231">				try (ResultSet rs = existsStatement.executeQuery()) {</span>
+<span class="nc" id="L232">					rs.next();</span>
+<span class="nc" id="L233">					return rs.getBoolean(1);</span>
+				}
+<span class="nc" id="L235">			} catch (final SQLException e) {</span>
+<span class="nc" id="L236">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L237">				return false;</span>
+<span class="nc" id="L238">			} catch (final Exception e) {</span>
+<span class="nc" id="L239">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L241">				closeConnection(conn);</span>
 			}
-
-<span class="nc" id="L310">		} catch (final Exception e) {</span>
-<span class="nc" id="L311">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L313">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Check if there is a backend identified by ID provided
-	 * 
-	 * @param stLocID
-	 *            ID of the storage location
-	 * @return TRUE if exists. FALSE otherwise
-	 */
-	public boolean existsByID(final StorageLocationID stLocID) {
-<span class="nc" id="L325">		final Connection conn = getConnection();</span>
-<span class="nc" id="L326">		try (PreparedStatement existsStatement = conn</span>
-<span class="nc" id="L327">				.prepareStatement(SqlStatements.EXISTS_STORAGE_LOCATION_BY_ID.getSqlStatement())) {</span>
-
-<span class="nc" id="L329">			existsStatement.setObject(1, stLocID.getId());</span>
-<span class="nc" id="L330">			try (ResultSet rs = existsStatement.executeQuery()) {</span>
-<span class="nc" id="L331">				rs.next();</span>
-<span class="nc" id="L332">				return rs.getBoolean(1);</span>
-			}
-
-<span class="nc" id="L335">		} catch (final Exception e) {</span>
-<span class="nc" id="L336">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L338">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Check if there is a backend identified by ID provided
-	 * 
-	 * @param execEnvID
-	 *            ID of the execution environment
-	 * @return TRUE if exists. FALSE otherwise
-	 */
-	public boolean existsByID(final ExecutionEnvironmentID execEnvID) {
-<span class="fc" id="L350">		final Connection conn = getConnection();</span>
-<span class="fc" id="L351">		try (PreparedStatement existsStatement = conn</span>
-<span class="fc" id="L352">				.prepareStatement(SqlStatements.EXISTS_EXECUTION_ENVIRONMENT_BY_ID.getSqlStatement())) {</span>
-
-<span class="fc" id="L354">			existsStatement.setObject(1, execEnvID.getId());</span>
-<span class="fc" id="L355">			try (ResultSet rs = existsStatement.executeQuery()) {</span>
-<span class="fc" id="L356">				rs.next();</span>
-<span class="fc" id="L357">				return rs.getBoolean(1);</span>
-			}
-
-<span class="nc" id="L360">		} catch (final Exception e) {</span>
-<span class="nc" id="L361">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L363">			closeConnection(conn);</span>
 		}
 	}
 
@@ -372,20 +251,25 @@ public final class MetaDataServiceDB {
 	 * @return TRUE if there is any ObjectMetaData with DataSetID provided. FALSE otherwise.
 	 */
 	public boolean existsByDataSetID(final DataSetID datasetID) {
-<span class="nc" id="L375">		final Connection conn = getConnection();</span>
-<span class="nc" id="L376">		try (PreparedStatement existsStatement = conn</span>
-<span class="nc" id="L377">				.prepareStatement(SqlStatements.EXISTS_METADATA_BY_DATASETID.getSqlStatement())) {</span>
+<span class="nc" id="L254">		synchronized (dataSource) {</span>
 
-<span class="nc" id="L379">			existsStatement.setObject(1, datasetID.getId());</span>
-<span class="nc" id="L380">			try (ResultSet rs = existsStatement.executeQuery()) {</span>
-<span class="nc" id="L381">				rs.next();</span>
-<span class="nc" id="L382">				return rs.getBoolean(1);</span>
+<span class="nc" id="L256">			final Connection conn = getConnection();</span>
+<span class="nc" id="L257">			try (PreparedStatement existsStatement = conn</span>
+<span class="nc" id="L258">					.prepareStatement(SqlStatements.EXISTS_METADATA_BY_DATASETID.getSqlStatement())) {</span>
+
+<span class="nc" id="L260">				existsStatement.setObject(1, datasetID.getId());</span>
+<span class="nc" id="L261">				try (ResultSet rs = existsStatement.executeQuery()) {</span>
+<span class="nc" id="L262">					rs.next();</span>
+<span class="nc" id="L263">					return rs.getBoolean(1);</span>
+				}
+<span class="nc" id="L265">			} catch (final SQLException e) {</span>
+<span class="nc" id="L266">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L267">				return false;</span>
+<span class="nc" id="L268">			} catch (final Exception e) {</span>
+<span class="nc" id="L269">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L271">				closeConnection(conn);</span>
 			}
-
-<span class="nc" id="L385">		} catch (final Exception e) {</span>
-<span class="nc" id="L386">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L388">			closeConnection(conn);</span>
 		}
 	}
 
@@ -396,59 +280,22 @@ public final class MetaDataServiceDB {
 	 *            ID of the object
 	 */
 	public void deleteByID(final ObjectID objectID) throws DbHandlerException {
-<span class="fc" id="L399">		final Connection conn = getConnection();</span>
-<span class="fc" id="L400">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L283">		synchronized (dataSource) {</span>
 
-<span class="fc" id="L402">			ps.setObject(1, objectID.getId());</span>
-<span class="fc" id="L403">			ps.executeUpdate();</span>
+<span class="nc" id="L285">			final Connection conn = getConnection();</span>
+<span class="nc" id="L286">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_METADATA.getSqlStatement())) {</span>
 
-<span class="nc" id="L405">		} catch (final Exception e) {</span>
-<span class="nc" id="L406">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L408">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L410">	}</span>
-
-	/**
-	 * Delete storage location identified by ID provided (ignored if it does not exist)
-	 * 
-	 * @param stLocID
-	 *            ID of the storage location
-	 */
-	public void deleteByID(final StorageLocationID stLocID) {
-<span class="nc" id="L419">		final Connection conn = getConnection();</span>
-<span class="nc" id="L420">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_STORAGE_LOCATION.getSqlStatement())) {</span>
-
-<span class="nc" id="L422">			ps.setObject(1, stLocID.getId());</span>
-<span class="nc" id="L423">			ps.executeUpdate();</span>
-
-<span class="nc" id="L425">		} catch (final Exception e) {</span>
-<span class="nc" id="L426">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L428">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L430">	}</span>
-
-	/**
-	 * Delete execute environment identified by ID provided (ignored if it does not exist)
-	 * 
-	 * @param execEnvID
-	 *            ID of the backend
-	 */
-	public void deleteByID(final ExecutionEnvironmentID execEnvID) {
-<span class="fc" id="L439">		final Connection conn = getConnection();</span>
-<span class="fc" id="L440">		try (PreparedStatement ps = conn</span>
-<span class="fc" id="L441">				.prepareStatement(SqlStatements.DELETE_EXECUTION_ENVIRONMENT.getSqlStatement())) {</span>
-
-<span class="fc" id="L443">			ps.setObject(1, execEnvID.getId());</span>
-<span class="fc" id="L444">			ps.executeUpdate();</span>
-
-<span class="nc" id="L446">		} catch (final Exception e) {</span>
-<span class="nc" id="L447">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L449">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L451">	}</span>
+<span class="nc" id="L288">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L289">				ps.executeUpdate();</span>
+<span class="nc" id="L290">			} catch (final SQLException e) {</span>
+<span class="nc" id="L291">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L292">			} catch (final Exception e) {</span>
+<span class="nc" id="L293">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L295">				closeConnection(conn);</span>
+			}
+<span class="nc" id="L297">		}</span>
+<span class="nc" id="L298">	}</span>
 
 	/**
 	 * Update object metadata by ID
@@ -462,22 +309,27 @@ public final class MetaDataServiceDB {
 	 */
 	public void updateAliasByID(final ObjectID objectID, final String newAlias)
 			throws DbObjectNotExistException {
-<span class="nc" id="L465">		final Connection conn = getConnection();</span>
-<span class="nc" id="L466">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_ALIAS_METADATA.getSqlStatement())) {</span>
-<span class="nc" id="L467">			ps.setString(1, newAlias);</span>
-<span class="nc" id="L468">			ps.setObject(2, objectID.getId());</span>
-<span class="nc" id="L469">			final int count = ps.executeUpdate();</span>
-<span class="nc bnc" id="L470" title="All 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L471">				throw new DbObjectNotExistException(objectID);</span>
+<span class="nc" id="L312">		synchronized (dataSource) {</span>
+
+<span class="nc" id="L314">			final Connection conn = getConnection();</span>
+<span class="nc" id="L315">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_ALIAS_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L316">				ps.setString(1, newAlias);</span>
+<span class="nc" id="L317">				ps.setObject(2, objectID.getId());</span>
+<span class="nc" id="L318">				final int count = ps.executeUpdate();</span>
+<span class="nc bnc" id="L319" title="All 2 branches missed.">				if (count == 0) {</span>
+<span class="nc" id="L320">					throw new DbObjectNotExistException(objectID);</span>
+				}
+<span class="nc" id="L322">			} catch (final SQLException e) {</span>
+<span class="nc" id="L323">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L324">			} catch (final DbObjectNotExistException dbe) {</span>
+<span class="nc" id="L325">				throw dbe;</span>
+<span class="nc" id="L326">			} catch (final Exception e) {</span>
+<span class="nc" id="L327">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L329">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L473">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L474">			throw dbe;</span>
-<span class="nc" id="L475">		} catch (final Exception e) {</span>
-<span class="nc" id="L476">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L478">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L480">	}</span>
+<span class="nc" id="L331">		}</span>
+<span class="nc" id="L332">	}</span>
 
 	/**
 	 * Update object metadata by ID
@@ -491,23 +343,27 @@ public final class MetaDataServiceDB {
 	 */
 	public void updateDataSetIDByID(final ObjectID objectID, final DataSetID newdatasetid)
 			throws DbObjectNotExistException {
-<span class="nc" id="L494">		final Connection conn = getConnection();</span>
-<span class="nc" id="L495">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_DATASETID_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L346">		synchronized (dataSource) {</span>
+<span class="nc" id="L347">			final Connection conn = getConnection();</span>
+<span class="nc" id="L348">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_DATASETID_METADATA.getSqlStatement())) {</span>
 
-<span class="nc" id="L497">			ps.setObject(1, newdatasetid.getId());</span>
-<span class="nc" id="L498">			ps.setObject(2, objectID.getId());</span>
-<span class="nc" id="L499">			final int count = ps.executeUpdate();</span>
-<span class="nc bnc" id="L500" title="All 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L501">				throw new DbObjectNotExistException(objectID);</span>
+<span class="nc" id="L350">				ps.setObject(1, newdatasetid.getId());</span>
+<span class="nc" id="L351">				ps.setObject(2, objectID.getId());</span>
+<span class="nc" id="L352">				final int count = ps.executeUpdate();</span>
+<span class="nc bnc" id="L353" title="All 2 branches missed.">				if (count == 0) {</span>
+<span class="nc" id="L354">					throw new DbObjectNotExistException(objectID);</span>
+				}
+<span class="nc" id="L356">			} catch (final SQLException e) {</span>
+<span class="nc" id="L357">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L358">			} catch (final DbObjectNotExistException dbe) {</span>
+<span class="nc" id="L359">				throw dbe;</span>
+<span class="nc" id="L360">			} catch (final Exception e) {</span>
+<span class="nc" id="L361">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L363">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L503">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L504">			throw dbe;</span>
-<span class="nc" id="L505">		} catch (final Exception e) {</span>
-<span class="nc" id="L506">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L508">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L510">	}</span>
+<span class="nc" id="L365">		}</span>
+<span class="nc" id="L366">	}</span>
 
 	/**
 	 * Update object metadata by ID
@@ -521,30 +377,34 @@ public final class MetaDataServiceDB {
 	 */
 	public void updateLocationIDsByID(final ObjectID objectID, final Set&lt;ExecutionEnvironmentID&gt; newLocs)
 			throws DbObjectNotExistException {
-<span class="fc" id="L524">		final Connection conn = getConnection();</span>
-<span class="fc" id="L525">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_LOCS_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L380">		synchronized (dataSource) {</span>
+<span class="nc" id="L381">			final Connection conn = getConnection();</span>
+<span class="nc" id="L382">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_LOCS_METADATA.getSqlStatement())) {</span>
 
-<span class="fc" id="L527">			final Object[] theArray = new Object[newLocs.size()];</span>
-<span class="fc" id="L528">			int i = 0;</span>
-<span class="fc bfc" id="L529" title="All 2 branches covered.">			for (final ExecutionEnvironmentID stLocID : newLocs) {</span>
-<span class="fc" id="L530">				theArray[i] = stLocID.getId();</span>
-<span class="fc" id="L531">				i++;</span>
-<span class="fc" id="L532">			}</span>
-<span class="fc" id="L533">			final Array sqlArray = ps.getConnection().createArrayOf(&quot;uuid&quot;, theArray);</span>
-<span class="fc" id="L534">			ps.setArray(1, sqlArray);</span>
-<span class="fc" id="L535">			ps.setObject(2, objectID.getId());</span>
-<span class="fc" id="L536">			final int count = ps.executeUpdate();</span>
-<span class="pc bpc" id="L537" title="1 of 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L538">				throw new DbObjectNotExistException(objectID);</span>
+<span class="nc" id="L384">				final Object[] theArray = new Object[newLocs.size()];</span>
+<span class="nc" id="L385">				int i = 0;</span>
+<span class="nc bnc" id="L386" title="All 2 branches missed.">				for (final ExecutionEnvironmentID stLocID : newLocs) {</span>
+<span class="nc" id="L387">					theArray[i] = stLocID.getId();</span>
+<span class="nc" id="L388">					i++;</span>
+<span class="nc" id="L389">				}</span>
+<span class="nc" id="L390">				final Array sqlArray = ps.getConnection().createArrayOf(&quot;uuid&quot;, theArray);</span>
+<span class="nc" id="L391">				ps.setArray(1, sqlArray);</span>
+<span class="nc" id="L392">				ps.setObject(2, objectID.getId());</span>
+<span class="nc" id="L393">				final int count = ps.executeUpdate();</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">				if (count == 0) {</span>
+<span class="nc" id="L395">					throw new DbObjectNotExistException(objectID);</span>
+				}
+<span class="nc" id="L397">			} catch (final SQLException e) {</span>
+<span class="nc" id="L398">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L399">			} catch (final DbObjectNotExistException dbe) {</span>
+<span class="nc" id="L400">				throw dbe;</span>
+<span class="nc" id="L401">			} catch (final Exception e) {</span>
+<span class="nc" id="L402">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L404">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L540">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L541">			throw dbe;</span>
-<span class="nc" id="L542">		} catch (final Exception e) {</span>
-<span class="nc" id="L543">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L545">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L547">	}</span>
+<span class="nc" id="L406">		}</span>
+<span class="nc" id="L407">	}</span>
 
 	/**
 	 * Update object metadata by ID
@@ -558,24 +418,27 @@ public final class MetaDataServiceDB {
 	 */
 	public void updateReadOnlyByID(final ObjectID objectID, final boolean newisreadonly)
 			throws DbObjectNotExistException {
-<span class="fc" id="L561">		final Connection conn = getConnection();</span>
-<span class="fc" id="L562">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_READONLY_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L421">		synchronized (dataSource) {</span>
+<span class="nc" id="L422">			final Connection conn = getConnection();</span>
+<span class="nc" id="L423">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_READONLY_METADATA.getSqlStatement())) {</span>
 
-<span class="fc" id="L564">			ps.setBoolean(1, newisreadonly);</span>
-<span class="fc" id="L565">			ps.setObject(2, objectID.getId());</span>
-<span class="fc" id="L566">			final int count = ps.executeUpdate();</span>
-<span class="pc bpc" id="L567" title="1 of 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L568">				throw new DbObjectNotExistException(objectID);</span>
+<span class="nc" id="L425">				ps.setBoolean(1, newisreadonly);</span>
+<span class="nc" id="L426">				ps.setObject(2, objectID.getId());</span>
+<span class="nc" id="L427">				final int count = ps.executeUpdate();</span>
+<span class="nc bnc" id="L428" title="All 2 branches missed.">				if (count == 0) {</span>
+<span class="nc" id="L429">					throw new DbObjectNotExistException(objectID);</span>
+				}
+<span class="nc" id="L431">			} catch (final SQLException e) {</span>
+<span class="nc" id="L432">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L433">			} catch (final DbObjectNotExistException dbe) {</span>
+<span class="nc" id="L434">				throw dbe;</span>
+<span class="nc" id="L435">			} catch (final Exception e) {</span>
+<span class="nc" id="L436">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L438">				closeConnection(conn);</span>
 			}
-
-<span class="nc" id="L571">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L572">			throw dbe;</span>
-<span class="nc" id="L573">		} catch (final Exception e) {</span>
-<span class="nc" id="L574">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L576">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L578">	}</span>
+<span class="nc" id="L440">		}</span>
+<span class="nc" id="L441">	}</span>
 
 	/**
 	 * Update object metadata by ID
@@ -589,99 +452,36 @@ public final class MetaDataServiceDB {
 	 */
 	public void updateForReplicaByID(final ObjectID objectID, final Set&lt;ExecutionEnvironmentID&gt; newLocs,
 			final boolean newReadOnly) throws DbObjectNotExistException {
-<span class="fc" id="L592">		final Connection conn = getConnection();</span>
-<span class="fc" id="L593">		try (PreparedStatement ps = conn</span>
-<span class="fc" id="L594">				.prepareStatement(SqlStatements.UPDATE_FOR_REPLICA_METADATA.getSqlStatement())) {</span>
+<span class="nc" id="L455">		synchronized (dataSource) {</span>
+<span class="nc" id="L456">			final Connection conn = getConnection();</span>
+<span class="nc" id="L457">			try (PreparedStatement ps = conn</span>
+<span class="nc" id="L458">					.prepareStatement(SqlStatements.UPDATE_FOR_REPLICA_METADATA.getSqlStatement())) {</span>
 
-<span class="fc" id="L596">			final Object[] theArray = new Object[newLocs.size()];</span>
-<span class="fc" id="L597">			int i = 0;</span>
-<span class="fc bfc" id="L598" title="All 2 branches covered.">			for (final ExecutionEnvironmentID locID : newLocs) {</span>
-<span class="fc" id="L599">				theArray[i] = locID.getId();</span>
-<span class="fc" id="L600">				i++;</span>
-<span class="fc" id="L601">			}</span>
-<span class="fc" id="L602">			final Array sqlArray = ps.getConnection().createArrayOf(&quot;uuid&quot;, theArray);</span>
-<span class="fc" id="L603">			ps.setArray(1, sqlArray);</span>
-<span class="fc" id="L604">			ps.setBoolean(2, newReadOnly);</span>
-<span class="fc" id="L605">			ps.setObject(3, objectID.getId());</span>
-<span class="fc" id="L606">			final int count = ps.executeUpdate();</span>
-<span class="pc bpc" id="L607" title="1 of 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L608">				throw new DbObjectNotExistException(objectID);</span>
+<span class="nc" id="L460">				final Object[] theArray = new Object[newLocs.size()];</span>
+<span class="nc" id="L461">				int i = 0;</span>
+<span class="nc bnc" id="L462" title="All 2 branches missed.">				for (final ExecutionEnvironmentID locID : newLocs) {</span>
+<span class="nc" id="L463">					theArray[i] = locID.getId();</span>
+<span class="nc" id="L464">					i++;</span>
+<span class="nc" id="L465">				}</span>
+<span class="nc" id="L466">				final Array sqlArray = ps.getConnection().createArrayOf(&quot;uuid&quot;, theArray);</span>
+<span class="nc" id="L467">				ps.setArray(1, sqlArray);</span>
+<span class="nc" id="L468">				ps.setBoolean(2, newReadOnly);</span>
+<span class="nc" id="L469">				ps.setObject(3, objectID.getId());</span>
+<span class="nc" id="L470">				final int count = ps.executeUpdate();</span>
+<span class="nc bnc" id="L471" title="All 2 branches missed.">				if (count == 0) {</span>
+<span class="nc" id="L472">					throw new DbObjectNotExistException(objectID);</span>
+				}
+<span class="nc" id="L474">			} catch (final SQLException e) {</span>
+<span class="nc" id="L475">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L476">			} catch (final DbObjectNotExistException dbe) {</span>
+<span class="nc" id="L477">				throw dbe;</span>
+<span class="nc" id="L478">			} catch (final Exception e) {</span>
+<span class="nc" id="L479">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L481">				closeConnection(conn);</span>
 			}
-
-<span class="nc" id="L611">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L612">			throw dbe;</span>
-<span class="nc" id="L613">		} catch (final Exception e) {</span>
-<span class="nc" id="L614">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L616">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L618">	}</span>
-	
-	/**
-	 * Update storage location host and port by ID
-	 * 
-	 * @param id
-	 *            ID of storage location
-	 * @param newhost new host 
-	 * @param newport new port
-	 * @throws DbObjectNotExistException
-	 *             if object does not exist
-	 */
-	public void updateStorageLocationByID(final StorageLocationID id, final String newhost,
-			final Integer newport) throws DbObjectNotExistException {
-<span class="nc" id="L632">		final Connection conn = getConnection();</span>
-<span class="nc" id="L633">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L634">				.prepareStatement(SqlStatements.UPDATE_STORAGE_LOCATION.getSqlStatement())) {</span>
-
-<span class="nc" id="L636">			ps.setString(1, newhost);</span>
-<span class="nc" id="L637">			ps.setInt(2, newport);</span>
-<span class="nc" id="L638">			ps.setObject(3, id.getId());</span>
-<span class="nc" id="L639">			final int count = ps.executeUpdate();</span>
-<span class="nc bnc" id="L640" title="All 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L641">				throw new DbObjectNotExistException(id);</span>
-			}
-
-<span class="nc" id="L644">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L645">			throw dbe;</span>
-<span class="nc" id="L646">		} catch (final Exception e) {</span>
-<span class="nc" id="L647">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L649">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L651">	}</span>
-	
-	/**
-	 * Update execution environment host and port by ID
-	 * 
-	 * @param id
-	 *            ID of storage location
-	 * @param newhost new host 
-	 * @param newport new port
-	 * @throws DbObjectNotExistException
-	 *             if object does not exist
-	 */
-	public void updateExecutionEnvironmentByID(final ExecutionEnvironmentID id, final String newhost,
-			final Integer newport) throws DbObjectNotExistException {
-<span class="nc" id="L665">		final Connection conn = getConnection();</span>
-<span class="nc" id="L666">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L667">				.prepareStatement(SqlStatements.UPDATE_EXECUTION_ENVIRONMENT.getSqlStatement())) {</span>
-
-<span class="nc" id="L669">			ps.setString(1, newhost);</span>
-<span class="nc" id="L670">			ps.setInt(2, newport);</span>
-<span class="nc" id="L671">			ps.setObject(3, id.getId());</span>
-<span class="nc" id="L672">			final int count = ps.executeUpdate();</span>
-<span class="nc bnc" id="L673" title="All 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L674">				throw new DbObjectNotExistException(id);</span>
-			}
-
-<span class="nc" id="L677">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L678">			throw dbe;</span>
-<span class="nc" id="L679">		} catch (final Exception e) {</span>
-<span class="nc" id="L680">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L682">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L684">	}</span>
+<span class="nc" id="L483">		}</span>
+<span class="nc" id="L484">	}</span>
 
 	/**
 	 * Get a set of objects metadata by its Class ID
@@ -691,23 +491,27 @@ public final class MetaDataServiceDB {
 	 * @return The ObjectMetaDatas with class id provided
 	 */
 	public ArrayList&lt;ObjectMetaData&gt; getByClass(final MetaClassID classID) {
-<span class="fc" id="L694">		final ArrayList&lt;ObjectMetaData&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L695">		final Connection conn = getConnection();</span>
-<span class="fc" id="L696">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_METADATA_FOR_CLASS.getSqlStatement())) {</span>
+<span class="nc" id="L494">		synchronized (dataSource) {</span>
+<span class="nc" id="L495">			final ArrayList&lt;ObjectMetaData&gt; resultList = new ArrayList&lt;&gt;();</span>
+<span class="nc" id="L496">			final Connection conn = getConnection();</span>
+<span class="nc" id="L497">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_METADATA_FOR_CLASS.getSqlStatement())) {</span>
 
-<span class="fc" id="L698">			ps.setObject(1, classID.getId());</span>
-<span class="fc" id="L699">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="fc bfc" id="L700" title="All 2 branches covered.">				while (rs.next()) {</span>
-<span class="fc" id="L701">					final ObjectMetaData objectMD = deserializeObjectMetaData(rs);</span>
-<span class="fc" id="L702">					resultList.add(objectMD);</span>
-<span class="fc" id="L703">				}</span>
+<span class="nc" id="L499">				ps.setObject(1, classID.getId());</span>
+<span class="nc" id="L500">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L501" title="All 2 branches missed.">					while (rs.next()) {</span>
+<span class="nc" id="L502">						final ObjectMetaData objectMD = deserializeObjectMetaData(rs);</span>
+<span class="nc" id="L503">						resultList.add(objectMD);</span>
+<span class="nc" id="L504">					}</span>
+				}
+<span class="nc" id="L506">				return resultList;</span>
+<span class="nc" id="L507">			} catch (final SQLException e) {</span>
+<span class="nc" id="L508">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L509">				return null;</span>
+<span class="nc" id="L510">			} catch (final Exception e) {</span>
+<span class="nc" id="L511">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L513">				closeConnection(conn);</span>
 			}
-<span class="fc" id="L705">			return resultList;</span>
-
-<span class="nc" id="L707">		} catch (final Exception e) {</span>
-<span class="nc" id="L708">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L710">			closeConnection(conn);</span>
 		}
 	}
 
@@ -719,445 +523,25 @@ public final class MetaDataServiceDB {
 	 * @return object instancing specified class and aliased with given alias. null if there is none.
 	 */
 	public ObjectMetaData getByAlias(final String alias) {
-<span class="nc" id="L722">		final Connection conn = getConnection();</span>
-<span class="nc" id="L723">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_METADATA_BY_ALIAS.getSqlStatement())) {</span>
-<span class="nc" id="L724">			ps.setString(1, alias);</span>
-<span class="nc" id="L725">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L726" title="All 2 branches missed.">				if (rs.next()) {</span>
-<span class="nc" id="L727">					return deserializeObjectMetaData(rs);</span>
-				} else {
-<span class="nc" id="L729">					return null;</span>
-				}
-<span class="nc bnc" id="L731" title="All 2 branches missed.">			}</span>
-
-<span class="nc bnc" id="L733" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L734">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L736">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get all Storage Locations
-	 * 
-	 * @return The Storage Locations
-	 */
-	public List&lt;StorageLocation&gt; getAllStorageLocations() {
-<span class="nc" id="L746">		final ArrayList&lt;StorageLocation&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L747">		final Connection conn = getConnection();</span>
-<span class="nc" id="L748">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_ALL_LOCS.getSqlStatement())) {</span>
-
-<span class="nc" id="L750">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L751" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L752">					final StorageLocation stLoc = deserializeStorageLocation(rs);</span>
-<span class="nc" id="L753">					resultList.add(stLoc);</span>
-<span class="nc" id="L754">				}</span>
-			}
-<span class="nc" id="L756">			return resultList;</span>
-
-<span class="nc" id="L758">		} catch (final Exception e) {</span>
-<span class="nc" id="L759">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L761">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get all Execution Environments
-	 * 
-	 * @return The Execution Environments
-	 */
-	public List&lt;ExecutionEnvironment&gt; getAllExecutionEnvironments() {
-<span class="nc" id="L771">		final ArrayList&lt;ExecutionEnvironment&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L772">		final Connection conn = getConnection();</span>
-<span class="nc" id="L773">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_ALL_EXECENVS.getSqlStatement())) {</span>
-
-<span class="nc" id="L775">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L776" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L777">					final ExecutionEnvironment execEnv = deserializeExecutionEnvironment(rs);</span>
-<span class="nc" id="L778">					resultList.add(execEnv);</span>
-<span class="nc" id="L779">				}</span>
-			}
-<span class="nc" id="L781">			return resultList;</span>
-
-<span class="nc" id="L783">		} catch (final Exception e) {</span>
-<span class="nc" id="L784">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L786">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get all Execution Environments of a specific language
-	 * 
-	 * @return a list of Execution Environments
-	 */
-	public List&lt;ExecutionEnvironment&gt; getAllExecutionEnvironmentsByLang(final Langs lang) {
-<span class="nc" id="L796">		final ArrayList&lt;ExecutionEnvironment&gt; resultList = new ArrayList&lt;&gt;();</span>
-<span class="nc" id="L797">		final Connection conn = getConnection();</span>
-<span class="nc" id="L798">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L799">				.prepareStatement(SqlStatements.SELECT_ALL_EXECENVS_BY_LANG.getSqlStatement())) {</span>
-<span class="nc" id="L800">			ps.setInt(1, lang.getNumber());</span>
-
-<span class="nc" id="L802">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L803" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L804">					final ExecutionEnvironment execEnv = deserializeExecutionEnvironment(rs);</span>
-<span class="nc" id="L805">					resultList.add(execEnv);</span>
-<span class="nc" id="L806">				}</span>
-			}
-<span class="nc" id="L808">			return resultList;</span>
-
-<span class="nc" id="L810">		} catch (final Exception e) {</span>
-<span class="nc" id="L811">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L813">			closeConnection(conn);</span>
-		}
-	}
-	
-	/**
-	 * Get all DataClayInstance ids representing external dataclays
-	 * 
-	 * @return a set of DataClayInstances ids
-	 */
-	public Set&lt;DataClayInstanceID&gt; getAllExternalDataClays() {
-<span class="nc" id="L823">		final Set&lt;DataClayInstanceID&gt; resultList = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L824">		final Connection conn = getConnection();</span>
-<span class="nc" id="L825">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L826">				.prepareStatement(SqlStatements.SELECT_ALL_DATACLAYS.getSqlStatement())) {</span>
-<span class="nc" id="L827">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L828" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L829">					final DataClayInstanceID instanceID = new DataClayInstanceID(</span>
-<span class="nc" id="L830">							(UUID) rs.getObject(&quot;id&quot;));</span>
-<span class="nc" id="L831">					resultList.add(instanceID);</span>
-<span class="nc" id="L832">				}</span>
-			}
-<span class="nc" id="L834">			return resultList;</span>
-
-<span class="nc" id="L836">		} catch (final Exception e) {</span>
-<span class="nc" id="L837">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L839">			closeConnection(conn);</span>
-		}
-	}
-
-
-	/**
-	 * Get a single (should be unique) Storage Location by name
-	 * 
-	 * @param name
-	 *            Name
-	 * @return the storage location named with specified name (null if there is none).
-	 */
-	public StorageLocation getStorageLocationByName(final String name) {
-<span class="fc" id="L852">		final Connection conn = getConnection();</span>
-<span class="fc" id="L853">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_STLOC_BY_NAME.getSqlStatement())) {</span>
-
-<span class="fc" id="L855">			ps.setString(1, name);</span>
-<span class="fc" id="L856">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="pc bpc" id="L857" title="1 of 2 branches missed.">				if (rs.next()) {</span>
-<span class="nc" id="L858">					return deserializeStorageLocation(rs);</span>
-				} else {
-<span class="fc" id="L860">					return null;</span>
-				}
-<span class="nc bnc" id="L862" title="All 2 branches missed.">			}</span>
-
-<span class="nc bnc" id="L864" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L865">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L867">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get all Execution Environment by host name and language
-	 * 
-	 * @param hostname
-	 *            host name
-	 * @param language
-	 *            Language
-	 * @return all Execution Environment by host name and language
-	 */
-	public Set&lt;ExecutionEnvironmentID&gt; getExecutionEnvironmentByHostnameAndLanguage(final String hostname,
-			final Langs language) {
-<span class="nc" id="L882">		final Set&lt;ExecutionEnvironmentID&gt; resultList = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L883">		final Connection conn = getConnection();</span>
-<span class="nc" id="L884">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L885">				.prepareStatement(SqlStatements.SELECT_ALL_EXECENV_BY_HOSTNAME_AND_LANG.getSqlStatement())) {</span>
-<span class="nc" id="L886">			ps.setString(1, hostname);</span>
-<span class="nc" id="L887">			ps.setInt(2, language.getNumber());</span>
-<span class="nc" id="L888">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L889" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L890">					final ExecutionEnvironmentID executionEnvironmentID = new ExecutionEnvironmentID(</span>
-<span class="nc" id="L891">							(UUID) rs.getObject(&quot;id&quot;));</span>
-<span class="nc" id="L892">					resultList.add(executionEnvironmentID);</span>
-<span class="nc" id="L893">				}</span>
-			}
-<span class="nc" id="L895">			return resultList;</span>
-
-<span class="nc" id="L897">		} catch (final Exception e) {</span>
-<span class="nc" id="L898">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L900">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get all Execution Environments associated to DS name and language
-	 * 
-	 * @param name
-	 *            Name
-	 * @param lang
-	 *            Language
-	 * @return All execution environment associated to specified name
-	 */
-	public Set&lt;ExecutionEnvironmentID&gt; getExecutionEnvironmentsByNameAndLang(final String name, final Langs lang) {
-<span class="nc" id="L914">		final Set&lt;ExecutionEnvironmentID&gt; resultList = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L915">		final Connection conn = getConnection();</span>
-<span class="nc" id="L916">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L917">				.prepareStatement(SqlStatements.SELECT_EXECENV_BY_NAME_LANG.getSqlStatement())) {</span>
-
-<span class="nc" id="L919">			ps.setString(1, name);</span>
-<span class="nc" id="L920">			ps.setInt(2, lang.getNumber());</span>
-<span class="nc" id="L921">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L922" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L923">					final ExecutionEnvironment execEnv = deserializeExecutionEnvironment(rs);</span>
-<span class="nc" id="L924">					resultList.add(execEnv.getDataClayID());</span>
-<span class="nc" id="L925">				}</span>
-			}
-<span class="nc" id="L927">			return resultList;</span>
-<span class="nc" id="L928">		} catch (final Exception e) {</span>
-<span class="nc" id="L929">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L931">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Get a single (should be unique) Execution Environment by hostname and port
-	 * 
-	 * @param hostname
-	 *            Host name
-	 * @param port
-	 *            port
-	 * @return the execution environment named with specified hostname and port
-	 */
-	public ExecutionEnvironment getExecutionEnvironmentByHostNameAndPort(final String hostname, final int port) {
-<span class="nc" id="L945">		final Connection conn = getConnection();</span>
-<span class="nc" id="L946">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L947">				.prepareStatement(SqlStatements.SELECT_EXECENV_BY_HOSTNAME_AND_PORT.getSqlStatement())) {</span>
-<span class="nc" id="L948">			ps.setString(1, hostname);</span>
-<span class="nc" id="L949">			ps.setInt(2, port);</span>
-<span class="nc" id="L950">			logger.debug(ps.toString());</span>
-<span class="nc" id="L951">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L952" title="All 2 branches missed.">				if (rs.next()) {</span>
-<span class="nc" id="L953">					return deserializeExecutionEnvironment(rs);</span>
-				} else {
-<span class="nc" id="L955">					return null;</span>
-				}
-<span class="nc bnc" id="L957" title="All 2 branches missed.">			} catch (final Exception e2) {</span>
-<span class="nc" id="L958">				throw e2;</span>
-			}
-
-<span class="nc bnc" id="L961" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L962">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L964">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Check if there is an execution environment identified by hostname and port provided
-	 * 
-	 * @param hostname
-	 *            Hostname of the backend
-	 * @param port
-	 *            port of the backend
-	 * @return TRUE if exists. FALSE otherwise
-	 */
-	public boolean existsExecutionEnvironmentByHostPort(final String hostname, final int port) {
-<span class="nc" id="L978">		final Connection conn = getConnection();</span>
-<span class="nc" id="L979">		try (PreparedStatement existsStatement = conn</span>
-<span class="nc" id="L980">				.prepareStatement(SqlStatements.EXISTS_EXECUTION_ENVIRONMENT_BY_HOSTPORT.getSqlStatement())) {</span>
-
-<span class="nc" id="L982">			existsStatement.setString(1, hostname);</span>
-<span class="nc" id="L983">			existsStatement.setInt(2, port);</span>
-<span class="nc" id="L984">			try (ResultSet rs = existsStatement.executeQuery()) {</span>
-<span class="nc" id="L985">				rs.next();</span>
-<span class="nc" id="L986">				return rs.getBoolean(1);</span>
-			}
-
-<span class="nc" id="L989">		} catch (final Exception e) {</span>
-<span class="nc" id="L990">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L992">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Check if there is a storage location identified by hostname and port provided
-	 * 
-	 * @param hostname
-	 *            Hostname of the backend
-	 * @param port
-	 *            port of the backend
-	 * @return TRUE if exists. FALSE otherwise
-	 */
-	public boolean existsStorageLocationByHostPort(final String hostname, final int port) {
-<span class="nc" id="L1006">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1007">		try (PreparedStatement existsStatement = conn</span>
-<span class="nc" id="L1008">				.prepareStatement(SqlStatements.EXISTS_STORAGE_LOCATION_BY_HOSTPORT.getSqlStatement())) {</span>
-
-<span class="nc" id="L1010">			existsStatement.setString(1, hostname);</span>
-<span class="nc" id="L1011">			existsStatement.setInt(2, port);</span>
-<span class="nc" id="L1012">			try (ResultSet rs = existsStatement.executeQuery()) {</span>
-<span class="nc" id="L1013">				rs.next();</span>
-<span class="nc" id="L1014">				return rs.getBoolean(1);</span>
-			}
-
-<span class="nc" id="L1017">		} catch (final Exception e) {</span>
-<span class="nc" id="L1018">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1020">			closeConnection(conn);</span>
-		}
-	}
-
-	/**
-	 * Inserts the info of a new dataClay instance
-	 * 
-	 * @param dataClayInstance
-	 *            info of the dataClay instance
-	 */
-	public void insertDataClayInstance(final DataClayInstance dataClayInstance) {
-<span class="fc" id="L1031">		final Connection conn = getConnection();</span>
-<span class="fc" id="L1032">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_DATACLAY_INFO.getSqlStatement())) {</span>
-
-<span class="fc" id="L1034">			ps.setObject(1, dataClayInstance.getDcID().getId());</span>
-			try {
-<span class="fc" id="L1036">				final String[] hosts = dataClayInstance.getHosts();</span>
-<span class="fc" id="L1037">				final Integer[] ports = dataClayInstance.getPorts();</span>
-<span class="fc bfc" id="L1038" title="All 2 branches covered.">				for (int i = 0; i &lt; hosts.length; i++) {</span>
-<span class="fc" id="L1039">					ps.setString(2, hosts[i]);</span>
-<span class="fc" id="L1040">					ps.setInt(3, ports[i]);</span>
-<span class="fc" id="L1041">					ps.executeUpdate();</span>
-<span class="fc" id="L1042">					logger.debug(ps.toString());</span>
-				}
-<span class="nc" id="L1044">			} catch (final SQLException e) {</span>
-<span class="nc" id="L1045">				logger.debug(&quot;Exception during insertion of dataClay instance&quot;, e);</span>
-<span class="nc bnc" id="L1046" title="All 2 branches missed.">				if (e.getMessage().startsWith(&quot;ERROR: duplicate key value&quot;)) {</span>
-<span class="nc" id="L1047">					throw new DbObjectAlreadyExistException(dataClayInstance.getDcID());</span>
-				}
-<span class="fc" id="L1049">			}</span>
-<span class="nc" id="L1050">		} catch (final DbObjectAlreadyExistException dbe) {</span>
-<span class="nc" id="L1051">			throw dbe;</span>
-<span class="nc" id="L1052">		} catch (final Exception e) {</span>
-<span class="nc" id="L1053">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L1055">			closeConnection(conn);</span>
-		}
-<span class="fc" id="L1057">	}</span>
-
-	/**
-	 * Delete dataclay instance address
-	 * 
-	 * @param host Host
-	 * @param port Port
-	 * @return true if the object has been successfully deleted, false otherwise
-	 */
-	public boolean deleteDataClayInstance(final String host, final Integer port) {
-<span class="nc" id="L1067">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1068">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_DATACLAY.getSqlStatement())) {</span>
-
-<span class="nc" id="L1070">			ps.setString(1, host);</span>
-<span class="nc" id="L1071">			ps.setInt(2, port);</span>
-			try {
-<span class="nc" id="L1073">				ps.executeUpdate();</span>
-<span class="nc" id="L1074">			} catch (final SQLException e) {</span>
-<span class="nc" id="L1075">				return false;</span>
-<span class="nc" id="L1076">			}</span>
-<span class="nc" id="L1077">			return true;</span>
-<span class="nc bnc" id="L1078" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L1079">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1081">			closeConnection(conn);</span>
-		}
-	}
-	
-	/**
-	 * Get dataClay info by id
-	 * 
-	 * @param dClayID
-	 *            id of the dataClay instance
-	 * @return info of requested dataClay instance
-	 */
-	public DataClayInstance getDataClayInfo(final DataClayInstanceID dClayID) {
-<span class="fc" id="L1093">		final Connection conn = getConnection();</span>
-<span class="fc" id="L1094">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_DATACLAY_INFO_BY_ID.getSqlStatement())) {</span>
-
-<span class="fc" id="L1096">			ps.setObject(1, dClayID.getId());</span>
-<span class="fc" id="L1097">			logger.debug(ps.toString());</span>
-
-<span class="fc" id="L1099">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="fc bfc" id="L1100" title="All 2 branches covered.">				if (rs.next()) {</span>
-<span class="fc" id="L1101">					logger.debug(&quot;Found dataclay instance with id {}. Deserializing.&quot;, dClayID);</span>
-<span class="fc" id="L1102">					final DataClayInstance dcInstance = deserializeDataClayInfo(rs);</span>
-<span class="fc" id="L1103">					final ArrayList&lt;String&gt; hosts = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L1104">					final ArrayList&lt;Integer&gt; ports = new ArrayList&lt;&gt;();</span>
-<span class="fc bfc" id="L1105" title="All 2 branches covered.">					for (final String host : dcInstance.getHosts()) {</span>
-<span class="fc" id="L1106">						hosts.add(host);</span>
+<span class="nc" id="L526">		synchronized (dataSource) {</span>
+<span class="nc" id="L527">			final Connection conn = getConnection();</span>
+<span class="nc" id="L528">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_METADATA_BY_ALIAS.getSqlStatement())) {</span>
+<span class="nc" id="L529">				ps.setString(1, alias);</span>
+<span class="nc" id="L530">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">					if (rs.next()) {</span>
+<span class="nc" id="L532">						return deserializeObjectMetaData(rs);</span>
+					} else {
+<span class="nc" id="L534">						return null;</span>
 					}
-<span class="fc bfc" id="L1108" title="All 2 branches covered.">					for (final Integer port : dcInstance.getPorts()) {</span>
-<span class="fc" id="L1109">						ports.add(port);</span>
-					}
-<span class="pc bpc" id="L1111" title="1 of 2 branches missed.">					while (rs.next()) {</span>
-<span class="nc" id="L1112">						hosts.add(rs.getString(&quot;hostname&quot;));</span>
-<span class="nc" id="L1113">						ports.add(rs.getInt(&quot;port&quot;));</span>
-					}
-<span class="fc" id="L1115">					dcInstance.setHosts(hosts.toArray(new String[0]));</span>
-<span class="fc" id="L1116">					dcInstance.setPorts(ports.toArray(new Integer[0]));</span>
-<span class="fc" id="L1117">					return dcInstance;</span>
-				} else {
-<span class="fc" id="L1119">					return null;</span>
-				}
-<span class="pc bpc" id="L1121" title="1 of 2 branches missed.">			}</span>
-
-<span class="pc bpc" id="L1123" title="1 of 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L1124">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="fc" id="L1126">			closeConnection(conn);</span>
-		}
-	}
-	
-	/**
-	 * Get dataClay id.
-	 * 
-	 * Retrieves id of an external dataClay instance identified by host and port
-	 * 
-	 * @param host host 
-	 * @param port port
-	 * @return id of external dataClay instance
-	 */
-	public DataClayInstanceID getDataClayID(final String host, final int port) {
-<span class="nc" id="L1140">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1141">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.SELECT_DATACLAY_ID_FROM_HOST_PORT.getSqlStatement())) {</span>
-
-<span class="nc" id="L1143">			ps.setString(1, host);</span>
-<span class="nc" id="L1144">			ps.setInt(2, port);</span>
-<span class="nc" id="L1145">			logger.debug(ps.toString());</span>
-
-<span class="nc" id="L1147">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L1148" title="All 2 branches missed.">				if (rs.next()) {</span>
-<span class="nc" id="L1149">					final DataClayInstanceID id = new DataClayInstanceID(</span>
-<span class="nc" id="L1150">							(UUID) rs.getObject(&quot;id&quot;));</span>
-<span class="nc" id="L1151">					return id;</span>
-				} else {
-<span class="nc" id="L1153">					return null;</span>
-				}
-<span class="nc bnc" id="L1155" title="All 2 branches missed.">			}</span>
-
-<span class="nc bnc" id="L1157" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L1158">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1160">			closeConnection(conn);</span>
+<span class="nc bnc" id="L536" title="All 2 branches missed.">				}</span>
+<span class="nc bnc" id="L537" title="All 2 branches missed.">			} catch (final SQLException e) {</span>
+<span class="nc" id="L538">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L539">				return null;</span>
+<span class="nc" id="L540">			} catch (final Exception e) {</span>
+<span class="nc" id="L541">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L543">				closeConnection(conn);</span>
+			}
 		}
 	}
 
@@ -1171,23 +555,31 @@ public final class MetaDataServiceDB {
 	 * @return true if the object has been successfully registered, false if it was already registered previously
 	 */
 	public boolean insertFederatedObject(final ObjectID objectID, final DataClayInstanceID dataClayID) {
-<span class="nc" id="L1174">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1175">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_FEDERATED_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L558">		synchronized (dataSource) {</span>
+<span class="nc" id="L559">			final Connection conn = getConnection();</span>
+<span class="nc" id="L560">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_FEDERATED_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1177">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1178">			ps.setObject(2, dataClayID.getId());</span>
-			try {
-<span class="nc" id="L1180">				ps.executeUpdate();</span>
-<span class="nc" id="L1181">			} catch (final SQLException e) {</span>
-<span class="nc bnc" id="L1182" title="All 2 branches missed.">				if (e.getMessage().startsWith(&quot;ERROR: duplicate key value&quot;)) {</span>
-<span class="nc" id="L1183">					return false;</span>
-				}
-<span class="nc" id="L1185">			}</span>
-<span class="nc" id="L1186">			return true;</span>
-<span class="nc bnc" id="L1187" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L1188">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1190">			closeConnection(conn);</span>
+<span class="nc" id="L562">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L563">				ps.setObject(2, dataClayID.getId());</span>
+				try {
+<span class="nc" id="L565">					ps.executeUpdate();</span>
+<span class="nc" id="L566">				} catch (final SQLException e) {</span>
+					/* A primary key constraint is violated */
+<span class="nc bnc" id="L568" title="All 2 branches missed.">					if (e.getErrorCode() == SQLiteErrorCode.SQLITE_CONSTRAINT.code) {</span>
+<span class="nc" id="L569">						throw new DbObjectAlreadyExistException(dataClayID);</span>
+					} else {
+<span class="nc" id="L571">						LogicModuleSrv.doExit(e.getErrorCode());</span>
+					}
+<span class="nc" id="L573">				}</span>
+<span class="nc" id="L574">				return true;</span>
+<span class="nc" id="L575">			} catch (final SQLException e) {</span>
+<span class="nc" id="L576">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L577">				return false;</span>
+<span class="nc" id="L578">			} catch (final Exception e) {</span>
+<span class="nc" id="L579">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L581">				closeConnection(conn);</span>
+			}
 		}
 	}
 
@@ -1201,21 +593,26 @@ public final class MetaDataServiceDB {
 	 * @return true if the object has been successfully deleted, false otherwise
 	 */
 	public boolean deleteFederatedObject(final ObjectID objectID, final DataClayInstanceID dataClayID) {
-<span class="nc" id="L1204">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1205">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_FEDERATED_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L596">		synchronized (dataSource) {</span>
+<span class="nc" id="L597">			final Connection conn = getConnection();</span>
+<span class="nc" id="L598">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_FEDERATED_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1207">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1208">			ps.setObject(2, dataClayID.getId());</span>
-			try {
-<span class="nc" id="L1210">				ps.executeUpdate();</span>
-<span class="nc" id="L1211">			} catch (final SQLException e) {</span>
-<span class="nc" id="L1212">				return false;</span>
-<span class="nc" id="L1213">			}</span>
-<span class="nc" id="L1214">			return true;</span>
-<span class="nc bnc" id="L1215" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L1216">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1218">			closeConnection(conn);</span>
+<span class="nc" id="L600">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L601">				ps.setObject(2, dataClayID.getId());</span>
+				try {
+<span class="nc" id="L603">					ps.executeUpdate();</span>
+<span class="nc" id="L604">				} catch (final SQLException e) {</span>
+<span class="nc" id="L605">					return false;</span>
+<span class="nc" id="L606">				}</span>
+<span class="nc" id="L607">				return true;</span>
+<span class="nc bnc" id="L608" title="All 2 branches missed.">			} catch (final SQLException e) {</span>
+<span class="nc" id="L609">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L610">				return false;</span>
+<span class="nc" id="L611">			} catch (final Exception e) {</span>
+<span class="nc" id="L612">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L614">				closeConnection(conn);</span>
+			}
 		}
 	}
 
@@ -1230,21 +627,25 @@ public final class MetaDataServiceDB {
 	 *         otherwise.
 	 */
 	public boolean existsFederatedObjectWithDC(final ObjectID objectID, final DataClayInstanceID dataClayID) {
-<span class="nc" id="L1233">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1234">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L1235">				.prepareStatement(SqlStatements.EXISTS_FEDERATED_OBJECT_WITH_DC.getSqlStatement())) {</span>
+<span class="nc" id="L630">		synchronized (dataSource) {</span>
+<span class="nc" id="L631">			final Connection conn = getConnection();</span>
+<span class="nc" id="L632">			try (PreparedStatement ps = conn</span>
+<span class="nc" id="L633">					.prepareStatement(SqlStatements.EXISTS_FEDERATED_OBJECT_WITH_DC.getSqlStatement())) {</span>
 
-<span class="nc" id="L1237">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1238">			ps.setObject(2, dataClayID.getId());</span>
-<span class="nc" id="L1239">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc" id="L1240">				rs.next();</span>
-<span class="nc" id="L1241">				return rs.getBoolean(1);</span>
+<span class="nc" id="L635">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L636">				ps.setObject(2, dataClayID.getId());</span>
+<span class="nc" id="L637">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc" id="L638">					rs.next();</span>
+<span class="nc" id="L639">					return rs.getBoolean(1);</span>
+				}
+<span class="nc" id="L641">			} catch (final SQLException e) {</span>
+<span class="nc" id="L642">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L643">				return false;</span>
+<span class="nc" id="L644">			} catch (final Exception e) {</span>
+<span class="nc" id="L645">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L647">				closeConnection(conn);</span>
 			}
-
-<span class="nc" id="L1244">		} catch (final Exception e) {</span>
-<span class="nc" id="L1245">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1247">			closeConnection(conn);</span>
 		}
 	}
 
@@ -1257,19 +658,23 @@ public final class MetaDataServiceDB {
 	 *         otherwise.
 	 */
 	public boolean existsFederatedObject(final ObjectID objectID) {
-<span class="nc" id="L1260">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1261">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.EXISTS_FEDERATED_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L661">		synchronized (dataSource) {</span>
+<span class="nc" id="L662">			final Connection conn = getConnection();</span>
+<span class="nc" id="L663">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.EXISTS_FEDERATED_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1263">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1264">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc" id="L1265">				rs.next();</span>
-<span class="nc" id="L1266">				return rs.getBoolean(1);</span>
+<span class="nc" id="L665">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L666">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc" id="L667">					rs.next();</span>
+<span class="nc" id="L668">					return rs.getBoolean(1);</span>
+				}
+<span class="nc" id="L670">			} catch (final SQLException e) {</span>
+<span class="nc" id="L671">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L672">				return false;</span>
+<span class="nc" id="L673">			} catch (final Exception e) {</span>
+<span class="nc" id="L674">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L676">				closeConnection(conn);</span>
 			}
-
-<span class="nc" id="L1269">		} catch (final Exception e) {</span>
-<span class="nc" id="L1270">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1272">			closeConnection(conn);</span>
 		}
 	}
 
@@ -1281,28 +686,31 @@ public final class MetaDataServiceDB {
 	 * @return ids of external dataClays which the object is federated with
 	 */
 	public Set&lt;DataClayInstanceID&gt; getDataClaysOurObjectIsFederatedWith(final ObjectID objectID) {
-<span class="nc" id="L1284">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1285">		final Set&lt;DataClayInstanceID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L689">		synchronized (dataSource) {</span>
+<span class="nc" id="L690">			final Connection conn = getConnection();</span>
+<span class="nc" id="L691">			final Set&lt;DataClayInstanceID&gt; result = new HashSet&lt;&gt;();</span>
 
-<span class="nc" id="L1287">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L1288">				.prepareStatement(SqlStatements.SELECT_TARGET_DATACLAYS_FEDERATED_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L693">			try (PreparedStatement ps = conn</span>
+<span class="nc" id="L694">					.prepareStatement(SqlStatements.SELECT_TARGET_DATACLAYS_FEDERATED_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1290">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1291">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L1292" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L1293">					final DataClayInstanceID extDataClayID = new DataClayInstanceID(</span>
-<span class="nc" id="L1294">							(UUID) rs.getObject(&quot;targetDataClayID&quot;));</span>
-<span class="nc" id="L1295">					result.add(extDataClayID);</span>
-<span class="nc" id="L1296">				}</span>
+<span class="nc" id="L696">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L697">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L698" title="All 2 branches missed.">					while (rs.next()) {</span>
+<span class="nc" id="L699">						final DataClayInstanceID extDataClayID = new DataClayInstanceID(</span>
+<span class="nc" id="L700">								(UUID) rs.getObject(&quot;targetDataClayID&quot;));</span>
+<span class="nc" id="L701">						result.add(extDataClayID);</span>
+<span class="nc" id="L702">					}</span>
+				}
+<span class="nc" id="L704">			} catch (final SQLException e) {</span>
+<span class="nc" id="L705">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L706">			} catch (final Exception e) {</span>
+<span class="nc" id="L707">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L709">				closeConnection(conn);</span>
 			}
 
-<span class="nc" id="L1299">		} catch (final Exception e) {</span>
-<span class="nc" id="L1300">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1302">			closeConnection(conn);</span>
+<span class="nc" id="L712">			return result;</span>
 		}
-
-<span class="nc" id="L1305">		return result;</span>
 	}
 
 	/**
@@ -1313,31 +721,34 @@ public final class MetaDataServiceDB {
 	 * @return all the objects federated/belonging to dataClay with ID provided.
 	 */
 	public Set&lt;ObjectID&gt; getObjectsFederatedWithDataClay(final DataClayInstanceID extDataClayInstanceID) {
-<span class="nc" id="L1316">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1317">		final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L724">		synchronized (dataSource) {</span>
+<span class="nc" id="L725">			final Connection conn = getConnection();</span>
+<span class="nc" id="L726">			final Set&lt;ObjectID&gt; result = new HashSet&lt;&gt;();</span>
 
-<span class="nc" id="L1319">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L1320">				.prepareStatement(SqlStatements.SELECT_OBJECTS_FEDERATED_WITH_DATACLAY.getSqlStatement())) {</span>
+<span class="nc" id="L728">			try (PreparedStatement ps = conn</span>
+<span class="nc" id="L729">					.prepareStatement(SqlStatements.SELECT_OBJECTS_FEDERATED_WITH_DATACLAY.getSqlStatement())) {</span>
 
-<span class="nc" id="L1322">			ps.setObject(1, extDataClayInstanceID.getId());</span>
-<span class="nc" id="L1323">			ps.setObject(2, extDataClayInstanceID.getId());</span>
-<span class="nc" id="L1324">			ps.setBoolean(3, false);</span>
-<span class="nc" id="L1325">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L1326" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L1327">					final ObjectID objectID = new ObjectID(</span>
-<span class="nc" id="L1328">							(UUID) rs.getObject(&quot;oid&quot;));</span>
-<span class="nc" id="L1329">					result.add(objectID);</span>
-<span class="nc" id="L1330">				}</span>
+<span class="nc" id="L731">				ps.setObject(1, extDataClayInstanceID.getId());</span>
+<span class="nc" id="L732">				ps.setObject(2, extDataClayInstanceID.getId());</span>
+<span class="nc" id="L733">				ps.setBoolean(3, false);</span>
+<span class="nc" id="L734">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L735" title="All 2 branches missed.">					while (rs.next()) {</span>
+<span class="nc" id="L736">						final ObjectID objectID = new ObjectID(</span>
+<span class="nc" id="L737">								(UUID) rs.getObject(&quot;oid&quot;));</span>
+<span class="nc" id="L738">						result.add(objectID);</span>
+<span class="nc" id="L739">					}</span>
+				}
+<span class="nc" id="L741">			} catch (final SQLException e) {</span>
+<span class="nc" id="L742">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L743">			} catch (final Exception e) {</span>
+<span class="nc" id="L744">				e.printStackTrace();</span>
+<span class="nc" id="L745">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L747">				closeConnection(conn);</span>
 			}
 
-<span class="nc" id="L1333">		} catch (final Exception e) {</span>
-<span class="nc" id="L1334">			e.printStackTrace();</span>
-<span class="nc" id="L1335">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1337">			closeConnection(conn);</span>
+<span class="nc" id="L750">			return result;</span>
 		}
-
-<span class="nc" id="L1340">		return result;</span>
 	}
 
 	/**
@@ -1351,20 +762,23 @@ public final class MetaDataServiceDB {
 	 */
 	public void insertExternalObject(final ObjectID objectID, final DataClayInstanceID srcDataClayID, 
 			final boolean unregisteredFlag) {
-<span class="nc" id="L1354">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1355">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_EXTERNAL_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L765">		synchronized (dataSource) {</span>
+<span class="nc" id="L766">			final Connection conn = getConnection();</span>
+<span class="nc" id="L767">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.INSERT_EXTERNAL_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1357">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1358">			ps.setObject(2, srcDataClayID.getId());</span>
-<span class="nc" id="L1359">			ps.setBoolean(3, unregisteredFlag);</span>
-<span class="nc" id="L1360">			ps.executeUpdate();</span>
-
-<span class="nc" id="L1362">		} catch (final Exception e) {</span>
-<span class="nc" id="L1363">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1365">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L1367">	}</span>
+<span class="nc" id="L769">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L770">				ps.setObject(2, srcDataClayID.getId());</span>
+<span class="nc" id="L771">				ps.setBoolean(3, unregisteredFlag);</span>
+<span class="nc" id="L772">				ps.executeUpdate();</span>
+<span class="nc" id="L773">			} catch (final SQLException e) {</span>
+<span class="nc" id="L774">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L775">			} catch (final Exception e) {</span>
+<span class="nc" id="L776">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L778">				closeConnection(conn);</span>
+			}
+<span class="nc" id="L780">		}</span>
+<span class="nc" id="L781">	}</span>
 
 	/**
 	 * Delete a federated object from an external dataClay instance.
@@ -1373,16 +787,20 @@ public final class MetaDataServiceDB {
 	 *            ID of the external object
 	 */
 	public void deleteExternalObject(final ObjectID objectID) {
-<span class="nc" id="L1376">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1377">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_EXTERNAL_OBJECT.getSqlStatement())) {</span>
-<span class="nc" id="L1378">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1379">			ps.executeUpdate();</span>
-<span class="nc" id="L1380">		} catch (final Exception e) {</span>
-<span class="nc" id="L1381">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1383">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L1385">	}</span>
+<span class="nc" id="L790">		synchronized (dataSource) {</span>
+<span class="nc" id="L791">			final Connection conn = getConnection();</span>
+<span class="nc" id="L792">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.DELETE_EXTERNAL_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L793">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L794">				ps.executeUpdate();</span>
+<span class="nc" id="L795">			} catch (final SQLException e) {</span>
+<span class="nc" id="L796">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L797">			} catch (final Exception e) {</span>
+<span class="nc" id="L798">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L800">				closeConnection(conn);</span>
+			}
+<span class="nc" id="L802">		}</span>
+<span class="nc" id="L803">	}</span>
 
 	/**
 	 * Checks whether the given object is externally federated
@@ -1393,20 +811,24 @@ public final class MetaDataServiceDB {
 	 * @return true if it is an external object federated. false otherwise.
 	 */
 	public boolean existsExternalObject(final ObjectID objectID, final boolean unregisteredFlag) {
-<span class="nc" id="L1396">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1397">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.EXISTS_EXTERNAL_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L814">		synchronized (dataSource) {</span>
+<span class="nc" id="L815">			final Connection conn = getConnection();</span>
+<span class="nc" id="L816">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.EXISTS_EXTERNAL_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1399">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1400">			ps.setBoolean(2, unregisteredFlag);</span>
-<span class="nc" id="L1401">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc" id="L1402">				rs.next();</span>
-<span class="nc" id="L1403">				return rs.getBoolean(1);</span>
+<span class="nc" id="L818">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L819">				ps.setBoolean(2, unregisteredFlag);</span>
+<span class="nc" id="L820">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc" id="L821">					rs.next();</span>
+<span class="nc" id="L822">					return rs.getBoolean(1);</span>
+				}
+<span class="nc" id="L824">			} catch (final SQLException e) {</span>
+<span class="nc" id="L825">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L826">				return false;</span>
+<span class="nc" id="L827">			} catch (final Exception e) {</span>
+<span class="nc" id="L828">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L830">				closeConnection(conn);</span>
 			}
-
-<span class="nc" id="L1406">		} catch (final Exception e) {</span>
-<span class="nc" id="L1407">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1409">			closeConnection(conn);</span>
 		}
 	}
 
@@ -1415,24 +837,28 @@ public final class MetaDataServiceDB {
 	 * @return id of external objects unregistered
 	 */
 	public Set&lt;ObjectID&gt; getUnregisteredExternalObjects() {
-<span class="nc" id="L1418">		final Set&lt;ObjectID&gt; resultList = new HashSet&lt;&gt;();</span>
-<span class="nc" id="L1419">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1420">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L1421">				.prepareStatement(SqlStatements.SELECT_UNREGISTERED_EXTERNAL_OBJECTS.getSqlStatement())) {</span>
-<span class="nc" id="L1422">			ps.setBoolean(1, true);</span>
-<span class="nc" id="L1423">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L1424" title="All 2 branches missed.">				while (rs.next()) {</span>
-<span class="nc" id="L1425">					final ObjectID oid = new ObjectID(</span>
-<span class="nc" id="L1426">							(UUID) rs.getObject(&quot;oid&quot;));</span>
-<span class="nc" id="L1427">					resultList.add(oid);</span>
-<span class="nc" id="L1428">				}</span>
+<span class="nc" id="L840">		synchronized (dataSource) {</span>
+<span class="nc" id="L841">			final Set&lt;ObjectID&gt; resultList = new HashSet&lt;&gt;();</span>
+<span class="nc" id="L842">			final Connection conn = getConnection();</span>
+<span class="nc" id="L843">			try (PreparedStatement ps = conn</span>
+<span class="nc" id="L844">					.prepareStatement(SqlStatements.SELECT_UNREGISTERED_EXTERNAL_OBJECTS.getSqlStatement())) {</span>
+<span class="nc" id="L845">				ps.setBoolean(1, true);</span>
+<span class="nc" id="L846">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L847" title="All 2 branches missed.">					while (rs.next()) {</span>
+<span class="nc" id="L848">						final ObjectID oid = new ObjectID(</span>
+<span class="nc" id="L849">								(UUID) rs.getObject(&quot;oid&quot;));</span>
+<span class="nc" id="L850">						resultList.add(oid);</span>
+<span class="nc" id="L851">					}</span>
+				}
+<span class="nc" id="L853">				return resultList;</span>
+<span class="nc" id="L854">			} catch (final SQLException e) {</span>
+<span class="nc" id="L855">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L856">				return null;</span>
+<span class="nc" id="L857">			} catch (final Exception e) {</span>
+<span class="nc" id="L858">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L860">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L1430">			return resultList;</span>
-
-<span class="nc" id="L1432">		} catch (final Exception e) {</span>
-<span class="nc" id="L1433">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1435">			closeConnection(conn);</span>
 		}
 	}
 
@@ -1449,23 +875,27 @@ public final class MetaDataServiceDB {
 	 */
 	public void updateUnregisteredFlagExternalObject(final ObjectID objectID, final boolean unregisteredFlag)
 			throws DbObjectNotExistException {
-<span class="nc" id="L1452">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1453">		try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_UNREGISTER_EXTERNAL_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L878">		synchronized (dataSource) {</span>
+<span class="nc" id="L879">			final Connection conn = getConnection();</span>
+<span class="nc" id="L880">			try (PreparedStatement ps = conn.prepareStatement(SqlStatements.UPDATE_UNREGISTER_EXTERNAL_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1455">			ps.setBoolean(1, unregisteredFlag);</span>
-<span class="nc" id="L1456">			ps.setObject(2, objectID.getId());</span>
-<span class="nc" id="L1457">			final int count = ps.executeUpdate();</span>
-<span class="nc bnc" id="L1458" title="All 2 branches missed.">			if (count == 0) {</span>
-<span class="nc" id="L1459">				throw new DbObjectNotExistException(objectID);</span>
+<span class="nc" id="L882">				ps.setBoolean(1, unregisteredFlag);</span>
+<span class="nc" id="L883">				ps.setObject(2, objectID.getId());</span>
+<span class="nc" id="L884">				final int count = ps.executeUpdate();</span>
+<span class="nc bnc" id="L885" title="All 2 branches missed.">				if (count == 0) {</span>
+<span class="nc" id="L886">					throw new DbObjectNotExistException(objectID);</span>
+				}
+<span class="nc" id="L888">			} catch (final SQLException e) {</span>
+<span class="nc" id="L889">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L890">			} catch (final DbObjectNotExistException dbe) {</span>
+<span class="nc" id="L891">				throw dbe;</span>
+<span class="nc" id="L892">			} catch (final Exception e) {</span>
+<span class="nc" id="L893">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L895">				closeConnection(conn);</span>
 			}
-<span class="nc" id="L1461">		} catch (final DbObjectNotExistException dbe) {</span>
-<span class="nc" id="L1462">			throw dbe;</span>
-<span class="nc" id="L1463">		} catch (final Exception e) {</span>
-<span class="nc" id="L1464">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1466">			closeConnection(conn);</span>
-		}
-<span class="nc" id="L1468">	}</span>
+<span class="nc" id="L897">		}</span>
+<span class="nc" id="L898">	}</span>
 	
 	/**
 	 * Retrieves external source dataClay id owning the given object.
@@ -1475,53 +905,78 @@ public final class MetaDataServiceDB {
 	 * @return id of the external source dataClay
 	 */
 	public DataClayInstanceID getExternalDataClayOfObject(final ObjectID objectID) {
-<span class="nc" id="L1478">		final Connection conn = getConnection();</span>
-<span class="nc" id="L1479">		try (PreparedStatement ps = conn</span>
-<span class="nc" id="L1480">				.prepareStatement(SqlStatements.SELECT_SOURCE_DATACLAY_EXTERNAL_OBJECT.getSqlStatement())) {</span>
+<span class="nc" id="L908">		synchronized (dataSource) {</span>
+<span class="nc" id="L909">			final Connection conn = getConnection();</span>
+<span class="nc" id="L910">			try (PreparedStatement ps = conn</span>
+<span class="nc" id="L911">					.prepareStatement(SqlStatements.SELECT_SOURCE_DATACLAY_EXTERNAL_OBJECT.getSqlStatement())) {</span>
 
-<span class="nc" id="L1482">			ps.setObject(1, objectID.getId());</span>
-<span class="nc" id="L1483">			try (ResultSet rs = ps.executeQuery()) {</span>
-<span class="nc bnc" id="L1484" title="All 2 branches missed.">				if (rs.next()) {</span>
-<span class="nc" id="L1485">					return new DataClayInstanceID((UUID) rs.getObject(&quot;srcDataClayID&quot;));</span>
-				} else {
-<span class="nc" id="L1487">					return null;</span>
-				}
-<span class="nc bnc" id="L1489" title="All 2 branches missed.">			}</span>
-
-<span class="nc bnc" id="L1491" title="All 2 branches missed.">		} catch (final Exception e) {</span>
-<span class="nc" id="L1492">			throw new DbHandlerException(e);</span>
-		} finally {
-<span class="nc" id="L1494">			closeConnection(conn);</span>
+<span class="nc" id="L913">				ps.setObject(1, objectID.getId());</span>
+<span class="nc" id="L914">				try (ResultSet rs = ps.executeQuery()) {</span>
+<span class="nc bnc" id="L915" title="All 2 branches missed.">					if (rs.next()) {</span>
+<span class="nc" id="L916">						return new DataClayInstanceID((UUID) rs.getObject(&quot;srcDataClayID&quot;));</span>
+					} else {
+<span class="nc" id="L918">						return null;</span>
+					}
+<span class="nc bnc" id="L920" title="All 2 branches missed.">				}</span>
+<span class="nc bnc" id="L921" title="All 2 branches missed.">			} catch (final SQLException e) {</span>
+<span class="nc" id="L922">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L923">				return null;</span>
+<span class="nc" id="L924">			} catch (final Exception e) {</span>
+<span class="nc" id="L925">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L927">				closeConnection(conn);</span>
+			}
 		}
 	}
+
+	/**
+	 * Vacuum database.
+	 */
+	public void vacuum() {
+<span class="nc" id="L936">		synchronized (dataSource) {</span>
+<span class="nc" id="L937">			final Connection conn = getConnection();</span>
+<span class="nc" id="L938">			try (PreparedStatement ps = conn</span>
+<span class="nc" id="L939">					.prepareStatement(SqlStatements.VACUUM.getSqlStatement())) {</span>
+<span class="nc" id="L940">				ps.executeUpdate();</span>
+<span class="nc" id="L941">			} catch (final SQLException e) {</span>
+<span class="nc" id="L942">				LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L943">			} catch (final Exception e) {</span>
+<span class="nc" id="L944">				throw new DbHandlerException(e);</span>
+			} finally {
+<span class="nc" id="L946">				closeConnection(conn);</span>
+			}
+<span class="nc" id="L948">		}</span>
+
+<span class="nc" id="L950">	}</span>
 
 	/**
 	 * Close DB.
 	 */
 	public void close() {
 		try {
-<span class="fc" id="L1503">			dataSource.close();</span>
-<span class="nc" id="L1504">		} catch (final Exception e) {</span>
+<span class="nc" id="L957">			dataSource.close();</span>
+<span class="nc" id="L958">		} catch (final Exception e) {</span>
 			// TODO
-<span class="nc" id="L1506">			e.printStackTrace();</span>
-<span class="fc" id="L1507">		}</span>
-<span class="fc" id="L1508">	}</span>
+<span class="nc" id="L960">			e.printStackTrace();</span>
+<span class="nc" id="L961">		}</span>
+<span class="nc" id="L962">	}</span>
 
 	private Connection getConnection() {
 		try {
-<span class="fc" id="L1512">			return dataSource.getConnection();</span>
-<span class="nc" id="L1513">		} catch (final SQLException e) {</span>
-<span class="nc" id="L1514">			throw new DbHandlerException(e);</span>
+<span class="nc" id="L966">			return dataSource.getConnection();</span>
+<span class="nc" id="L967">		} catch (final SQLException e) {</span>
+<span class="nc" id="L968">			LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L969">			return null;</span>
 		}
 	}
 
 	private void closeConnection(final Connection conn) {
 		try {
-<span class="fc" id="L1520">			conn.close();</span>
-<span class="nc" id="L1521">		} catch (final SQLException e) {</span>
-<span class="nc" id="L1522">			throw new DbHandlerException(e);</span>
-<span class="fc" id="L1523">		}</span>
-<span class="fc" id="L1524">	}</span>
+<span class="nc" id="L975">			conn.close();</span>
+<span class="nc" id="L976">		} catch (final SQLException e) {</span>
+<span class="nc" id="L977">			LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L978">		}</span>
+<span class="nc" id="L979">	}</span>
 
 	/**
 	 * Deserialize object metadata
@@ -1531,121 +986,42 @@ public final class MetaDataServiceDB {
 	 * @return Object MetaData
 	 */
 	private ObjectMetaData deserializeObjectMetaData(final ResultSet rs) {
-<span class="fc" id="L1534">		ObjectMetaData objectMD = null;</span>
+<span class="nc" id="L989">		ObjectMetaData objectMD = null;</span>
 		try {
-<span class="fc" id="L1536">			final ObjectID objectID = new ObjectID((UUID) rs.getObject(&quot;oid&quot;));</span>
-<span class="fc" id="L1537">			final MetaClassID classID = new MetaClassID((UUID) rs.getObject(&quot;classid&quot;));</span>
-<span class="fc" id="L1538">			final DataSetID dataSetID = new DataSetID((UUID) rs.getObject(&quot;datasetid&quot;));</span>
-<span class="fc" id="L1539">			Array sqlArray = rs.getArray(&quot;stlocs&quot;);</span>
-<span class="fc" id="L1540">			final UUID[] uuidArray = (UUID[]) sqlArray.getArray();</span>
-<span class="fc" id="L1541">			final HashSet&lt;ExecutionEnvironmentID&gt; backendIDs = new HashSet&lt;&gt;();</span>
-<span class="fc bfc" id="L1542" title="All 2 branches covered.">			for (final UUID uuid : uuidArray) {</span>
-<span class="fc" id="L1543">				final ExecutionEnvironmentID backendID = new ExecutionEnvironmentID(uuid);</span>
-<span class="fc" id="L1544">				backendIDs.add(backendID);</span>
+<span class="nc" id="L991">			final ObjectID objectID = new ObjectID((UUID) rs.getObject(&quot;oid&quot;));</span>
+<span class="nc" id="L992">			final MetaClassID classID = new MetaClassID((UUID) rs.getObject(&quot;classid&quot;));</span>
+<span class="nc" id="L993">			final DataSetID dataSetID = new DataSetID((UUID) rs.getObject(&quot;datasetid&quot;));</span>
+<span class="nc" id="L994">			Array sqlArray = rs.getArray(&quot;stlocs&quot;);</span>
+<span class="nc" id="L995">			final UUID[] uuidArray = (UUID[]) sqlArray.getArray();</span>
+<span class="nc" id="L996">			final HashSet&lt;ExecutionEnvironmentID&gt; backendIDs = new HashSet&lt;&gt;();</span>
+<span class="nc bnc" id="L997" title="All 2 branches missed.">			for (final UUID uuid : uuidArray) {</span>
+<span class="nc" id="L998">				final ExecutionEnvironmentID backendID = new ExecutionEnvironmentID(uuid);</span>
+<span class="nc" id="L999">				backendIDs.add(backendID);</span>
 			}
-<span class="fc" id="L1546">			final boolean isReadOnly = rs.getBoolean(&quot;isreadonly&quot;);</span>
-<span class="fc" id="L1547">			final String alias = rs.getString(&quot;alias&quot;);</span>
-<span class="fc" id="L1548">			final int langCode = rs.getInt(&quot;language&quot;);</span>
+<span class="nc" id="L1001">			final boolean isReadOnly = rs.getBoolean(&quot;isreadonly&quot;);</span>
+<span class="nc" id="L1002">			final String alias = rs.getString(&quot;alias&quot;);</span>
+<span class="nc" id="L1003">			final int langCode = rs.getInt(&quot;language&quot;);</span>
 			final Langs lang;
 
-<span class="pc bpc" id="L1551" title="1 of 2 branches missed.">			if (Langs.LANG_PYTHON.getNumber() == langCode) {</span>
-<span class="nc" id="L1552">				lang = Langs.LANG_PYTHON;</span>
-<span class="pc bpc" id="L1553" title="1 of 2 branches missed.">			} else if (Langs.LANG_JAVA.getNumber() == langCode) {</span>
-<span class="fc" id="L1554">				lang = Langs.LANG_JAVA;</span>
+<span class="nc bnc" id="L1006" title="All 2 branches missed.">			if (Langs.LANG_PYTHON.getNumber() == langCode) {</span>
+<span class="nc" id="L1007">				lang = Langs.LANG_PYTHON;</span>
+<span class="nc bnc" id="L1008" title="All 2 branches missed.">			} else if (Langs.LANG_JAVA.getNumber() == langCode) {</span>
+<span class="nc" id="L1009">				lang = Langs.LANG_JAVA;</span>
 			} else {
-<span class="nc" id="L1556">				logger.warn(&quot;Deserializing language none!&quot;);</span>
-<span class="nc" id="L1557">				lang = Langs.LANG_NONE;</span>
+<span class="nc" id="L1011">				logger.warn(&quot;Deserializing language none!&quot;);</span>
+<span class="nc" id="L1012">				lang = Langs.LANG_NONE;</span>
 			}
 
-<span class="fc" id="L1560">			final AccountID ownerID = new AccountID((UUID) rs.getObject(&quot;accountid&quot;));</span>
+<span class="nc" id="L1015">			final AccountID ownerID = new AccountID((UUID) rs.getObject(&quot;accountid&quot;));</span>
 
-<span class="fc" id="L1562">			objectMD = new ObjectMetaData(objectID, classID, dataSetID, backendIDs, isReadOnly, alias, lang, ownerID);</span>
+<span class="nc" id="L1017">			objectMD = new ObjectMetaData(objectID, classID, dataSetID, backendIDs, isReadOnly, alias, lang, ownerID);</span>
 
-<span class="fc" id="L1564">			return objectMD;</span>
-<span class="nc" id="L1565">		} catch (final Exception e) {</span>
-<span class="nc" id="L1566">			throw new DbHandlerException(e);</span>
-		}
-	}
-
-	/**
-	 * Deserialize Storage Location
-	 * 
-	 * @param rs
-	 *            Result set
-	 * @return Storage Location
-	 */
-	private StorageLocation deserializeStorageLocation(final ResultSet rs) {
-<span class="fc" id="L1578">		StorageLocation storageLoc = null;</span>
-		try {
-<span class="fc" id="L1580">			final String hostname = rs.getString(&quot;hostname&quot;);</span>
-<span class="fc" id="L1581">			final String name = rs.getString(&quot;name&quot;);</span>
-<span class="fc" id="L1582">			final int storageTCPPort = rs.getInt(&quot;port&quot;);</span>
-<span class="fc" id="L1583">			final StorageLocationID storageLocationID = new StorageLocationID((UUID) rs.getObject(&quot;id&quot;));</span>
-<span class="fc" id="L1584">			storageLoc = new StorageLocation(hostname, name, storageTCPPort);</span>
-<span class="fc" id="L1585">			storageLoc.setDataClayID(storageLocationID);</span>
-
-<span class="fc" id="L1587">			return storageLoc;</span>
-
-<span class="nc" id="L1589">		} catch (final Exception e) {</span>
-<span class="nc" id="L1590">			throw new DbHandlerException(e);</span>
-		}
-	}
-
-	/**
-	 * Deserialize execution environment
-	 * 
-	 * @param rs
-	 *            Result set
-	 * @return Execution environment
-	 */
-	private ExecutionEnvironment deserializeExecutionEnvironment(final ResultSet rs) {
-<span class="fc" id="L1602">		ExecutionEnvironment executionEnv = null;</span>
-		try {
-<span class="fc" id="L1604">			final ExecutionEnvironmentID executionEnvironmentID = new ExecutionEnvironmentID((UUID) rs.getObject(&quot;id&quot;));</span>
-<span class="fc" id="L1605">			final String hostname = rs.getString(&quot;hostname&quot;);</span>
-<span class="fc" id="L1606">			final String name = rs.getString(&quot;name&quot;);</span>
-<span class="fc" id="L1607">			final int port = rs.getInt(&quot;port&quot;);</span>
-<span class="fc" id="L1608">			final int langCode = rs.getInt(&quot;lang&quot;);</span>
-			final Langs lang;
-<span class="pc bpc" id="L1610" title="1 of 2 branches missed.">			if (Langs.LANG_JAVA.getNumber() == langCode) {</span>
-<span class="fc" id="L1611">				lang = Langs.LANG_JAVA;</span>
-<span class="nc bnc" id="L1612" title="All 2 branches missed.">			} else if (Langs.LANG_PYTHON.getNumber() == langCode) {</span>
-<span class="nc" id="L1613">				lang = Langs.LANG_PYTHON;</span>
-			} else {
-<span class="nc" id="L1615">				lang = Langs.LANG_NONE;</span>
-			}
-<span class="fc" id="L1617">			executionEnv = new ExecutionEnvironment(hostname, name, port, lang);</span>
-<span class="fc" id="L1618">			executionEnv.setDataClayID(executionEnvironmentID);</span>
-
-<span class="fc" id="L1620">			return executionEnv;</span>
-
-<span class="nc" id="L1622">		} catch (final Exception e) {</span>
-<span class="nc" id="L1623">			throw new DbHandlerException(e);</span>
-		}
-	}
-
-	/**
-	 * Deserialize dataclay info
-	 * @param rs Result set
-	 * @return Deserialized dataclay instance
-	 */
-	private DataClayInstance deserializeDataClayInfo(final ResultSet rs) {
-<span class="fc" id="L1633">		final List&lt;String&gt; hosts = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L1634">		final List&lt;Integer&gt; ports = new ArrayList&lt;&gt;();</span>
-		try {
-<span class="fc" id="L1636">			final DataClayInstanceID dClayID = new DataClayInstanceID((UUID) rs.getObject(&quot;id&quot;));</span>
-			do {
-<span class="fc" id="L1638">				final String host = rs.getString(&quot;hostname&quot;);</span>
-<span class="fc" id="L1639">				final int port = rs.getInt(&quot;port&quot;);</span>
-<span class="fc" id="L1640">				logger.debug(&quot;Adding {} and {} to dataclay instance&quot;, host, port);</span>
-<span class="fc" id="L1641">				hosts.add(host);</span>
-<span class="fc" id="L1642">				ports.add(port);</span>
-<span class="pc bpc" id="L1643" title="1 of 2 branches missed.">			} while (rs.next());</span>
-<span class="fc" id="L1644">			return new DataClayInstance(dClayID, hosts.toArray(new String[hosts.size()]),</span>
-<span class="fc" id="L1645">					ports.toArray(new Integer[ports.size()]));</span>
-
-<span class="nc" id="L1647">		} catch (final Exception e) {</span>
-<span class="nc" id="L1648">			throw new DbHandlerException(e);</span>
+<span class="nc" id="L1019">			return objectMD;</span>
+<span class="nc" id="L1020">		} catch (final SQLException e) {</span>
+<span class="nc" id="L1021">			LogicModuleSrv.doExit(e.getErrorCode());</span>
+<span class="nc" id="L1022">			return null;</span>
+<span class="nc" id="L1023">		} catch (final Exception e) {</span>
+<span class="nc" id="L1024">			throw new DbHandlerException(e);</span>
 		}
 	}
 

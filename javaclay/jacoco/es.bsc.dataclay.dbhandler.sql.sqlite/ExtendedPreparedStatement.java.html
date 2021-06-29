@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExtendedPreparedStatement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.dbhandler.sql.sqlite</a> &gt; <span class="el_source">ExtendedPreparedStatement.java</span></div><h1>ExtendedPreparedStatement.java</h1><pre class="source lang-java linenums">package es.bsc.dataclay.dbhandler.sql.sqlite;
+
+import java.sql.Array;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.sqlite.SQLiteConnection;
+import org.sqlite.jdbc4.JDBC4PreparedStatement;
+
+import es.bsc.dataclay.dbhandler.sql.common.SQLArray;
+import es.bsc.dataclay.dbhandler.sql.common.SQLResultSetWrapper;
+
+public class ExtendedPreparedStatement extends JDBC4PreparedStatement{
+
+	/** Logger. */
+<span class="fc" id="L23">	private static final Logger logger = LogManager.getLogger(&quot;SQLiteHandler&quot;);</span>
+
+	public ExtendedPreparedStatement(SQLiteConnection conn, String sql) throws SQLException {
+<span class="fc" id="L26">		super(conn, sql);</span>
+<span class="fc" id="L27">	}</span>
+
+	@Override
+	public ResultSet executeQuery() throws SQLException{
+<span class="fc" id="L31">		return new SQLResultSetWrapper(super.executeQuery());</span>
+
+	}
+
+	@Override
+	public int executeUpdate() throws SQLException{
+<span class="fc" id="L37">		return super.executeUpdate();</span>
+
+	}
+
+	@Override
+	public boolean execute() throws SQLException{
+
+<span class="fc" id="L44">		logger.debug(this.sql);</span>
+<span class="fc" id="L45">		return super.execute();</span>
+	}
+
+
+	@Override
+	public void setArray(int i, Array x) throws SQLException{
+<span class="fc bfc" id="L51" title="All 2 branches covered.">		if(x == null) {</span>
+<span class="fc" id="L52">			setString(i, null);</span>
+<span class="fc" id="L53">			return;</span>
+		}
+<span class="fc" id="L55">		setString(i, x.toString());</span>
+<span class="fc" id="L56">	}</span>
+	public String toString() {
+<span class="nc" id="L58">		return this.sql;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

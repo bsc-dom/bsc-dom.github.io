@@ -8,6 +8,7 @@ import java.net.UnknownHostException;
 import java.util.EnumMap;
 import java.util.Map;
 
+import es.bsc.dataclay.util.Configuration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,8 +22,7 @@ import es.bsc.dataclay.util.Configuration.Flags;
 
 /**
  * This class parses the environment variables and generates a DataService configuration.
- * 
- * @see CfgManager
+ *
  */
 public final class CfgDataServiceEnvLoader {
 
@@ -153,7 +153,7 @@ public final class CfgDataServiceEnvLoader {
 	private static DBHandlerConf parseConfiguration(final DBHandlerType dbHandlerType, final String name) {
 <span class="nc bnc" id="L154" title="All 3 branches missed.">		switch(dbHandlerType) {</span>
 		case SQLITE:
-<span class="nc" id="L156">			return new SQLiteHandlerConfig(name);</span>
+<span class="nc" id="L156">			return new SQLiteHandlerConfig(Configuration.Flags.STORAGE_PATH.getStringValue(), name, Configuration.Flags.SQLITE_IN_MEMORY.getBooleanValue());</span>
 		case NVRAM:
 			try {
 <span class="nc" id="L159">				final Class&lt;?&gt; nvramHandlerConfClass = Class.forName(NVRAM_HANDLER_CONF_CLASS_NAME);</span>

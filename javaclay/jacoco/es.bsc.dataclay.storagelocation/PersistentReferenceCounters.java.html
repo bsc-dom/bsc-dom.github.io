@@ -4,6 +4,7 @@ package es.bsc.dataclay.storagelocation;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import es.bsc.dataclay.api.BackendID;
@@ -30,7 +31,7 @@ public class PersistentReferenceCounters implements Serializable {
 	/**
 	 * Candidates list of objects to be removed.
 	 */
-	private final Queue&lt;ObjectID&gt; candidates;
+	private final Set&lt;ObjectID&gt; candidates;
 
 	/**
 	 * Constructor
@@ -42,32 +43,32 @@ public class PersistentReferenceCounters implements Serializable {
 	 *            candidate objs
 	 */
 	public PersistentReferenceCounters(final Map&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; thecountersPerNode,
-<span class="nc" id="L45">			final Map&lt;ObjectID, Long&gt; thequarantine, final Queue&lt;ObjectID&gt; thecandidates) {</span>
-<span class="nc" id="L46">		this.countersPerNode = thecountersPerNode;</span>
-<span class="nc" id="L47">		this.quarantine = thequarantine;</span>
-<span class="nc" id="L48">		this.candidates = thecandidates;</span>
+<span class="nc" id="L46">			final Map&lt;ObjectID, Long&gt; thequarantine, final Set&lt;ObjectID&gt; thecandidates) {</span>
+<span class="nc" id="L47">		this.countersPerNode = thecountersPerNode;</span>
+<span class="nc" id="L48">		this.quarantine = thequarantine;</span>
+<span class="nc" id="L49">		this.candidates = thecandidates;</span>
 
-<span class="nc" id="L50">	}</span>
+<span class="nc" id="L51">	}</span>
 
 	/**
 	 * @return the countersPerNode
 	 */
 	public Map&lt;BackendID, Map&lt;ObjectID, AtomicInteger&gt;&gt; getCountersPerNode() {
-<span class="nc" id="L56">		return countersPerNode;</span>
+<span class="nc" id="L57">		return countersPerNode;</span>
 	}
 
 	/**
 	 * @return the quarantine
 	 */
 	public Map&lt;ObjectID, Long&gt; getQuarantine() {
-<span class="nc" id="L63">		return quarantine;</span>
+<span class="nc" id="L64">		return quarantine;</span>
 	}
 
 	/**
 	 * @return the candidates
 	 */
-	public Queue&lt;ObjectID&gt; getCandidates() {
-<span class="nc" id="L70">		return candidates;</span>
+	public Set&lt;ObjectID&gt; getCandidates() {
+<span class="nc" id="L71">		return candidates;</span>
 	}
 
 }

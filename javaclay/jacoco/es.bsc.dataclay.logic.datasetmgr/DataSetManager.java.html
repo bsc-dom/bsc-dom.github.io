@@ -19,6 +19,7 @@ import es.bsc.dataclay.util.ids.AccountID;
 import es.bsc.dataclay.util.ids.DataSetID;
 import es.bsc.dataclay.util.management.AbstractManager;
 import es.bsc.dataclay.util.management.datasetmgr.DataSet;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible for managing datasets (add and remove).
@@ -37,11 +38,11 @@ public final class DataSetManager extends AbstractManager {
 	 * @post Creates a DataSet manager and initializes the datasetDB in the path
 	 *       provided.
 	 */
-	public DataSetManager(final BasicDataSource dataSource) {
-<span class="fc" id="L41">		super(dataSource);</span>
-<span class="fc" id="L42">		this.datasetDB = new DataSetManagerDB(dataSource);</span>
-<span class="fc" id="L43">		this.datasetDB.createTables();</span>
-<span class="fc" id="L44">	}</span>
+	public DataSetManager(final SQLiteDataSource dataSource) {
+<span class="fc" id="L42">		super(dataSource);</span>
+<span class="fc" id="L43">		this.datasetDB = new DataSetManagerDB(dataSource);</span>
+<span class="fc" id="L44">		this.datasetDB.createTables();</span>
+<span class="fc" id="L45">	}</span>
 
 	/**
 	 * This operation creates a new dataset.
@@ -58,18 +59,18 @@ public final class DataSetManager extends AbstractManager {
 		// Check that it does not already exist
 		// (there is not another dataset with the same name, according
 		// to the use case specification).
-<span class="fc" id="L61">		final DataSet prototype = new DataSet();</span>
-<span class="fc" id="L62">		prototype.setName(newDataSet.getName());</span>
-<span class="fc bfc" id="L63" title="All 2 branches covered.">		if (datasetDB.getDataSetByName(newDataSet.getName()) != null) {</span>
-<span class="fc" id="L64">			throw new DataSetExistsException(newDataSet.getName());</span>
+<span class="fc" id="L62">		final DataSet prototype = new DataSet();</span>
+<span class="fc" id="L63">		prototype.setName(newDataSet.getName());</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">		if (datasetDB.getDataSetByName(newDataSet.getName()) != null) {</span>
+<span class="fc" id="L65">			throw new DataSetExistsException(newDataSet.getName());</span>
 		}
 
-<span class="fc" id="L67">		datasetDB.store(newDataSet);</span>
+<span class="fc" id="L68">		datasetDB.store(newDataSet);</span>
 
 		// Prepare result
-<span class="fc" id="L70">		final DataSetID result = newDataSet.getDataClayID();</span>
+<span class="fc" id="L71">		final DataSetID result = newDataSet.getDataClayID();</span>
 
-<span class="fc" id="L72">		return result;</span>
+<span class="fc" id="L73">		return result;</span>
 	}
 
 	/**
@@ -80,8 +81,8 @@ public final class DataSetManager extends AbstractManager {
 	 * @return DataSets of the account.
 	 */
 	public List&lt;DataSet&gt; getAllDataSetsOfAccount(final AccountID accountID) {
-<span class="nc" id="L83">		final List&lt;DataSet&gt; allDataSets = datasetDB.getDataSetsWithProvider(accountID);</span>
-<span class="nc" id="L84">		return allDataSets;</span>
+<span class="nc" id="L84">		final List&lt;DataSet&gt; allDataSets = datasetDB.getDataSetsWithProvider(accountID);</span>
+<span class="nc" id="L85">		return allDataSets;</span>
 	}
 
 	/**
@@ -95,15 +96,15 @@ public final class DataSetManager extends AbstractManager {
 	 *             DataSetDoesNotExistException: if the dataset does not exist
 	 */
 	public DataSetID getDataSetID(final String datasetName) {
-<span class="fc" id="L98">		DataSetID datasetID = null;</span>
-<span class="fc" id="L99">		final DataSet curDataSet = datasetDB.getDataSetByName(datasetName);</span>
-<span class="pc bpc" id="L100" title="1 of 2 branches missed.">		if (curDataSet == null) {</span>
-<span class="nc" id="L101">			throw new DataSetDoesNotExistException(datasetName);</span>
+<span class="fc" id="L99">		DataSetID datasetID = null;</span>
+<span class="fc" id="L100">		final DataSet curDataSet = datasetDB.getDataSetByName(datasetName);</span>
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">		if (curDataSet == null) {</span>
+<span class="nc" id="L102">			throw new DataSetDoesNotExistException(datasetName);</span>
 		}
 		// Prepare result
-<span class="fc" id="L104">		datasetID = curDataSet.getDataClayID();</span>
+<span class="fc" id="L105">		datasetID = curDataSet.getDataClayID();</span>
 
-<span class="fc" id="L106">		return datasetID;</span>
+<span class="fc" id="L107">		return datasetID;</span>
 	}
 
 	/**
@@ -117,29 +118,29 @@ public final class DataSetManager extends AbstractManager {
 	 *             DataSetDoesNotExistException: if a dataset does not exist
 	 */
 	public Map&lt;String, DataSet&gt; getDataSetsInfo(final Set&lt;DataSetID&gt; datasetIDs) {
-<span class="nc" id="L120">		final HashMap&lt;String, DataSet&gt; result = new HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L121" title="All 2 branches missed.">		for (final DataSetID dataSetID : datasetIDs) {</span>
-<span class="nc" id="L122">			final DataSet curDataSet = getDataSetInfo(dataSetID);</span>
-<span class="nc" id="L123">			result.put(curDataSet.getName(), curDataSet);</span>
-<span class="nc" id="L124">		}</span>
-<span class="nc" id="L125">		return result;</span>
+<span class="nc" id="L121">		final HashMap&lt;String, DataSet&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">		for (final DataSetID dataSetID : datasetIDs) {</span>
+<span class="nc" id="L123">			final DataSet curDataSet = getDataSetInfo(dataSetID);</span>
+<span class="nc" id="L124">			result.put(curDataSet.getName(), curDataSet);</span>
+<span class="nc" id="L125">		}</span>
+<span class="nc" id="L126">		return result;</span>
 	}
 
 	public DataSet getDataSetInfo(final DataSetID dataSetID) {
 		// Try in cache
-<span class="nc" id="L130">		DataSet curDataSet = null;</span>
+<span class="nc" id="L131">		DataSet curDataSet = null;</span>
 		// Query in db
-<span class="nc" id="L132">		curDataSet = datasetDB.getDataSetByID(dataSetID);</span>
+<span class="nc" id="L133">		curDataSet = datasetDB.getDataSetByID(dataSetID);</span>
 
-<span class="nc bnc" id="L134" title="All 2 branches missed.">		if (curDataSet == null) {</span>
-<span class="nc" id="L135">			throw new DataSetDoesNotExistException(dataSetID);</span>
+<span class="nc bnc" id="L135" title="All 2 branches missed.">		if (curDataSet == null) {</span>
+<span class="nc" id="L136">			throw new DataSetDoesNotExistException(dataSetID);</span>
 		}
 
-<span class="nc" id="L138">		return curDataSet;</span>
+<span class="nc" id="L139">		return curDataSet;</span>
 	}
 
 	public DataSet getDataSetInfo(final String datasetName) {
-<span class="fc" id="L142">		return datasetDB.getDataSetByName(datasetName);</span>
+<span class="fc" id="L143">		return datasetDB.getDataSetByName(datasetName);</span>
 	}
 
 	/**
@@ -153,14 +154,14 @@ public final class DataSetManager extends AbstractManager {
 	 * 
 	 */
 	public void removeDataSet(final DataSetID datasetID) {
-<span class="fc" id="L156">		final DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
-<span class="fc bfc" id="L157" title="All 2 branches covered.">		if (dataset == null) {</span>
-<span class="fc" id="L158">			throw new DataSetDoesNotExistException(datasetID);</span>
+<span class="fc" id="L157">		final DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">		if (dataset == null) {</span>
+<span class="fc" id="L159">			throw new DataSetDoesNotExistException(datasetID);</span>
 		}
-<span class="fc" id="L160">		dataset.setProviderAccountID(null); // Set the responsible to null in order to avoid removing it</span>
-<span class="fc" id="L161">		datasetDB.deleteDataSetByID(dataset.getDataClayID());</span>
+<span class="fc" id="L161">		dataset.setProviderAccountID(null); // Set the responsible to null in order to avoid removing it</span>
+<span class="fc" id="L162">		datasetDB.deleteDataSetByID(dataset.getDataClayID());</span>
 
-<span class="fc" id="L163">	}</span>
+<span class="fc" id="L164">	}</span>
 
 	/**
 	 * This operation checks whether an account is responsible for a dataset
@@ -175,11 +176,11 @@ public final class DataSetManager extends AbstractManager {
 	 *             DataSetDoesNotExistException: if the dataset does not exist
 	 */
 	public boolean checkDataSetResponsible(final DataSetID datasetID, final AccountID responsible) {
-<span class="fc" id="L178">		DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
-<span class="fc bfc" id="L179" title="All 2 branches covered.">		if (dataset == null) {</span>
-<span class="fc" id="L180">			throw new DataSetDoesNotExistException(datasetID);</span>
+<span class="fc" id="L179">		DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
+<span class="fc bfc" id="L180" title="All 2 branches covered.">		if (dataset == null) {</span>
+<span class="fc" id="L181">			throw new DataSetDoesNotExistException(datasetID);</span>
 		}
-<span class="fc" id="L182">		return dataset.getProviderAccountID().equals(responsible);</span>
+<span class="fc" id="L183">		return dataset.getProviderAccountID().equals(responsible);</span>
 	}
 
 	/**
@@ -193,12 +194,12 @@ public final class DataSetManager extends AbstractManager {
 	 *             DataSetDoesNotExistException: if the dataset does not exist
 	 */
 	public boolean checkDataSetIsPublic(final DataSetID datasetID) {
-<span class="fc" id="L196">		DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
-<span class="pc bpc" id="L197" title="1 of 2 branches missed.">		if (dataset == null) {</span>
-<span class="nc" id="L198">			throw new DataSetDoesNotExistException(datasetID);</span>
+<span class="fc" id="L197">		DataSet dataset = datasetDB.getDataSetByID(datasetID);</span>
+<span class="pc bpc" id="L198" title="1 of 2 branches missed.">		if (dataset == null) {</span>
+<span class="nc" id="L199">			throw new DataSetDoesNotExistException(datasetID);</span>
 		}
 
-<span class="fc" id="L201">		return dataset.getIsPublic();</span>
+<span class="fc" id="L202">		return dataset.getIsPublic();</span>
 	}
 
 	/**
@@ -207,7 +208,7 @@ public final class DataSetManager extends AbstractManager {
 	 * @return set of dataset names that are public
 	 */
 	public Set&lt;DataSet&gt; getPublicDataSets() {
-<span class="fc" id="L210">		return datasetDB.getPublicDataSets();</span>
+<span class="fc" id="L211">		return datasetDB.getPublicDataSets();</span>
 	}
 
 	// ========= OTHER ========= //
@@ -218,13 +219,13 @@ public final class DataSetManager extends AbstractManager {
 	 * @return The db handler reference of this manager.
 	 */
 	public DataSetManagerDB getDbHandler() {
-<span class="fc" id="L221">		return datasetDB;</span>
+<span class="fc" id="L222">		return datasetDB;</span>
 	}
 
 	@Override
 	public void cleanCaches() {
 
-<span class="nc" id="L227">	}</span>
+<span class="nc" id="L228">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LockerPool.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">dataclay</a> &gt; <a href="index.source.html" class="el_package">es.bsc.dataclay.heap</a> &gt; <span class="el_source">LockerPool.java</span></div><h1>LockerPool.java</h1><pre class="source lang-java linenums">
 package es.bsc.dataclay.heap;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -18,10 +19,10 @@ import org.apache.logging.log4j.LogManager;
 public final class LockerPool {
 
 	/** Logger. */
-<span class="fc" id="L21">	private final Logger logger = LogManager.getLogger(&quot;LockerPool&quot;);</span>
+<span class="fc" id="L22">	private final Logger logger = LogManager.getLogger(&quot;LockerPool&quot;);</span>
 
 	/** Indicates if debug is enabled. */
-<span class="fc" id="L24">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
+<span class="fc" id="L25">	private static final boolean DEBUG_ENABLED = Configuration.isDebugEnabled();</span>
 
 	/** Map of lockers for objects. */
 	private final Map&lt;ObjectID, ReentrantLock&gt; lockers;
@@ -29,9 +30,9 @@ public final class LockerPool {
 	/**
 	 * Lockers constructor.
 	 */
-<span class="fc" id="L32">	public LockerPool() {</span>
-<span class="fc" id="L33">		lockers = new ConcurrentHashMap&lt;&gt;();</span>
-<span class="fc" id="L34">	}</span>
+<span class="fc" id="L33">	public LockerPool() {</span>
+<span class="fc" id="L34">		lockers = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="fc" id="L35">	}</span>
 
 	/**
 	 * Lock the object with id provider
@@ -97,25 +98,26 @@ public final class LockerPool {
 		// it is not our critical path, since in our critical path everything is in cache and lockers exist.
 		//
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-<span class="nc" id="L101">		locker = lockers.get(objectID);</span>
-<span class="nc bnc" id="L102" title="All 2 branches missed.">		if (locker == null) {</span>
-<span class="nc" id="L103">			synchronized (this) { // ensure only one locker is created per object</span>
-<span class="nc" id="L104">				locker = lockers.get(objectID);</span>
-<span class="nc bnc" id="L105" title="All 2 branches missed.">				if (locker == null) {</span>
-<span class="nc" id="L106">					locker = new ReentrantLock();</span>
-<span class="nc" id="L107">					lockers.put(objectID, locker);</span>
-				}
-<span class="nc" id="L109">			}</span>
+<span class="nc" id="L101">		synchronized (this) { // ensure only one locker is created per object USE STRING INTERN SO ALL STRINGS ARE EQUAL!</span>
+<span class="nc" id="L102">			locker = lockers.get(objectID);</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">			if (locker == null) {</span>
+				//synchronized (this) { // ensure only one locker is created per object
+<span class="nc" id="L105">					locker = lockers.get(objectID);</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">					if (locker == null) {</span>
+<span class="nc" id="L107">						locker = new ReentrantLock();</span>
+<span class="nc" id="L108">						lockers.put(objectID, locker);</span>
+					}
+				//}
+			}
+<span class="nc" id="L112">		}</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L114">			logger.debug(&quot;[==Lockers==] Waiting for lock &quot; + objectID);</span>
 		}
-<span class="nc bnc" id="L111" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L112">			logger.debug(&quot;[==Lockers==] Waiting for lock &quot; + objectID);</span>
+<span class="nc" id="L116">		locker.lock(); // waits til the lock is available</span>
+<span class="nc bnc" id="L117" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L118">			logger.debug(&quot;[==Lockers==] Locked &quot; + objectID);</span>
 		}
-<span class="nc" id="L114">		locker.lock(); // waits til the lock is available</span>
-<span class="nc bnc" id="L115" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L116">			logger.debug(&quot;[==Lockers==] Locked &quot; + objectID);</span>
-		}
-<span class="nc" id="L118">	}</span>
+<span class="nc" id="L120">	}</span>
 
 	/**
 	 * Unlock the object with id provider
@@ -128,53 +130,58 @@ public final class LockerPool {
 		 * memory. Since our lockers are Reentrant, there can be many 'unlock' calls unlocking the same locker. If our Memory manager
 		 * wants to clean a locker, it checks if it is unlocked and if so, it removes it.
 		 */
-<span class="nc" id="L131">		final ReentrantLock locker = lockers.get(objectID);</span>
-<span class="nc bnc" id="L132" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L133">			logger.debug(&quot;[==Lockers==] Unlocking &quot; + objectID);</span>
+<span class="nc" id="L133">		final ReentrantLock locker = lockers.get(objectID);</span>
+<span class="nc bnc" id="L134" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L135">			logger.debug(&quot;[==Lockers==] Unlocking &quot; + objectID);</span>
 		}
-<span class="nc bnc" id="L135" title="All 2 branches missed.">		if (locker != null) {</span>
-<span class="nc" id="L136">			locker.unlock();</span>
-<span class="nc bnc" id="L137" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L138">				logger.debug(&quot;[==Lockers==] Unlocked &quot; + objectID);</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		if (locker != null) {</span>
+<span class="nc" id="L138">			locker.unlock();</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L140">				logger.debug(&quot;[==Lockers==] Unlocked &quot; + objectID);</span>
 			}
 		}
-<span class="nc" id="L141">	}</span>
+<span class="nc" id="L143">	}</span>
 
 	/**
 	 * Clean lockers.
 	 */
 	public void cleanLockers() {
-<span class="nc" id="L147">		int cleanedLockers = 0;</span>
-<span class="nc bnc" id="L148" title="All 2 branches missed.">		for (final ObjectID objectID : lockers.keySet()) {</span>
-<span class="nc bnc" id="L149" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L150">				logger.debug(&quot;[==Lockers==] Going to remove locker &quot; + objectID);</span>
-			}
-
-<span class="nc" id="L153">			final ReentrantLock locker = lockers.get(objectID);</span>
-<span class="nc" id="L154">			synchronized (this) { // prevent the object to be locked before cleaning</span>
-<span class="nc bnc" id="L155" title="All 2 branches missed.">				if (!locker.isLocked()) { // It could have been locked before</span>
-<span class="nc" id="L156">					lockers.remove(objectID);</span>
-<span class="nc bnc" id="L157" title="All 2 branches missed.">					if (DEBUG_ENABLED) {</span>
-<span class="nc" id="L158">						logger.debug(&quot;[==Lockers==] Removed locker &quot; + objectID);</span>
-					}
-<span class="nc" id="L160">					cleanedLockers++;</span>
-				}
-<span class="nc" id="L162">			}</span>
-<span class="nc" id="L163">		}</span>
-
-<span class="nc bnc" id="L165" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
-<span class="nc bnc" id="L166" title="All 2 branches missed.">			if (cleanedLockers &gt; 0) {</span>
-<span class="nc" id="L167">				logger.debug(&quot;[==Lockers==] Lockers cleaned &quot; + cleanedLockers);</span>
-			}
+<span class="nc" id="L149">		int cleanedLockers = 0;</span>
+<span class="nc bnc" id="L150" title="All 2 branches missed.">		if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L151">			logger.debug(&quot;[==Lockers==] Number of lockers: {}&quot;, lockers.size());</span>
 		}
-<span class="nc" id="L170">	}</span>
+
+<span class="nc bnc" id="L154" title="All 2 branches missed.">			for (final ObjectID objectID : new HashSet&lt;&gt;(lockers.keySet())) {</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">				if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L156">					logger.debug(&quot;[==Lockers==] Going to remove locker &quot; + objectID);</span>
+				}
+
+<span class="nc" id="L159">				synchronized (this) { // prevent the object to be locked before cleaning</span>
+<span class="nc" id="L160">					final ReentrantLock locker = lockers.get(objectID);</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">					if (!locker.isLocked()) { // It could have been locked before</span>
+<span class="nc" id="L162">						lockers.remove(objectID);</span>
+<span class="nc bnc" id="L163" title="All 2 branches missed.">						if (DEBUG_ENABLED) {</span>
+<span class="nc" id="L164">							logger.debug(&quot;[==Lockers==] Removed locker &quot; + objectID);</span>
+						}
+<span class="nc" id="L166">						cleanedLockers++;</span>
+					}
+<span class="nc" id="L168">				}</span>
+<span class="nc" id="L169">			}</span>
+
+<span class="nc bnc" id="L171" title="All 2 branches missed.">			if (DEBUG_ENABLED) {</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">				if (cleanedLockers &gt; 0) {</span>
+<span class="nc" id="L173">					logger.debug(&quot;[==Lockers==] Lockers cleaned &quot; + cleanedLockers);</span>
+				}
+			}
+
+<span class="nc" id="L177">	}</span>
 
 	/**
 	 * Get number of lockers.
 	 * @return Number of lockers
 	 */
 	public int numLockers() {
-<span class="nc" id="L177">		return lockers.size();</span>
+<span class="nc" id="L184">		return lockers.size();</span>
 	}
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

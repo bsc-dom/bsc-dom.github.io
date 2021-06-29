@@ -5,6 +5,7 @@ import java.rmi.RemoteException;
 import java.util.HashSet;
 import java.util.List;
 
+import es.bsc.dataclay.util.structs.MemoryCache;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -19,7 +20,7 @@ import es.bsc.dataclay.util.management.AbstractManager;
 import es.bsc.dataclay.util.management.accountmgr.Account;
 import es.bsc.dataclay.util.management.accountmgr.AccountRole;
 import es.bsc.dataclay.util.management.accountmgr.PasswordCredential;
-import es.bsc.dataclay.util.structs.LruCache;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible to manage system accounts: add, remove and modify.
@@ -27,14 +28,13 @@ import es.bsc.dataclay.util.structs.LruCache;
 public final class AccountManager extends AbstractManager {
 
 	/** Logger. */
-<span class="fc" id="L30">	private static final Logger logger = LogManager.getLogger(&quot;managers.AccountManager&quot;);</span>
+<span class="fc" id="L31">	private static final Logger logger = LogManager.getLogger(&quot;managers.AccountManager&quot;);</span>
 
 	/** Db of Accounts. */
 	private final AccountManagerDB accountDB;
 
 	/** Account cache. */
-<span class="fc" id="L36">	private final LruCache&lt;AccountID, Account&gt; accountCache = new LruCache&lt;&gt;(</span>
-<span class="fc" id="L37">			Configuration.Flags.MAX_ENTRIES_ACCOUNT_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L37">	private final MemoryCache&lt;AccountID, Account&gt; accountCache = new MemoryCache&lt;&gt;();</span>
 
 	/**
 	 * Instantiates an Account Manager that uses the Backend configuration provided. (which backend to use, how to use it).
@@ -42,7 +42,7 @@ public final class AccountManager extends AbstractManager {
 	 *            Manager/service name.
 	 * @post Creates an Account manager and initializes the accountDB.
 	 */
-	public AccountManager(final BasicDataSource dataSource) {
+	public AccountManager(final SQLiteDataSource dataSource) {
 <span class="fc" id="L46">		super(dataSource);</span>
 <span class="fc" id="L47">		this.accountDB = new AccountManagerDB(dataSource);</span>
 <span class="fc" id="L48">		accountDB.createTables();</span>

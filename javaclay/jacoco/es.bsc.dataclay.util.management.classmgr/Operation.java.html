@@ -145,20 +145,32 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	}
 
 	/**
+	 * Get the Parameters types of this Operation
+	 * @return Operation::params of container Operation.
+	 */
+	public List&lt;Type&gt; getParamsTypesInOrder() {
+<span class="nc" id="L152">		List&lt;Type&gt; paramTypes = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L153" title="All 2 branches missed.">		for (String paramNum : paramsOrder) {</span>
+<span class="nc" id="L154">			paramTypes.add(this.params.get(paramNum));</span>
+<span class="nc" id="L155">		}</span>
+<span class="nc" id="L156">		return paramTypes;</span>
+	}
+
+	/**
 	 * Set the Operation::params
 	 * @param newparams
 	 *            Parameter to set of this Operation.
 	 */
 	public void setParams(final Map&lt;String, Type&gt; newparams) {
-<span class="fc" id="L153">		this.params = newparams;</span>
-<span class="fc" id="L154">	}</span>
+<span class="fc" id="L165">		this.params = newparams;</span>
+<span class="fc" id="L166">	}</span>
 
 	/**
 	 * Get the Parameter order of this Operation
 	 * @return Operation::paramOrder of container Operation.
 	 */
 	public List&lt;String&gt; getParamsOrder() {
-<span class="fc" id="L161">		return this.paramsOrder;</span>
+<span class="fc" id="L173">		return this.paramsOrder;</span>
 	}
 
 	/**
@@ -167,8 +179,8 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            The list of name of parameters, in the proper order.
 	 */
 	public void setParamsOrder(final List&lt;String&gt; newparamOrder) {
-<span class="fc" id="L170">		this.paramsOrder = newparamOrder;</span>
-<span class="fc" id="L171">	}</span>
+<span class="fc" id="L182">		this.paramsOrder = newparamOrder;</span>
+<span class="fc" id="L183">	}</span>
 
 	/**
 	 * Add a new Params to the map of Params
@@ -179,21 +191,21 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @post A new Param is added to Operation::params
 	 */
 	public void addParam(final String paramName, final Type newparam) {
-<span class="pc bpc" id="L182" title="1 of 2 branches missed.">		if (newparam == null) {</span>
-<span class="nc" id="L183">			throw new IllegalArgumentException(&quot;Params cannot be null&quot;);</span>
+<span class="pc bpc" id="L194" title="1 of 2 branches missed.">		if (newparam == null) {</span>
+<span class="nc" id="L195">			throw new IllegalArgumentException(&quot;Params cannot be null&quot;);</span>
 		}
-<span class="fc" id="L185">		this.params.put(paramName, newparam);</span>
-<span class="fc" id="L186">		this.paramsOrder.add(paramName);</span>
-<span class="fc" id="L187">	}</span>
+<span class="fc" id="L197">		this.params.put(paramName, newparam);</span>
+<span class="fc" id="L198">		this.paramsOrder.add(paramName);</span>
+<span class="fc" id="L199">	}</span>
 
 	/**
 	 * @return the implementations
 	 */
 	public List&lt;Implementation&gt; getImplementations() {
-<span class="pc bpc" id="L193" title="1 of 2 branches missed.">		if (implementations == null) {</span>
-<span class="nc" id="L194">			return null;</span>
+<span class="pc bpc" id="L205" title="1 of 2 branches missed.">		if (implementations == null) {</span>
+<span class="nc" id="L206">			return null;</span>
 		}
-<span class="fc" id="L196">		return new ArrayList&lt;&gt;(implementations);</span>
+<span class="fc" id="L208">		return new ArrayList&lt;&gt;(implementations);</span>
 	}
 
 	/**
@@ -201,8 +213,8 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the implementations to set
 	 */
 	public void setImplementations(final SortedSet&lt;Implementation&gt; newimplementations) {
-<span class="fc" id="L204">		this.implementations = newimplementations;</span>
-<span class="fc" id="L205">	}</span>
+<span class="fc" id="L216">		this.implementations = newimplementations;</span>
+<span class="fc" id="L217">	}</span>
 
 	/**
 	 * @param newimplementations
@@ -211,12 +223,12 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *         This is YAML friendly for lists --instead of sets which Python doesn't like because they contain non-hashable fields.
 	 */
 	public void setImplementations(final List&lt;Implementation&gt; newimplementations) {
-<span class="pc bpc" id="L214" title="1 of 2 branches missed.">		if (newimplementations == null) {</span>
-<span class="nc" id="L215">			this.implementations = null;</span>
+<span class="pc bpc" id="L226" title="1 of 2 branches missed.">		if (newimplementations == null) {</span>
+<span class="nc" id="L227">			this.implementations = null;</span>
 		} else {
-<span class="fc" id="L217">			this.implementations = new TreeSet&lt;&gt;(newimplementations);</span>
+<span class="fc" id="L229">			this.implementations = new TreeSet&lt;&gt;(newimplementations);</span>
 		}
-<span class="fc" id="L219">	}</span>
+<span class="fc" id="L231">	}</span>
 
 	/**
 	 * Add a new Implementation to the list of Implementations
@@ -226,11 +238,11 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @post A new Implementation is added to Operation::implementations
 	 */
 	public boolean addImplementation(final Implementation newimplementation) {
-<span class="pc bpc" id="L229" title="1 of 2 branches missed.">		if (this.implementations == null) {</span>
-<span class="nc" id="L230">			this.implementations = new TreeSet&lt;&gt;();</span>
+<span class="pc bpc" id="L241" title="1 of 2 branches missed.">		if (this.implementations == null) {</span>
+<span class="nc" id="L242">			this.implementations = new TreeSet&lt;&gt;();</span>
 		}
-<span class="fc" id="L232">		newimplementation.setPosition(this.implementations.size());</span>
-<span class="fc" id="L233">		return this.implementations.add(newimplementation);</span>
+<span class="fc" id="L244">		newimplementation.setPosition(this.implementations.size());</span>
+<span class="fc" id="L245">		return this.implementations.add(newimplementation);</span>
 	}
 
 	/**
@@ -240,15 +252,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @return TRUE if the provided Implementation exists in the Operation. FALSE otherwise.
 	 */
 	public boolean existsImplementationInOperation(final ImplementationID implementationID) {
-<span class="pc bpc" id="L243" title="1 of 2 branches missed.">		if (implementations == null) {</span>
-<span class="nc" id="L244">			return false;</span>
+<span class="pc bpc" id="L255" title="1 of 2 branches missed.">		if (implementations == null) {</span>
+<span class="nc" id="L256">			return false;</span>
 		}
-<span class="pc bpc" id="L246" title="1 of 2 branches missed.">		for (final Implementation impl : implementations) {</span>
-<span class="fc bfc" id="L247" title="All 2 branches covered.">			if (impl.getDataClayID().equals(implementationID)) {</span>
-<span class="fc" id="L248">				return true;</span>
+<span class="pc bpc" id="L258" title="1 of 2 branches missed.">		for (final Implementation impl : implementations) {</span>
+<span class="fc bfc" id="L259" title="All 2 branches covered.">			if (impl.getDataClayID().equals(implementationID)) {</span>
+<span class="fc" id="L260">				return true;</span>
 			}
-<span class="fc" id="L250">		}</span>
-<span class="nc" id="L251">		return false;</span>
+<span class="fc" id="L262">		}</span>
+<span class="nc" id="L263">		return false;</span>
 
 	}
 
@@ -259,14 +271,14 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @return The Implementation in the operation or NULL if it does not exist.
 	 */
 	public Implementation getImplementationInOperation(final ImplementationID implementationID) {
-<span class="nc" id="L262">		final Iterator&lt;Implementation&gt; itImpls = implementations.iterator();</span>
-<span class="nc bnc" id="L263" title="All 2 branches missed.">		while (itImpls.hasNext()) {</span>
-<span class="nc" id="L264">			final Implementation actualImpl = itImpls.next();</span>
-<span class="nc bnc" id="L265" title="All 2 branches missed.">			if (actualImpl.getDataClayID().equals(implementationID)) {</span>
-<span class="nc" id="L266">				return actualImpl;</span>
+<span class="nc" id="L274">		final Iterator&lt;Implementation&gt; itImpls = implementations.iterator();</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">		while (itImpls.hasNext()) {</span>
+<span class="nc" id="L276">			final Implementation actualImpl = itImpls.next();</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">			if (actualImpl.getDataClayID().equals(implementationID)) {</span>
+<span class="nc" id="L278">				return actualImpl;</span>
 			}
-<span class="nc" id="L268">		}</span>
-<span class="nc" id="L269">		return null;</span>
+<span class="nc" id="L280">		}</span>
+<span class="nc" id="L281">		return null;</span>
 	}
 
 	/**
@@ -276,19 +288,19 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @return TRUE if the provided Implementation was successfully removed from system. FALSE otherwise.
 	 */
 	public boolean removeImplementation(final ImplementationID implementationID) {
-<span class="nc bnc" id="L279" title="All 2 branches missed.">		if (implementations == null) {</span>
-<span class="nc" id="L280">			return false;</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">		if (implementations == null) {</span>
+<span class="nc" id="L292">			return false;</span>
 		}
 
-<span class="nc" id="L283">		final Iterator&lt;Implementation&gt; itImpls = implementations.iterator();</span>
-<span class="nc bnc" id="L284" title="All 2 branches missed.">		while (itImpls.hasNext()) {</span>
-<span class="nc" id="L285">			final Implementation actualImpl = itImpls.next();</span>
-<span class="nc bnc" id="L286" title="All 2 branches missed.">			if (actualImpl.getDataClayID().equals(implementationID)) {</span>
-<span class="nc" id="L287">				return implementations.remove(actualImpl);</span>
+<span class="nc" id="L295">		final Iterator&lt;Implementation&gt; itImpls = implementations.iterator();</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">		while (itImpls.hasNext()) {</span>
+<span class="nc" id="L297">			final Implementation actualImpl = itImpls.next();</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">			if (actualImpl.getDataClayID().equals(implementationID)) {</span>
+<span class="nc" id="L299">				return implementations.remove(actualImpl);</span>
 			}
-<span class="nc" id="L289">		}</span>
+<span class="nc" id="L301">		}</span>
 
-<span class="nc" id="L291">		return false;</span>
+<span class="nc" id="L303">		return false;</span>
 	}
 
 	/**
@@ -297,7 +309,7 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 */
 
 	public Type getReturnType() {
-<span class="fc" id="L300">		return this.returnType;</span>
+<span class="fc" id="L312">		return this.returnType;</span>
 	}
 
 	/**
@@ -307,8 +319,8 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 */
 
 	public void setReturnType(final Type newreturnType) {
-<span class="fc" id="L310">		this.returnType = newreturnType;</span>
-<span class="fc" id="L311">	}</span>
+<span class="fc" id="L322">		this.returnType = newreturnType;</span>
+<span class="fc" id="L323">	}</span>
 
 	/**
 	 * Get the Operation::metaClassID
@@ -316,7 +328,7 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 */
 
 	public MetaClassID getMetaClassID() {
-<span class="fc" id="L319">		return metaClassID;</span>
+<span class="fc" id="L331">		return metaClassID;</span>
 	}
 
 	/**
@@ -325,15 +337,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the metaClassID to set
 	 */
 	public void setMetaClassID(final MetaClassID newmetaClassID) {
-<span class="fc" id="L328">		this.metaClassID = newmetaClassID;</span>
-<span class="fc" id="L329">	}</span>
+<span class="fc" id="L340">		this.metaClassID = newmetaClassID;</span>
+<span class="fc" id="L341">	}</span>
 
 	/**
 	 * Get the Operation::languageDepInfos
 	 * @return the languageDepInfos
 	 */
 	public Map&lt;Langs, LanguageDependantOperationInfo&gt; getLanguageDepInfos() {
-<span class="fc" id="L336">		return languageDepInfos;</span>
+<span class="fc" id="L348">		return languageDepInfos;</span>
 	}
 
 	/**
@@ -341,7 +353,7 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @return Java language-dependant information of the operation
 	 */
 	public JavaOperationInfo getJavaOperationInfo() {
-<span class="nc" id="L344">		return (JavaOperationInfo) languageDepInfos.get(Langs.LANG_JAVA);</span>
+<span class="nc" id="L356">		return (JavaOperationInfo) languageDepInfos.get(Langs.LANG_JAVA);</span>
 	}
 
 	/**
@@ -349,7 +361,7 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @return Python language-dependant information of the operation
 	 */
 	public PythonOperationInfo getPythonOperationInfo() {
-<span class="nc" id="L352">		return (PythonOperationInfo) languageDepInfos.get(Langs.LANG_PYTHON);</span>
+<span class="nc" id="L364">		return (PythonOperationInfo) languageDepInfos.get(Langs.LANG_PYTHON);</span>
 	}
 
 	/**
@@ -358,8 +370,8 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the languageDepInfos to set
 	 */
 	public void setLanguageDepInfos(final Map&lt;Langs, LanguageDependantOperationInfo&gt; newlanguageDepInfos) {
-<span class="fc" id="L361">		this.languageDepInfos = newlanguageDepInfos;</span>
-<span class="fc" id="L362">	}</span>
+<span class="fc" id="L373">		this.languageDepInfos = newlanguageDepInfos;</span>
+<span class="fc" id="L374">	}</span>
 
 	/**
 	 * Add language dependant information
@@ -367,46 +379,46 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            Language information
 	 */
 	public void addLanguageDepInfo(final LanguageDependantOperationInfo langInfo) {
-<span class="pc bpc" id="L370" title="1 of 2 branches missed.">		if (langInfo instanceof JavaOperationInfo) {</span>
-<span class="pc bpc" id="L371" title="1 of 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_JAVA) != null) {</span>
-<span class="nc" id="L372">				throw new OperationDepInfoAlreadyRegisteredException(Langs.LANG_JAVA.name());</span>
+<span class="pc bpc" id="L382" title="1 of 2 branches missed.">		if (langInfo instanceof JavaOperationInfo) {</span>
+<span class="pc bpc" id="L383" title="1 of 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_JAVA) != null) {</span>
+<span class="nc" id="L384">				throw new OperationDepInfoAlreadyRegisteredException(Langs.LANG_JAVA.name());</span>
 			} else {
-<span class="fc" id="L374">				this.languageDepInfos.put(Langs.LANG_JAVA, langInfo);</span>
+<span class="fc" id="L386">				this.languageDepInfos.put(Langs.LANG_JAVA, langInfo);</span>
 			}
-<span class="nc bnc" id="L376" title="All 2 branches missed.">		} else if (langInfo instanceof PythonOperationInfo) {</span>
-<span class="nc bnc" id="L377" title="All 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_PYTHON) != null) {</span>
-<span class="nc" id="L378">				throw new OperationDepInfoAlreadyRegisteredException(Langs.LANG_PYTHON.name());</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">		} else if (langInfo instanceof PythonOperationInfo) {</span>
+<span class="nc bnc" id="L389" title="All 2 branches missed.">			if (this.languageDepInfos.get(Langs.LANG_PYTHON) != null) {</span>
+<span class="nc" id="L390">				throw new OperationDepInfoAlreadyRegisteredException(Langs.LANG_PYTHON.name());</span>
 			} else {
-<span class="nc" id="L380">				this.languageDepInfos.put(Langs.LANG_PYTHON, langInfo);</span>
+<span class="nc" id="L392">				this.languageDepInfos.put(Langs.LANG_PYTHON, langInfo);</span>
 			}
 		}
-<span class="fc" id="L383">	}</span>
+<span class="fc" id="L395">	}</span>
 
 	@Override
 	public String toString() {
-<span class="nc" id="L387">		final Yaml yaml = CommonYAML.getYamlObject();</span>
-<span class="nc" id="L388">		return yaml.dump(this);</span>
+<span class="nc" id="L399">		final Yaml yaml = CommonYAML.getYamlObject();</span>
+<span class="nc" id="L400">		return yaml.dump(this);</span>
 	}
 
 	@Override
 	public int hashCode() {
-<span class="fc" id="L393">		return Objects.hash(this.name, this.nameAndDescriptor,</span>
+<span class="fc" id="L405">		return Objects.hash(this.name, this.nameAndDescriptor,</span>
 				this.namespace, this.className,
-<span class="fc" id="L395">				this.params, this.returnType, this.isAbstract);</span>
+<span class="fc" id="L407">				this.params, this.returnType, this.isAbstract);</span>
 
 	}
 
 	@Override
 	public boolean equals(final Object object) {
-<span class="nc bnc" id="L401" title="All 2 branches missed.">		if (object instanceof Operation) {</span>
-<span class="nc" id="L402">			final Operation other = (Operation) object;</span>
-<span class="nc bnc" id="L403" title="All 2 branches missed.">			return this.name.equals(other.getName())</span>
-<span class="nc bnc" id="L404" title="All 2 branches missed.">					&amp;&amp; this.className.equals(other.getClassName())</span>
-<span class="nc bnc" id="L405" title="All 2 branches missed.">					&amp;&amp; this.namespace.equals(other.getNamespace())</span>
-<span class="nc bnc" id="L406" title="All 2 branches missed.">					&amp;&amp; this.nameAndDescriptor.equals(other.getNameAndDescriptor());</span>
+<span class="nc bnc" id="L413" title="All 2 branches missed.">		if (object instanceof Operation) {</span>
+<span class="nc" id="L414">			final Operation other = (Operation) object;</span>
+<span class="nc bnc" id="L415" title="All 2 branches missed.">			return this.name.equals(other.getName())</span>
+<span class="nc bnc" id="L416" title="All 2 branches missed.">					&amp;&amp; this.className.equals(other.getClassName())</span>
+<span class="nc bnc" id="L417" title="All 2 branches missed.">					&amp;&amp; this.namespace.equals(other.getNamespace())</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">					&amp;&amp; this.nameAndDescriptor.equals(other.getNameAndDescriptor());</span>
 
 		}
-<span class="nc" id="L409">		return false;</span>
+<span class="nc" id="L421">		return false;</span>
 	}
 
 	/**
@@ -414,7 +426,7 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 * @return the isAbstract
 	 */
 	public boolean getIsAbstract() {
-<span class="fc" id="L417">		return isAbstract;</span>
+<span class="fc" id="L429">		return isAbstract;</span>
 	}
 
 	/**
@@ -423,15 +435,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the isAbstract to set
 	 */
 	public void setIsAbstract(final boolean newisAbstract) {
-<span class="fc" id="L426">		this.isAbstract = newisAbstract;</span>
-<span class="fc" id="L427">	}</span>
+<span class="fc" id="L438">		this.isAbstract = newisAbstract;</span>
+<span class="fc" id="L439">	}</span>
 
 	/**
 	 * Get the Operation::isStaticConstructor
 	 * @return the isStaticConstructor
 	 */
 	public boolean getIsStaticConstructor() {
-<span class="fc" id="L434">		return isStaticConstructor;</span>
+<span class="fc" id="L446">		return isStaticConstructor;</span>
 	}
 
 	/**
@@ -440,15 +452,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the isStaticConstructor to set
 	 */
 	public void setIsStaticConstructor(final boolean newisStaticConstructor) {
-<span class="fc" id="L443">		this.isStaticConstructor = newisStaticConstructor;</span>
-<span class="fc" id="L444">	}</span>
+<span class="fc" id="L455">		this.isStaticConstructor = newisStaticConstructor;</span>
+<span class="fc" id="L456">	}</span>
 
 	/**
 	 * Get the Operation::namespaceID
 	 * @return the namespaceID
 	 */
 	public NamespaceID getNamespaceID() {
-<span class="fc" id="L451">		return namespaceID;</span>
+<span class="fc" id="L463">		return namespaceID;</span>
 	}
 
 	/**
@@ -457,15 +469,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the namespaceID to set
 	 */
 	public void setNamespaceID(final NamespaceID newnamespaceID) {
-<span class="fc" id="L460">		this.namespaceID = newnamespaceID;</span>
-<span class="fc" id="L461">	}</span>
+<span class="fc" id="L472">		this.namespaceID = newnamespaceID;</span>
+<span class="fc" id="L473">	}</span>
 
 	/**
 	 * Get namespace
 	 * @return the namespace
 	 */
 	public String getNamespace() {
-<span class="fc" id="L468">		return namespace;</span>
+<span class="fc" id="L480">		return namespace;</span>
 	}
 
 	/**
@@ -474,15 +486,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the namespace to set
 	 */
 	public void setNamespace(final String newnamespace) {
-<span class="fc" id="L477">		this.namespace = newnamespace;</span>
-<span class="fc" id="L478">	}</span>
+<span class="fc" id="L489">		this.namespace = newnamespace;</span>
+<span class="fc" id="L490">	}</span>
 
 	/**
 	 * Get className
 	 * @return the className
 	 */
 	public String getClassName() {
-<span class="fc" id="L485">		return className;</span>
+<span class="fc" id="L497">		return className;</span>
 	}
 
 	/**
@@ -491,15 +503,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the className to set
 	 */
 	public void setClassName(final String newclassName) {
-<span class="fc" id="L494">		this.className = newclassName;</span>
-<span class="fc" id="L495">	}</span>
+<span class="fc" id="L506">		this.className = newclassName;</span>
+<span class="fc" id="L507">	}</span>
 
 	/**
 	 * Generate operation signature
 	 * @return Signature of the operation
 	 */
 	public String getSignature() {
-<span class="fc" id="L502">		return this.signature;</span>
+<span class="fc" id="L514">		return this.signature;</span>
 	}
 
 	/**
@@ -508,15 +520,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the signature to set
 	 */
 	public void setSignature(final String newsignature) {
-<span class="fc" id="L511">		this.signature = newsignature;</span>
-<span class="fc" id="L512">	}</span>
+<span class="fc" id="L523">		this.signature = newsignature;</span>
+<span class="fc" id="L524">	}</span>
 
 	/**
 	 * Get descriptor
 	 * @return the descriptor
 	 */
 	public String getDescriptor() {
-<span class="fc" id="L519">		return descriptor;</span>
+<span class="fc" id="L531">		return descriptor;</span>
 	}
 
 	/**
@@ -525,15 +537,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the descriptor to set
 	 */
 	public void setDescriptor(final String newdescriptor) {
-<span class="fc" id="L528">		this.descriptor = newdescriptor;</span>
-<span class="fc" id="L529">	}</span>
+<span class="fc" id="L540">		this.descriptor = newdescriptor;</span>
+<span class="fc" id="L541">	}</span>
 
 	/**
 	 * Get nameAndDescriptor
 	 * @return the nameAndDescriptor
 	 */
 	public String getNameAndDescriptor() {
-<span class="fc" id="L536">		return nameAndDescriptor;</span>
+<span class="fc" id="L548">		return nameAndDescriptor;</span>
 	}
 
 	/**
@@ -542,15 +554,15 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the nameAndDescriptor to set
 	 */
 	public void setNameAndDescriptor(final String newnameAndDescriptor) {
-<span class="fc" id="L545">		this.nameAndDescriptor = newnameAndDescriptor;</span>
-<span class="fc" id="L546">	}</span>
+<span class="fc" id="L557">		this.nameAndDescriptor = newnameAndDescriptor;</span>
+<span class="fc" id="L558">	}</span>
 
 	/**
 	 * Get annotations
 	 * @return List of operation's annotations
 	 */
 	public List&lt;Annotation&gt; getAnnotations() {
-<span class="fc" id="L553">		return annotations;</span>
+<span class="fc" id="L565">		return annotations;</span>
 	}
 
 	/**
@@ -559,8 +571,8 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the list of annotations to set
 	 */
 	public void setAnnotations(final List&lt;Annotation&gt; annotations) {
-<span class="fc" id="L562">		this.annotations = annotations;</span>
-<span class="fc" id="L563">	}</span>
+<span class="fc" id="L574">		this.annotations = annotations;</span>
+<span class="fc" id="L575">	}</span>
 
 	/**
 	 * Add an annotation to the operation
@@ -568,7 +580,7 @@ public final class Operation extends MgrObject&lt;OperationID&gt; {
 	 *            the annotation to add
 	 */
 	public void addAnnotation(final Annotation annotation) {
-<span class="nc" id="L571">		annotations.add(annotation);</span>
-<span class="nc" id="L572">	}</span>
+<span class="nc" id="L583">		annotations.add(annotation);</span>
+<span class="nc" id="L584">	}</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>

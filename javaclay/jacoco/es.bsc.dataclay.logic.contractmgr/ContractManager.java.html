@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import es.bsc.dataclay.util.structs.MemoryCache;
 import org.apache.commons.dbcp2.BasicDataSource;
 
 import es.bsc.dataclay.exceptions.dbhandler.DbObjectNotExistException;
@@ -31,8 +32,8 @@ import es.bsc.dataclay.util.management.AbstractManager;
 import es.bsc.dataclay.util.management.contractmgr.Contract;
 import es.bsc.dataclay.util.management.contractmgr.InterfaceInContract;
 import es.bsc.dataclay.util.management.contractmgr.OpImplementations;
-import es.bsc.dataclay.util.structs.LruCache;
 import es.bsc.dataclay.util.structs.Tuple;
+import es.bsc.dataclay.dbhandler.sql.sqlite.SQLiteDataSource;
 
 /**
  * This class is responsible to manage contracts: add, remove and modify.
@@ -44,29 +45,27 @@ public final class ContractManager extends AbstractManager {
 	private final ContractManagerDB contractDB;
 
 	/** Contract cache. */
-	private final LruCache&lt;ContractID, Contract&gt; contractCache;
+	private final MemoryCache&lt;ContractID, Contract&gt; contractCache;
 
 	/** Contract cache by account. */
-	private final LruCache&lt;AccountID, LinkedList&lt;Contract&gt;&gt; contractsOfAccountCache;
+	private final MemoryCache&lt;AccountID, LinkedList&lt;Contract&gt;&gt; contractsOfAccountCache;
 
 	/**
 	 * Instantiates an Contract Manager that uses the Backend configuration provided.
-	 * @param managerName
-	 *            Manager/service name.
 	 * @post Creates an Contract manager and hash initializes the backend.
 	 */
-	public ContractManager(final BasicDataSource dataSource) {
-<span class="fc" id="L59">		super(dataSource);</span>
+	public ContractManager(final SQLiteDataSource dataSource) {
+<span class="fc" id="L58">		super(dataSource);</span>
 
-<span class="fc" id="L61">		this.contractDB = new ContractManagerDB(dataSource);</span>
-<span class="fc" id="L62">		this.contractDB.createTables();</span>
+<span class="fc" id="L60">		this.contractDB = new ContractManagerDB(dataSource);</span>
+<span class="fc" id="L61">		this.contractDB.createTables();</span>
 
 		// Init cache
 		// this.lastContract = null;
-<span class="fc" id="L66">		this.contractCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CONTRACT_MANAGER_CACHE.getIntValue());</span>
-<span class="fc" id="L67">		this.contractsOfAccountCache = new LruCache&lt;&gt;(Configuration.Flags.MAX_ENTRIES_CONTRACT_MANAGER_CACHE.getIntValue());</span>
+<span class="fc" id="L65">		this.contractCache = new MemoryCache&lt;&gt;();</span>
+<span class="fc" id="L66">		this.contractsOfAccountCache = new MemoryCache&lt;&gt;();</span>
 
-<span class="fc" id="L69">	}</span>
+<span class="fc" id="L68">	}</span>
 
 	/**
 	 * Method that creates a new private contract with the provided account. The contract contains a set of Interfaces with
@@ -81,21 +80,21 @@ public final class ContractManager extends AbstractManager {
 	public ContractID newPrivateContract(final Contract newContract) throws ParseException {
 
 		// Register it into the database
-<span class="fc" id="L84">		contractDB.store(newContract);</span>
+<span class="fc" id="L83">		contractDB.store(newContract);</span>
 
 		// Update cache
-<span class="fc" id="L87">		final ContractID contractID = newContract.getDataClayID();</span>
-<span class="fc" id="L88">		this.contractCache.put(contractID, newContract);</span>
+<span class="fc" id="L86">		final ContractID contractID = newContract.getDataClayID();</span>
+<span class="fc" id="L87">		this.contractCache.put(contractID, newContract);</span>
 
-<span class="fc bfc" id="L90" title="All 2 branches covered.">		for (final AccountID accountIDofTheApplicant : newContract.getApplicantsAccountsIDs()) {</span>
-<span class="pc bpc" id="L91" title="1 of 2 branches missed.">			if (!this.contractsOfAccountCache.containsKey(accountIDofTheApplicant)) {</span>
-<span class="fc" id="L92">				this.contractsOfAccountCache.put(accountIDofTheApplicant, new LinkedList&lt;Contract&gt;());</span>
+<span class="fc bfc" id="L89" title="All 2 branches covered.">		for (final AccountID accountIDofTheApplicant : newContract.getApplicantsAccountsIDs()) {</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">			if (!this.contractsOfAccountCache.containsKey(accountIDofTheApplicant)) {</span>
+<span class="fc" id="L91">				this.contractsOfAccountCache.put(accountIDofTheApplicant, new LinkedList&lt;Contract&gt;());</span>
 			}
-<span class="fc" id="L94">			this.contractsOfAccountCache.get(accountIDofTheApplicant).add(newContract);</span>
-<span class="fc" id="L95">		}</span>
+<span class="fc" id="L93">			this.contractsOfAccountCache.get(accountIDofTheApplicant).add(newContract);</span>
+<span class="fc" id="L94">		}</span>
 		// this.lastContract = newContract;
 
-<span class="fc" id="L98">		return contractID;</span>
+<span class="fc" id="L97">		return contractID;</span>
 	}
 
 	/**
@@ -111,14 +110,14 @@ public final class ContractManager extends AbstractManager {
 	public ContractID newPublicContract(final Contract newContract) throws ParseException {
 
 		// Register it into the database
-<span class="fc" id="L114">		contractDB.store(newContract);</span>
+<span class="fc" id="L113">		contractDB.store(newContract);</span>
 
 		// Update cache
-<span class="fc" id="L117">		final ContractID result = newContract.getDataClayID();</span>
-<span class="fc" id="L118">		this.contractCache.put(result, newContract);</span>
+<span class="fc" id="L116">		final ContractID result = newContract.getDataClayID();</span>
+<span class="fc" id="L117">		this.contractCache.put(result, newContract);</span>
 		// this.lastContract = newContract;
 
-<span class="fc" id="L121">		return result;</span>
+<span class="fc" id="L120">		return result;</span>
 	}
 
 	/**
@@ -136,55 +135,55 @@ public final class ContractManager extends AbstractManager {
 	 */
 	public void registerToPublicContract(final AccountID applicantAccountID, final ContractID contractID) {
 		// look for the contract in cache
-<span class="fc" id="L139">		Contract contract = contractCache.get(contractID);</span>
-<span class="fc bfc" id="L140" title="All 2 branches covered.">		if (contract == null) {</span>
+<span class="fc" id="L138">		Contract contract = contractCache.get(contractID);</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">		if (contract == null) {</span>
 			// query the contract
-<span class="fc" id="L142">			contract = contractDB.getContractByID(contractID);</span>
+<span class="fc" id="L141">			contract = contractDB.getContractByID(contractID);</span>
 		}
 		// check contract exists
-<span class="fc bfc" id="L145" title="All 2 branches covered.">		if (contract == null) {</span>
-<span class="fc" id="L146">			throw new ContractNotExistException(contractID);</span>
+<span class="fc bfc" id="L144" title="All 2 branches covered.">		if (contract == null) {</span>
+<span class="fc" id="L145">			throw new ContractNotExistException(contractID);</span>
 		} else {
 			// check it is public
-<span class="fc bfc" id="L149" title="All 2 branches covered.">			if (!contract.isPublicAvailable()) {</span>
-<span class="fc" id="L150">				throw new ContractNotPublicException(contractID);</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">			if (!contract.isPublicAvailable()) {</span>
+<span class="fc" id="L149">				throw new ContractNotPublicException(contractID);</span>
 			} else {
 				// check it is active
-<span class="pc bpc" id="L153" title="1 of 2 branches missed.">				if (!contract.isActive()) {</span>
-<span class="nc" id="L154">					throw new ContractNotActiveException(contractID);</span>
+<span class="pc bpc" id="L152" title="1 of 2 branches missed.">				if (!contract.isActive()) {</span>
+<span class="nc" id="L153">					throw new ContractNotActiveException(contractID);</span>
 				} else {
 					// get its applicants
-<span class="fc" id="L157">					final Set&lt;AccountID&gt; applicantsAccountsIDs = contract.getApplicantsAccountsIDs();</span>
+<span class="fc" id="L156">					final Set&lt;AccountID&gt; applicantsAccountsIDs = contract.getApplicantsAccountsIDs();</span>
 
 					// check applicant is not already registered
-<span class="fc bfc" id="L160" title="All 2 branches covered.">					if (!applicantsAccountsIDs.add(applicantAccountID)) {</span>
-<span class="fc" id="L161">						throw new AccountAlreadyRegisteredInContract(applicantAccountID, contractID);</span>
+<span class="fc bfc" id="L159" title="All 2 branches covered.">					if (!applicantsAccountsIDs.add(applicantAccountID)) {</span>
+<span class="fc" id="L160">						throw new AccountAlreadyRegisteredInContract(applicantAccountID, contractID);</span>
 					} else {
 						// update the modified part of the contract
-<span class="fc" id="L164">						contract.setApplicantsAccountsIDs(applicantsAccountsIDs);</span>
+<span class="fc" id="L163">						contract.setApplicantsAccountsIDs(applicantsAccountsIDs);</span>
 						try {
-<span class="fc" id="L166">							contractDB.updateContractsAddApplicant(contractID, applicantAccountID);</span>
+<span class="fc" id="L165">							contractDB.updateContractsAddApplicant(contractID, applicantAccountID);</span>
 
 							// Update cache
-<span class="fc" id="L169">							final ContractID aux = contractID;</span>
-<span class="fc" id="L170">							this.contractCache.put(aux, contract);</span>
-<span class="fc bfc" id="L171" title="All 2 branches covered.">							for (final AccountID accountID : contract.getApplicantsAccountsIDs()) {</span>
-<span class="pc bpc" id="L172" title="1 of 2 branches missed.">								if (!contractsOfAccountCache.containsKey(accountID)) {</span>
-<span class="fc" id="L173">									contractsOfAccountCache.put(accountID, new LinkedList&lt;Contract&gt;());</span>
+<span class="fc" id="L168">							final ContractID aux = contractID;</span>
+<span class="fc" id="L169">							this.contractCache.put(aux, contract);</span>
+<span class="fc bfc" id="L170" title="All 2 branches covered.">							for (final AccountID accountID : contract.getApplicantsAccountsIDs()) {</span>
+<span class="pc bpc" id="L171" title="1 of 2 branches missed.">								if (!contractsOfAccountCache.containsKey(accountID)) {</span>
+<span class="fc" id="L172">									contractsOfAccountCache.put(accountID, new LinkedList&lt;Contract&gt;());</span>
 								}
-<span class="fc" id="L175">								contractsOfAccountCache.get(accountID).add(contract);</span>
-<span class="fc" id="L176">							}</span>
+<span class="fc" id="L174">								contractsOfAccountCache.get(accountID).add(contract);</span>
+<span class="fc" id="L175">							}</span>
 							// this.lastContract = contract;
 
-<span class="nc" id="L179">						} catch (final DbObjectNotExistException e) {</span>
-<span class="nc" id="L180">							throw new ContractNotExistException(contractID);</span>
+<span class="nc" id="L178">						} catch (final DbObjectNotExistException e) {</span>
+<span class="nc" id="L179">							throw new ContractNotExistException(contractID);</span>
 
-<span class="fc" id="L182">						}</span>
+<span class="fc" id="L181">						}</span>
 					}
 				}
 			}
 		}
-<span class="fc" id="L187">	}</span>
+<span class="fc" id="L186">	}</span>
 
 	// ============= OPERATIONS FOR CHECKING ================= //
 
@@ -198,24 +197,24 @@ public final class ContractManager extends AbstractManager {
 	 *             ContractNotActiveException: if some contract is not active.
 	 */
 	public void checkActiveContracts(final HashSet&lt;ContractID&gt; modelContracts) {
-<span class="nc bnc" id="L201" title="All 2 branches missed.">		for (final ContractID contractID : modelContracts) {</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">		for (final ContractID contractID : modelContracts) {</span>
 			// look for the contract in cache
-<span class="nc" id="L203">			Contract contract = contractCache.get(contractID);</span>
-<span class="nc bnc" id="L204" title="All 2 branches missed.">			if (contract == null) {</span>
+<span class="nc" id="L202">			Contract contract = contractCache.get(contractID);</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">			if (contract == null) {</span>
 				// query the contract
-<span class="nc" id="L206">				contract = contractDB.getContractByID(contractID);</span>
+<span class="nc" id="L205">				contract = contractDB.getContractByID(contractID);</span>
 			}
 			// check contract exists
-<span class="nc bnc" id="L209" title="All 2 branches missed.">			if (contract == null) {</span>
-<span class="nc" id="L210">				throw new ContractNotExistException(contractID);</span>
+<span class="nc bnc" id="L208" title="All 2 branches missed.">			if (contract == null) {</span>
+<span class="nc" id="L209">				throw new ContractNotExistException(contractID);</span>
 			} else {
 				// check it is active
-<span class="nc bnc" id="L213" title="All 2 branches missed.">				if (!contract.isActive()) {</span>
-<span class="nc" id="L214">					throw new ContractNotActiveException(contractID);</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">				if (!contract.isActive()) {</span>
+<span class="nc" id="L213">					throw new ContractNotActiveException(contractID);</span>
 				}
 			}
-<span class="nc" id="L217">		}</span>
-<span class="nc" id="L218">	}</span>
+<span class="nc" id="L216">		}</span>
+<span class="nc" id="L217">	}</span>
 
 	/**
 	 * This method checks if there is no contract associated with the provided namespace
@@ -227,8 +226,8 @@ public final class ContractManager extends AbstractManager {
 	 */
 	public boolean checkNamespaceHasNoContracts(final NamespaceID namespaceID) {
 		// query the contract by using a prototype
-<span class="fc" id="L230">		final List&lt;Contract&gt; contractsInNamespace = contractDB.getContractsOfNamespace(namespaceID);</span>
-<span class="fc" id="L231">		return contractsInNamespace.isEmpty();</span>
+<span class="fc" id="L229">		final List&lt;Contract&gt; contractsInNamespace = contractDB.getContractsOfNamespace(namespaceID);</span>
+<span class="fc" id="L230">		return contractsInNamespace.isEmpty();</span>
 	}
 
 	/**
@@ -242,21 +241,21 @@ public final class ContractManager extends AbstractManager {
 	public boolean checkInterfaceHasNoContracts(final InterfaceID interfaceID) {
 
 		// Query contracts that access the provided interface
-<span class="fc" id="L245">		final List&lt;Contract&gt; contracts = contractDB.getContractsContainingInterface(interfaceID);</span>
+<span class="fc" id="L244">		final List&lt;Contract&gt; contracts = contractDB.getContractsContainingInterface(interfaceID);</span>
 
 		// Update cache
-<span class="fc bfc" id="L248" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
-<span class="fc" id="L249">			final ContractID contractID = contract.getDataClayID();</span>
-<span class="fc" id="L250">			this.contractCache.put(contractID, contract);</span>
-<span class="fc bfc" id="L251" title="All 2 branches covered.">			for (final AccountID accountID : contract.getApplicantsAccountsIDs()) {</span>
-<span class="pc bpc" id="L252" title="1 of 2 branches missed.">				if (!contractsOfAccountCache.containsKey(accountID)) {</span>
-<span class="fc" id="L253">					contractsOfAccountCache.put(accountID, new LinkedList&lt;Contract&gt;());</span>
+<span class="fc bfc" id="L247" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
+<span class="fc" id="L248">			final ContractID contractID = contract.getDataClayID();</span>
+<span class="fc" id="L249">			this.contractCache.put(contractID, contract);</span>
+<span class="fc bfc" id="L250" title="All 2 branches covered.">			for (final AccountID accountID : contract.getApplicantsAccountsIDs()) {</span>
+<span class="pc bpc" id="L251" title="1 of 2 branches missed.">				if (!contractsOfAccountCache.containsKey(accountID)) {</span>
+<span class="fc" id="L252">					contractsOfAccountCache.put(accountID, new LinkedList&lt;Contract&gt;());</span>
 				}
-<span class="fc" id="L255">				contractsOfAccountCache.get(accountID).add(contract);</span>
-<span class="fc" id="L256">			}</span>
-<span class="fc" id="L257">		}</span>
+<span class="fc" id="L254">				contractsOfAccountCache.get(accountID).add(contract);</span>
+<span class="fc" id="L255">			}</span>
+<span class="fc" id="L256">		}</span>
 
-<span class="fc" id="L259">		return contracts.isEmpty();</span>
+<span class="fc" id="L258">		return contracts.isEmpty();</span>
 	}
 
 	/**
@@ -269,16 +268,16 @@ public final class ContractManager extends AbstractManager {
 	 */
 	public boolean checkImplementationHasNoContracts(final ImplementationID implementationID) {
 		// Init the prototype for implementationID as local implementation
-<span class="fc" id="L272">		final OpImplementations opImpls = new OpImplementations();</span>
-<span class="fc" id="L273">		opImpls.setLocalImplementationID(implementationID);</span>
+<span class="fc" id="L271">		final OpImplementations opImpls = new OpImplementations();</span>
+<span class="fc" id="L272">		opImpls.setLocalImplementationID(implementationID);</span>
 
 		// Query the interfacesInContract that has some operation with the implementationID as local implementation
-<span class="fc" id="L276">		final List&lt;OpImplementations&gt; opImplementations = contractDB.getOpImplementationsWithImpl(implementationID);</span>
-<span class="fc bfc" id="L277" title="All 2 branches covered.">		if (!opImplementations.isEmpty()) {</span>
-<span class="fc" id="L278">			return false;</span>
+<span class="fc" id="L275">		final List&lt;OpImplementations&gt; opImplementations = contractDB.getOpImplementationsWithImpl(implementationID);</span>
+<span class="fc bfc" id="L276" title="All 2 branches covered.">		if (!opImplementations.isEmpty()) {</span>
+<span class="fc" id="L277">			return false;</span>
 		}
 
-<span class="fc" id="L281">		return true;</span>
+<span class="fc" id="L280">		return true;</span>
 	}
 
 	/**
@@ -294,22 +293,22 @@ public final class ContractManager extends AbstractManager {
 	public boolean checkImplementationHasContractForAccount(
 			final ImplementationID implementationID, final AccountID accountID) {
 
-<span class="nc" id="L297">		final Map&lt;ContractID, Contract&gt; contracts = this.getInfoOfAllActiveContractsForAccount(accountID);</span>
+<span class="nc" id="L296">		final Map&lt;ContractID, Contract&gt; contracts = this.getInfoOfAllActiveContractsForAccount(accountID);</span>
 
-<span class="nc bnc" id="L299" title="All 2 branches missed.">		for (final Contract contract : contracts.values()) {</span>
-<span class="nc bnc" id="L300" title="All 2 branches missed.">			for (final InterfaceInContract ifaceInCon : contract.getInterfacesInContract().values()) {</span>
-<span class="nc bnc" id="L301" title="All 2 branches missed.">				for (final OpImplementations opImpl : ifaceInCon.getAccessibleImplementations().values()) {</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">		for (final Contract contract : contracts.values()) {</span>
+<span class="nc bnc" id="L299" title="All 2 branches missed.">			for (final InterfaceInContract ifaceInCon : contract.getInterfacesInContract().values()) {</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">				for (final OpImplementations opImpl : ifaceInCon.getAccessibleImplementations().values()) {</span>
 
-<span class="nc bnc" id="L303" title="All 2 branches missed.">					if (opImpl.getLocalImplementationID().equals(implementationID)) {</span>
-<span class="nc" id="L304">						return true;</span>
-<span class="nc bnc" id="L305" title="All 2 branches missed.">					} else if (opImpl.getRemoteImplementationID().equals(implementationID)) {</span>
-<span class="nc" id="L306">						return true;</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">					if (opImpl.getLocalImplementationID().equals(implementationID)) {</span>
+<span class="nc" id="L303">						return true;</span>
+<span class="nc bnc" id="L304" title="All 2 branches missed.">					} else if (opImpl.getRemoteImplementationID().equals(implementationID)) {</span>
+<span class="nc" id="L305">						return true;</span>
 					}
-<span class="nc" id="L308">				}</span>
-<span class="nc" id="L309">			}</span>
-<span class="nc" id="L310">		}</span>
+<span class="nc" id="L307">				}</span>
+<span class="nc" id="L308">			}</span>
+<span class="nc" id="L309">		}</span>
 
-<span class="nc" id="L312">		return true;</span>
+<span class="nc" id="L311">		return true;</span>
 	}
 
 	/**
@@ -328,20 +327,20 @@ public final class ContractManager extends AbstractManager {
 	public boolean checkInterfacesInActiveContractsForAccount(final AccountID accountID,
 			final Map&lt;ContractID, InterfaceID&gt; interfacesInContracts) {
 
-<span class="fc bfc" id="L331" title="All 2 branches covered.">		for (final Entry&lt;ContractID, InterfaceID&gt; curEntry : interfacesInContracts.entrySet()) {</span>
-<span class="fc" id="L332">			final ContractID contractID = curEntry.getKey();</span>
-<span class="fc" id="L333">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
+<span class="fc bfc" id="L330" title="All 2 branches covered.">		for (final Entry&lt;ContractID, InterfaceID&gt; curEntry : interfacesInContracts.entrySet()) {</span>
+<span class="fc" id="L331">			final ContractID contractID = curEntry.getKey();</span>
+<span class="fc" id="L332">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
 
-<span class="fc" id="L335">			final InterfaceID ifaceID = curEntry.getValue();</span>
+<span class="fc" id="L334">			final InterfaceID ifaceID = curEntry.getValue();</span>
 			// check the account id is associated with the contract
 			// &amp;&amp; the contract is active &amp;&amp; it contains the corresponding interface
-<span class="pc bpc" id="L338" title="1 of 4 branches missed.">			if (!(contract.getApplicantsAccountsIDs().contains(accountID) &amp;&amp; contract.isActive() &amp;&amp; contract</span>
-<span class="pc bpc" id="L339" title="1 of 2 branches missed.">					.getInterfacesInContract().containsKey(ifaceID))) {</span>
-<span class="fc" id="L340">				return false;</span>
+<span class="pc bpc" id="L337" title="1 of 4 branches missed.">			if (!(contract.getApplicantsAccountsIDs().contains(accountID) &amp;&amp; contract.isActive() &amp;&amp; contract</span>
+<span class="pc bpc" id="L338" title="1 of 2 branches missed.">					.getInterfacesInContract().containsKey(ifaceID))) {</span>
+<span class="fc" id="L339">				return false;</span>
 			}
 
-<span class="fc" id="L343">		}</span>
-<span class="fc" id="L344">		return true;</span>
+<span class="fc" id="L342">		}</span>
+<span class="fc" id="L343">		return true;</span>
 	}
 
 	/**
@@ -358,30 +357,30 @@ public final class ContractManager extends AbstractManager {
 	public Map&lt;ContractID, Contract&gt; checkInterfacesInActiveContractsForAccountAndReturnContractsInfo(
 			final AccountID accountID, final Map&lt;ContractID, InterfaceID&gt; interfacesInContract) {
 
-<span class="nc" id="L361">		final HashMap&lt;ContractID, Contract&gt; result = new HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L362" title="All 2 branches missed.">		for (final Entry&lt;ContractID, InterfaceID&gt; curEntry : interfacesInContract.entrySet()) {</span>
-<span class="nc" id="L363">			final ContractID contractID = curEntry.getKey();</span>
-<span class="nc" id="L364">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
+<span class="nc" id="L360">		final HashMap&lt;ContractID, Contract&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L361" title="All 2 branches missed.">		for (final Entry&lt;ContractID, InterfaceID&gt; curEntry : interfacesInContract.entrySet()) {</span>
+<span class="nc" id="L362">			final ContractID contractID = curEntry.getKey();</span>
+<span class="nc" id="L363">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
 
-<span class="nc" id="L366">			final InterfaceID interfaceID = curEntry.getValue();</span>
+<span class="nc" id="L365">			final InterfaceID interfaceID = curEntry.getValue();</span>
 
 			// check the account id is associated with the contract
-<span class="nc bnc" id="L369" title="All 2 branches missed.">			if (!contract.getApplicantsAccountsIDs().contains(accountID)) {</span>
-<span class="nc" id="L370">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
+<span class="nc bnc" id="L368" title="All 2 branches missed.">			if (!contract.getApplicantsAccountsIDs().contains(accountID)) {</span>
+<span class="nc" id="L369">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
 			}
 			// check the contract is active
-<span class="nc bnc" id="L373" title="All 2 branches missed.">			if (!contract.isActive()) {</span>
-<span class="nc" id="L374">				throw new ContractNotActiveException(contractID);</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">			if (!contract.isActive()) {</span>
+<span class="nc" id="L373">				throw new ContractNotActiveException(contractID);</span>
 			}
 			// check it contains the corresponding interface
-<span class="nc bnc" id="L377" title="All 2 branches missed.">			if (!contract.getInterfacesInContract().containsKey(interfaceID)) {</span>
-<span class="nc" id="L378">				throw new InterfaceNotInContractException(interfaceID, contractID);</span>
+<span class="nc bnc" id="L376" title="All 2 branches missed.">			if (!contract.getInterfacesInContract().containsKey(interfaceID)) {</span>
+<span class="nc" id="L377">				throw new InterfaceNotInContractException(interfaceID, contractID);</span>
 			}
 
 			// Update result
-<span class="nc" id="L382">			result.put(contractID, contract);</span>
-<span class="nc" id="L383">		}</span>
-<span class="nc" id="L384">		return result;</span>
+<span class="nc" id="L381">			result.put(contractID, contract);</span>
+<span class="nc" id="L382">		}</span>
+<span class="nc" id="L383">		return result;</span>
 	}
 
 	// =============== OPS FOR RETRIEVING INFO ============== //
@@ -396,8 +395,8 @@ public final class ContractManager extends AbstractManager {
 	 *             ContractNotExistException: if the contract does not exist
 	 */
 	public Contract getContractInfo(final ContractID contractID) {
-<span class="fc" id="L399">		final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
-<span class="fc" id="L400">		return contract;</span>
+<span class="fc" id="L398">		final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
+<span class="fc" id="L399">		return contract;</span>
 	}
 
 	/**
@@ -416,19 +415,19 @@ public final class ContractManager extends AbstractManager {
 	public LinkedHashMap&lt;ContractID, Contract&gt; getInfoOfSomeActiveContractsForAccount(
 			final List&lt;ContractID&gt; contractsIDs, final AccountID accountID) {
 
-<span class="fc" id="L419">		final LinkedHashMap&lt;ContractID, Contract&gt; result = new LinkedHashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L420" title="All 2 branches covered.">		for (final ContractID contractID : contractsIDs) {</span>
-<span class="fc" id="L421">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
+<span class="fc" id="L418">		final LinkedHashMap&lt;ContractID, Contract&gt; result = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L419" title="All 2 branches covered.">		for (final ContractID contractID : contractsIDs) {</span>
+<span class="fc" id="L420">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
 
-<span class="fc bfc" id="L423" title="All 2 branches covered.">			if (!contract.getApplicantsAccountsIDs().contains(accountID)) {</span>
-<span class="fc" id="L424">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
+<span class="fc bfc" id="L422" title="All 2 branches covered.">			if (!contract.getApplicantsAccountsIDs().contains(accountID)) {</span>
+<span class="fc" id="L423">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
 			}
-<span class="fc bfc" id="L426" title="All 2 branches covered.">			if (!contract.isActive()) {</span>
-<span class="fc" id="L427">				throw new ContractNotActiveException(contractID);</span>
+<span class="fc bfc" id="L425" title="All 2 branches covered.">			if (!contract.isActive()) {</span>
+<span class="fc" id="L426">				throw new ContractNotActiveException(contractID);</span>
 			}
-<span class="fc" id="L429">			result.put(contractID, contract);</span>
-<span class="fc" id="L430">		}</span>
-<span class="fc" id="L431">		return result;</span>
+<span class="fc" id="L428">			result.put(contractID, contract);</span>
+<span class="fc" id="L429">		}</span>
+<span class="fc" id="L430">		return result;</span>
 	}
 
 	/**
@@ -442,22 +441,22 @@ public final class ContractManager extends AbstractManager {
 	public Map&lt;ContractID, Contract&gt; getInfoOfAllActiveContractsForAccount(final AccountID accountID) {
 		// Check contracts in cache
 		final List&lt;Contract&gt; contracts;
-<span class="nc bnc" id="L445" title="All 2 branches missed.">		if (contractsOfAccountCache.containsKey(accountID)) {</span>
-<span class="nc" id="L446">			contracts = contractsOfAccountCache.get(accountID);</span>
+<span class="nc bnc" id="L444" title="All 2 branches missed.">		if (contractsOfAccountCache.containsKey(accountID)) {</span>
+<span class="nc" id="L445">			contracts = contractsOfAccountCache.get(accountID);</span>
 		} else {
-<span class="nc" id="L448">			contracts = contractDB.getContractsWithApplicant(accountID);</span>
-<span class="nc" id="L449">			contractsOfAccountCache.put(accountID, new LinkedList&lt;&gt;(contracts));</span>
+<span class="nc" id="L447">			contracts = contractDB.getContractsWithApplicant(accountID);</span>
+<span class="nc" id="L448">			contractsOfAccountCache.put(accountID, new LinkedList&lt;&gt;(contracts));</span>
 		}
 
 		// Update result
-<span class="nc" id="L453">		final HashMap&lt;ContractID, Contract&gt; result = new HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L454" title="All 2 branches missed.">		for (final Contract contract : contracts) {</span>
-<span class="nc" id="L455">			final ContractID contractID = contract.getDataClayID();</span>
-<span class="nc bnc" id="L456" title="All 2 branches missed.">			if (contract.isActive()) {</span>
-<span class="nc" id="L457">				result.put(contractID, contract);</span>
+<span class="nc" id="L452">		final HashMap&lt;ContractID, Contract&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L453" title="All 2 branches missed.">		for (final Contract contract : contracts) {</span>
+<span class="nc" id="L454">			final ContractID contractID = contract.getDataClayID();</span>
+<span class="nc bnc" id="L455" title="All 2 branches missed.">			if (contract.isActive()) {</span>
+<span class="nc" id="L456">				result.put(contractID, contract);</span>
 			}
-<span class="nc" id="L459">		}</span>
-<span class="nc" id="L460">		return result;</span>
+<span class="nc" id="L458">		}</span>
+<span class="nc" id="L459">		return result;</span>
 	}
 
 	/**
@@ -469,13 +468,13 @@ public final class ContractManager extends AbstractManager {
 	 *             if some exception occurs
 	 */
 	public Map&lt;ContractID, Contract&gt; getContractIDsOfProvider(final NamespaceID namespaceIDofProvider) {
-<span class="fc" id="L472">		final List&lt;Contract&gt; contracts = contractDB.getContractsOfNamespace(namespaceIDofProvider);</span>
-<span class="fc" id="L473">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L474" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
-<span class="fc" id="L475">			finalContracts.put(contract.getDataClayID(), contract);</span>
-<span class="fc" id="L476">		}</span>
+<span class="fc" id="L471">		final List&lt;Contract&gt; contracts = contractDB.getContractsOfNamespace(namespaceIDofProvider);</span>
+<span class="fc" id="L472">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L473" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
+<span class="fc" id="L474">			finalContracts.put(contract.getDataClayID(), contract);</span>
+<span class="fc" id="L475">		}</span>
 
-<span class="fc" id="L478">		return finalContracts;</span>
+<span class="fc" id="L477">		return finalContracts;</span>
 	}
 
 	/**
@@ -487,14 +486,14 @@ public final class ContractManager extends AbstractManager {
 	 *             if some exception occurs
 	 */
 	public Map&lt;ContractID, Contract&gt; getPublicContractIDsOfProvider(final NamespaceID namespaceIDofProvider) {
-<span class="nc" id="L490">		final List&lt;Contract&gt; contracts = contractDB.getContractsOfNamespace(namespaceIDofProvider);</span>
-<span class="nc" id="L491">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L492" title="All 2 branches missed.">		for (final Contract contract : contracts) {</span>
-<span class="nc bnc" id="L493" title="All 2 branches missed.">			if (contract.isPublicAvailable()) {</span>
-<span class="nc" id="L494">				finalContracts.put(contract.getDataClayID(), contract);</span>
+<span class="nc" id="L489">		final List&lt;Contract&gt; contracts = contractDB.getContractsOfNamespace(namespaceIDofProvider);</span>
+<span class="nc" id="L490">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L491" title="All 2 branches missed.">		for (final Contract contract : contracts) {</span>
+<span class="nc bnc" id="L492" title="All 2 branches missed.">			if (contract.isPublicAvailable()) {</span>
+<span class="nc" id="L493">				finalContracts.put(contract.getDataClayID(), contract);</span>
 			}
-<span class="nc" id="L496">		}</span>
-<span class="nc" id="L497">		return finalContracts;</span>
+<span class="nc" id="L495">		}</span>
+<span class="nc" id="L496">		return finalContracts;</span>
 	}
 
 	/**
@@ -508,19 +507,19 @@ public final class ContractManager extends AbstractManager {
 	public Map&lt;ContractID, Contract&gt; getContractIDsOfApplicant(final AccountID applicantAccountID) {
 
 		final List&lt;Contract&gt; contracts;
-<span class="pc bpc" id="L511" title="1 of 2 branches missed.">		if (contractsOfAccountCache.containsKey(applicantAccountID)) {</span>
-<span class="nc" id="L512">			contracts = contractsOfAccountCache.get(applicantAccountID);</span>
+<span class="pc bpc" id="L510" title="1 of 2 branches missed.">		if (contractsOfAccountCache.containsKey(applicantAccountID)) {</span>
+<span class="nc" id="L511">			contracts = contractsOfAccountCache.get(applicantAccountID);</span>
 		} else {
-<span class="fc" id="L514">			contracts = contractDB.getContractsWithApplicant(applicantAccountID);</span>
+<span class="fc" id="L513">			contracts = contractDB.getContractsWithApplicant(applicantAccountID);</span>
 		}
 
-<span class="fc" id="L517">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L518" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
+<span class="fc" id="L516">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L517" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
 
-<span class="fc" id="L520">			finalContracts.put(contract.getDataClayID(), contract);</span>
-<span class="fc" id="L521">		}</span>
+<span class="fc" id="L519">			finalContracts.put(contract.getDataClayID(), contract);</span>
+<span class="fc" id="L520">		}</span>
 
-<span class="fc" id="L523">		return finalContracts;</span>
+<span class="fc" id="L522">		return finalContracts;</span>
 	}
 
 	/**
@@ -533,14 +532,14 @@ public final class ContractManager extends AbstractManager {
 	 */
 	public Map&lt;ContractID, Contract&gt; getContractIDsOfProvider(final AccountID providerAccountID) {
 
-<span class="nc" id="L536">		final List&lt;Contract&gt; contracts = contractDB.getContractsWithProvider(providerAccountID);</span>
+<span class="nc" id="L535">		final List&lt;Contract&gt; contracts = contractDB.getContractsWithProvider(providerAccountID);</span>
 
-<span class="nc" id="L538">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
-<span class="nc bnc" id="L539" title="All 2 branches missed.">		for (final Contract contract : contracts) {</span>
-<span class="nc" id="L540">			finalContracts.put(contract.getDataClayID(), contract);</span>
-<span class="nc" id="L541">		}</span>
+<span class="nc" id="L537">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
+<span class="nc bnc" id="L538" title="All 2 branches missed.">		for (final Contract contract : contracts) {</span>
+<span class="nc" id="L539">			finalContracts.put(contract.getDataClayID(), contract);</span>
+<span class="nc" id="L540">		}</span>
 
-<span class="nc" id="L543">		return finalContracts;</span>
+<span class="nc" id="L542">		return finalContracts;</span>
 	}
 
 	/**
@@ -556,13 +555,13 @@ public final class ContractManager extends AbstractManager {
 	public Map&lt;ContractID, Contract&gt; getContractIDsOfApplicantWithProvider(final AccountID applicantAccountID,
 			final NamespaceID namespaceIDofProvider) {
 
-<span class="fc" id="L559">		final List&lt;Contract&gt; contracts = contractDB.getContractsWithApplicantAndNamespace(applicantAccountID, namespaceIDofProvider);</span>
-<span class="fc" id="L560">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L561" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
-<span class="fc" id="L562">			finalContracts.put(contract.getDataClayID(), contract);</span>
-<span class="fc" id="L563">		}</span>
+<span class="fc" id="L558">		final List&lt;Contract&gt; contracts = contractDB.getContractsWithApplicantAndNamespace(applicantAccountID, namespaceIDofProvider);</span>
+<span class="fc" id="L559">		final Map&lt;ContractID, Contract&gt; finalContracts = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L560" title="All 2 branches covered.">		for (final Contract contract : contracts) {</span>
+<span class="fc" id="L561">			finalContracts.put(contract.getDataClayID(), contract);</span>
+<span class="fc" id="L562">		}</span>
 
-<span class="fc" id="L565">		return finalContracts;</span>
+<span class="fc" id="L564">		return finalContracts;</span>
 	}
 
 	/**
@@ -584,22 +583,22 @@ public final class ContractManager extends AbstractManager {
 	public Map&lt;ContractID, InterfaceInContract&gt; getInfoOfSubsetOfInterfacesThatAreInActiveContractsForAccount(
 			final AccountID accountID, final Map&lt;ContractID, InterfaceID&gt; interfacesInContracts) {
 
-<span class="nc" id="L587">		final HashMap&lt;ContractID, InterfaceInContract&gt; result = new HashMap&lt;&gt;();</span>
+<span class="nc" id="L586">		final HashMap&lt;ContractID, InterfaceInContract&gt; result = new HashMap&lt;&gt;();</span>
 
-<span class="nc bnc" id="L589" title="All 2 branches missed.">		for (final Entry&lt;ContractID, InterfaceID&gt; curEntry : interfacesInContracts.entrySet()) {</span>
-<span class="nc" id="L590">			final ContractID contractID = curEntry.getKey();</span>
-<span class="nc" id="L591">			final InterfaceID interfaceID = curEntry.getValue();</span>
+<span class="nc bnc" id="L588" title="All 2 branches missed.">		for (final Entry&lt;ContractID, InterfaceID&gt; curEntry : interfacesInContracts.entrySet()) {</span>
+<span class="nc" id="L589">			final ContractID contractID = curEntry.getKey();</span>
+<span class="nc" id="L590">			final InterfaceID interfaceID = curEntry.getValue();</span>
 
-<span class="nc" id="L593">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
+<span class="nc" id="L592">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
 
 			// check the account id is associated with the contract
 			// &amp;&amp; the contract is active &amp;&amp; it contains the corresponding interface
-<span class="nc bnc" id="L597" title="All 4 branches missed.">			if (contract.getApplicantsAccountsIDs().contains(accountID) &amp;&amp; contract.isActive()</span>
-<span class="nc bnc" id="L598" title="All 2 branches missed.">					&amp;&amp; contract.getInterfacesInContract().containsKey(interfaceID)) {</span>
-<span class="nc" id="L599">				result.put(contractID, contract.getInterfacesInContract().get(interfaceID));</span>
+<span class="nc bnc" id="L596" title="All 4 branches missed.">			if (contract.getApplicantsAccountsIDs().contains(accountID) &amp;&amp; contract.isActive()</span>
+<span class="nc bnc" id="L597" title="All 2 branches missed.">					&amp;&amp; contract.getInterfacesInContract().containsKey(interfaceID)) {</span>
+<span class="nc" id="L598">				result.put(contractID, contract.getInterfacesInContract().get(interfaceID));</span>
 			}
-<span class="nc" id="L601">		}</span>
-<span class="nc" id="L602">		return result;</span>
+<span class="nc" id="L600">		}</span>
+<span class="nc" id="L601">		return result;</span>
 	}
 
 	/**
@@ -618,23 +617,23 @@ public final class ContractManager extends AbstractManager {
 	 */
 	public Map&lt;ContractID, Tuple&lt;Map&lt;InterfaceID, InterfaceInContract&gt;, Calendar&gt;&gt; //
 			getInfoOfMultipleContractsPerActiveContractsForAccount(final AccountID accountID, final Set&lt;ContractID&gt; contracts) {
-<span class="fc" id="L621">		final Map&lt;ContractID, Tuple&lt;Map&lt;InterfaceID, InterfaceInContract&gt;, Calendar&gt;&gt; result = //</span>
+<span class="fc" id="L620">		final Map&lt;ContractID, Tuple&lt;Map&lt;InterfaceID, InterfaceInContract&gt;, Calendar&gt;&gt; result = //</span>
 				new HashMap&lt;&gt;();
 
-<span class="fc bfc" id="L624" title="All 2 branches covered.">		for (final ContractID contractID : contracts) {</span>
-<span class="fc" id="L625">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
-<span class="pc bpc" id="L626" title="1 of 2 branches missed.">			if (!(contract.getApplicantsAccountsIDs().contains(accountID))) {</span>
-<span class="nc" id="L627">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
+<span class="fc bfc" id="L623" title="All 2 branches covered.">		for (final ContractID contractID : contracts) {</span>
+<span class="fc" id="L624">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
+<span class="pc bpc" id="L625" title="1 of 2 branches missed.">			if (!(contract.getApplicantsAccountsIDs().contains(accountID))) {</span>
+<span class="nc" id="L626">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
 			}
-<span class="pc bpc" id="L629" title="1 of 2 branches missed.">			if (!contract.isActive()) {</span>
-<span class="nc" id="L630">				throw new ContractNotActiveException(contractID);</span>
+<span class="pc bpc" id="L628" title="1 of 2 branches missed.">			if (!contract.isActive()) {</span>
+<span class="nc" id="L629">				throw new ContractNotActiveException(contractID);</span>
 			}
 
-<span class="fc" id="L633">			result.put(contractID,</span>
-<span class="fc" id="L634">					new Tuple&lt;&gt;(contract.getInterfacesInContract(),</span>
-<span class="fc" id="L635">							contract.getEndDate()));</span>
-<span class="fc" id="L636">		}</span>
-<span class="fc" id="L637">		return result;</span>
+<span class="fc" id="L632">			result.put(contractID,</span>
+<span class="fc" id="L633">					new Tuple&lt;&gt;(contract.getInterfacesInContract(),</span>
+<span class="fc" id="L634">							contract.getEndDate()));</span>
+<span class="fc" id="L635">		}</span>
+<span class="fc" id="L636">		return result;</span>
 	}
 
 	/**
@@ -653,33 +652,33 @@ public final class ContractManager extends AbstractManager {
 			getInfoOfMultipleInterfacesPerActiveContractsForAccount(final AccountID accountID,
 					final Map&lt;ContractID, HashSet&lt;InterfaceID&gt;&gt; interfacesInContracts) {
 
-<span class="fc" id="L656">		final Map&lt;ContractID, Tuple&lt;Map&lt;InterfaceID, InterfaceInContract&gt;, Calendar&gt;&gt; result = //</span>
+<span class="fc" id="L655">		final Map&lt;ContractID, Tuple&lt;Map&lt;InterfaceID, InterfaceInContract&gt;, Calendar&gt;&gt; result = //</span>
 				new HashMap&lt;&gt;();
 
-<span class="fc bfc" id="L659" title="All 2 branches covered.">		for (final Entry&lt;ContractID, HashSet&lt;InterfaceID&gt;&gt; curEntry : interfacesInContracts.entrySet()) {</span>
-<span class="fc" id="L660">			final ContractID contractID = curEntry.getKey();</span>
-<span class="fc" id="L661">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
-<span class="pc bpc" id="L662" title="1 of 2 branches missed.">			if (!(contract.getApplicantsAccountsIDs().contains(accountID))) {</span>
-<span class="nc" id="L663">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
+<span class="fc bfc" id="L658" title="All 2 branches covered.">		for (final Entry&lt;ContractID, HashSet&lt;InterfaceID&gt;&gt; curEntry : interfacesInContracts.entrySet()) {</span>
+<span class="fc" id="L659">			final ContractID contractID = curEntry.getKey();</span>
+<span class="fc" id="L660">			final Contract contract = getContractAndUpdateCacheIfNecessary(contractID);</span>
+<span class="pc bpc" id="L661" title="1 of 2 branches missed.">			if (!(contract.getApplicantsAccountsIDs().contains(accountID))) {</span>
+<span class="nc" id="L662">				throw new AccountNotRegisteredInContract(accountID, contractID);</span>
 			}
-<span class="pc bpc" id="L665" title="1 of 2 branches missed.">			if (!contract.isActive()) {</span>
-<span class="nc" id="L666">				throw new ContractNotActiveException(contractID);</span>
+<span class="pc bpc" id="L664" title="1 of 2 branches missed.">			if (!contract.isActive()) {</span>
+<span class="nc" id="L665">				throw new ContractNotActiveException(contractID);</span>
 			}
 
-<span class="fc" id="L669">			final HashMap&lt;InterfaceID, InterfaceInContract&gt; infoOfInterfacesInContract = new HashMap&lt;&gt;();</span>
-<span class="fc bfc" id="L670" title="All 2 branches covered.">			for (final InterfaceID interfaceID : curEntry.getValue()) {</span>
+<span class="fc" id="L668">			final HashMap&lt;InterfaceID, InterfaceInContract&gt; infoOfInterfacesInContract = new HashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L669" title="All 2 branches covered.">			for (final InterfaceID interfaceID : curEntry.getValue()) {</span>
 				// check the account id is associated with the contract
 				// &amp;&amp; the contract is active &amp;&amp; it contains the corresponding interface
 
-<span class="fc bfc" id="L674" title="All 2 branches covered.">				if (!contract.getInterfacesInContract().containsKey(interfaceID)) {</span>
-<span class="fc" id="L675">					throw new InterfaceNotInContractException(interfaceID, contractID);</span>
+<span class="fc bfc" id="L673" title="All 2 branches covered.">				if (!contract.getInterfacesInContract().containsKey(interfaceID)) {</span>
+<span class="fc" id="L674">					throw new InterfaceNotInContractException(interfaceID, contractID);</span>
 				}
-<span class="fc" id="L677">				infoOfInterfacesInContract.put(interfaceID, contract.getInterfacesInContract().get(interfaceID));</span>
-<span class="fc" id="L678">			}</span>
-<span class="fc" id="L679">			result.put(contractID, new Tuple&lt;Map&lt;InterfaceID, InterfaceInContract&gt;, Calendar&gt;(infoOfInterfacesInContract,</span>
-<span class="fc" id="L680">					contract.getEndDate()));</span>
-<span class="fc" id="L681">		}</span>
-<span class="fc" id="L682">		return result;</span>
+<span class="fc" id="L676">				infoOfInterfacesInContract.put(interfaceID, contract.getInterfacesInContract().get(interfaceID));</span>
+<span class="fc" id="L677">			}</span>
+<span class="fc" id="L678">			result.put(contractID, new Tuple&lt;Map&lt;InterfaceID, InterfaceInContract&gt;, Calendar&gt;(infoOfInterfacesInContract,</span>
+<span class="fc" id="L679">					contract.getEndDate()));</span>
+<span class="fc" id="L680">		}</span>
+<span class="fc" id="L681">		return result;</span>
 	}
 
 	// ============= OTHER =========== //
@@ -696,32 +695,32 @@ public final class ContractManager extends AbstractManager {
 		 * if (lastContract != null &amp;&amp; lastContract.getID().getId().equals(contractID.getId())) { return lastContract; }
 		 */
 
-<span class="fc" id="L699">		boolean isCached = true;</span>
-<span class="fc" id="L700">		Contract contract = contractCache.get(contractID);</span>
+<span class="fc" id="L698">		boolean isCached = true;</span>
+<span class="fc" id="L699">		Contract contract = contractCache.get(contractID);</span>
 
-<span class="pc bpc" id="L702" title="1 of 2 branches missed.">		if (contract == null) {</span>
-<span class="fc" id="L703">			isCached = false;</span>
+<span class="pc bpc" id="L701" title="1 of 2 branches missed.">		if (contract == null) {</span>
+<span class="fc" id="L702">			isCached = false;</span>
 
 			// query the contract by ID
-<span class="fc" id="L706">			contract = contractDB.getContractByID(contractID);</span>
-<span class="pc bpc" id="L707" title="1 of 2 branches missed.">			if (contract == null) {</span>
-<span class="nc" id="L708">				throw new ContractNotExistException(contractID);</span>
+<span class="fc" id="L705">			contract = contractDB.getContractByID(contractID);</span>
+<span class="pc bpc" id="L706" title="1 of 2 branches missed.">			if (contract == null) {</span>
+<span class="nc" id="L707">				throw new ContractNotExistException(contractID);</span>
 			}
 		}
 
 		// Update cache if necessary
-<span class="fc" id="L713">		final ContractID aux = contract.getDataClayID();</span>
-<span class="pc bpc" id="L714" title="1 of 2 branches missed.">		if (!isCached) {</span>
-<span class="fc" id="L715">			this.contractCache.put(aux, contract);</span>
+<span class="fc" id="L712">		final ContractID aux = contract.getDataClayID();</span>
+<span class="pc bpc" id="L713" title="1 of 2 branches missed.">		if (!isCached) {</span>
+<span class="fc" id="L714">			this.contractCache.put(aux, contract);</span>
 		}
-<span class="fc bfc" id="L717" title="All 2 branches covered.">		for (final AccountID accountID : contract.getApplicantsAccountsIDs()) {</span>
-<span class="pc bpc" id="L718" title="1 of 2 branches missed.">			if (!contractsOfAccountCache.containsKey(accountID)) {</span>
-<span class="fc" id="L719">				contractsOfAccountCache.put(accountID, new LinkedList&lt;Contract&gt;());</span>
+<span class="fc bfc" id="L716" title="All 2 branches covered.">		for (final AccountID accountID : contract.getApplicantsAccountsIDs()) {</span>
+<span class="pc bpc" id="L717" title="1 of 2 branches missed.">			if (!contractsOfAccountCache.containsKey(accountID)) {</span>
+<span class="fc" id="L718">				contractsOfAccountCache.put(accountID, new LinkedList&lt;Contract&gt;());</span>
 			}
-<span class="fc" id="L721">			contractsOfAccountCache.get(accountID).add(contract);</span>
-<span class="fc" id="L722">		}</span>
+<span class="fc" id="L720">			contractsOfAccountCache.get(accountID).add(contract);</span>
+<span class="fc" id="L721">		}</span>
 		// this.lastContract = contract;
-<span class="fc" id="L724">		return contract;</span>
+<span class="fc" id="L723">		return contract;</span>
 	}
 
 	/**
@@ -729,13 +728,13 @@ public final class ContractManager extends AbstractManager {
 	 * @return The db handler reference of this manager.
 	 */
 	public ContractManagerDB getDbHandler() {
-<span class="fc" id="L732">		return contractDB;</span>
+<span class="fc" id="L731">		return contractDB;</span>
 	}
 
 	@Override
 	public void cleanCaches() {
-<span class="nc" id="L737">		this.contractCache.clear();</span>
-<span class="nc" id="L738">	}</span>
+<span class="nc" id="L736">		this.contractCache.clear();</span>
+<span class="nc" id="L737">	}</span>
 
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.6.202009150832</span></div></body></html>
