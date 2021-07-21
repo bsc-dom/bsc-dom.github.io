@@ -1,0 +1,146 @@
+version: '3.4'
+networks:
+  default:
+    external:
+      name: "dataclay-testing-network"
+services:
+  logicmoduleB:
+    image: "dom-ci.bsc.es/bscdataclay/logicmodule:${JAVACLAY_IMAGE}"
+    ports:
+      - "22034:22034"
+    command: "--debug"
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-b
+        target: /dataclay/storage
+    environment:
+      - LOGICMODULE_PORT_TCP=22034
+      - LOGICMODULE_HOST=logicmoduleB
+      - DATACLAY_ADMIN_USER=admin
+      - DATACLAY_ADMIN_PASSWORD=admin
+      #- EXPOSED_IP_FOR_CLIENT=127.0.0.1
+    deploy:
+      resources:
+        limits:
+          memory: $LOGICMODULE_MAX_MEMORY
+        reservations:
+          memory: $LOGICMODULE_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+         
+  dsjavaB:
+    image: "dom-ci.bsc.es/bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    ports:
+      - "4127:4127"
+    command: ""
+    depends_on:
+      - logicmoduleB
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-b
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS1
+      - DATASERVICE_JAVA_PORT_TCP=4127
+      - LOGICMODULE_PORT_TCP=22034
+      - LOGICMODULE_HOST=logicmoduleB
+    deploy:
+      resources:
+        limits:
+          memory: $DSJAVA_MAX_MEMORY
+        reservations:
+          memory: $DSJAVA_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dspythonB:
+    image: "dom-ci.bsc.es/bscdataclay/dspython:${PYCLAY_IMAGE}"
+    ports:
+      - "7867:7867"
+    command: "--debug"
+    depends_on:
+      - logicmoduleB
+      - dsjavaB
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-b
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS1
+      - DATASERVICE_PYTHON_PORT_TCP=7867
+      - LOGICMODULE_PORT_TCP=22034
+      - LOGICMODULE_HOST=logicmoduleB
+    deploy:
+      resources:
+        limits:
+          memory: $DSPYTHON_MAX_MEMORY
+        reservations:
+          memory: $DSPYTHON_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dsjavaB2:
+    image: "dom-ci.bsc.es/bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    ports:
+      - "5127:5127"
+    command: ""
+    depends_on:
+      - logicmoduleB
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-b
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS2
+      - DATASERVICE_JAVA_PORT_TCP=5127
+      - LOGICMODULE_PORT_TCP=22034
+      - LOGICMODULE_HOST=logicmoduleB
+    deploy:
+      resources:
+        limits:
+          memory: $DSJAVA_MAX_MEMORY
+        reservations:
+          memory: $DSJAVA_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dspythonB2:
+    image: "dom-ci.bsc.es/bscdataclay/dspython:${PYCLAY_IMAGE}"
+    ports:
+      - "8867:8867"
+    command: "--debug"
+    depends_on:
+      - logicmoduleB
+      - dsjavaB
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-b
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS2
+      - DATASERVICE_PYTHON_PORT_TCP=8867
+      - LOGICMODULE_PORT_TCP=22034
+      - LOGICMODULE_HOST=logicmoduleB
+    deploy:
+      resources:
+        limits:
+          memory: $DSPYTHON_MAX_MEMORY
+        reservations:
+          memory: $DSPYTHON_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
