@@ -1,0 +1,89 @@
+version: '3.4'
+networks:
+  default:
+    external:
+      name: "dataclay-testing-network"
+services:
+  logicmoduleA:
+    image: "dom-ci.bsc.es/bscdataclay/logicmodule:${JAVACLAY_IMAGE}"
+    ports:
+      - "12034:12034"
+    command: "--debug"
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-a
+        target: /dataclay/storage
+    environment:
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmoduleA
+      - DATACLAY_ADMIN_USER=admin
+      - DATACLAY_ADMIN_PASSWORD=admin
+      #- EXPOSED_IP_FOR_CLIENT=127.0.0.1
+    deploy:
+      resources:
+        limits:
+          memory: $LOGICMODULE_MAX_MEMORY
+        reservations:
+          memory: $LOGICMODULE_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+         
+  dsjavaA:
+    image: "dom-ci.bsc.es/bscdataclay/dsjava:${JAVACLAY_IMAGE}"
+    ports:
+      - "3127:3127"
+    command: ""
+    depends_on:
+      - logicmoduleA
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-a
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS1
+      - DATASERVICE_JAVA_PORT_TCP=3127
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmoduleA
+    deploy:
+      resources:
+        limits:
+          memory: $DSJAVA_MAX_MEMORY
+        reservations:
+          memory: $DSJAVA_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+       interval: 5s
+       retries: 10
+       test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
+
+  dspythonA:
+    image: "dom-ci.bsc.es/bscdataclay/dspython:${PYCLAY_IMAGE}"
+    ports:
+      - "6867:6867"
+    command: "--debug"
+    depends_on:
+      - logicmoduleA
+      - dsjavaA
+    volumes:
+      - type: bind
+        source: /tmp/dataClay/functional-testing/storage/federation/machine-a
+        target: /dataclay/storage
+    environment:
+      - DATASERVICE_NAME=DS1
+      - DATASERVICE_PYTHON_PORT_TCP=6867
+      - LOGICMODULE_PORT_TCP=12034
+      - LOGICMODULE_HOST=logicmoduleA
+    deploy:
+      resources:
+        limits:
+          memory: $DSPYTHON_MAX_MEMORY
+        reservations:
+          memory: $DSPYTHON_MIN_MEMORY
+    stop_grace_period: 5m
+    healthcheck:
+      interval: 5s
+      retries: 10
+      test: ["CMD-SHELL", "/home/dataclayusr/dataclay/health/health_check.sh"]
