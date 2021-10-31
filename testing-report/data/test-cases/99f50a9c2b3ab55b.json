@@ -1,0 +1,1282 @@
+{
+  "uid" : "99f50a9c2b3ab55b",
+  "name" : "collect detached unreferenced cyclic objects in distributed environment",
+  "fullName" : "Garbage Collection: collect detached unreferenced cyclic objects in distributed environment",
+  "historyId" : "96e87b7ee29176062d502830465286a8",
+  "time" : {
+    "start" : 1635421465284,
+    "stop" : 1635421959125,
+    "duration" : 493841
+  },
+  "status" : "passed",
+  "flaky" : false,
+  "newFailed" : false,
+  "beforeStages" : [ ],
+  "testStage" : {
+    "status" : "passed",
+    "steps" : [ {
+      "name" : "Given \"UserA\" has a configuration file \"resources/garbage-collection/machine-a/cfgfiles/client.properties\" to be used to connect to dataClay",
+      "time" : {
+        "start" : 1635421465576,
+        "stop" : 1635421465579,
+        "duration" : 3
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ {
+        "uid" : "68442db3342a0504",
+        "name" : "mgm_cfgfile.properties",
+        "source" : "68442db3342a0504.txt",
+        "type" : "text/plain",
+        "size" : 31
+      } ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 1,
+      "shouldDisplayMessage" : false,
+      "hasContent" : true
+    }, {
+      "name" : "And \"UserA\" has a session file \"resources/garbage-collection/machine-a/cfgfiles/session.properties\" to be used in test application",
+      "time" : {
+        "start" : 1635421465580,
+        "stop" : 1635421465581,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ {
+        "uid" : "dd7865e578836171",
+        "name" : "session.properties",
+        "source" : "dd7865e578836171.txt",
+        "type" : "text/plain",
+        "size" : 186
+      } ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 1,
+      "shouldDisplayMessage" : false,
+      "hasContent" : true
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"GLOBALGC_COLLECTOR_INITIAL_DELAY_HOURS\" to \"0\"",
+      "time" : {
+        "start" : 1635421465582,
+        "stop" : 1635421465582,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"GLOBALGC_MAX_TIME_QUARANTINE\" to \"0\"",
+      "time" : {
+        "start" : 1635421465582,
+        "stop" : 1635421465583,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"GLOBALGC_CHECK_REMOTE_PENDING\" to \"1000\"",
+      "time" : {
+        "start" : 1635421465583,
+        "stop" : 1635421465584,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"GLOBALGC_PROCESS_COUNTINGS_INTERVAL\" to \"200\"",
+      "time" : {
+        "start" : 1635421465584,
+        "stop" : 1635421465584,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"GLOBALGC_COLLECT_TIME_INTERVAL\" to \"5000\"",
+      "time" : {
+        "start" : 1635421465584,
+        "stop" : 1635421465585,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"GLOBALGC_MAX_OBJECTS_TO_COLLECT_ITERATION\" to \"1000\"",
+      "time" : {
+        "start" : 1635421465585,
+        "stop" : 1635421465586,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"MEMMGMT_CHECK_TIME_INTERVAL\" to \"1000\"",
+      "time" : {
+        "start" : 1635421465586,
+        "stop" : 1635421465586,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"MEMMGMT_PRESSURE_FRACTION\" to \"0.0\"",
+      "time" : {
+        "start" : 1635421465587,
+        "stop" : 1635421465587,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"MEMMGMT_MIN_OBJECT_TIME\" to \"500\"",
+      "time" : {
+        "start" : 1635421465587,
+        "stop" : 1635421465588,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" sets environment variable \"MEMMGMT_EASE_FRACTION\" to \"0.0\"",
+      "time" : {
+        "start" : 1635421465588,
+        "stop" : 1635421465589,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" deploys dataClay with docker-compose.yml file \"resources/garbage-collection/machine-a/docker-compose.yml\"",
+      "time" : {
+        "start" : 1635421465589,
+        "stop" : 1635421485171,
+        "duration" : 19582
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ {
+        "uid" : "571f809c40c254ce",
+        "name" : "docker-compose.yml",
+        "source" : "571f809c40c254ce.txt",
+        "type" : "text/plain",
+        "size" : 5122
+      } ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 1,
+      "shouldDisplayMessage" : false,
+      "hasContent" : true
+    }, {
+      "name" : "And \"UserA\" waits until dataClay has 2 backends of \"java\" language",
+      "time" : {
+        "start" : 1635421485172,
+        "stop" : 1635421490617,
+        "duration" : 5445
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" waits until dataClay has 2 backends of \"python\" language",
+      "time" : {
+        "start" : 1635421490619,
+        "stop" : 1635421496124,
+        "duration" : 5505
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" creates an account named \"UserA\" with password \"UserA\"",
+      "time" : {
+        "start" : 1635421496125,
+        "stop" : 1635421502203,
+        "duration" : 6078
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" creates a dataset named \"datasetA\"",
+      "time" : {
+        "start" : 1635421502205,
+        "stop" : 1635421502206,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" creates a namespace named \"test_namespace\"",
+      "time" : {
+        "start" : 1635421502207,
+        "stop" : 1635421502207,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" creates a datacontract allowing access to dataset \"datasetA\" to user \"UserA\"",
+      "time" : {
+        "start" : 1635421502207,
+        "stop" : 1635421508017,
+        "duration" : 5810
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" registers a model located at \"resources/common/model\" into namespace \"test_namespace\"",
+      "time" : {
+        "start" : 1635421508018,
+        "stop" : 1635421535451,
+        "duration" : 27433
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ {
+        "uid" : "4a995cb6d4f5bb0",
+        "name" : "__init__.py",
+        "source" : "4a995cb6d4f5bb0.txt",
+        "type" : "text/plain",
+        "size" : 0
+      }, {
+        "uid" : "5d5fd00511ac8c9d",
+        "name" : "classes.py",
+        "source" : "5d5fd00511ac8c9d.txt",
+        "type" : "text/plain",
+        "size" : 4437
+      }, {
+        "uid" : "8986e111cac87433",
+        "name" : "elastic.py",
+        "source" : "8986e111cac87433.txt",
+        "type" : "text/plain",
+        "size" : 7712
+      } ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 3,
+      "shouldDisplayMessage" : false,
+      "hasContent" : true
+    }, {
+      "name" : "And \"UserA\" get stubs from namespace \"test_namespace\" into \"stubs/userA\" directory",
+      "time" : {
+        "start" : 1635421535457,
+        "stop" : 1635421553413,
+        "duration" : 17956
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "Given \"UserB\" has a configuration file \"resources/garbage-collection/machine-b/cfgfiles/client.properties\" to be used to connect to dataClay",
+      "time" : {
+        "start" : 1635421553416,
+        "stop" : 1635421553421,
+        "duration" : 5
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ {
+        "uid" : "4dedade5de40d057",
+        "name" : "mgm_cfgfile.properties",
+        "source" : "4dedade5de40d057.txt",
+        "type" : "text/plain",
+        "size" : 31
+      } ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 1,
+      "shouldDisplayMessage" : false,
+      "hasContent" : true
+    }, {
+      "name" : "And \"UserB\" has a session file \"resources/garbage-collection/machine-b/cfgfiles/session.properties\" to be used in test application",
+      "time" : {
+        "start" : 1635421553421,
+        "stop" : 1635421553422,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ {
+        "uid" : "81e16a3a841985bc",
+        "name" : "session.properties",
+        "source" : "81e16a3a841985bc.txt",
+        "type" : "text/plain",
+        "size" : 186
+      } ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 1,
+      "shouldDisplayMessage" : false,
+      "hasContent" : true
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"GLOBALGC_COLLECTOR_INITIAL_DELAY_HOURS\" to \"0\"",
+      "time" : {
+        "start" : 1635421553423,
+        "stop" : 1635421553423,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"GLOBALGC_MAX_TIME_QUARANTINE\" to \"0\"",
+      "time" : {
+        "start" : 1635421553423,
+        "stop" : 1635421553424,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"GLOBALGC_CHECK_REMOTE_PENDING\" to \"1000\"",
+      "time" : {
+        "start" : 1635421553424,
+        "stop" : 1635421553424,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"GLOBALGC_PROCESS_COUNTINGS_INTERVAL\" to \"200\"",
+      "time" : {
+        "start" : 1635421553425,
+        "stop" : 1635421553425,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"GLOBALGC_COLLECT_TIME_INTERVAL\" to \"5000\"",
+      "time" : {
+        "start" : 1635421553425,
+        "stop" : 1635421553426,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"GLOBALGC_MAX_OBJECTS_TO_COLLECT_ITERATION\" to \"1000\"",
+      "time" : {
+        "start" : 1635421553426,
+        "stop" : 1635421553427,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"MEMMGMT_CHECK_TIME_INTERVAL\" to \"1000\"",
+      "time" : {
+        "start" : 1635421553427,
+        "stop" : 1635421553427,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"MEMMGMT_PRESSURE_FRACTION\" to \"0.0\"",
+      "time" : {
+        "start" : 1635421553428,
+        "stop" : 1635421553428,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"MEMMGMT_MIN_OBJECT_TIME\" to \"100\"",
+      "time" : {
+        "start" : 1635421553428,
+        "stop" : 1635421553429,
+        "duration" : 1
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" sets environment variable \"MEMMGMT_EASE_FRACTION\" to \"0.0\"",
+      "time" : {
+        "start" : 1635421553429,
+        "stop" : 1635421553429,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" deploys dataClay with docker-compose.yml file \"resources/garbage-collection/machine-b/docker-compose.yml\"",
+      "time" : {
+        "start" : 1635421553429,
+        "stop" : 1635421570432,
+        "duration" : 17003
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ {
+        "uid" : "ccdd0f72d2f94822",
+        "name" : "docker-compose.yml",
+        "source" : "ccdd0f72d2f94822.txt",
+        "type" : "text/plain",
+        "size" : 3045
+      } ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 1,
+      "shouldDisplayMessage" : false,
+      "hasContent" : true
+    }, {
+      "name" : "And \"UserB\" waits until dataClay has 1 backends of \"java\" language",
+      "time" : {
+        "start" : 1635421570433,
+        "stop" : 1635421576277,
+        "duration" : 5844
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" waits until dataClay has 1 backends of \"python\" language",
+      "time" : {
+        "start" : 1635421576278,
+        "stop" : 1635421581591,
+        "duration" : 5313
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" creates an account named \"UserB\" with password \"UserB\"",
+      "time" : {
+        "start" : 1635421581597,
+        "stop" : 1635421586948,
+        "duration" : 5351
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" creates a dataset named \"datasetB\"",
+      "time" : {
+        "start" : 1635421586949,
+        "stop" : 1635421586949,
+        "duration" : 0
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" creates a datacontract allowing access to dataset \"datasetB\" to user \"UserB\"",
+      "time" : {
+        "start" : 1635421586949,
+        "stop" : 1635421592662,
+        "duration" : 5713
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" registers external dataClay with hostname \"logicmoduleA\" and port 12034",
+      "time" : {
+        "start" : 1635421592663,
+        "stop" : 1635421598395,
+        "duration" : 5732
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" imports models in namespace \"test_namespace\" from dataClay at hostname \"logicmoduleA\" and port 12034",
+      "time" : {
+        "start" : 1635421598397,
+        "stop" : 1635421608838,
+        "duration" : 10441
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" get stubs from namespace \"test_namespace\" into \"stubs/userB\" directory",
+      "time" : {
+        "start" : 1635421608841,
+        "stop" : 1635421635681,
+        "duration" : 26840
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" starts a new session",
+      "time" : {
+        "start" : 1635421635683,
+        "stop" : 1635421639522,
+        "duration" : 3839
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" creates \"obj_dkb_a\" object of class \"elastic.DKB\"",
+      "time" : {
+        "start" : 1635421639522,
+        "stop" : 1635421639604,
+        "duration" : 82
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" runs make persistent for object \"obj_dkb_a\" with alias = \"DKB\", backend name = \"DS1\" and recursive = \"True\"",
+      "time" : {
+        "start" : 1635421639605,
+        "stop" : 1635421640100,
+        "duration" : 495
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" gets id of \"obj_dkb_a\" object into \"oid_dkb_a\" variable",
+      "time" : {
+        "start" : 1635421640100,
+        "stop" : 1635421640102,
+        "duration" : 2
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" finishes the session",
+      "time" : {
+        "start" : 1635421640103,
+        "stop" : 1635421640160,
+        "duration" : 57
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" starts a new session",
+      "time" : {
+        "start" : 1635421640160,
+        "stop" : 1635421643720,
+        "duration" : 3560
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" creates \"obj_dkb_b\" object of class \"elastic.DKB\"",
+      "time" : {
+        "start" : 1635421643721,
+        "stop" : 1635421643733,
+        "duration" : 12
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" runs make persistent for object \"obj_dkb_b\" with alias = \"DKB\", backend name = \"DS1\" and recursive = \"True\"",
+      "time" : {
+        "start" : 1635421643733,
+        "stop" : 1635421644122,
+        "duration" : 389
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" gets id of \"obj_dkb_b\" object into \"oid_dkb_b\" variable",
+      "time" : {
+        "start" : 1635421644123,
+        "stop" : 1635421644125,
+        "duration" : 2
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" gets ID of external dataClay at hostname \"logicmoduleA\" and port 12034 into \"dataclayid_A\" variable",
+      "time" : {
+        "start" : 1635421644126,
+        "stop" : 1635421644134,
+        "duration" : 8
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" finishes the session",
+      "time" : {
+        "start" : 1635421644134,
+        "stop" : 1635421644175,
+        "duration" : 41
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" starts a new session",
+      "time" : {
+        "start" : 1635421644175,
+        "stop" : 1635421648090,
+        "duration" : 3915
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" gets ID of external dataClay at hostname \"logicmoduleB\" and port 22034 into \"dataclayid_B\" variable",
+      "time" : {
+        "start" : 1635421648091,
+        "stop" : 1635421648114,
+        "duration" : 23
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" creates \"obj_snapshot_begin\" object of class \"elastic.Snapshot\" with constructor params \"snapshot_0\"",
+      "time" : {
+        "start" : 1635421648115,
+        "stop" : 1635421648126,
+        "duration" : 11
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" runs make persistent for object \"obj_snapshot_begin\" with backend name = \"DS1\"",
+      "time" : {
+        "start" : 1635421648127,
+        "stop" : 1635421648228,
+        "duration" : 101
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" runs \"add_events_snapshot\" method with params \"obj_snapshot_begin\" in object \"obj_dkb_a\"",
+      "time" : {
+        "start" : 1635421648230,
+        "stop" : 1635421648408,
+        "duration" : 178
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" runs \"add_events_from_trackers\" method with params \"2 car_oid car 10 5 0 0 50.3 20.2 33.2 44.1 obj_dkb_a\" in object \"obj_snapshot_begin\"",
+      "time" : {
+        "start" : 1635421648409,
+        "stop" : 1635421648438,
+        "duration" : 29
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" waits 100 seconds",
+      "time" : {
+        "start" : 1635421648438,
+        "stop" : 1635421748537,
+        "duration" : 100099
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" checks that number of objects in dataClay is 5",
+      "time" : {
+        "start" : 1635421748544,
+        "stop" : 1635421748717,
+        "duration" : 173
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" federates \"obj_snapshot_begin\" object to dataClay with ID \"dataclayid_B\"",
+      "time" : {
+        "start" : 1635421748717,
+        "stop" : 1635421749767,
+        "duration" : 1050
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" runs \"remove_old_objects_and_snapshots\" method with params \"100 True\" in object \"obj_dkb_a\"",
+      "time" : {
+        "start" : 1635421749767,
+        "stop" : 1635421750188,
+        "duration" : 421
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" waits 100 seconds",
+      "time" : {
+        "start" : 1635421750188,
+        "stop" : 1635421850277,
+        "duration" : 100089
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" checks that number of objects in dataClay is 1",
+      "time" : {
+        "start" : 1635421850280,
+        "stop" : 1635421850364,
+        "duration" : 84
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserA\" finishes the session",
+      "time" : {
+        "start" : 1635421850364,
+        "stop" : 1635421850389,
+        "duration" : 25
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" starts a new session",
+      "time" : {
+        "start" : 1635421850389,
+        "stop" : 1635421854146,
+        "duration" : 3757
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" checks that number of objects in dataClay is 5",
+      "time" : {
+        "start" : 1635421854146,
+        "stop" : 1635421854191,
+        "duration" : 45
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" runs \"remove_old_objects_and_snapshots\" method with params \"100 False\" in object \"obj_dkb_b\"",
+      "time" : {
+        "start" : 1635421854192,
+        "stop" : 1635421854468,
+        "duration" : 276
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" waits 100 seconds",
+      "time" : {
+        "start" : 1635421854469,
+        "stop" : 1635421954570,
+        "duration" : 100101
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" checks that number of objects in dataClay is 1",
+      "time" : {
+        "start" : 1635421954573,
+        "stop" : 1635421954608,
+        "duration" : 35
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    }, {
+      "name" : "And \"UserB\" finishes the session",
+      "time" : {
+        "start" : 1635421954608,
+        "stop" : 1635421954643,
+        "duration" : 35
+      },
+      "status" : "passed",
+      "steps" : [ ],
+      "attachments" : [ ],
+      "parameters" : [ ],
+      "stepsCount" : 0,
+      "attachmentsCount" : 0,
+      "shouldDisplayMessage" : false,
+      "hasContent" : false
+    } ],
+    "attachments" : [ ],
+    "parameters" : [ ],
+    "stepsCount" : 72,
+    "attachmentsCount" : 9,
+    "shouldDisplayMessage" : false,
+    "hasContent" : true
+  },
+  "afterStages" : [ ],
+  "labels" : [ {
+    "name" : "severity",
+    "value" : "normal"
+  }, {
+    "name" : "tag",
+    "value" : "debugging"
+  }, {
+    "name" : "feature",
+    "value" : "Garbage Collection"
+  }, {
+    "name" : "framework",
+    "value" : "behave"
+  }, {
+    "name" : "language",
+    "value" : "cpython3"
+  }, {
+    "name" : "story",
+    "value" : "collect detached unreferenced cyclic objects in distributed environment"
+  }, {
+    "name" : "suite",
+    "value" : "Garbage Collection"
+  }, {
+    "name" : "testClass",
+    "value" : "collect detached unreferenced cyclic objects in distributed environment"
+  }, {
+    "name" : "resultFormat",
+    "value" : "allure2"
+  } ],
+  "parameters" : [ {
+    "name" : "1. test_language",
+    "value" : "None"
+  }, {
+    "name" : "2. version",
+    "value" : "py36"
+  }, {
+    "name" : "3. operating system",
+    "value" : "Linux"
+  }, {
+    "name" : "4. architecture",
+    "value" : "linux/amd64"
+  }, {
+    "name" : "5. docker image",
+    "value" : "normal"
+  } ],
+  "links" : [ ],
+  "hidden" : false,
+  "retry" : false,
+  "extra" : {
+    "severity" : "normal",
+    "retries" : [ ],
+    "categories" : [ ],
+    "history" : {
+      "statistic" : {
+        "failed" : 0,
+        "broken" : 0,
+        "skipped" : 0,
+        "passed" : 8,
+        "unknown" : 0,
+        "total" : 8
+      },
+      "items" : [ {
+        "uid" : "e3d9ed963e792291",
+        "status" : "passed",
+        "time" : {
+          "start" : 1634816415538,
+          "stop" : 1634816908646,
+          "duration" : 493108
+        }
+      }, {
+        "uid" : "e9b1fa8a5a52a4dc",
+        "status" : "passed",
+        "time" : {
+          "start" : 1634211808839,
+          "stop" : 1634212318879,
+          "duration" : 510040
+        }
+      }, {
+        "uid" : "654ea87c0a061431",
+        "status" : "passed",
+        "time" : {
+          "start" : 1633606070126,
+          "stop" : 1633606602339,
+          "duration" : 532213
+        }
+      }, {
+        "uid" : "65861281233c5924",
+        "status" : "passed",
+        "time" : {
+          "start" : 1633000796380,
+          "stop" : 1633001290230,
+          "duration" : 493850
+        }
+      }, {
+        "uid" : "bb90f7d6299b741c",
+        "status" : "passed",
+        "time" : {
+          "start" : 1632397208677,
+          "stop" : 1632397693898,
+          "duration" : 485221
+        }
+      }, {
+        "uid" : "a98bd36aa51e6ef4",
+        "status" : "passed",
+        "time" : {
+          "start" : 1631792711101,
+          "stop" : 1631793219495,
+          "duration" : 508394
+        }
+      }, {
+        "uid" : "27ce5927313499eb",
+        "status" : "passed",
+        "time" : {
+          "start" : 1631186186260,
+          "stop" : 1631186682860,
+          "duration" : 496600
+        }
+      } ]
+    },
+    "tags" : [ "debugging" ]
+  },
+  "source" : "99f50a9c2b3ab55b.json",
+  "parameterValues" : [ "None", "py36", "Linux", "linux/amd64", "normal" ]
+}
